@@ -41,8 +41,11 @@
 #include <llvm-c/ExecutionEngine.h>
 #include <llvm-c/DebugInfo.h>
 #include <llvm-c/Support.h>
+#include <llvm-c/BitWriter.h>
+#include <llvm-c/IRReader.h>
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/mman.h>
@@ -65,27 +68,28 @@ _llvm_error_to_fxjit_error(LLVMErrorRef err, GError **error)
   LLVMDisposeErrorMessage(message);
 }
 
+static FilterXJITPendingBlock *
+_pending_block_new(LLVMModuleRef mod, const gchar *name)
+{
+  FilterXJITPendingBlock *self = g_new0(FilterXJITPendingBlock, 1);
+  self->bc = LLVMWriteBitcodeToMemoryBuffer(mod);
+  self->name = g_strdup(name);
+  return self;
+}
+
+static void
+_pending_block_free(FilterXJITPendingBlock *self)
+{
+  if (self->bc)
+    LLVMDisposeMemoryBuffer(self->bc);
+  g_free(self->name);
+  g_free(self);
+}
+
 static inline void
 _assert_verify_block(FilterXJIT *self, FilterXIRValue block)
 {
   LLVMVerifyFunction(block, LLVMAbortProcessAction);
-}
-
-static inline gboolean
-_verify_module(FilterXJIT *self, GError **error)
-{
-  gchar *error_msg = NULL;
-  gboolean module_broken = LLVMVerifyModule(self->mod, LLVMReturnStatusAction, &error_msg);
-  if (module_broken)
-    {
-      _fxjit_error(error_msg, error);
-      LLVMDisposeMessage(error_msg);
-      return FALSE;
-    }
-
-  /* LLVMVerifyModule() allocates an error string even when there were no errors */
-  LLVMDisposeMessage(error_msg);
-  return TRUE;
 }
 
 static LLVMErrorRef
@@ -107,6 +111,21 @@ static LLVMErrorRef
 _optimize_transform(gpointer s, LLVMOrcThreadSafeModuleRef *thr_mod, LLVMOrcMaterializationResponsibilityRef mr)
 {
   return LLVMOrcThreadSafeModuleWithModuleDo(*thr_mod, _optimize_module, s);
+}
+
+static gboolean
+_preoptimize_libfilterx(FilterXJIT *self, GError **error)
+{
+  if (!self->libfilterx)
+    return TRUE;
+
+  LLVMErrorRef err = _optimize_module(self, self->libfilterx);
+  if (err)
+    {
+      _llvm_error_to_fxjit_error(err, error);
+      return FALSE;
+    }
+  return TRUE;
 }
 
 FilterXIRBuilder
@@ -156,7 +175,8 @@ static inline LLVMTypeRef
 _block_function_type(FilterXJIT *self)
 {
   LLVMTypeRef ptr_ty = LLVMPointerTypeInContext(self->ctx, 0);
-  LLVMTypeRef params[] = { ptr_ty };
+  /* (FilterXEvalContext *ctx, gpointer *ptr_table) */
+  LLVMTypeRef params[] = { ptr_ty, ptr_ty };
   return LLVMFunctionType(ptr_ty, params, G_N_ELEMENTS(params), FALSE);
 }
 
@@ -204,11 +224,99 @@ _inherit_libfilterx_function_attributes(FilterXJIT *self, FilterXIRValue dest)
     _copy_attrs_at_index(tmpl, dest, paramidx);
 }
 
+static const guint8 _fx_jit_var_uninitialized;
+
+static inline LLVMTypeRef
+_variable_storage_type(FilterXJIT *self)
+{
+  return LLVMArrayType(self->ffi.ptr_ty, self->current_block_variables_size);
+}
+
+static FilterXIRValue
+_variable_uninitialized_sentinel(FilterXJIT *self)
+{
+  /*
+   * A process-global constant.
+   *
+   * Keep it baked, not routed through the per-instance ptr_table.
+   * It must be a compile-time constant for the LLVMConstArray init,
+   * and the same baked address keeps identical blocks dedup-equal.
+   */
+  LLVMValueRef addr = LLVMConstInt(self->ffi.i64_ty, (guint64) (uintptr_t) &_fx_jit_var_uninitialized, FALSE);
+  return LLVMConstIntToPtr(addr, self->ffi.ptr_ty);
+}
+
+FilterXIRValue
+filterx_jit_ir_is_variable_uninitialized(FilterXJIT *self, FilterXIRValue variable)
+{
+  return LLVMBuildICmp(self->ir, LLVMIntEQ, variable, _variable_uninitialized_sentinel(self), "var_is_unloaded");
+}
+
+static void
+_reset_variables(FilterXJIT *self)
+{
+  if (!self->current_block_variables)
+    return;
+
+  FilterXIRValue sentinel = _variable_uninitialized_sentinel(self);
+
+  LLVMValueRef *elements = g_newa(LLVMValueRef, self->current_block_variables_size);
+  for (guint32 i = 0; i < self->current_block_variables_size; i++)
+    elements[i] = sentinel;
+
+  LLVMBuildStore(self->ir, LLVMConstArray(self->ffi.ptr_ty, elements, self->current_block_variables_size),
+                 self->current_block_variables);
+}
+
+static inline void
+_init_variables(FilterXJIT *self, FilterXScopeVariableLayout *layout)
+{
+  guint32 num_variables = layout ? layout->num_variables : 0;
+  self->current_block_variables_size = num_variables;
+  self->current_block_variables = NULL;
+  if (num_variables > 0)
+    {
+      self->current_block_variables = LLVMBuildAlloca(self->ir, _variable_storage_type(self), "variables");
+      _reset_variables(self);
+    }
+}
+
+static void _capture_block_for_dedup(FilterXJIT *self);
+static LLVMTargetMachineRef _create_target_machine(FilterXJIT *self, GError **error);
+
+static void
+_setup_block_debug_info(FilterXJIT *self)
+{
+  LLVMValueRef di_version = LLVMConstInt(LLVMInt32TypeInContext(self->ctx), LLVMDebugMetadataVersion(), FALSE);
+  LLVMValueRef dwarf_version = LLVMConstInt(LLVMInt32TypeInContext(self->ctx), 5, FALSE);
+
+  LLVMAddModuleFlag(self->mod, LLVMModuleFlagBehaviorWarning, DEBUG_VERSION_KEY, strlen(DEBUG_VERSION_KEY),
+                    LLVMValueAsMetadata(di_version));
+  LLVMAddModuleFlag(self->mod, LLVMModuleFlagBehaviorWarning, DWARF_VERSION_KEY, strlen(DWARF_VERSION_KEY),
+                    LLVMValueAsMetadata(dwarf_version));
+
+  self->debug = LLVMCreateDIBuilder(self->mod);
+
+  const gchar *dummy_file_name = "<filterx>";
+  LLVMMetadataRef file = LLVMDIBuilderCreateFile(self->debug, dummy_file_name, strlen(dummy_file_name), "", 0);
+
+  const gchar *producer = "AxoSyslog FilterX JIT";
+  LLVMDIBuilderCreateCompileUnit(self->debug, LLVMDWARFSourceLanguageC, file, producer, strlen(producer), FALSE, "", 0,
+                                 0, "", 0, LLVMDWARFEmissionFull, 0, FALSE, FALSE, "", 0, "", 0);
+}
+
 void
-filterx_jit_ir_add_new_block(FilterXJIT *self, const gchar *block_name)
+filterx_jit_ir_add_new_block(FilterXJIT *self, const gchar *block_name, FilterXScopeVariableLayout *layout)
 {
   g_assert(!self->mod_finalized);
   g_assert(!self->current_ir_block);
+
+  g_assert(!self->mod);
+  self->mod = LLVMModuleCreateWithNameInContext(self->mod_name, self->ctx);
+  LLVMSetTarget(self->mod, LLVMGetTarget(self->libfilterx));
+  LLVMSetDataLayout(self->mod, LLVMGetDataLayoutStr(self->libfilterx));
+  filterx_jit_ffi_init(self);
+  _setup_block_debug_info(self);
 
   gchar *fqn = _create_fully_qualified_block_name(self, block_name);
   self->current_ir_block = LLVMAddFunction(self->mod, fqn, _block_function_type(self));
@@ -219,8 +327,42 @@ filterx_jit_ir_add_new_block(FilterXJIT *self, const gchar *block_name)
   self->current_eval_context = LLVMGetParam(self->current_ir_block, 0);
   LLVMSetValueName2(self->current_eval_context, "eval_context", strlen("eval_context"));
 
+  self->current_ptr_table_param = LLVMGetParam(self->current_ir_block, 1);
+  LLVMSetValueName2(self->current_ptr_table_param, "ptr_table", strlen("ptr_table"));
+  g_array_set_size(self->current_block_ptrs, 0);
+  g_free(self->current_block_name);
+  self->current_block_name = g_strdup(block_name);
+
   FilterXIRSequence entry = filterx_jit_ir_add_new_sequence_to_block(self, "entry", self->current_ir_block);
   filterx_jit_ir_set_insert_point_to_sequence_tail(self, entry);
+
+  _init_variables(self, layout);
+}
+
+FilterXIRValue
+filterx_jit_ir_get_variable(FilterXJIT *self, gint scope_var_idx)
+{
+  g_assert(!self->mod_finalized);
+  g_assert(scope_var_idx >= 0 && scope_var_idx < self->current_block_variables_size);
+
+  LLVMValueRef indices[] =
+  {
+    LLVMConstInt(self->ffi.i32_ty, 0, FALSE),
+    LLVMConstInt(self->ffi.i32_ty, scope_var_idx, FALSE),
+  };
+
+  gchar name[32];
+  g_snprintf(name, sizeof(name), "var_%d", scope_var_idx);
+  return LLVMBuildGEP2(self->ir, _variable_storage_type(self), self->current_block_variables,
+                       indices, G_N_ELEMENTS(indices), name);
+}
+
+void
+filterx_jit_ir_clear_variables(FilterXJIT *self)
+{
+  g_assert(!self->mod_finalized);
+
+  _reset_variables(self);
 }
 
 FilterXIRValue
@@ -244,10 +386,15 @@ filterx_jit_ir_finish_current_block(FilterXJIT *self, FilterXIRValue result)
 
   _assert_verify_block(self, self->current_ir_block);
 
+  self->current_block_variables = NULL;
+  self->current_block_variables_size = 0;
+
   self->current_ir_block = NULL;
   self->current_eval_context = NULL;
   self->current_debug_info_block = NULL;
   LLVMSetCurrentDebugLocation2(self->ir, NULL);
+
+  _capture_block_for_dedup(self);
 }
 
 FilterXIRValue
@@ -324,21 +471,25 @@ _string_append_printf_line_count(GString *str, guint *line, const char *format, 
  * Renders each function with one instruction per line into a memfd.
  */
 static gboolean
-_emit_llvm_ir_debug_info(FilterXJIT *self, GError **error)
+_emit_block_llvm_ir_debug_info(FilterXJIT *self, GError **error)
 {
-  self->debug_ir_text_memfd = memfd_create(self->mod_name, MFD_CLOEXEC);
   if (self->debug_ir_text_memfd < 0)
     {
-      _fxjit_error("memfd_create failed", error);
-      return FALSE;
+      self->debug_ir_text_memfd = memfd_create("filterx-jit-ir", MFD_CLOEXEC);
+      if (self->debug_ir_text_memfd < 0)
+        {
+          _fxjit_error("memfd_create failed", error);
+          return FALSE;
+        }
+      self->debug_ir_text = g_string_sized_new(4096);
     }
 
   gchar path[64];
   g_snprintf(path, sizeof(path), "/proc/%d/fd/%d", (int) getpid(), self->debug_ir_text_memfd);
   LLVMMetadataRef di_file = LLVMDIBuilderCreateFile(self->debug, path, strlen(path), "", 0);
 
-  GString *ir_text = g_string_sized_new(1024);
-  guint line = 0;
+  GString *ir_text = self->debug_ir_text;
+  guint *line = &self->debug_ir_line;
 
   for (LLVMValueRef fn = LLVMGetFirstFunction(self->mod); fn; fn = LLVMGetNextFunction(fn))
     {
@@ -346,46 +497,38 @@ _emit_llvm_ir_debug_info(FilterXJIT *self, GError **error)
         continue;
 
       const gchar *fn_name = LLVMGetValueName(fn);
-      _string_append_printf_line_count(ir_text, &line, "define @\"%s\" {\n", fn_name);
+      _string_append_printf_line_count(ir_text, line, "define @\"%s\" {\n", fn_name);
 
       LLVMMetadataRef subroutine_ty = LLVMDIBuilderCreateSubroutineType(self->debug, di_file, NULL, 0, LLVMDIFlagZero);
       LLVMMetadataRef sp = LLVMDIBuilderCreateFunction(self->debug, di_file, fn_name, strlen(fn_name),
-                                                       fn_name, strlen(fn_name), di_file, line, subroutine_ty,
-                                                       FALSE, TRUE, line, LLVMDIFlagZero, FALSE);
+                                                       fn_name, strlen(fn_name), di_file, *line, subroutine_ty,
+                                                       FALSE, TRUE, *line, LLVMDIFlagZero, FALSE);
       LLVMSetSubprogram(fn, sp);
 
       gboolean first_sequence = TRUE;
       for (FilterXIRSequence seq = LLVMGetFirstBasicBlock(fn); seq; seq = LLVMGetNextBasicBlock(seq))
         {
           if (!first_sequence)
-            _string_append_line_count(ir_text, &line, "\n");
+            _string_append_line_count(ir_text, line, "\n");
           first_sequence = FALSE;
 
           const gchar *bb_name = LLVMGetBasicBlockName(seq);
           bb_name = bb_name ? bb_name : "";
-          _string_append_printf_line_count(ir_text, &line, "%s:\n", bb_name);
+          _string_append_printf_line_count(ir_text, line, "%s:\n", bb_name);
 
           for (LLVMValueRef inst = LLVMGetFirstInstruction(seq); inst; inst = LLVMGetNextInstruction(inst))
             {
               gchar *inst_text = LLVMPrintValueToString(inst);
-              _string_append_printf_line_count(ir_text, &line, "%s\n", inst_text);
+              _string_append_printf_line_count(ir_text, line, "%s\n", inst_text);
               LLVMDisposeMessage(inst_text);
 
-              LLVMMetadataRef loc = LLVMDIBuilderCreateDebugLocation(self->ctx, line, 1, sp, NULL);
+              LLVMMetadataRef loc = LLVMDIBuilderCreateDebugLocation(self->ctx, *line, 1, sp, NULL);
               LLVMInstructionSetDebugLoc(inst, loc);
             }
         }
 
-      _string_append_line_count(ir_text, &line, "}\n\n");
+      _string_append_line_count(ir_text, line, "}\n\n");
       LLVMDIBuilderFinalizeSubprogram(self->debug, sp);
-    }
-
-  ssize_t written = write(self->debug_ir_text_memfd, ir_text->str, ir_text->len);
-  g_string_free(ir_text, TRUE);
-  if (written < 0)
-    {
-      _fxjit_error("Failed to write IR text to memfd", error);
-      return FALSE;
     }
 
   return TRUE;
@@ -393,23 +536,240 @@ _emit_llvm_ir_debug_info(FilterXJIT *self, GError **error)
 
 #endif
 
-static gboolean
-_link_libfilterx(FilterXJIT *self, GError **error)
+static void
+_capture_block_for_dedup(FilterXJIT *self)
 {
-  if (!self->libfilterx)
-    return TRUE;
+  guint nptrs = self->current_block_ptrs->len;
+  gpointer *table = g_new(gpointer, nptrs ? nptrs : 1);
+  if (nptrs)
+    memcpy(table, self->current_block_ptrs->data, nptrs * sizeof(gpointer));
+  g_hash_table_insert(self->block_tables, g_strdup(self->current_block_name), table);
 
-  LLVMBool link_err = LLVMLinkModules2(self->mod, self->libfilterx);
-  /* libfilterx is consumed */
-  self->libfilterx = NULL;
+  gchar *fqn = _create_fully_qualified_block_name(self, self->current_block_name);
+  LLVMValueRef fn = LLVMGetNamedFunction(self->mod, fqn);
 
-  if (link_err)
+  /* code-only identity: strip debug info and neutralize the name on a clone, then hash that */
+  LLVMModuleRef canon_mod = LLVMCloneModule(self->mod);
+  LLVMStripModuleDebugInfo(canon_mod);
+  LLVMSetValueName2(LLVMGetNamedFunction(canon_mod, fqn), "FXB", 3);
+  LLVMMemoryBufferRef canon = LLVMWriteBitcodeToMemoryBuffer(canon_mod);
+  gchar *full = g_compute_checksum_for_data(G_CHECKSUM_SHA256,
+                                            (const guchar *) LLVMGetBufferStart(canon),
+                                            LLVMGetBufferSize(canon));
+  LLVMDisposeMemoryBuffer(canon);
+  LLVMDisposeModule(canon_mod);
+  g_free(fqn);
+  full[32] = '\0'; /* 128-bit content hash is plenty (in-memory, one config generation) */
+
+  gchar *symbol = g_strdup_printf("__fx_block_%s", full);
+  g_hash_table_insert(self->dedup.block_symbol, g_strdup(self->current_block_name), g_strdup(symbol));
+  self->dedup.total++;
+
+  gboolean unique = !g_hash_table_contains(self->dedup.seen_hashes, full);
+  if (unique)
     {
-      _fxjit_error("Failed to link embedded libfilterx bitcode into the JIT module", error);
-      return FALSE;
+      g_hash_table_add(self->dedup.seen_hashes, g_strdup(full));
+      self->dedup.unique++;
+
+      /* representative: name it with its content symbol, attach the IR-dump debug info if requested */
+      LLVMSetValueName2(fn, symbol, strlen(symbol));
+#if FILTERX_JIT_DEBUG_INFO_LLVM_IR_SUPPORTED
+      if (self->debug_info_mode == FILTERX_JIT_DEBUG_INFO_LLVM_IR)
+        {
+          GError *derr = NULL;
+          if (!_emit_block_llvm_ir_debug_info(self, &derr))
+            {
+              msg_error("FilterX JIT: failed to emit LLVM IR debug info",
+                        evt_tag_str("error", derr ? derr->message : "unknown"));
+              g_clear_error(&derr);
+            }
+        }
+#endif
     }
 
-  return TRUE;
+  if (self->debug)
+    LLVMDIBuilderFinalize(self->debug);
+
+  if (unique)
+    {
+      FilterXJITPendingBlock *pb = _pending_block_new(self->mod, symbol);
+      g_ptr_array_add(self->compile.pending_blocks, pb);
+    }
+
+  g_free(full);
+  g_free(symbol);
+
+  if (self->debug)
+    {
+      LLVMDisposeDIBuilder(self->debug);
+      self->debug = NULL;
+    }
+  LLVMDisposeModule(self->mod);
+  self->mod = NULL;
+}
+
+static LLVMModuleRef
+_parse_bitcode_copy(LLVMContextRef ctx, LLVMMemoryBufferRef bc, const gchar *what)
+{
+  LLVMMemoryBufferRef copy = LLVMCreateMemoryBufferWithMemoryRangeCopy(LLVMGetBufferStart(bc),
+                             LLVMGetBufferSize(bc), what);
+  LLVMModuleRef mod = NULL;
+  char *err = NULL;
+  if (LLVMParseIRInContext(ctx, copy, &mod, &err)) /* consumes copy */
+    {
+      msg_error("FilterX JIT: bucket worker failed to parse bitcode",
+                evt_tag_str("what", what), evt_tag_str("error", err ? : "unknown"));
+      LLVMDisposeMessage(err);
+      return NULL;
+    }
+  return mod;
+}
+
+static LLVMModuleRef
+_link_bucket_module(FilterXJIT *self, LLVMContextRef ctx, guint bucket, guint nb)
+{
+  g_assert(self->compile.libfilterx_bc);
+
+  LLVMModuleRef mod = _parse_bitcode_copy(ctx, self->compile.libfilterx_bc, "libfilterx");
+  if (!mod)
+    return NULL;
+
+  LLVMValueRef tmpl = LLVMGetNamedFunction(mod, "fx_jit_attribute_template");
+  if (tmpl && !LLVMIsDeclaration(tmpl))
+    LLVMSetLinkage(tmpl, LLVMInternalLinkage);
+
+  guint linked = 0;
+  for (guint i = bucket; i < self->compile.pending_blocks->len; i += nb)
+    {
+      FilterXJITPendingBlock *pb = g_ptr_array_index(self->compile.pending_blocks, i);
+      LLVMModuleRef bm = _parse_bitcode_copy(ctx, pb->bc, pb->name);
+      if (!bm)
+        goto error;
+
+      if (LLVMLinkModules2(mod, bm)) /* bm consumed */
+        {
+          msg_error("FilterX JIT: bucket worker failed to link block", evt_tag_str("block", pb->name));
+          goto error;
+        }
+
+      linked++;
+    }
+
+  if (linked == 0)
+    goto error;
+
+  return mod;
+
+error:
+  LLVMDisposeModule(mod);
+  return NULL;
+}
+
+static LLVMMemoryBufferRef
+_compile_module_to_object(FilterXJIT *self, LLVMModuleRef mod, guint bucket)
+{
+  LLVMTargetMachineRef tm = _create_target_machine(self, NULL);
+  if (!tm)
+    return NULL;
+
+  LLVMPassBuilderOptionsRef opts = LLVMCreatePassBuilderOptions();
+  LLVMErrorRef perr = LLVMRunPasses(mod, "default<O3>", tm, opts);
+  LLVMDisposePassBuilderOptions(opts);
+  if (perr)
+    {
+      msg_error("FilterX JIT: bucket worker O3 failed", evt_tag_int("bucket", bucket));
+      LLVMConsumeError(perr);
+      LLVMDisposeTargetMachine(tm);
+      return NULL;
+    }
+
+  LLVMMemoryBufferRef obj = NULL;
+  char *cerr = NULL;
+  if (LLVMTargetMachineEmitToMemoryBuffer(tm, mod, LLVMObjectFile, &cerr, &obj))
+    {
+      msg_error("FilterX JIT: bucket worker codegen failed",
+                evt_tag_int("bucket", bucket), evt_tag_str("error", cerr ? : "unknown"));
+      LLVMDisposeMessage(cerr);
+      obj = NULL;
+    }
+  LLVMDisposeTargetMachine(tm);
+  return obj;
+}
+
+static void
+_parallel_compile_worker(gpointer data, gpointer user_data)
+{
+  FilterXJIT *self = ((gpointer *) user_data)[0];
+  LLVMMemoryBufferRef *block_objs = ((gpointer *) user_data)[1];
+  guint bucket = GPOINTER_TO_UINT(data) - 1;
+  guint nb = GPOINTER_TO_UINT(((gpointer *) user_data)[2]);
+
+  LLVMContextRef ctx = LLVMContextCreate();
+  LLVMModuleRef mod = _link_bucket_module(self, ctx, bucket, nb);
+  if (mod)
+    {
+      block_objs[bucket] = _compile_module_to_object(self, mod, bucket);
+      LLVMDisposeModule(mod);
+    }
+  LLVMContextDispose(ctx);
+}
+
+static gboolean
+_finalize_parallel(FilterXJIT *self, GError **error)
+{
+  guint nblocks = self->compile.pending_blocks->len;
+  if (nblocks == 0)
+    return TRUE;
+
+  gint threads = (gint) g_get_num_processors();
+
+  guint n_buckets = (guint) g_get_num_processors();
+  if (n_buckets > nblocks)
+    n_buckets = nblocks;
+
+  msg_trace("FilterX JIT parallel finalize",
+            evt_tag_int("blocks", nblocks),
+            evt_tag_int("buckets", n_buckets),
+            evt_tag_int("threads", threads));
+
+  LLVMMemoryBufferRef *block_objs = g_new0(LLVMMemoryBufferRef, n_buckets);
+  gpointer worker_ctx[] = { self, block_objs, GUINT_TO_POINTER(n_buckets) };
+
+  GThreadPool *pool = g_thread_pool_new(_parallel_compile_worker, worker_ctx, threads, TRUE, NULL);
+  for (guint b = 0; b < n_buckets; b++)
+    {
+      /* +1: NULL task is rejected by the pool */
+      g_thread_pool_push(pool, GUINT_TO_POINTER(b + 1), NULL);
+    }
+  g_thread_pool_free(pool, FALSE, TRUE);
+
+  LLVMOrcJITDylibRef dylib = LLVMOrcLLJITGetMainJITDylib(self->j);
+  gboolean ok = TRUE;
+  for (guint b = 0; b < n_buckets; b++)
+    {
+      if (!block_objs[b])
+        {
+          /* worker failure: that bucket's blocks fall back to interpreter */
+          continue;
+        }
+
+      LLVMErrorRef err = LLVMOrcLLJITAddObjectFile(self->j, dylib, block_objs[b]);
+      block_objs[b] = NULL; /* consumed by AddObjectFile, even on error */
+      if (err)
+        {
+          _llvm_error_to_fxjit_error(err, error);
+          ok = FALSE;
+          break;
+        }
+    }
+
+  for (guint b = 0; b < n_buckets; b++)
+    {
+      if (block_objs[b])
+        LLVMDisposeMemoryBuffer(block_objs[b]);
+    }
+  g_free(block_objs);
+  return ok;
 }
 
 gboolean
@@ -418,36 +778,21 @@ filterx_jit_finalize(FilterXJIT *self, GError **error)
   if (self->mod_finalized)
     return TRUE;
 
+  msg_debug("FilterX JIT block deduplication",
+            evt_tag_int("blocks", self->dedup.total),
+            evt_tag_int("unique_compiled", self->dedup.unique),
+            evt_tag_int("deduped_away", self->dedup.total - self->dedup.unique));
+
+  if (!_finalize_parallel(self, error))
+    return FALSE;
+
 #if FILTERX_JIT_DEBUG_INFO_LLVM_IR_SUPPORTED
-  if (self->debug_info_mode == FILTERX_JIT_DEBUG_INFO_LLVM_IR)
+  if (self->debug_ir_text && self->debug_ir_text_memfd >= 0)
     {
-      if (!_emit_llvm_ir_debug_info(self, error))
-        return FALSE;
+      if (write(self->debug_ir_text_memfd, self->debug_ir_text->str, self->debug_ir_text->len) < 0)
+        msg_error("FilterX JIT: failed to write IR debug text to memfd", evt_tag_str("module_name", self->mod_name));
     }
 #endif
-
-  if (self->debug)
-    LLVMDIBuilderFinalize(self->debug);
-
-  if (!_link_libfilterx(self, error))
-    return FALSE;
-
-  if (!_verify_module(self, error))
-    return FALSE;
-
-  LLVMOrcThreadSafeModuleRef ts_mod = LLVMOrcCreateNewThreadSafeModule(self->mod, self->ts_ctx);
-
-  LLVMOrcJITDylibRef jit_dylib = LLVMOrcLLJITGetMainJITDylib(self->j);
-  LLVMErrorRef err = LLVMOrcLLJITAddLLVMIRModule(self->j, jit_dylib, ts_mod);
-  if (err)
-    {
-      _llvm_error_to_fxjit_error(err, error);
-      self->mod = LLVMCloneModule(self->mod);
-      LLVMOrcDisposeThreadSafeModule(ts_mod);
-      return FALSE;
-    }
-
-  msg_trace("FilterXJIT finalized", evt_tag_str("module_name", self->mod_name));
 
   self->mod_finalized = TRUE;
   return TRUE;
@@ -459,13 +804,17 @@ filterx_jit_lookup(FilterXJIT *self, const gchar *block_name, GError **error)
   if (!self->mod_finalized)
     return 0;
 
-  gchar *fqn = _create_fully_qualified_block_name(self, block_name);
-  msg_trace("FilterXJIT lookup", evt_tag_str("block", fqn), evt_tag_str("module_name", self->mod_name));
+  const gchar *symbol = g_hash_table_lookup(self->dedup.block_symbol, block_name);
+  if (!symbol)
+    {
+      g_set_error(error, 0, 0, "no compiled symbol recorded for block '%s'", block_name);
+      return 0;
+    }
+
+  msg_trace("FilterXJIT lookup", evt_tag_str("block", symbol), evt_tag_str("module_name", self->mod_name));
 
   FilterXJITAddress fx_block_addr = 0;
-  LLVMErrorRef err = LLVMOrcLLJITLookup(self->j, &fx_block_addr, fqn);
-  g_free(fqn);
-
+  LLVMErrorRef err = LLVMOrcLLJITLookup(self->j, &fx_block_addr, symbol);
   if (err)
     {
       _llvm_error_to_fxjit_error(err, error);
@@ -473,6 +822,12 @@ filterx_jit_lookup(FilterXJIT *self, const gchar *block_name, GError **error)
     }
 
   return fx_block_addr;
+}
+
+gpointer *
+filterx_jit_get_block_ptr_table(FilterXJIT *self, const gchar *block_name)
+{
+  return g_hash_table_lookup(self->block_tables, block_name);
 }
 
 /*
@@ -565,23 +920,6 @@ static inline void
 _setup_debug_info(FilterXJIT *self, LLVMOrcLLJITBuilderRef jit_builder)
 {
   LLVMOrcLLJITBuilderSetObjectLinkingLayerCreator(jit_builder, _create_object_layer_with_gdb_listener, NULL);
-
-  LLVMValueRef di_version = LLVMConstInt(LLVMInt32TypeInContext(self->ctx), LLVMDebugMetadataVersion(), FALSE);
-  LLVMValueRef dwarf_version = LLVMConstInt(LLVMInt32TypeInContext(self->ctx), 5, FALSE);
-
-  LLVMAddModuleFlag(self->mod, LLVMModuleFlagBehaviorWarning, DEBUG_VERSION_KEY, strlen(DEBUG_VERSION_KEY),
-                    LLVMValueAsMetadata(di_version));
-  LLVMAddModuleFlag(self->mod, LLVMModuleFlagBehaviorWarning, DWARF_VERSION_KEY, strlen(DWARF_VERSION_KEY),
-                    LLVMValueAsMetadata(dwarf_version));
-
-  self->debug = LLVMCreateDIBuilder(self->mod);
-
-  const gchar *dummy_file_name = "<filterx>";
-  LLVMMetadataRef file = LLVMDIBuilderCreateFile(self->debug, dummy_file_name, strlen(dummy_file_name), "", 0);
-
-  const gchar *producer = "AxoSyslog FilterX JIT";
-  LLVMDIBuilderCreateCompileUnit(self->debug, LLVMDWARFSourceLanguageC, file, producer, strlen(producer), FALSE, "", 0,
-                                 0, "", 0, LLVMDWARFEmissionFull, 0, FALSE, FALSE, "", 0, "", 0);
 }
 
 FilterXJIT *
@@ -593,6 +931,11 @@ filterx_jit_new(const gchar *module_name, FilterXJITDebugInfo debug_info, GError
   self->mod_name = g_strdup(module_name);
   self->debug_info_mode = debug_info;
   self->debug_ir_text_memfd = -1;
+  self->compile.pending_blocks = g_ptr_array_new_with_free_func((GDestroyNotify) _pending_block_free);
+  self->current_block_ptrs = g_array_new(FALSE, FALSE, sizeof(gpointer));
+  self->block_tables = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
+  self->dedup.block_symbol = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
+  self->dedup.seen_hashes = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
 
 #if SYSLOG_NG_HAVE_DECL_LLVMORCCREATENEWTHREADSAFECONTEXTFROMLLVMCONTEXT
   self->ctx = LLVMContextCreate();
@@ -602,20 +945,19 @@ filterx_jit_new(const gchar *module_name, FilterXJITDebugInfo debug_info, GError
   self->ctx = LLVMOrcThreadSafeContextGetContext(self->ts_ctx);
 #endif
 
-  self->mod = LLVMModuleCreateWithNameInContext(self->mod_name, self->ctx);
   self->ir = LLVMCreateBuilderInContext(self->ctx);
 
   self->libfilterx = filterx_jit_load_libfilterx_bitcode(self->ctx, error);
   if (!self->libfilterx)
     goto error;
 
-  LLVMSetTarget(self->mod, LLVMGetTarget(self->libfilterx));
-  LLVMSetDataLayout(self->mod, LLVMGetDataLayoutStr(self->libfilterx));
-
   LLVMOrcLLJITBuilderRef jit_builder = LLVMOrcCreateLLJITBuilder();
   _setup_debug_info(self, jit_builder);
   if (!_setup_target_machine(self, jit_builder, error))
-    goto error;
+    {
+      LLVMOrcDisposeLLJITBuilder(jit_builder);
+      goto error;
+    }
 
   LLVMErrorRef err = LLVMOrcCreateLLJIT(&self->j, jit_builder);
   if (err)
@@ -629,7 +971,12 @@ filterx_jit_new(const gchar *module_name, FilterXJITDebugInfo debug_info, GError
 
   _setup_optimizations(self);
 
-  filterx_jit_ffi_init(self);
+  if (!_preoptimize_libfilterx(self, error))
+    goto error;
+
+  self->compile.libfilterx_bc = LLVMWriteBitcodeToMemoryBuffer(self->libfilterx);
+
+  /* the FFI is declared per block module in filterx_jit_ir_add_new_block */
 
   msg_trace("FilterXJIT created", evt_tag_str("module_name", self->mod_name));
 
@@ -638,6 +985,15 @@ filterx_jit_new(const gchar *module_name, FilterXJITDebugInfo debug_info, GError
 error:
   filterx_jit_free(self);
   return NULL;
+}
+
+static void
+_filterx_jit_compile_free(FilterXJIT *self)
+{
+  if (self->compile.libfilterx_bc)
+    LLVMDisposeMemoryBuffer(self->compile.libfilterx_bc);
+  if (self->compile.pending_blocks)
+    g_ptr_array_free(self->compile.pending_blocks, TRUE);
 }
 
 void
@@ -654,7 +1010,7 @@ filterx_jit_free(FilterXJIT *self)
     LLVMDisposeTargetMachine(self->tm);
   LLVMDisposeBuilder(self->ir);
   self->ctx = NULL;
-  if (!self->mod_finalized)
+  if (self->mod && !self->mod_finalized)
     LLVMDisposeModule(self->mod);
   if (self->libfilterx)
     LLVMDisposeModule(self->libfilterx);
@@ -662,8 +1018,22 @@ filterx_jit_free(FilterXJIT *self)
 
   if (self->debug_ir_text_memfd >= 0)
     close(self->debug_ir_text_memfd);
+  if (self->debug_ir_text)
+    g_string_free(self->debug_ir_text, TRUE);
+
+  _filterx_jit_compile_free(self);
 
   msg_trace("FilterXJIT destroyed", evt_tag_str("module_name", self->mod_name));
+
+  if (self->current_block_ptrs)
+    g_array_free(self->current_block_ptrs, TRUE);
+  g_free(self->current_block_name);
+  if (self->block_tables)
+    g_hash_table_destroy(self->block_tables);
+  if (self->dedup.block_symbol)
+    g_hash_table_destroy(self->dedup.block_symbol);
+  if (self->dedup.seen_hashes)
+    g_hash_table_destroy(self->dedup.seen_hashes);
 
   g_free(self->mod_name);
   g_free(self);
@@ -709,6 +1079,7 @@ FilterXJIT *filterx_jit_new(const gchar *module_name, FilterXJITDebugInfo debug_
 {
   return NULL;
 }
+
 void filterx_jit_free(FilterXJIT *self) {}
 void filterx_jit_global_init(void) {}
 void filterx_jit_global_deinit(void) {}
@@ -717,14 +1088,17 @@ FilterXIRBuilder filterx_jit_get_ir_builder(FilterXJIT *self)
 {
   g_assert_not_reached();
 }
-void filterx_jit_ir_add_new_block(FilterXJIT *self, const gchar *block_name)
+
+void filterx_jit_ir_add_new_block(FilterXJIT *self, const gchar *block_name, FilterXScopeVariableLayout *layout)
 {
   g_assert_not_reached();
 }
+
 void filterx_jit_ir_finish_current_block(FilterXJIT *self, FilterXIRValue result)
 {
   g_assert_not_reached();
 }
+
 FilterXIRValue filterx_jit_ir_get_current_block(FilterXJIT *self)
 {
   g_assert_not_reached();
@@ -735,11 +1109,31 @@ FilterXIRValue filterx_jit_ir_get_eval_context(FilterXJIT *self)
   g_assert_not_reached();
 }
 
+FilterXIRValue filterx_jit_ir_get_variable(FilterXJIT *self, gint scope_var_idx)
+{
+  g_assert_not_reached();
+}
+
+FilterXIRValue filterx_jit_ir_is_variable_uninitialized(FilterXJIT *self, FilterXIRValue variable)
+{
+  g_assert_not_reached();
+}
+
+void filterx_jit_ir_clear_variables(FilterXJIT *self)
+{
+  g_assert_not_reached();
+}
+
 gboolean filterx_jit_finalize(FilterXJIT *self, GError **error)
 {
   g_assert_not_reached();
 }
+
 FilterXJITAddress filterx_jit_lookup(FilterXJIT *self, const gchar *block_name, GError **error)
+{
+  g_assert_not_reached();
+}
+gpointer *filterx_jit_get_block_ptr_table(FilterXJIT *self, const gchar *block_name)
 {
   g_assert_not_reached();
 }

@@ -27,6 +27,7 @@
 #include "filterx/filterx-expr.h"
 #include "filterx/filterx-object.h"
 #include "filterx/filterx-eval.h"
+#include "filterx/expr-variable.h"
 #include "filterx/object-primitive.h"
 
 #include <stdarg.h>
@@ -93,29 +94,44 @@ _emit_call(FilterXJIT *jit, FilterXJITFFICall c, FilterXIRValue *args, unsigned 
 FilterXIRValue
 fx_jit_emit_const_ptr(FilterXJIT *jit, gconstpointer p)
 {
-  LLVMTypeRef ptr_sized_int = LLVMIntTypeInContext(jit->ctx, sizeof(gconstpointer) * 8);
-  return LLVMConstIntToPtr(LLVMConstInt(ptr_sized_int, (guintptr) p, FALSE), jit->ffi.ptr_ty);
+  guint idx = jit->current_block_ptrs->len;
+  gpointer pp = (gpointer) p;
+  g_array_append_val(jit->current_block_ptrs, pp);
+
+  LLVMValueRef index = LLVMConstInt(jit->ffi.i64_ty, idx, FALSE);
+  LLVMValueRef slot = LLVMBuildInBoundsGEP2(jit->ir, jit->ffi.ptr_ty,
+                                            jit->current_ptr_table_param, &index, 1, "fx_ptr_slot");
+  return LLVMBuildLoad2(jit->ir, jit->ffi.ptr_ty, slot, "fx_ptr");
 }
 
 FilterXIRValue
 fx_jit_emit_expr_eval(FilterXJIT *jit, FilterXExpr *expr)
 {
   LLVMValueRef args[] = { fx_jit_emit_const_ptr(jit, expr) };
-  return _emit_call(jit, jit->ffi.expr_eval, args, 1);
+  FilterXIRValue result = _emit_call(jit, jit->ffi.expr_eval, args, 1);
+  filterx_jit_ir_clear_variables(jit);
+  return result;
 }
 
 FilterXIRValue
 fx_jit_emit_expr_eval_typed(FilterXJIT *jit, FilterXExpr *expr)
 {
   LLVMValueRef args[] = { fx_jit_emit_const_ptr(jit, expr) };
-  return _emit_call(jit, jit->ffi.expr_eval_typed, args, 1);
+  FilterXIRValue result = _emit_call(jit, jit->ffi.expr_eval_typed, args, 1);
+  filterx_jit_ir_clear_variables(jit);
+  return result;
 }
 
 FilterXIRValue
 fx_jit_emit_expr_make_typed_object(FilterXJIT *jit, FilterXExpr *expr, FilterXIRValue obj)
 {
   LLVMValueRef args[] = { fx_jit_emit_const_ptr(jit, expr), obj };
-  return _emit_call(jit, jit->ffi.expr_make_typed_object, args, 2);
+  FilterXIRValue result = _emit_call(jit, jit->ffi.expr_make_typed_object, args, 2);
+
+  if (expr->_update_repr && filterx_expr_is_variable(expr))
+    filterx_variable_expr_compile_repr_update(expr, jit, result);
+
+  return result;
 }
 
 FilterXIRValue

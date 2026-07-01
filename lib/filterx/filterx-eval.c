@@ -355,13 +355,14 @@ _clear_failure_info(GArray *failure_info)
 }
 
 FilterXEvalResult
-filterx_eval_exec(FilterXEvalContext *context, FilterXExpr *expr, FilterXJITExecFunc jit_exec)
+filterx_eval_exec(FilterXEvalContext *context, FilterXExpr *expr, FilterXJITExecFunc jit_exec,
+                  gpointer *jit_ptr_table)
 {
   FilterXEvalResult result = FXE_FAILURE;
 
   FilterXObject *res = NULL;
   if (jit_exec)
-    res = jit_exec(context);
+    res = jit_exec(context, jit_ptr_table);
   else
     res = filterx_expr_eval(expr);
 
