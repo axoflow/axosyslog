@@ -50,6 +50,13 @@ ADD --chown=builder:builder apkbuild .
 
 ENV CFLAGS=-fno-omit-frame-pointer CXXFLAGS=-fno-omit-frame-pointer REBUILD_DEPS=$REBUILD_DEPS
 
+RUN mkdir packages || true \
+    && USER=builder abuild-keygen -n -a -i \
+    && cd axoflow/criterion \
+    && export MAKEFLAGS="-j$(nproc)" \
+    && abuild checksum \
+    && abuild -r
+
 RUN \
     mkdir packages || true \
     && USER=builder abuild-keygen -n -a -i \
