@@ -89,6 +89,19 @@ Test(filterx_json_repr, string_ending_in_backslash_does_not_hang, .timeout = 10)
     g_error_free(error);
 }
 
+Test(filterx_json_repr, json_string_orphan_surrogate_does_not_overrun)
+{
+  GError *error = NULL;
+  /* the trailing backslash and comma are what drive the segment length
+   * negative, so the literal cannot be shortened */
+  FilterXObject *obj = filterx_object_from_json("\"\\udAba\\\\,\"", -1, &error);
+
+  cr_assert_not_null(obj);
+  filterx_object_unref(obj);
+  if (error)
+    g_error_free(error);
+}
+
 static void
 setup(void)
 {
