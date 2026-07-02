@@ -55,6 +55,7 @@ lib_filterx_tests_TESTS		 =              \
 		lib/filterx/tests/test_type_inference
 
 EXTRA_DIST += lib/filterx/tests/CMakeLists.txt
+EXTRA_DIST += lib/filterx/tests/fuzz/CMakeLists.txt
 
 check_PROGRAMS				+= ${lib_filterx_tests_TESTS}
 
