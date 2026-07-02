@@ -161,6 +161,14 @@ _double_add(FilterXObject *s, FilterXObject *object)
   return NULL;
 }
 
+static gint
+_double_snprintf(gchar *buf, gsize size, gint prec, gdouble dbl)
+{
+  if (prec >= 0)
+    return snprintf(buf, size, "%.*f", prec, dbl);
+  return snprintf(buf, size, "%.17g", dbl);
+}
+
 gboolean
 double_repr(double dbl, gint prec, GString *repr)
 {
@@ -176,22 +184,38 @@ double_repr(double dbl, gint prec, GString *repr)
     }
   else
     {
-      gchar buf[G_ASCII_DTOSTR_BUF_SIZE];
-
       /* NOTE: if precision is unknown, use up to 17 digits.  We are also using
        * the %g format qualifier, which causes trailing zeroes to be removed.
        * it is a good compromise between readability and accuracy.  The same
-       * format string is used by g_ascii_dtostr() */
+       * format string is used by g_ascii_dtostr().
+       *
+       * We format right into @repr.  "%.*f" of a large-magnitude double has
+       * no useful length bound, so if the reserved space is too small, grow
+       * it to the reported length and format again. */
 
-      if (prec >= 0)
-        snprintf(buf, sizeof(buf), "%.*f", prec, dbl);
-      else
-        snprintf(buf, sizeof(buf), "%.17g", dbl);
+      gsize start = repr->len;
+      gsize avail = G_ASCII_DTOSTR_BUF_SIZE;
+
+      g_string_set_size(repr, start + avail);
+      gint len = _double_snprintf(repr->str + start, avail, prec, dbl);
+      if (len < 0)
+        {
+          g_string_truncate(repr, start);
+          return FALSE;
+        }
+      if ((gsize) len >= avail)
+        {
+          g_string_set_size(repr, start + len);
+          _double_snprintf(repr->str + start, len + 1, prec, dbl);
+        }
+      g_string_truncate(repr, start + len);
+
+      gchar *buf = repr->str + start;
       gchar *dot = strchr(buf, '.');
       if (!dot && strchr(buf, 'e') == NULL)
         {
           /* no fractions, not scientific notation */
-          strcat(buf, ".0");
+          g_string_append_len(repr, ".0", 2);
         }
       else if (dot)
         {
@@ -202,9 +226,8 @@ double_repr(double dbl, gint prec, GString *repr)
                 last_useful_digit = c;
             }
           /* truncate trailing zeroes */
-          *(last_useful_digit+1) = 0;
+          g_string_truncate(repr, last_useful_digit + 1 - repr->str);
         }
-      g_string_append(repr, buf);
     }
   return TRUE;
 }
