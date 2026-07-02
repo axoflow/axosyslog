@@ -56,6 +56,17 @@ Test(wallclocktime, test_wall_clock_time_init)
   cr_assert(wall_clock_time_is_set(&wct) == FALSE);
 }
 
+Test(wallclocktime, test_strptime_unmatched_month_name_fails_cleanly)
+{
+  /* %b must follow both a year and a day of month, or the post-processing that
+   * indexes start_of_month[] is skipped and the unset tm_mon is never read.
+   * The year must not be a leap year either, or the negative index aliases the
+   * previous row and stays in bounds. */
+  WallClockTime wct = WALL_CLOCK_TIME_INIT;
+  gchar *end = wall_clock_time_strptime(&wct, "%Y %d %b", "2007 30 Zzz");
+  cr_assert_null(end);
+}
+
 Test(wallclocktime, test_strptime_parses_broken_down_time)
 {
   WallClockTime wct = WALL_CLOCK_TIME_INIT;
