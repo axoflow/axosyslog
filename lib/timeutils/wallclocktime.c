@@ -854,17 +854,19 @@ out:
       if (!HAVE_MON(state))
         {
           /* calculate month of day of year */
-          i = 0;
           isleap = isleap_sum(wct->tm.tm_year, TM_YEAR_BASE);
-          while (wct->tm.tm_yday >= start_of_month[isleap][i])
-            i++;
-          if (i > 12)
+
+          while (wct->tm.tm_yday >= start_of_month[isleap][12])
             {
-              i = 1;
               wct->tm.tm_yday -= start_of_month[isleap][12];
               wct->tm.tm_year++;
+              isleap = isleap_sum(wct->tm.tm_year, TM_YEAR_BASE);
             }
-          wct->tm.tm_mon = i - 1;
+
+          i = 0;
+          while (i < 11 && wct->tm.tm_yday >= start_of_month[isleap][i + 1])
+            i++;
+          wct->tm.tm_mon = i;
           state |= S_MON;
         }
 
