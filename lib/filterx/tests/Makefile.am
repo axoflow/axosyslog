@@ -224,6 +224,8 @@ noinst_PROGRAMS += lib/filterx/tests/fuzz/fuzz_typecast
 noinst_PROGRAMS += lib/filterx/tests/fuzz/fuzz_str
 noinst_PROGRAMS += lib/filterx/tests/fuzz/fuzz_parse_xml
 noinst_PROGRAMS += lib/filterx/tests/fuzz/fuzz_parse_cef
+noinst_PROGRAMS += lib/filterx/tests/fuzz/fuzz_parse_kv
+noinst_PROGRAMS += lib/filterx/tests/fuzz/fuzz_parse_csv
 
 lib_filterx_tests_fuzz_fuzz_parse_json_CFLAGS  = $(TEST_CFLAGS)
 lib_filterx_tests_fuzz_fuzz_parse_json_LDFLAGS = -fsanitize=fuzzer
@@ -256,4 +258,16 @@ lib_filterx_tests_fuzz_fuzz_parse_cef_LDFLAGS = -fsanitize=fuzzer \
 	-dlpreopen $(top_builddir)/modules/cef/libcef.la
 lib_filterx_tests_fuzz_fuzz_parse_cef_LDADD   = $(top_builddir)/lib/libsyslog-ng.la $(TOOL_DEPS_LIBS) $(JSON_LIBS)
 EXTRA_lib_filterx_tests_fuzz_fuzz_parse_cef_DEPENDENCIES = $(top_builddir)/modules/cef/libcef.la
+
+lib_filterx_tests_fuzz_fuzz_parse_kv_CFLAGS  = $(TEST_CFLAGS) -I$(top_srcdir)/modules/kvformat
+lib_filterx_tests_fuzz_fuzz_parse_kv_LDFLAGS = -fsanitize=fuzzer \
+	-dlpreopen $(top_builddir)/modules/kvformat/libkvformat.la
+lib_filterx_tests_fuzz_fuzz_parse_kv_LDADD   = $(top_builddir)/lib/libsyslog-ng.la $(TOOL_DEPS_LIBS) $(JSON_LIBS)
+EXTRA_lib_filterx_tests_fuzz_fuzz_parse_kv_DEPENDENCIES = $(top_builddir)/modules/kvformat/libkvformat.la
+
+lib_filterx_tests_fuzz_fuzz_parse_csv_CFLAGS  = $(TEST_CFLAGS) -I$(top_srcdir)/modules/csvparser
+lib_filterx_tests_fuzz_fuzz_parse_csv_LDFLAGS = -fsanitize=fuzzer \
+	-dlpreopen $(top_builddir)/modules/csvparser/libcsvparser.la
+lib_filterx_tests_fuzz_fuzz_parse_csv_LDADD   = $(top_builddir)/lib/libsyslog-ng.la $(TOOL_DEPS_LIBS) $(JSON_LIBS)
+EXTRA_lib_filterx_tests_fuzz_fuzz_parse_csv_DEPENDENCIES = $(top_builddir)/modules/csvparser/libcsvparser.la
 endif
