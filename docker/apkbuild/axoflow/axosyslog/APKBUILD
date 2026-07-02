@@ -59,7 +59,7 @@ builddir="$srcdir/axosyslog-$pkgver"
 install="$pkgname.post-install"
 
 build() {
-	CFLAGS="$CFLAGS -flto=auto -g -O3" \
+	CFLAGS="$CFLAGS -flto=auto -ffat-lto-objects -g -O3" \
 	./configure \
 		--prefix=/usr \
 		--sysconfdir=/etc/syslog-ng \
