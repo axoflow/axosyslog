@@ -220,6 +220,12 @@ AC_ARG_WITH(sanitizer,
                                          Enables compiler sanitizer supports (default: no)]
               ,,with_sanitizer="no")
 
+AC_ARG_ENABLE(fuzzing,
+              [  --enable-fuzzing        Build libFuzzer fuzz targets and instrument the
+                                         build with -fsanitize=fuzzer-no-link (needs clang
+                                         and a sanitizer, e.g. --with-sanitizer=address).]
+              ,,enable_fuzzing="no")
+
 AC_ARG_WITH(linking-mode,
               [  --with-linking-mode        Specify linking mode, one of dynamic,monolithic.],,with_linking_mode="auto")
 
@@ -2187,6 +2193,12 @@ if  test "x$with_sanitizer" != "xno"; then
    LDFLAGS="$LDFLAGS -fsanitize=$with_sanitizer"
 fi
 
+if test "x$enable_fuzzing" != "xno"; then
+   CFLAGS="$CFLAGS -fsanitize=fuzzer-no-link"
+   CXXFLAGS="$CXXFLAGS -fsanitize=fuzzer-no-link"
+   LDFLAGS="$LDFLAGS -fsanitize=fuzzer-no-link"
+fi
+
 dnl ***************************************************************************
 dnl default modules to be loaded
 dnl ***************************************************************************
@@ -2436,6 +2448,7 @@ AM_CONDITIONAL(ENABLE_EXTRA_WARNINGS, [test "$enable_extra_warnings" = "yes"])
 AM_CONDITIONAL(ENABLE_TESTING, [test "$enable_tests" != "no"])
 AM_CONDITIONAL(ENABLE_EXAMPLE_MODULES, [test "$enable_example_modules" = "yes"])
 AM_CONDITIONAL(ENABLE_SANITIZER, [test "$with_sanitizer" != "no"])
+AM_CONDITIONAL(ENABLE_FUZZING, [test "$enable_fuzzing" != "no"])
 AM_CONDITIONAL(ENABLE_DEBUG, [test "$enable_debug" != "no"])
 AM_CONDITIONAL([HAVE_INOTIFY], [test x$ac_cv_func_inotify_init = xyes])
 AM_CONDITIONAL([HAVE_GETRANDOM], [test x$ac_cv_func_getrandom = xyes])
