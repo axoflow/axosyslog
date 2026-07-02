@@ -213,3 +213,13 @@ lib_filterx_tests_test_func_set_pri_LDADD   = $(TEST_LDADD) $(JSON_LIBS)
 
 lib_filterx_tests_test_json_repr_CFLAGS  = $(TEST_CFLAGS)
 lib_filterx_tests_test_json_repr_LDADD   = $(TEST_LDADD) $(JSON_LIBS)
+
+# Not check_PROGRAMS: libFuzzer supplies main(), and these must not run
+# under `make check`.
+if ENABLE_FUZZING
+noinst_PROGRAMS += lib/filterx/tests/fuzz/fuzz_parse_json
+
+lib_filterx_tests_fuzz_fuzz_parse_json_CFLAGS  = $(TEST_CFLAGS)
+lib_filterx_tests_fuzz_fuzz_parse_json_LDFLAGS = -fsanitize=fuzzer
+lib_filterx_tests_fuzz_fuzz_parse_json_LDADD   = $(top_builddir)/lib/libsyslog-ng.la $(TOOL_DEPS_LIBS) $(JSON_LIBS)
+endif
