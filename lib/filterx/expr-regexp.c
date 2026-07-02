@@ -120,6 +120,8 @@ FilterXExpr *
 filterx_expr_regexp_nomatch_new(FilterXExpr *lhs, const gchar *pattern)
 {
   FilterXExprRegexpMatch *self = (FilterXExprRegexpMatch *)filterx_expr_regexp_match_new(lhs, pattern);
+  if (!self)
+    return NULL;
   self->invert = TRUE;
   return &self->super;
 }

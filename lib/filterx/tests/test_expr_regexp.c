@@ -67,6 +67,12 @@ _assert_match_init_error(const gchar *lhs, const gchar *pattern)
   cr_assert_not(filterx_expr_regexp_match_new(filterx_literal_new(filterx_string_new(lhs, -1)), pattern));
 }
 
+static void
+_assert_nomatch_init_error(const gchar *lhs, const gchar *pattern)
+{
+  cr_assert_not(filterx_expr_regexp_nomatch_new(filterx_literal_new(filterx_string_new(lhs, -1)), pattern));
+}
+
 Test(filterx_expr_regexp, regexp_match)
 {
   _assert_match("foo", "(?<key>foo)");
@@ -74,6 +80,7 @@ Test(filterx_expr_regexp, regexp_match)
   _assert_not_match("abc", "Abc");
   _assert_not_match("abc", "(?<key>Abc)");
   _assert_match_init_error("abc", "(");
+  _assert_nomatch_init_error("abc", "(");
 }
 
 static void
