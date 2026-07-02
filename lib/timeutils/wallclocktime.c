@@ -812,6 +812,11 @@ out:
         }
     }
 
+  /* a failed conversion can leave a state flag set over a -1 field, which
+   * would index start_of_month[] below */
+  if (bp == NULL)
+    return NULL;
+
   if (!HAVE_YDAY(state) && HAVE_YEAR(state))
     {
       if (HAVE_MON(state) && HAVE_MDAY(state))
