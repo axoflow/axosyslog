@@ -11,7 +11,7 @@ pkgdesc="Next generation logging daemon"
 url="https://axoflow.com/docs/axosyslog/"
 arch="all"
 license="GPL-3.0-or-later"
-options="!check !strip" # unit tests require https://github.com/Snaipe/Criterion with deps
+options="!strip" # unit tests require https://github.com/Snaipe/Criterion with deps
 makedepends="
 	apache-arrow-dev
 	bison
@@ -19,6 +19,7 @@ makedepends="
 	clang22
 	llvm22-dev
 	curl-dev
+	criterion-dev
 	file
 	flex
 	geoip-dev
@@ -116,10 +117,14 @@ dev() {
 	default_dev
 
 	# fix snapshot version
-	sed -i -e "s|^Version: .*|Version: $pkgver|g" "$subpkgdir/usr/lib/pkgconfig/syslog-ng.pc"
+	sed -i -e "s|^Version: .*|Version: $pkgver|g" "$subpkgdir/usr/lib/pkgconfig/syslog-ng.pc" "$subpkgdir/usr/lib/pkgconfig/syslog-ng-test.pc"
 
 	_submv usr/share/syslog-ng/tools \
 		usr/share/syslog-ng/xsd
+}
+
+check() {
+	make -j8 check || (cat ./test-suite.log && false)
 }
 
 _submv() {

@@ -36,6 +36,11 @@ ARG SNAPSHOT_VERSION
 
 ADD --chown=builder:builder apkbuild .
 
+RUN sudo apk add \
+        --repository /home/builder/packages/axoflow \
+        -U --upgrade --no-cache \
+    criterion-dev criterion
+
 RUN mkdir packages || true \
     && cd axoflow/axosyslog \
     && if [ "$PKG_TYPE" = "snapshot" ]; then \
