@@ -176,35 +176,39 @@ double_repr(double dbl, gint prec, GString *repr)
     }
   else
     {
-      gchar buf[G_ASCII_DTOSTR_BUF_SIZE];
-
       /* NOTE: if precision is unknown, use up to 17 digits.  We are also using
        * the %g format qualifier, which causes trailing zeroes to be removed.
        * it is a good compromise between readability and accuracy.  The same
-       * format string is used by g_ascii_dtostr() */
+       * format string is used by g_ascii_dtostr().
+       *
+       * "%.*f" of a large-magnitude double has no useful length bound. */
 
-      if (prec >= 0)
-        snprintf(buf, sizeof(buf), "%.*f", prec, dbl);
-      else
-        snprintf(buf, sizeof(buf), "%.17g", dbl);
+      gchar *buf = (prec >= 0)
+                   ? g_strdup_printf("%.*f", prec, dbl)
+                   : g_strdup_printf("%.17g", dbl);
       gchar *dot = strchr(buf, '.');
       if (!dot && strchr(buf, 'e') == NULL)
         {
           /* no fractions, not scientific notation */
-          strcat(buf, ".0");
+          g_string_append(repr, buf);
+          g_string_append_len(repr, ".0", 2);
         }
-      else if (dot)
+      else
         {
-          gchar *last_useful_digit = dot + 1;
-          for (gchar *c = last_useful_digit; *c; c++)
+          if (dot)
             {
-              if (*c != '0')
-                last_useful_digit = c;
+              gchar *last_useful_digit = dot + 1;
+              for (gchar *c = last_useful_digit; *c; c++)
+                {
+                  if (*c != '0')
+                    last_useful_digit = c;
+                }
+              /* truncate trailing zeroes */
+              *(last_useful_digit+1) = 0;
             }
-          /* truncate trailing zeroes */
-          *(last_useful_digit+1) = 0;
+          g_string_append(repr, buf);
         }
-      g_string_append(repr, buf);
+      g_free(buf);
     }
   return TRUE;
 }
