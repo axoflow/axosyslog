@@ -289,6 +289,14 @@ _deescape_json_string(gchar *target, const gchar *source, gsize *source_len)
       if (remaining_len <= 0)
         break;
 
+      /* flush the orphaned high surrogate here so the current escape is still
+       * processed below */
+      if (high_surrogate && *input_pos != 'u')
+        {
+          output_pos += g_unichar_to_utf8((gunichar) UNICODE_REPLACEMENT_CP, output_pos);
+          high_surrogate = 0;
+        }
+
       /* translate escaped character */
       if (*input_pos == 'u')
         {
@@ -326,12 +334,6 @@ _deescape_json_string(gchar *target, const gchar *source, gsize *source_len)
                 output_pos += g_unichar_to_utf8((gunichar) unicode_codepoint, output_pos);
             }
         }
-      else if (G_UNLIKELY(high_surrogate))
-        {
-          /* only high surrogate followed by something else, invalid sequence */
-          output_pos += g_unichar_to_utf8((gunichar) UNICODE_REPLACEMENT_CP, output_pos);
-          high_surrogate = 0;
-        }
       else
         {
           gchar escaped_character = 0;
@@ -364,7 +366,10 @@ _deescape_json_string(gchar *target, const gchar *source, gsize *source_len)
               escaped_character = '"';
               break;
             default:
-              continue;
+              /* jsmn validates escapes upstream, so emit the char literally
+               * rather than leaving the backslash scan stale */
+              escaped_character = *input_pos;
+              break;
             }
           *output_pos = escaped_character;
           output_pos++;
