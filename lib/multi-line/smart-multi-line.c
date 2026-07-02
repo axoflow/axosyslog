@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 enum
 {
@@ -442,8 +443,21 @@ smart_multi_line_new(void)
 void
 smart_multi_line_global_init(void)
 {
-  const gchar *sml_file_name = get_installation_path_for("${pkgdatadir}/smart-multi-line.fsm");
+  const gchar *sml_file_name = NULL;
+  gchar buf[256];
 
+  sml_file_name = get_installation_path_for("${pkgdatadir}/smart-multi-line.fsm");
+  if (access(sml_file_name, F_OK) < 0)
+    {
+      const gchar *top_srcdir = getenv("top_srcdir");
+
+      g_snprintf(buf, sizeof(buf),
+                 "%s%slib/multi-line/smart-multi-line.fsm",
+                 top_srcdir ? : "",
+                 top_srcdir ? "/" : "");
+      /* we might be running the unit tests */
+      sml_file_name = buf;
+    }
   _load_rules(sml_file_name);
 }
 
