@@ -226,6 +226,9 @@ noinst_PROGRAMS += lib/filterx/tests/fuzz/fuzz_parse_xml
 noinst_PROGRAMS += lib/filterx/tests/fuzz/fuzz_parse_cef
 noinst_PROGRAMS += lib/filterx/tests/fuzz/fuzz_parse_kv
 noinst_PROGRAMS += lib/filterx/tests/fuzz/fuzz_parse_csv
+noinst_PROGRAMS += lib/filterx/tests/fuzz/fuzz_digest
+noinst_PROGRAMS += lib/filterx/tests/fuzz/fuzz_strptime
+noinst_PROGRAMS += lib/filterx/tests/fuzz/fuzz_repr
 
 lib_filterx_tests_fuzz_fuzz_parse_json_CFLAGS  = $(TEST_CFLAGS)
 lib_filterx_tests_fuzz_fuzz_parse_json_LDFLAGS = -fsanitize=fuzzer
@@ -270,4 +273,16 @@ lib_filterx_tests_fuzz_fuzz_parse_csv_LDFLAGS = -fsanitize=fuzzer \
 	-dlpreopen $(top_builddir)/modules/csvparser/libcsvparser.la
 lib_filterx_tests_fuzz_fuzz_parse_csv_LDADD   = $(top_builddir)/lib/libsyslog-ng.la $(TOOL_DEPS_LIBS) $(JSON_LIBS)
 EXTRA_lib_filterx_tests_fuzz_fuzz_parse_csv_DEPENDENCIES = $(top_builddir)/modules/csvparser/libcsvparser.la
+
+lib_filterx_tests_fuzz_fuzz_digest_CFLAGS  = $(TEST_CFLAGS)
+lib_filterx_tests_fuzz_fuzz_digest_LDFLAGS = -fsanitize=fuzzer
+lib_filterx_tests_fuzz_fuzz_digest_LDADD   = $(top_builddir)/lib/libsyslog-ng.la $(TOOL_DEPS_LIBS) $(JSON_LIBS)
+
+lib_filterx_tests_fuzz_fuzz_strptime_CFLAGS  = $(TEST_CFLAGS)
+lib_filterx_tests_fuzz_fuzz_strptime_LDFLAGS = -fsanitize=fuzzer
+lib_filterx_tests_fuzz_fuzz_strptime_LDADD   = $(top_builddir)/lib/libsyslog-ng.la $(TOOL_DEPS_LIBS) $(JSON_LIBS)
+
+lib_filterx_tests_fuzz_fuzz_repr_CFLAGS  = $(TEST_CFLAGS)
+lib_filterx_tests_fuzz_fuzz_repr_LDFLAGS = -fsanitize=fuzzer
+lib_filterx_tests_fuzz_fuzz_repr_LDADD   = $(top_builddir)/lib/libsyslog-ng.la $(TOOL_DEPS_LIBS) $(JSON_LIBS)
 endif
