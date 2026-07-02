@@ -221,6 +221,7 @@ noinst_PROGRAMS += lib/filterx/tests/fuzz/fuzz_parse_json
 noinst_PROGRAMS += lib/filterx/tests/fuzz/fuzz_regexp
 noinst_PROGRAMS += lib/filterx/tests/fuzz/fuzz_decode
 noinst_PROGRAMS += lib/filterx/tests/fuzz/fuzz_typecast
+noinst_PROGRAMS += lib/filterx/tests/fuzz/fuzz_str
 
 lib_filterx_tests_fuzz_fuzz_parse_json_CFLAGS  = $(TEST_CFLAGS)
 lib_filterx_tests_fuzz_fuzz_parse_json_LDFLAGS = -fsanitize=fuzzer
@@ -237,4 +238,8 @@ lib_filterx_tests_fuzz_fuzz_decode_LDADD   = $(top_builddir)/lib/libsyslog-ng.la
 lib_filterx_tests_fuzz_fuzz_typecast_CFLAGS  = $(TEST_CFLAGS)
 lib_filterx_tests_fuzz_fuzz_typecast_LDFLAGS = -fsanitize=fuzzer
 lib_filterx_tests_fuzz_fuzz_typecast_LDADD   = $(top_builddir)/lib/libsyslog-ng.la $(TOOL_DEPS_LIBS) $(JSON_LIBS)
+
+lib_filterx_tests_fuzz_fuzz_str_CFLAGS  = $(TEST_CFLAGS)
+lib_filterx_tests_fuzz_fuzz_str_LDFLAGS = -fsanitize=fuzzer
+lib_filterx_tests_fuzz_fuzz_str_LDADD   = $(top_builddir)/lib/libsyslog-ng.la $(TOOL_DEPS_LIBS) $(JSON_LIBS)
 endif
