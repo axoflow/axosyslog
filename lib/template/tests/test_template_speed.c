@@ -33,7 +33,7 @@ Test(template_speed, test_template_speed)
   app_startup();
 
   init_template_tests();
-  setenv("TZ", "MET-1METDST", TRUE);
+  setenv("TZ", "CET", TRUE);
   tzset();
 
   cfg_load_module(configuration, "syslogformat");

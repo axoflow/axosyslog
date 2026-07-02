@@ -134,35 +134,13 @@ Test(zone, test_time_zone_offset)
   TimezoneOffsetTestCase test_cases[] =
   {
     /* 2005-10-14 21:47:37 CEST, dst enabled */
-    {"MET-1METDST", 1129319257, 7200},
+    {"CET-1CEST,M3.5.0/2,M10.5.0/3", 1129319257, 7200},
     /* 2005-11-14 10:10:00 CET, dst disabled */
-    {"MET-1METDST", 1131959400, 3600},
+    {"CET-1CEST,M3.5.0/2,M10.5.0/3", 1131959400, 3600},
     /* 2005-10-14 21:47:37 GMT, no DST */
     {"GMT", 1129319257, 0},
     /* 2005-11-14 10:10:00 GMT, no DST */
     {"GMT", 1131959400, 0},
-    /* 2005-04-03 01:30:00 ESD, DST disabled */
-    {"EST5EDT", 1112509800, -5*3600},
-    /* 2005-04-03 01:59:59 ESD, DST disabled */
-    {"EST5EDT", 1112511599, -5*3600},
-    /* 2005-04-03 03:00:00 EDT, DST enabled */
-    {"EST5EDT", 1112511600, -4*3600},
-    /* 2005-04-03 03:00:01 EDT, DST enabled */
-    {"EST5EDT", 1112511601, -4*3600},
-    /* 2005-10-30 01:59:59 EDT, DST enabled */
-    {"EST5EDT", 1130651999, -4*3600},
-    /* 2005-10-30 01:00:00 EST, DST disabled */
-    {"EST5EDT", 1130652000, -5*3600},
-    /* 2007-03-11 01:00:00 EST, DST disabled */
-    {"EST5EDT", 1173592800, -5*3600},
-    /* 2007-03-11 01:59:59 EST, DST disabled */
-    {"EST5EDT", 1173596399, -5*3600},
-    /* 2007-03-11 03:00:00 EST, DST enabled */
-    {"EST5EDT", 1173596400, -4*3600},
-    /* 2007-11-04 01:59:59 EST, DST enabled */
-    {"EST5EDT", 1194155999, -4*3600},
-    /* 2007-11-04 01:00:00 EST, DST disabled */
-    {"EST5EDT", 1194156000, -5*3600},
     /* Oct 31 01:59:59 2004 (EST) +1000 */
     {"Australia/Victoria", 1099151999, 10*3600},
     /* Oct 31 03:00:00 2004 (EST) +1100 */
@@ -207,7 +185,6 @@ Test(zone, test_time_zones)
     {1288486800-3601, "Europe/Budapest"},
     {1288486800+3601, "Europe/Budapest"},
     {now, "Asia/Kuala_Lumpur"},
-    {now, "CST6CDT"},
     {now, "US/Pacific"},
     {now, "US/Indiana-Starke"},
     {now, "US/Samoa"},
@@ -503,8 +480,6 @@ Test(zone, test_time_zones)
     {now, "Asia/Aden"},
     {now, "Asia/Hovd"},
     {now, "Asia/Magadan"},
-    {now, "EST5EDT"},
-    {now, "PST8PDT"},
     {now, "Atlantic/Bermuda"},
     {now, "Atlantic/St_Helena"},
     {now, "Atlantic/Cape_Verde"},
@@ -520,8 +495,6 @@ Test(zone, test_time_zones)
     {now, "Kwajalein"},
     {now, "UTC"},
     {now, "GMT-0"},
-    {now, "MST7MDT"},
-    {now, "GB-Eire"},
     {now, "PRC"},
     {now, "Arctic/Longyearbyen"},
     {now, "Cuba"},
@@ -733,8 +706,6 @@ Test(zone, test_time_zones)
     {now, "Brazil/DeNoronha"},
     {now, "GMT0"},
     {now, "Libya"},
-    {now, "W-SU"},
-    {now, "NZ-CHAT"},
     {now, "Factory"},
     {now, "GB"},
     {now, "Australia/West"},

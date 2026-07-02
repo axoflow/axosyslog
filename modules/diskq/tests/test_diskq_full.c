@@ -143,7 +143,7 @@ static void
 setup(void)
 {
   app_startup();
-  setenv("TZ", "MET-1METDST", TRUE);
+  setenv("TZ", "CET", TRUE);
   tzset();
 
   configuration = cfg_new_snippet();
