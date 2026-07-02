@@ -79,6 +79,16 @@ Test(filterx_json_repr, array_exceeding_legacy_max_tokens_is_parsed_successfully
   g_string_free(large, TRUE);
 }
 
+Test(filterx_json_repr, string_ending_in_backslash_does_not_hang, .timeout = 10)
+{
+  GError *error = NULL;
+  FilterXObject *obj = filterx_object_from_json("\"\\", 2, &error);
+
+  cr_assert_null(obj);
+  if (error)
+    g_error_free(error);
+}
+
 static void
 setup(void)
 {
