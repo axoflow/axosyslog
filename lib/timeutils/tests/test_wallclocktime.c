@@ -56,6 +56,13 @@ Test(wallclocktime, test_wall_clock_time_init)
   cr_assert(wall_clock_time_is_set(&wct) == FALSE);
 }
 
+Test(wallclocktime, test_strptime_percent_g_needs_a_digit)
+{
+  WallClockTime wct = WALL_CLOCK_TIME_INIT;
+  cr_assert_null(wall_clock_time_strptime(&wct, "%G", ""));
+  cr_assert_str_empty(wall_clock_time_strptime(&wct, "%G", "2024"));
+}
+
 Test(wallclocktime, test_strptime_unmatched_month_name_fails_cleanly)
 {
   /* %b must follow both a year and a day of month, or the post-processing that

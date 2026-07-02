@@ -601,9 +601,11 @@ recurse:
         case 'G': /* The year corresponding to the ISO week
          * number with century.
          */
-          do
+          /* test before advancing, or the scan reads past the NUL terminator */
+          if (!ch_isdigit(*bp))
+            return NULL;
+          while (ch_isdigit(*bp))
             bp++;
-          while (ch_isdigit(*bp));
           continue;
 
         case 'V': /* The ISO 8601:1988 week number as decimal */
