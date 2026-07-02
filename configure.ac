@@ -2197,7 +2197,14 @@ if test "x$enable_fuzzing" != "xno"; then
    CFLAGS="$CFLAGS -fsanitize=fuzzer-no-link"
    CXXFLAGS="$CXXFLAGS -fsanitize=fuzzer-no-link"
    LDFLAGS="$LDFLAGS -fsanitize=fuzzer-no-link"
+
+   dnl OSS-Fuzz passes the engine in $LIB_FUZZING_ENGINE, as a flag or as the
+   dnl path of a prebuilt engine archive.
+   if test "x$LIB_FUZZING_ENGINE" = "x"; then
+      LIB_FUZZING_ENGINE="-fsanitize=fuzzer"
+   fi
 fi
+AC_SUBST(LIB_FUZZING_ENGINE)
 
 dnl ***************************************************************************
 dnl default modules to be loaded
