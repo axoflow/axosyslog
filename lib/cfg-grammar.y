@@ -726,8 +726,9 @@ filterx_content
             FilterXEvalContext compile_context;
 
             filterx_eval_begin_compile(&compile_context, configuration);
-	    CHECK_ERROR_WITHOUT_MESSAGE(cfg_parser_parse(&filterx_parser, lexer, (gpointer *) &filterx_block, NULL), @$);
+	    gboolean parse_result = cfg_parser_parse(&filterx_parser, lexer, (gpointer *) &filterx_block, NULL);
             filterx_eval_end_compile(&compile_context);
+	    CHECK_ERROR_WITHOUT_MESSAGE(parse_result, @$);
 
             $$ = log_expr_node_new_pipe(log_filterx_pipe_new(filterx_block, configuration), &@$);
 	  } _filterx_context_pop			{ $$ = $2; }
