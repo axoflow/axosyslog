@@ -78,7 +78,10 @@ guint32 ignore_falsy_result:1, suppress_from_trace:1, inited:1, optimized:1, eff
   gboolean (*init)(FilterXExpr *self, GlobalConfig *cfg);
   void (*deinit)(FilterXExpr *self, GlobalConfig *cfg);
   FilterXExpr *(*optimize)(FilterXExpr *self);
+
   FilterXIRValue (*compile)(FilterXExpr *self, FilterXJIT *jit);
+  FilterXIRValue (*compile_assign)(FilterXExpr *self, FilterXJIT *jit, FilterXIRValue new_value);
+
   void (*free_fn)(FilterXExpr *self);
 
   gboolean (*walk_children)(FilterXExpr *self, FilterXExprWalkFunc f, gpointer user_data);
@@ -278,6 +281,20 @@ filterx_expr_compile(FilterXExpr *self, FilterXJIT *jit)
 {
   g_assert(self && self->compile);
   return self->compile(self, jit);
+}
+
+/* TODO partialJIT: remove once all expressions implement compile_assign() */
+static inline gboolean
+filterx_expr_can_compile_assign(FilterXExpr *self)
+{
+  return self && !!self->compile_assign;
+}
+
+static inline FilterXIRValue
+filterx_expr_compile_assign(FilterXExpr *self, FilterXJIT *jit, FilterXIRValue new_value)
+{
+  g_assert(self && self->compile_assign);
+  return self->compile_assign(self, jit, new_value);
 }
 
 static inline FilterXIRValue
