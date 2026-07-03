@@ -104,6 +104,14 @@ _rfc5424_timestamp_eq(const gchar *ts, gint len, const gchar *expected, gchar co
     cr_expect(_rfc3164_timestamp_eq(ts, -1, expected, converted), "Parsed RFC3164 timestamp does not equal expected, ts=%s, converted=%s, expected=%s", ts, converted, expected); \
   })
 
+#define _expect_rfc3164_timestamp_alternatives_eq(ts, expected1, expected2) \
+  ({ \
+    gchar converted[CONVERTED_TS_SIZE]; \
+    cr_expect(_rfc3164_timestamp_eq(ts, -1, expected1, converted) || \
+              _rfc3164_timestamp_eq(ts, -1, expected2, converted), \
+              "Parsed RFC3164 timestamp does not equal expected, ts=%s, converted=%s, expected=%s,%s", ts, converted, expected1, expected2); \
+  })
+
 #define _expect_rfc3164_timestamp_len_eq(ts, len, expected) \
   ({ \
     gchar converted[CONVERTED_TS_SIZE]; \
@@ -314,10 +322,18 @@ Test(parse_timestamp, daylight_saving_behavior_at_spring_without_timezones)
        * time.  (e.g.  02:59:59 automatically changed by syslog-ng to 03:59:59,
        * then we would go back to 03:00:00 as that's already a valid timestamp.
        *
+       * In this case the timezone value is not really reliable, glibc will
+       * use the DST timezone, musl uses the normal one.  Our aim here is to
+       * keep the hour value.
+       *
        */
 
-      _expect_rfc3164_timestamp_eq("Mar 25 02:00:00", "2018-03-25T02:00:00.000+02:00");
-      _expect_rfc3164_timestamp_eq("Mar 25 02:59:59", "2018-03-25T02:59:59.000+02:00");
+      _expect_rfc3164_timestamp_alternatives_eq("Mar 25 02:00:00",
+                                                "2018-03-25T02:00:00.000+02:00",
+                                                "2018-03-25T02:00:00.000+01:00");
+      _expect_rfc3164_timestamp_alternatives_eq("Mar 25 02:59:59",
+                                                "2018-03-25T02:59:59.000+02:00",
+                                                "2018-03-25T02:59:59.000+01:00");
 
       /* 03:00:00 AM is already valid and DST is enabled */
       _expect_rfc3164_timestamp_eq("Mar 25 03:00:00", "2018-03-25T03:00:00.000+02:00");
