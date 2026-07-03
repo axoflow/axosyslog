@@ -240,8 +240,8 @@
  * meaning of any setting in the configuration file.  Basically, it is the
  * highest value passed to any cfg_is_config_version_older() call.
  */
-#define VERSION_VALUE_LAST_SEMANTIC_CHANGE  VERSION_VALUE_4_2
-#define VERSION_STR_LAST_SEMANTIC_CHANGE    "4.2"
+#define VERSION_VALUE_LAST_SEMANTIC_CHANGE  VERSION_VALUE_4_26
+#define VERSION_STR_LAST_SEMANTIC_CHANGE    "4.26"
 
 #define version_convert_from_user(v)  (v)
 

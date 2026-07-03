@@ -40,6 +40,13 @@ typedef struct _LogTransportTLS
   TLSSession *tls_session;
   gboolean sending_shutdown;
 
+  GByteArray *writev_buf;
+
+  /* a blocked SSL_write() must be repeated with the identical buffer; writev()
+   * remembers the pending one here (NULL when nothing is pending) and replays it */
+  gconstpointer write_blocked_buf;
+  gsize write_blocked_len;
+
   StatsClusterKeyBuilder *kb;
 } LogTransportTLS;
 
@@ -388,6 +395,65 @@ tls_error:
   return -1;
 }
 
+/*
+ * SSL_write() splits anything larger than one TLS record's worth of plaintext
+ * into multiple records anyway, so there's no point coalescing past that.
+ */
+#define TLS_WRITEV_COALESCE_MAX SSL3_RT_MAX_PLAIN_LENGTH
+
+static gssize
+log_transport_tls_writev_method(LogTransport *s, struct iovec *iov, gint iov_count)
+{
+  LogTransportTLS *self = (LogTransportTLS *) s;
+  gconstpointer buf;
+  gsize len;
+
+  if (self->write_blocked_buf)
+    {
+      /* OpenSSL requires a blocked SSL_write() to be repeated with the identical
+       * buffer; replay the pending one, ignoring the iov the caller passes now */
+      buf = self->write_blocked_buf;
+      len = self->write_blocked_len;
+    }
+  else if (iov_count == 1)
+    {
+      /* a single chunk needs no coalescing; SSL_write() straight from the iov
+       * so the payload is not copied into writev_buf */
+      buf = iov[0].iov_base;
+      len = iov[0].iov_len;
+    }
+  else
+    {
+      if (G_UNLIKELY(!self->writev_buf))
+        self->writev_buf = g_byte_array_new();
+
+      g_byte_array_set_size(self->writev_buf, 0);
+      for (gint i = 0; i < iov_count; i++)
+        {
+          if (i > 0 && self->writev_buf->len + iov[i].iov_len > TLS_WRITEV_COALESCE_MAX)
+            break;
+          g_byte_array_append(self->writev_buf, iov[i].iov_base, iov[i].iov_len);
+        }
+
+      buf = self->writev_buf->data;
+      len = self->writev_buf->len;
+    }
+
+  gssize rc = log_transport_tls_write_method(s, (gpointer) buf, len);
+
+  if (rc < 0 && errno == EAGAIN)
+    {
+      self->write_blocked_buf = buf;
+      self->write_blocked_len = len;
+    }
+  else
+    {
+      self->write_blocked_buf = NULL;
+      self->write_blocked_len = 0;
+    }
+  return rc;
+}
+
 TLSSession *
 log_tansport_tls_get_session(LogTransport *s)
 {
@@ -420,6 +486,7 @@ log_transport_tls_new(TLSSession *tls_session, LogTransportIndex base)
   self->super.super.cond = LTIO_NOTHING;
   self->super.super.read = log_transport_tls_read_method;
   self->super.super.write = log_transport_tls_write_method;
+  self->super.super.writev = log_transport_tls_writev_method;
   self->super.super.shutdown = log_transport_tls_shutdown_method;
   self->super.super.free_fn = log_transport_tls_free_method;
   self->super.super.register_stats = log_transport_tls_register_stats;
@@ -437,6 +504,9 @@ log_transport_tls_free_method(LogTransport *s)
 
   if (self->kb)
     stats_cluster_key_builder_free(self->kb);
+
+  if (self->writev_buf)
+    g_byte_array_free(self->writev_buf, TRUE);
 
   tls_session_free(self->tls_session);
   log_transport_adapter_free_method(s);

@@ -420,12 +420,36 @@ afsocket_dd_setup_proto_factory(AFSocketDestDriver *self)
   return TRUE;
 }
 
+static void
+_afsocket_dd_set_flush_lines(AFSocketDestDriver *self, gboolean explicit)
+{
+  GlobalConfig *cfg = log_pipe_get_config(&self->super.super.super);
+
+  if (cfg_is_config_version_older(cfg, VERSION_VALUE_4_26) && !explicit)
+    {
+      msg_warning_once("WARNING: with " VERSION_4_26 ", network() and tcp() destinations using "
+                       "a stream or TLS transport coalesce outgoing writes (flush-lines() defaults "
+                       "to 100) for a possible higher throughput. Bump @version to 4.26 or set "
+                       "flush-lines() explicitly to adopt it now and silence this warning. "
+                       "Retaining the pre-4.26 one write() per message behavior for now");
+      self->writer_options.proto_options.super.flush_lines = 1;
+      return;
+    }
+
+  self->writer_options.proto_options.super.flush_lines = self->writer_options.flush_lines;
+}
+
 static gboolean
 afsocket_dd_setup_writer_options(AFSocketDestDriver *self)
 {
   GlobalConfig *cfg = log_pipe_get_config(&self->super.super.super);
 
+  gboolean flush_lines_explicit = (self->writer_options.flush_lines != -1);
+
   log_writer_options_init(&self->writer_options, cfg, 0);
+
+  _afsocket_dd_set_flush_lines(self, flush_lines_explicit);
+
   return TRUE;
 }
 

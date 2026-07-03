@@ -24,6 +24,8 @@
 #include "messages.h"
 
 #include <errno.h>
+#include <limits.h>
+#include <string.h>
 
 static LogProtoStatus log_proto_text_client_flush(LogProtoClient *s);
 
@@ -35,7 +37,7 @@ log_proto_text_client_poll_prepare(LogProtoClient *s, GIOCondition *cond, GIOCon
   *cond = G_IO_OUT | G_IO_IN;
   *idle_cond = G_IO_IN;
 
-  return self->partial != NULL;
+  return self->partial != NULL || self->batch.count > 0;
 }
 
 static gboolean
@@ -47,7 +49,7 @@ log_proto_unidirectional_text_client_poll_prepare(LogProtoClient *s, GIOConditio
   *cond = G_IO_OUT;
   *idle_cond = 0;
 
-  return self->partial != NULL;
+  return self->partial != NULL || self->batch.count > 0;
 }
 
 static LogProtoStatus
@@ -104,9 +106,8 @@ _prohibit_in(LogProtoClient *s)
 
 
 static LogProtoStatus
-log_proto_text_client_flush(LogProtoClient *s)
+_flush_single(LogProtoTextClient *self)
 {
-  LogProtoTextClient *self = (LogProtoTextClient *) s;
   gint rc;
 
   if (!self->partial)
@@ -152,6 +153,91 @@ log_proto_text_client_flush(LogProtoClient *s)
   return LPS_SUCCESS;
 }
 
+/* advance over `written` freshly sent bytes, freeing and acking each message
+ * that went out whole, then compacting the unsent tail to the front so the
+ * freed slots can be reused right away.  only the iovec descriptors move, not
+ * the payloads; a short write leaves the head's offset in partial_pos. */
+static void
+_advance_batch(LogProtoTextClient *self, gsize written)
+{
+  gint acked = 0;
+  while (acked < self->batch.count)
+    {
+      gsize remaining = self->batch.iov[acked].iov_len - self->batch.partial_pos;
+      if (written < remaining)
+        {
+          self->batch.partial_pos += written;
+          break;
+        }
+
+      written -= remaining;
+      g_free(self->batch.iov[acked].iov_base);
+      self->batch.partial_pos = 0;
+      ++acked;
+    }
+
+  if (acked)
+    {
+      log_proto_client_msg_ack(&self->super, acked);
+      self->batch.count -= acked;
+      memmove(self->batch.iov, &self->batch.iov[acked], self->batch.count * sizeof(*self->batch.iov));
+    }
+}
+
+/* write the queued batch out with a single writev(), resuming from the head's
+ * offset when an earlier short write left a tail behind. */
+static LogProtoStatus
+_flush_batch(LogProtoTextClient *self)
+{
+  if (self->batch.count == 0)
+    return LPS_SUCCESS;
+
+  struct iovec *iov = self->batch.iov;
+  gint iov_count = self->batch.count;
+
+  /* the first pending chunk may be partially sent from an earlier short write */
+  struct iovec first = iov[0];
+  iov[0].iov_base = (guchar *) first.iov_base + self->batch.partial_pos;
+  iov[0].iov_len = first.iov_len - self->batch.partial_pos;
+
+  gssize rc = log_transport_stack_writev(&self->super.transport_stack, iov, iov_count);
+  iov[0] = first;
+
+  if (rc < 0)
+    {
+      if (errno == EAGAIN || errno == EINTR)
+        return LPS_SUCCESS;
+      msg_error("I/O error occurred while writing",
+                evt_tag_int("fd", self->super.transport_stack.fd),
+                evt_tag_error(EVT_TAG_OSERROR));
+      return LPS_ERROR;
+    }
+
+  _advance_batch(self, rc);
+  return LPS_SUCCESS;
+}
+
+static inline gboolean
+_batching_enabled(LogProtoTextClient *self)
+{
+  if (self->batch.size <= 1)
+    return FALSE;
+
+  LogTransport *t = log_transport_stack_get_active(&self->super.transport_stack);
+  return t && t->writev;
+}
+
+static LogProtoStatus
+log_proto_text_client_flush(LogProtoClient *s)
+{
+  LogProtoTextClient *self = (LogProtoTextClient *) s;
+
+  if (!_batching_enabled(self))
+    return _flush_single(self);
+
+  return _flush_batch(self);
+}
+
 LogProtoStatus
 log_proto_text_client_submit_write(LogProtoClient *s, guchar *msg, gsize msg_len, GDestroyNotify msg_free,
                                    gint next_state)
@@ -168,19 +254,8 @@ log_proto_text_client_submit_write(LogProtoClient *s, guchar *msg, gsize msg_len
 }
 
 
-/*
- * log_proto_text_client_post:
- * @msg: formatted log message to send (this might be consumed by this function)
- * @msg_len: length of @msg
- * @consumed: pointer to a gboolean that gets set if the message was consumed by this function
- * @error: error information, if any
- *
- * This function posts a message to the log transport, performing buffering
- * of partially sent data if needed. The return value indicates whether we
- * successfully sent this message, or if it should be resent by the caller.
- **/
 static LogProtoStatus
-log_proto_text_client_post(LogProtoClient *s, LogMessage *logmsg, guchar *msg, gsize msg_len, gboolean *consumed)
+_post_single(LogProtoClient *s, guchar *msg, gsize msg_len, gboolean *consumed)
 {
   LogProtoTextClient *self = (LogProtoTextClient *) s;
 
@@ -213,6 +288,52 @@ log_proto_text_client_post(LogProtoClient *s, LogMessage *logmsg, guchar *msg, g
   return log_proto_text_client_submit_write(s, msg, msg_len, (GDestroyNotify) g_free, -1);
 }
 
+static inline gboolean
+_can_queue_to_batch(LogProtoTextClient *self)
+{
+  return self->batch.count < self->batch.size;
+}
+
+/*
+ * log_proto_text_client_post:
+ * @msg: formatted log message to send (this might be consumed by this function)
+ * @msg_len: length of @msg
+ * @consumed: pointer to a gboolean that gets set if the message was consumed by this function
+ * @error: error information, if any
+ *
+ * This function posts a message to the log transport, performing buffering
+ * of partially sent data if needed. The return value indicates whether we
+ * successfully sent this message, or if it should be resent by the caller.
+ **/
+static LogProtoStatus
+log_proto_text_client_post(LogProtoClient *s, LogMessage *logmsg, guchar *msg, gsize msg_len, gboolean *consumed)
+{
+  LogProtoTextClient *self = (LogProtoTextClient *) s;
+
+  if (!_batching_enabled(self))
+    return _post_single(s, msg, msg_len, consumed);
+
+  *consumed = FALSE;
+
+  if (!_can_queue_to_batch(self))
+    {
+      LogProtoStatus result = log_proto_text_client_flush(s);
+      if (result != LPS_SUCCESS || !_can_queue_to_batch(self))
+        /* no room yet (flush failed or buffer not drained) -> caller resends */
+        return result;
+    }
+
+  self->batch.iov[self->batch.count].iov_base = (void *) msg;
+  self->batch.iov[self->batch.count].iov_len = msg_len;
+  ++self->batch.count;
+  *consumed = TRUE;
+
+  if (self->batch.count == self->batch.size)
+    return log_proto_text_client_flush(s);
+
+  return LPS_SUCCESS;
+}
+
 void
 log_proto_text_client_free(LogProtoClient *s)
 {
@@ -220,8 +341,27 @@ log_proto_text_client_free(LogProtoClient *s)
   if (self->partial_free)
     self->partial_free(self->partial);
   self->partial = NULL;
+  /* messages still queued in the batch were consumed but never acked, so they
+   * are held only in the flow-control backlog; rewind them before we drop the
+   * buffers, otherwise a teardown on reconnect would lose them */
+  if (self->batch.count > 0)
+    log_proto_client_msg_rewind(&self->super);
+  for (gint i = 0; i < self->batch.count; ++i)
+    g_free(self->batch.iov[i].iov_base);
+  g_free(self->batch.iov);
+  self->batch.iov = NULL;
   log_proto_client_free_method(s);
 };
+
+static gint
+_calculate_batch_size(const LogProtoClientOptions *options)
+{
+  gint batch_size = (options && options->flush_lines > 1) ? options->flush_lines : 1;
+#ifdef IOV_MAX
+  batch_size = MIN(batch_size, IOV_MAX);
+#endif
+  return batch_size;
+}
 
 void
 log_proto_text_client_init(LogProtoTextClient *self, LogTransport *transport, const LogProtoClientOptions *options)
@@ -233,6 +373,9 @@ log_proto_text_client_init(LogProtoTextClient *self, LogTransport *transport, co
   self->super.post = log_proto_text_client_post;
   self->super.free_fn = log_proto_text_client_free;
   self->next_state = -1;
+
+  self->batch.size = _calculate_batch_size(options);
+  self->batch.iov = g_new0(struct iovec, self->batch.size);
 }
 
 LogProtoClient *

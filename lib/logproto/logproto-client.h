@@ -35,6 +35,7 @@ typedef struct _LogProtoClientOptions
 {
   gboolean drop_input;
   gint idle_timeout;
+  gint flush_lines;
 } LogProtoClientOptions;
 
 typedef union _LogProtoClientOptionsStorage
