@@ -136,7 +136,7 @@ yy_subst_input(CfgLexer *self, gchar *buf, gsize buf_size)
 #define YY_INPUT(buf, result, max_size)                                 \
   do                                                                    \
     {                                                                   \
-      if (!fgets(buf, max_size, yyin))                                  \
+      if (!yyin || !fgets(buf, max_size, yyin))                         \
         result = YY_NULL;                                               \
       else if (yyextra->input_subst_suspended)                          \
         result = strlen(buf);                                           \
