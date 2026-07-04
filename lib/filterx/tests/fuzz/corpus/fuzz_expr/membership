@@ -1,0 +1,1 @@
+{ v = "a"; if (isset(v) and v in ["a","b"]) { v = v + "!"; } }

@@ -1,0 +1,1 @@
+{ switch ("x") { case "x": y = 1; default: y = 0; }; }

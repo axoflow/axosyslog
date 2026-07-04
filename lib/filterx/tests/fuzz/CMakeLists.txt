@@ -34,6 +34,8 @@ set(FILTERX_FUZZERS
   fuzz_digest
   fuzz_strptime
   fuzz_repr
+  fuzz_expr
+  fuzz_message_value
 )
 
 foreach(fuzzer ${FILTERX_FUZZERS})
@@ -59,9 +61,15 @@ add_executable(fuzz_parse_csv fuzz_parse_csv.c)
 target_link_libraries(fuzz_parse_csv PRIVATE syslog-ng csvparser ${LIB_FUZZING_ENGINE})
 target_include_directories(fuzz_parse_csv PRIVATE ${PROJECT_SOURCE_DIR}/modules/csvparser)
 
+add_executable(fuzz_format_csv fuzz_format_csv.c)
+target_link_libraries(fuzz_format_csv PRIVATE syslog-ng csvparser ${LIB_FUZZING_ENGINE})
+target_include_directories(fuzz_format_csv PRIVATE ${PROJECT_SOURCE_DIR}/modules/csvparser)
+
 # Keep the linker from dropping the module libraries whose constructors we call directly.
 if (NOT APPLE)
-  foreach(fuzzer fuzz_parse_xml fuzz_parse_cef fuzz_parse_kv fuzz_parse_csv)
-    set_property(TARGET ${fuzzer} APPEND_STRING PROPERTY LINK_FLAGS " -Wl,--no-as-needed")
+  foreach(fuzzer fuzz_parse_xml fuzz_parse_cef fuzz_parse_kv fuzz_parse_csv fuzz_format_csv)
+    if (TARGET ${fuzzer})
+      set_property(TARGET ${fuzzer} APPEND_STRING PROPERTY LINK_FLAGS " -Wl,--no-as-needed")
+    endif()
   endforeach()
 endif()
