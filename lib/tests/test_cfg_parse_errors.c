@@ -57,6 +57,11 @@ Test(cfg_parse_errors, multi_line_error_location_past_the_line_end_is_reported)
                        " };"));
 }
 
+Test(cfg_parse_errors, invalid_regexp_in_a_match_sub_expression_is_a_parse_error)
+{
+  cr_assert_not(_parse("log { filterx { x = (\"a\" =~ \"(\"); }; };"));
+}
+
 static void
 setup(void)
 {
