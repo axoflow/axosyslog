@@ -79,9 +79,12 @@ _format_underlined_source_block(GString *result, const CFG_LTYPE *yylloc, gchar 
 
           gboolean multi_line = yylloc->first_line != yylloc->last_line;
 
-          _format_underline(result, line, yylloc->first_column - 1,
-                            multi_line ? strlen(&line[yylloc->first_column]) + 1
-                            : yylloc->last_column - yylloc->first_column);
+          /* the reported column can point past the line's content */
+          gint number_of_carets = multi_line
+                                  ? (yylloc->first_column <= line_len ? line_len - yylloc->first_column + 1 : 1)
+                                  : yylloc->last_column - yylloc->first_column;
+
+          _format_underline(result, line, yylloc->first_column - 1, number_of_carets);
         }
     }
 }
