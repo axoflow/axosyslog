@@ -50,6 +50,13 @@ Test(cfg_parse_errors, syntax_error_at_the_end_of_an_in_memory_config_is_reporte
   cr_assert_not(_parse("log { filterx { x = ("));
 }
 
+Test(cfg_parse_errors, multi_line_error_location_past_the_line_end_is_reported)
+{
+  cr_assert_not(_parse("log { filterx "
+                       "{ a =' d?\327\337? ;=\" \"\"bot0b\012; \012\027\027\027\027\027\027\027\027\027\027\027\027\027\027\027\027\027\027\027\027\027\027\027 a =' d?\327\337? ;=\" \"; }"
+                       " };"));
+}
+
 static void
 setup(void)
 {
