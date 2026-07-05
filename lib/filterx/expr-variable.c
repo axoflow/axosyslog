@@ -56,44 +56,46 @@ _eval_macro(FilterXVariableExpr *self, FilterXEvalContext *context)
 }
 
 static FilterXObject *
-_eval_variable(FilterXExpr *s)
+_borrow_variable_value(FilterXVariableExpr *self, FilterXEvalContext *context)
 {
-  FilterXVariableExpr *self = (FilterXVariableExpr *) s;
-  FilterXEvalContext *context = filterx_eval_get_context();
-  FilterXVariable *variable;
+  FilterXVariable *variable = filterx_scope_lookup_variable(context->scope, self->handle, self->scope_var_idx);
 
-  if (self->handle_is_macro)
-    return _eval_macro(self, context);
-
-  variable = filterx_scope_lookup_variable(context->scope, self->handle, self->scope_var_idx);
-  if (variable)
-    {
-      FilterXObject *value = filterx_scope_get_variable(context->scope, variable);
-      if (!value)
-        {
-          filterx_eval_push_error("Variable is unset", &self->super, self->variable_name);
-        }
-      return value;
-    }
-
-  if (self->variable_type == FX_VAR_MESSAGE_TIED)
+  if (!variable && self->variable_type == FX_VAR_MESSAGE_TIED)
     {
       /* auto register message tied variables */
       variable = filterx_scope_register_variable(context->scope, self->variable_type, self->handle,
                                                  self->scope_var_idx);
-      if (variable)
-        {
-          FilterXObject *value = filterx_scope_get_variable(context->scope, variable);
-          if (!value)
-            {
-              filterx_eval_push_error("Variable is unset", &self->super, self->variable_name);
-            }
-          return value;
-        }
     }
 
-  filterx_eval_push_error("No such variable", s, self->variable_name);
-  return NULL;
+  if (!variable)
+    {
+      filterx_eval_push_error("No such variable", &self->super, self->variable_name);
+      return NULL;
+    }
+
+  FilterXObject *value = filterx_variable_borrow_value(variable);
+  if (!value)
+    filterx_eval_push_error("Variable is unset", &self->super, self->variable_name);
+
+  return value;
+}
+
+static FilterXObject *
+_eval_variable_in_scope(FilterXVariableExpr *self, FilterXEvalContext *context)
+{
+  return filterx_object_ref(_borrow_variable_value(self, context));
+}
+
+static FilterXObject *
+_eval_variable(FilterXExpr *s)
+{
+  FilterXVariableExpr *self = (FilterXVariableExpr *) s;
+  FilterXEvalContext *context = filterx_eval_get_context();
+
+  if (self->handle_is_macro)
+    return _eval_macro(self, context);
+
+  return _eval_variable_in_scope(self, context);
 }
 
 static void
@@ -107,6 +109,18 @@ _update_repr(FilterXExpr *s, FilterXObject **new_repr)
   filterx_scope_set_variable(scope, variable, new_repr, variable->assigned);
 }
 
+static void
+_assign_variable_in_scope(FilterXVariableExpr *self, FilterXEvalContext *context, FilterXObject **new_value)
+{
+  FilterXScope *scope = context->scope;
+  FilterXVariable *variable = filterx_scope_lookup_variable(scope, self->handle, self->scope_var_idx);
+
+  if (!variable)
+    variable = filterx_scope_register_variable(scope, self->variable_type, self->handle, self->scope_var_idx);
+
+  filterx_scope_set_variable(scope, variable, new_value, TRUE);
+}
+
 static gboolean
 _assign(FilterXExpr *s, FilterXObject **new_value)
 {
@@ -118,14 +132,7 @@ _assign(FilterXExpr *s, FilterXObject **new_value)
       return FALSE;
     }
 
-  FilterXEvalContext *context = filterx_eval_get_context();
-  FilterXScope *scope = context->scope;
-  FilterXVariable *variable = filterx_scope_lookup_variable(scope, self->handle, self->scope_var_idx);
-
-  if (!variable)
-    variable = filterx_scope_register_variable(scope, self->variable_type, self->handle, self->scope_var_idx);
-
-  filterx_scope_set_variable(scope, variable, new_value, TRUE);
+  _assign_variable_in_scope(self, filterx_eval_get_context(), new_value);
   return TRUE;
 }
 
@@ -219,17 +226,100 @@ fx_jit_eval_variable(FilterXExpr *s)
   return _eval_variable(s);
 }
 
+__attribute__((used))
+FilterXObject *
+fx_jit_borrow_variable_value(FilterXEvalContext *context, FilterXExpr *s)
+{
+  return _borrow_variable_value((FilterXVariableExpr *) s, context);
+}
+
+__attribute__((used))
+FilterXObject *
+fx_jit_assign_variable_in_scope(FilterXEvalContext *context, FilterXExpr *s, FilterXObject *new_value)
+{
+  _assign_variable_in_scope((FilterXVariableExpr *) s, context, &new_value);
+  return new_value;
+}
+
 static FilterXIRValue
 _variable_compile(FilterXExpr *s, FilterXJIT *jit)
 {
-  /* TODO: move variable management into LLVM */
-
   FilterXVariableExpr *self = (FilterXVariableExpr *) s;
   FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
 
-  FilterXIRValue args[] = { fx_jit_emit_const_ptr(jit, self) };
-  FilterXIRType param_tys[] = { ffi->ptr_ty };
-  return fx_jit_emit_extern_call(jit, "fx_jit_eval_variable", ffi->ptr_ty, param_tys, args, 1);
+  if (self->handle_is_macro || self->scope_var_idx < 0)
+    {
+      FilterXIRValue args[] = { fx_jit_emit_const_ptr(jit, self) };
+      FilterXIRType param_tys[] = { ffi->ptr_ty };
+      return fx_jit_emit_extern_call(jit, "fx_jit_eval_variable", ffi->ptr_ty, param_tys, args, 1);
+    }
+
+  FilterXIRBuilder ir = filterx_jit_get_ir_builder(jit);
+  FilterXIRValue block = filterx_jit_ir_get_current_block(jit);
+  FilterXIRValue local = filterx_jit_ir_get_variable(jit, self->scope_var_idx);
+
+  FilterXIRSequence cached_seq = LLVMGetInsertBlock(ir);
+  FilterXIRValue cached = LLVMBuildLoad2(ir, ffi->ptr_ty, local, "var_value");
+
+  FilterXIRSequence fill = filterx_jit_ir_create_sequence(jit, "var_fill", block);
+  FilterXIRSequence merge = filterx_jit_ir_create_sequence(jit, "var_loaded", block);
+
+  /* NULL is a loaded-but-unset value; only the sentinel means "not loaded yet" */
+  FilterXIRValue is_unloaded = filterx_jit_ir_is_variable_uninitialized(jit, cached);
+  LLVMBuildCondBr(ir, is_unloaded, fill, merge);
+
+  filterx_jit_ir_add_sequence_to_block(jit, fill, block);
+  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, fill);
+  FilterXIRValue args[] = { filterx_jit_ir_get_eval_context(jit), fx_jit_emit_const_ptr(jit, self) };
+  FilterXIRType param_tys[] = { ffi->ptr_ty, ffi->ptr_ty };
+  FilterXIRValue filled = fx_jit_emit_extern_call(jit, "fx_jit_borrow_variable_value",
+                                                  ffi->ptr_ty, param_tys, args, 2);
+  LLVMBuildStore(ir, filled, local);
+  LLVMBuildBr(ir, merge);
+
+  filterx_jit_ir_add_sequence_to_block(jit, merge, block);
+  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, merge);
+  FilterXIRValue value = LLVMBuildPhi(ir, ffi->ptr_ty, "var_value");
+  FilterXIRValue incoming_values[] = { cached, filled };
+  FilterXIRSequence incoming_blocks[] = { cached_seq, fill };
+  LLVMAddIncoming(value, incoming_values, incoming_blocks, 2);
+
+  return fx_jit_emit_object_ref(jit, value);
+}
+
+static FilterXIRValue
+_variable_compile_assign(FilterXExpr *s, FilterXJIT *jit, FilterXIRValue new_value)
+{
+  FilterXVariableExpr *self = (FilterXVariableExpr *) s;
+  FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
+  FilterXIRBuilder ir = filterx_jit_get_ir_builder(jit);
+  FilterXIRValue local = filterx_jit_ir_get_variable(jit, self->scope_var_idx);
+
+  FilterXIRValue args[] =
+  {
+    filterx_jit_ir_get_eval_context(jit),
+    fx_jit_emit_const_ptr(jit, self),
+    new_value,
+  };
+  FilterXIRType param_tys[] = { ffi->ptr_ty, ffi->ptr_ty, ffi->ptr_ty };
+  FilterXIRValue stored = fx_jit_emit_extern_call(jit, "fx_jit_assign_variable_in_scope",
+                                                  ffi->ptr_ty, param_tys, args, 3);
+
+  LLVMBuildStore(ir, stored, local);
+  return stored;
+}
+
+void
+filterx_variable_expr_compile_repr_update(FilterXExpr *s, FilterXJIT *jit, FilterXIRValue new_repr)
+{
+  FilterXVariableExpr *self = (FilterXVariableExpr *) s;
+
+  if (self->handle_is_macro || self->scope_var_idx < 0)
+    return;
+
+  FilterXIRBuilder ir = filterx_jit_get_ir_builder(jit);
+  FilterXIRValue local = filterx_jit_ir_get_variable(jit, self->scope_var_idx);
+  LLVMBuildStore(ir, new_repr, local);
 }
 
 #endif
@@ -303,6 +393,19 @@ filterx_variable_expr_set_scope_var_idx(FilterXExpr *s, gint idx)
   FilterXVariableExpr *self = (FilterXVariableExpr *) s;
 
   self->scope_var_idx = idx;
+
+#if SYSLOG_NG_ENABLE_JIT
+  if (!self->handle_is_macro && idx >= 0)
+    self->super.compile_assign = _variable_compile_assign;
+#endif
+}
+
+gint
+filterx_variable_expr_get_scope_var_idx(FilterXExpr *s)
+{
+  FilterXVariableExpr *self = (FilterXVariableExpr *) s;
+
+  return self->scope_var_idx;
 }
 
 void

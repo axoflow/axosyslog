@@ -50,15 +50,45 @@ struct _FilterXJIT
   FilterXIRValue current_ir_block;
   LLVMMetadataRef current_debug_info_block;
   FilterXIRValue current_eval_context;
+  LLVMValueRef current_ptr_table_param;
+  GArray *current_block_ptrs;
+  gchar *current_block_name;
+
+  FilterXIRValue current_block_variables;
+  guint32 current_block_variables_size;
 
   FilterXJITFFI ffi;
 
   FilterXJITDebugInfo debug_info_mode;
   LLVMDIBuilderRef debug;
   gint debug_ir_text_memfd;
+  GString *debug_ir_text;
+  guint debug_ir_line;
 
   gboolean mod_finalized;
+
+  struct
+  {
+    LLVMMemoryBufferRef libfilterx_bc;
+    GPtrArray *pending_blocks;
+  } compile;
+
+  GHashTable *block_tables;
+
+  struct
+  {
+    GHashTable *block_symbol;
+    GHashTable *seen_hashes;
+    guint total;
+    guint unique;
+  } dedup;
 };
+
+typedef struct _FilterXJITPendingBlock
+{
+  LLVMMemoryBufferRef bc;
+  gchar *name;
+} FilterXJITPendingBlock;
 
 #else
 

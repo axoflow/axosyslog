@@ -26,6 +26,8 @@
 #include "syslog-ng.h"
 #include "filterx/filterx-object.h"
 
+typedef struct _FilterXScopeVariableLayout FilterXScopeVariableLayout;
+
 /*
  * FilterX JIT:
  * 1. Create a single FilterXJIT instance per configuration (optimizations will be done globally)
@@ -70,7 +72,7 @@ typedef gpointer FilterXJITCtx;
 
 struct _FilterXEvalContext;
 
-typedef FilterXObject *(*FilterXJITExecFunc)(struct _FilterXEvalContext *ctx);
+typedef FilterXObject *(*FilterXJITExecFunc)(struct _FilterXEvalContext *ctx, gpointer *ptr_table);
 
 
 FilterXJIT *filterx_jit_new(const gchar *module_name, FilterXJITDebugInfo debug_info, GError **error);
@@ -78,7 +80,7 @@ void filterx_jit_free(FilterXJIT *self);
 
 /* IR */
 FilterXIRBuilder filterx_jit_get_ir_builder(FilterXJIT *self);
-void filterx_jit_ir_add_new_block(FilterXJIT *self, const gchar *block_name);
+void filterx_jit_ir_add_new_block(FilterXJIT *self, const gchar *block_name, FilterXScopeVariableLayout *layout);
 void filterx_jit_ir_finish_current_block(FilterXJIT *self, FilterXIRValue result);
 FilterXIRValue filterx_jit_ir_get_current_block(FilterXJIT *self);
 
@@ -90,11 +92,17 @@ FilterXIRSequence filterx_jit_ir_add_new_sequence_to_block(FilterXJIT *self, con
 
 FilterXIRValue filterx_jit_ir_get_eval_context(FilterXJIT *self);
 
+FilterXIRValue filterx_jit_ir_get_variable(FilterXJIT *self, gint scope_var_idx);
+FilterXIRValue filterx_jit_ir_is_variable_uninitialized(FilterXJIT *self, FilterXIRValue variable);
+void filterx_jit_ir_clear_variables(FilterXJIT *self);
+
 void filterx_jit_ir_set_source_location(FilterXJIT *self, const gchar *file, gint line, gint column);
 
 /* JIT */
 gboolean filterx_jit_finalize(FilterXJIT *self, GError **error);
 FilterXJITAddress filterx_jit_lookup(FilterXJIT *self, const gchar *block_name, GError **error);
+
+gpointer *filterx_jit_get_block_ptr_table(FilterXJIT *self, const gchar *block_name);
 
 void filterx_jit_global_init(void);
 void filterx_jit_global_deinit(void);
