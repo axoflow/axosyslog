@@ -33,7 +33,8 @@ def test_filterx_pipeline_smoke(config, syslog_ng, testcase_parameters, loggen, 
     config_content = Path("callgrind-syslog-ng.conf").read_text()
     config.set_raw_config(config_content)
 
-    syslog_ng.start(config)
+    # JIT compiling this config under ASan can take longer than the default timeout
+    syslog_ng.start(config, startup_timeout=40)
     network_source = config.create_network_source(ip="localhost", port=2000)
     logs = FileIO("callgrind-samples.log").read_all()
     network_source.write_logs(logs)
