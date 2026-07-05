@@ -26,8 +26,9 @@ from copy import copy
 from pathlib import Path
 from subprocess import Popen
 
+from axosyslog_light.common.blocking import DEFAULT_TIMEOUT
 from axosyslog_light.common.blocking import wait_until_false
-from axosyslog_light.common.blocking import wait_until_true
+from axosyslog_light.common.blocking import wait_until_true_custom
 from axosyslog_light.syslog_ng.console_log_reader import ConsoleLogReader
 from axosyslog_light.syslog_ng.syslog_ng_executor import SyslogNgExecutor
 from axosyslog_light.syslog_ng.syslog_ng_executor import SyslogNgStartParams
@@ -71,14 +72,14 @@ class SyslogNg(object):
             teardown,
         )
 
-    def start(self, config: SyslogNgConfig) -> Popen:
+    def start(self, config: SyslogNgConfig, startup_timeout: float = DEFAULT_TIMEOUT) -> Popen:
         if self._process:
             raise Exception("syslog-ng has been already started")
 
         config.write_config(self.instance_paths.get_config_path())
 
         self.__syntax_check()
-        self.__start_syslog_ng()
+        self.__start_syslog_ng(startup_timeout)
 
         logger.info("syslog-ng process has been started with PID: {}\n".format(self._process.pid))
 
@@ -192,22 +193,22 @@ class SyslogNg(object):
         else:
             self.__validate_crash_returncode(returncode)
 
-    def __wait_for_control_socket_alive(self) -> bool:
+    def __wait_for_control_socket_alive(self, timeout: float = DEFAULT_TIMEOUT) -> bool:
         def is_alive(s: SyslogNg) -> bool:
             if not s.is_process_running():
                 self.__validate_crash_returncode(self._process.returncode)
                 self.__error_handling("syslog-ng is not running")
             return s._syslog_ng_ctl.is_control_socket_alive()
-        return wait_until_true(is_alive, self)
+        return wait_until_true_custom(is_alive, (self,), timeout=timeout)
 
-    def __wait_for_start(self) -> None:
+    def __wait_for_start(self, startup_timeout: float) -> None:
         # wait for start and check start result
-        if not self.__wait_for_control_socket_alive():
+        if not self.__wait_for_control_socket_alive(startup_timeout):
             self.__error_handling("Control socket not alive")
         if not self._console_log_reader.wait_for_start_message():
             self.__error_handling("Start message not arrived")
 
-    def __start_syslog_ng(self) -> None:
+    def __start_syslog_ng(self, startup_timeout: float) -> None:
         args = {
             "start_params": self.start_params,
             "stderr_path": self.instance_paths.get_stderr_path(),
@@ -235,7 +236,7 @@ class SyslogNg(object):
 
         if self.start_params.stderr:
             if self.start_params.preprocess_into is None and not self.start_params.syntax_only:
-                self.__wait_for_start()
+                self.__wait_for_start(startup_timeout)
             else:
                 self._process.wait()
 
