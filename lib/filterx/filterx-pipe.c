@@ -63,6 +63,19 @@ _compile_block(LogFilterXPipe *self, GlobalConfig *cfg)
 }
 
 static gboolean
+_initialize_block(LogFilterXPipe *self, FilterXEvalContext *compile_context)
+{
+  GlobalConfig *cfg = log_pipe_get_config(&self->super);
+  self->block = filterx_expr_optimize(self->block);
+
+  if (!filterx_expr_init(self->block, cfg))
+    return FALSE;
+  self->scope_var_layout = filterx_scope_variable_layout_new(self->block);
+  _compile_block(self, cfg);
+  return TRUE;
+}
+
+static gboolean
 log_filterx_pipe_init(LogPipe *s)
 {
   LogFilterXPipe *self = (LogFilterXPipe *) s;
@@ -72,21 +85,14 @@ log_filterx_pipe_init(LogPipe *s)
     self->name = cfg_tree_get_rule_name(&cfg->tree, ENC_FILTER, s->expr_node);
 
   FilterXEvalContext compile_context;
-
   filterx_eval_begin_compile(&compile_context, cfg);
-  self->block = filterx_expr_optimize(self->block);
+
+  gboolean success = _initialize_block(self, &compile_context);
+  if (!success)
+    filterx_eval_dump_errors("FILTERX ERROR");
+
   filterx_eval_end_compile(&compile_context);
-
-  if (!filterx_expr_init(self->block, cfg))
-    return FALSE;
-
-  self->scope_var_layout = filterx_scope_variable_layout_new(self->block);
-
-  filterx_eval_begin_compile(&compile_context, cfg);
-  _compile_block(self, cfg);
-  filterx_eval_end_compile(&compile_context);
-
-  return TRUE;
+  return success;
 }
 
 static gboolean
@@ -209,6 +215,7 @@ log_filterx_pipe_new(FilterXExpr *block, GlobalConfig *cfg)
   LogFilterXPipe *self = g_new0(LogFilterXPipe, 1);
 
   log_pipe_init_instance(&self->super, cfg);
+  self->super.plugin_name = g_strdup("filterx");
   self->super.flags = (self->super.flags | PIF_CONFIG_RELATED);
   self->super.init = log_filterx_pipe_init;
   self->super.deinit = log_filterx_pipe_deinit;

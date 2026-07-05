@@ -20,6 +20,7 @@
  *
  */
 #include <criterion/criterion.h>
+#include "libtest/filterx-lib.h"
 #include "filterx/object-string.h"
 #include "filterx/object-null.h"
 #include "filterx/expr-function.h"
@@ -93,11 +94,13 @@ static void
 setup(void)
 {
   app_startup();
+  init_libtest_filterx();
 }
 
 static void
 teardown(void)
 {
+  deinit_libtest_filterx();
   scratch_buffers_explicit_gc();
   app_shutdown();
 }

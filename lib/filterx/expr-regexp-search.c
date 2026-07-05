@@ -81,7 +81,7 @@ _store_matches_to_list(pcre2_code_8 *pattern, const FilterXReMatchState *state)
 
       if (!success)
         {
-          filterx_eval_push_error_info_printf("Failed to append regexp match to list", NULL,
+          filterx_eval_push_error_info_printf("Failed to append regexp match to list",
                                               "index: %" G_GINT32_FORMAT, i);
           goto error;
         }
@@ -123,7 +123,7 @@ _store_matches_to_dict(pcre2_code_8 *pattern, const FilterXReMatchState *state)
 
       if (!success)
         {
-          filterx_eval_push_error_info_printf("Failed to add regexp match to dict", NULL, "key: %s", num_str_buf);
+          filterx_eval_push_error_info_printf("Failed to add regexp match to dict", "key: %s", num_str_buf);
           goto error;
         }
     }
@@ -160,7 +160,7 @@ _store_matches_to_dict(pcre2_code_8 *pattern, const FilterXReMatchState *state)
 
       if (!success)
         {
-          filterx_eval_push_error_info_printf("Failed to add regexp match named group to dict", NULL,
+          filterx_eval_push_error_info_printf("Failed to add regexp match named group to dict",
                                               "key: %s", namedgroup_name);
           goto error;
         }
@@ -195,7 +195,7 @@ _eval_regexp_search(FilterXExpr *s)
 
   if (!state.match_data)
     {
-      filterx_eval_push_error_static_info("Failed to evaluate regexp_search()", s, "Error happened during matching");
+      filterx_eval_push_error_static_info("Failed to evaluate regexp_search()", "Error happened during matching");
       goto exit;
     }
 
@@ -218,7 +218,7 @@ _regexp_search_init(FilterXExpr *s, GlobalConfig *cfg)
 
   if (!filterx_expr_is_literal(self->pattern_expr))
     {
-      filterx_eval_push_error_static_info("Failed to compile regexp pattern", &self->super.super,
+      filterx_eval_push_error_static_info("Failed to compile regexp pattern",
                                           "Pattern argument must be a literal string, got an expression. "
                                           FILTERX_FUNC_REGEXP_SEARCH_USAGE);
       goto error;
@@ -230,7 +230,7 @@ _regexp_search_init(FilterXExpr *s, GlobalConfig *cfg)
   const gchar *pattern = filterx_string_get_value_ref(pattern_obj, &pattern_len);
   if (!pattern)
     {
-      filterx_eval_push_error_info_printf("Failed to compile regexp pattern", &self->super.super,
+      filterx_eval_push_error_info_printf("Failed to compile regexp pattern",
                                           "Pattern argument must be a literal string, got: %s. "
                                           FILTERX_FUNC_REGEXP_SEARCH_USAGE,
                                           filterx_object_get_type_name(pattern_obj));
@@ -240,8 +240,6 @@ _regexp_search_init(FilterXExpr *s, GlobalConfig *cfg)
   self->pattern = filterx_regexp_compile_pattern_defaults(pattern, pattern_len);
   if (!self->pattern)
     {
-      filterx_eval_push_error_static_info("Failed to compile regexp pattern", &self->super.super,
-                                          FILTERX_FUNC_REGEXP_SEARCH_USAGE);
       goto error;
     }
 

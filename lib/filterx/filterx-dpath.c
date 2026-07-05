@@ -154,7 +154,7 @@ _dpath_touch(FilterXDPathLValue *self, gboolean add_mode, FilterXObject **last_o
 
   if (!filterx_object_is_type_or_ref(dict, &FILTERX_TYPE_NAME(mapping)))
     {
-      filterx_eval_push_error("dpath argument has non-dict element in path", &self->super, NULL);
+      filterx_eval_push_error("dpath argument has non-dict element in path", NULL);
       filterx_object_unref(dict);
       return NULL;
     }
@@ -175,7 +175,7 @@ _dpath_touch(FilterXDPathLValue *self, gboolean add_mode, FilterXObject **last_o
 
       if (!filterx_object_is_type_or_ref(dict, &FILTERX_TYPE_NAME(mapping)))
         {
-          filterx_eval_push_error("dpath argument has non-dict element in path", &self->super, NULL);
+          filterx_eval_push_error("dpath argument has non-dict element in path", NULL);
           filterx_object_unref(dict);
           return NULL;
         }

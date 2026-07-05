@@ -41,7 +41,7 @@ filterx_simple_function_len(FilterXExpr *s, FilterXObject *args[], gsize args_le
   gboolean success = filterx_object_len(object, &len);
   if (!success)
     {
-      filterx_eval_push_error("Object does not support len()", s, object);
+      filterx_eval_push_error("Object does not support len()", object);
       return NULL;
     }
 

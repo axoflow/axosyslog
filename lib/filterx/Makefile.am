@@ -21,7 +21,6 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/expr-literal.h \
 	lib/filterx/expr-membership.h \
 	lib/filterx/expr-null-coalesce.h \
-	lib/filterx/expr-plus.h \
 	lib/filterx/expr-plus-assign.h \
 	lib/filterx/expr-regexp-common.h \
 	lib/filterx/expr-regexp-search.h \
@@ -115,7 +114,6 @@ filterx_expr_sources = \
 	lib/filterx/expr-move.c \
 	lib/filterx/expr-null-coalesce.c \
 	lib/filterx/expr-plus-assign.c \
-	lib/filterx/expr-plus.c \
 	lib/filterx/expr-regexp-common.c \
 	lib/filterx/expr-regexp-search.c \
 	lib/filterx/expr-regexp-subst.c \

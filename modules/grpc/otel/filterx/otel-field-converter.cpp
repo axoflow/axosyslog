@@ -105,7 +105,7 @@ AnyValueFieldConverter::get(Message *message, ProtoReflectors reflectors)
       return this->direct_get(any_value);
     }
 
-  filterx_eval_push_error_info_printf("Failed to convert field", NULL,
+  filterx_eval_push_error_info_printf("Failed to convert field",
                                       "Unsupported protobuf field: %s, type: %s",
                                       reflectors.field_descriptor->name().data(), reflectors.field_type_name());
   return nullptr;
@@ -261,7 +261,7 @@ AnyValueFieldConverter::direct_set(AnyValue *any_value, FilterXObject *object, F
 
   if (!converter)
     {
-      filterx_eval_push_error_info_printf("Failed to convert field", NULL,
+      filterx_eval_push_error_info_printf("Failed to convert field",
                                           "Converting FilterX type: %s to AnyValue is not yet implemented",
                                           filterx_object_get_type_name(object));
       return false;
@@ -321,7 +321,7 @@ public:
         g_assert(filterx_integer_unwrap(object, &value));
         if (!SeverityNumber_IsValid((int) value))
           {
-            filterx_eval_push_error_info_printf("Failed to set severity_number", NULL,
+            filterx_eval_push_error_info_printf("Failed to set severity_number",
                                                 "Invalid value: %" G_GINT64_FORMAT,
                                                 value);
             return false;
@@ -331,7 +331,7 @@ public:
         return true;
       }
 
-    filterx_eval_push_error_info_printf("Failed to set severity_number", NULL,
+    filterx_eval_push_error_info_printf("Failed to set severity_number",
                                         "Value must be integer type, got: %s",
                                         filterx_object_get_type_name(object));
     return false;
