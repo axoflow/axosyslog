@@ -162,6 +162,10 @@ lib_tests_test_logqueue_LDADD = $(TEST_LDADD)
 lib_tests_test_logsource_CFLAGS = $(TEST_CFLAGS)
 lib_tests_test_logsource_LDADD = $(TEST_LDADD)
 
+if ENABLE_BUILTIN_MODULES
+lib_tests_test_logsource_LDFLAGS = -Wl,--wrap=resolve_sockaddr_to_hostname
+endif
+
 lib_tests_test_logscheduler_CFLAGS = $(TEST_CFLAGS)
 lib_tests_test_logscheduler_LDADD = $(TEST_LDADD)
 

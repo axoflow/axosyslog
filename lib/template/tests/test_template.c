@@ -129,7 +129,7 @@ setup(void)
   configuration->template_options.time_zone_info[LTZ_LOCAL] = time_zone_info_new(NULL);
 
 
-  setenv("TZ", "MET-1METDST", TRUE);
+  setenv("TZ", "CET", TRUE);
   tzset();
 }
 

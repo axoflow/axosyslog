@@ -22,6 +22,7 @@
  */
 #include <criterion/criterion.h>
 #include "libtest/fake-time.h"
+#include "libtest/mock-function.h"
 
 #include "timeutils/wallclocktime.h"
 #include "timeutils/cache.h"
@@ -32,7 +33,7 @@
 
 gboolean tz_mock_empty_dst_tzname = FALSE;
 const gchar *const *
-cached_get_system_tznames(void)
+MOCK_FUNCTION(cached_get_system_tznames)(void)
 {
   static gchar *tznames[] = { "CET", "CEST" };
   if (tz_mock_empty_dst_tzname)
@@ -42,7 +43,7 @@ cached_get_system_tznames(void)
 }
 
 glong
-cached_get_system_tzofs(void)
+MOCK_FUNCTION(cached_get_system_tzofs)(void)
 {
   return -1 * 3600;
 }

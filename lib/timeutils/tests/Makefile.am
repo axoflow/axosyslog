@@ -27,6 +27,11 @@ lib_timeutils_tests_test_wallclocktime_SOURCES	= lib/timeutils/tests/test_wallcl
 lib_timeutils_tests_test_wallclocktime_CFLAGS	= $(TEST_CFLAGS) -I$(top_srcdir)/lib/timeutils
 lib_timeutils_tests_test_wallclocktime_LDADD	= \
 	$(TEST_LDADD)
+if ENABLE_BUILTIN_MODULES
+lib_timeutils_tests_test_wallclocktime_LDFLAGS	= \
+	-Wl,--wrap=cached_get_system_tznames \
+	-Wl,--wrap=cached_get_system_tzofs
+endif
 
 lib_timeutils_tests_test_unixtime_SOURCES	= lib/timeutils/tests/test_unixtime.c
 lib_timeutils_tests_test_unixtime_CFLAGS	= $(TEST_CFLAGS) -I$(top_srcdir)/lib/timeutils

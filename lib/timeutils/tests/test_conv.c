@@ -74,6 +74,8 @@ Test(conv, convert_and_normalize_wall_clock_time_to_unix_time_changes_the_wct_to
   UnixTime ut = UNIX_TIME_INIT;
   WallClockTime wct = WALL_CLOCK_TIME_INIT;
 
+  /* NOTE: this time does not exist, in CET this is the spring transition
+   * hour for daylight saving and 02:00:00 is equal to 03:00:00 */
   _wct_initialize(&wct, "Mar 31 2019 02:11:00");
 
   /* pre normalized values, just as we parsed it from the input */
@@ -83,11 +85,18 @@ Test(conv, convert_and_normalize_wall_clock_time_to_unix_time_changes_the_wct_to
   convert_and_normalize_wall_clock_time_to_unix_time(&wct, &ut);
 
   /* at this point normalization changes the wct as well! */
-  cr_expect(wct.wct_gmtoff == 7200);
-  cr_expect(wct.wct_hour == 2);
 
-  cr_expect(ut.ut_gmtoff == 7200);
-  cr_expect(ut.ut_sec == 1553994660 - 3600);
+  /* NOTE: how we conclude on the gmtoff value is libc dependent, glibc/musl
+   * does it differently */
+
+  cr_expect(wct.wct_hour == 2);
+  cr_expect(wct.wct_gmtoff == 7200 || wct.wct_gmtoff == 3600);
+  cr_expect(ut.ut_gmtoff == wct.wct_gmtoff);
+
+  convert_unix_time_to_wall_clock_time(&ut, &wct);
+  cr_expect(ut.ut_gmtoff == wct.wct_gmtoff);
+  cr_expect(wct.wct_hour == 2);
+  cr_expect(wct.wct_min == 11);
 }
 
 Test(conv, unix_time_set_from_a_specific_timezone_which_happens_at_the_spring_transition_hour)

@@ -24,6 +24,7 @@
 #include <criterion/criterion.h>
 #include <criterion/parameterized.h>
 #include "libtest/queue_utils_lib.h"
+#include "libtest/mock-function.h"
 #include "test_diskq_tools.h"
 
 #include "logqueue.h"
@@ -535,7 +536,7 @@ ParameterizedTest(diskq_tester_parameters_t *parameters, diskq, test_diskq_stati
 }
 
 gchar *
-qdisk_get_next_filename(const gchar *dir, gboolean reliable)
+MOCK_FUNCTION(qdisk_get_next_filename)(const gchar *dir, gboolean reliable)
 {
   return NULL;
 }
@@ -572,7 +573,7 @@ setup(void)
   return 0;
 #endif
   app_startup();
-  setenv("TZ", "MET-1METDST", TRUE);
+  setenv("TZ", "CET", TRUE);
   tzset();
 
   configuration = cfg_new_snippet();
