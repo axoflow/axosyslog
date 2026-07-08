@@ -427,6 +427,8 @@ class S3Object:
         self.__size: int = 0
         self.__modified_at: float = monotonic()
 
+        self.__multipart_start_lock = Lock()
+
         # Locked variables
         self.__lock = Lock()
         self.__current_chunk: Optional[S3Chunk] = None
@@ -639,41 +641,46 @@ class S3Object:
         if self.__persist.upload_id != "":
             return True
 
-        extra_args = {}
+        with self.__multipart_start_lock:
+            # Another thread may have created the upload while we were waiting for the lock.
+            if self.__persist.upload_id != "":
+                return True
 
-        if self.__persist.server_side_encryption != "":
-            extra_args["ServerSideEncryption"] = self.__persist.server_side_encryption
+            extra_args = {}
 
-        if self.__persist.kms_key != "":
-            extra_args["SSEKMSKeyId"] = self.__persist.kms_key
+            if self.__persist.server_side_encryption != "":
+                extra_args["ServerSideEncryption"] = self.__persist.server_side_encryption
 
-        if self.__persist.canned_acl != "":
-            extra_args["ACL"] = self.__persist.canned_acl
+            if self.__persist.kms_key != "":
+                extra_args["SSEKMSKeyId"] = self.__persist.kms_key
 
-        if self.__persist.content_type != "":
-            extra_args["ContentType"] = self.__persist.content_type
+            if self.__persist.canned_acl != "":
+                extra_args["ACL"] = self.__persist.canned_acl
 
-        try:
-            response = self.__client.create_multipart_upload(
-                Bucket=self.bucket,
-                Key=self.key,
-                StorageClass=self.__persist.storage_class,
-                **extra_args,
-            )
-            self.__logger.debug(f"Multipart upload created for {self.bucket}/{self.key}")
-        except (ClientError, EndpointConnectionError) as e:
-            self.__logger.error(f"Failed to create multipart upload: {self.bucket}/{self.key} => {e}")
-            return False
+            if self.__persist.content_type != "":
+                extra_args["ContentType"] = self.__persist.content_type
 
-        try:
-            self.__persist.upload_id = response["UploadId"]
-        except KeyError:
-            self.__logger.error(
-                f"Failed to create multipart upload: {self.bucket}/{self.key} => Unexpected response: {response}"
-            )
-            return False
+            try:
+                response = self.__client.create_multipart_upload(
+                    Bucket=self.bucket,
+                    Key=self.key,
+                    StorageClass=self.__persist.storage_class,
+                    **extra_args,
+                )
+                self.__logger.debug(f"Multipart upload created for {self.bucket}/{self.key}")
+            except (ClientError, EndpointConnectionError) as e:
+                self.__logger.error(f"Failed to create multipart upload: {self.bucket}/{self.key} => {e}")
+                return False
 
-        return True
+            try:
+                self.__persist.upload_id = response["UploadId"]
+            except KeyError:
+                self.__logger.error(
+                    f"Failed to create multipart upload: {self.bucket}/{self.key} => Unexpected response: {response}"
+                )
+                return False
+
+            return True
 
     def __upload_chunk_cb(self, chunk: S3Chunk, is_retry: bool) -> None:
         if not self.__ensure_multipart_upload_started():
