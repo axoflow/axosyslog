@@ -788,7 +788,10 @@ class S3Object:
             return
 
         if len(uploaded_parts) == 0:
-            assert self.__persist.upload_id == ""
+            # started-but-empty upload: abort it or it lingers in the bucket
+            if self.__persist.upload_id != "" and not self.__abort_multipart():
+                self.__complete_multipart(is_retry=True)
+                return
             self.__persist.unlink()
             with self.__lock:
                 self.__multipart_completed = True
