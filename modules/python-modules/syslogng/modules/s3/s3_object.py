@@ -747,6 +747,9 @@ class S3Object:
             chunk = self.__current_chunk
         if chunk is None:
             with self.__lock:
+                if self.__prev_chunk is None:
+                    # the flush timer can finish this object between the caller selecting it and this write
+                    raise AlreadyFinishedError()
                 self.__current_chunk = self.__prev_chunk.create_next()
                 self.__prev_chunk = None
                 self.__persist.add_pending_part(self.__current_chunk.buffer.path, self.__current_chunk.part_number)
@@ -763,7 +766,7 @@ class S3Object:
             self.__lock.acquire()
 
             if self.__current_chunk is None:
-                # finish() was called while we were writing the buffer, this can only happen in part upload failure.
+                # finish() was called while we were writing the buffer (part upload failure or the flush timer).
                 self.__lock.release()
                 raise AlreadyFinishedError()
 
