@@ -52,6 +52,19 @@ class AlreadyFinishedError(Exception):
     pass
 
 
+# The http() destination's drop set plus S3's 400, 409 and 412, none of which a retry can fix.
+# The one transient 400, RequestTimeout, is retried by botocore before it reaches us.
+PERMANENT_DROP_HTTP_STATUS_CODES = {400, 409, 410, 412, 416, 422, 424, 425, 451, 508}
+
+# Retry cap for transient part-upload failures, like the http() destination's retries() option.
+PART_UPLOAD_MAX_RETRIES = 3
+
+
+def is_permanent_client_error(error: ClientError) -> bool:
+    status_code = error.response.get("ResponseMetadata", {}).get("HTTPStatusCode", 0)
+    return status_code in PERMANENT_DROP_HTTP_STATUS_CODES
+
+
 class S3Chunk:
     MAX_PART_NUMBER = 9999
 
@@ -64,6 +77,8 @@ class S3Chunk:
         path: Optional[Path] = None,
         prev_chunk: Optional[S3Chunk] = None,
     ) -> None:
+        self.upload_retries = 0
+
         if prev_chunk is not None:
             path = Path(prev_chunk.buffer.path.parent, str(uuid4()))
             self.__buffer = prev_chunk.buffer.create_next(path)
@@ -679,6 +694,15 @@ class S3Object:
             self.__upload_chunk(chunk, is_retry=True)
             return
         except ClientError as e:
+            if not is_permanent_client_error(e) and chunk.upload_retries < PART_UPLOAD_MAX_RETRIES:
+                chunk.upload_retries += 1
+                self.__logger.error(
+                    f"Failed to upload part, retrying ({chunk.upload_retries}/{PART_UPLOAD_MAX_RETRIES}): "
+                    f"{self.bucket}/{self.key} ({chunk.part_number}) => {e}"
+                )
+                self.__upload_chunk(chunk, is_retry=True)
+                return
+
             self.__logger.error(
                 f"Critical failure when trying to upload part, finishing S3 object: {self.bucket}/{self.key} => {e}"
             )
