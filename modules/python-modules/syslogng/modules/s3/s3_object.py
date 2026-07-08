@@ -633,7 +633,7 @@ class S3Object:
             extra_args["SSEKMSKeyId"] = self.__persist.kms_key
 
         if self.__persist.canned_acl != "":
-            extra_args["ACL"] = self.__persist.canned_acl,
+            extra_args["ACL"] = self.__persist.canned_acl
 
         if self.__persist.content_type != "":
             extra_args["ContentType"] = self.__persist.content_type
