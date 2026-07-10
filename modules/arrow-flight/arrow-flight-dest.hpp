@@ -107,6 +107,36 @@ public:
     return this->batch_bytes;
   }
 
+  void set_keepalive_time(gint t)
+  {
+    this->keepalive_time = t;
+  }
+
+  gint get_keepalive_time() const
+  {
+    return this->keepalive_time;
+  }
+
+  void set_keepalive_timeout(gint t)
+  {
+    this->keepalive_timeout = t;
+  }
+
+  gint get_keepalive_timeout() const
+  {
+    return this->keepalive_timeout;
+  }
+
+  void set_keepalive_max_pings(gint p)
+  {
+    this->keepalive_max_pings_without_data = p;
+  }
+
+  gint get_keepalive_max_pings() const
+  {
+    return this->keepalive_max_pings_without_data;
+  }
+
   LogTemplateOptions &get_template_options()
   {
     return this->template_options;
@@ -161,6 +191,9 @@ private:
   std::vector<SchemaField> schema_fields;
   std::shared_ptr<arrow::Schema> arrow_schema;
   size_t batch_bytes = 0;
+  gint keepalive_time = -1;
+  gint keepalive_timeout = -1;
+  gint keepalive_max_pings_without_data = -1;
 };
 
 }

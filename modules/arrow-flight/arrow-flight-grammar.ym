@@ -32,6 +32,7 @@
 #include "cfg-grammar-internal.h"
 #include "plugin.h"
 #include "syslog-names.h"
+#include "messages.h"
 
 #include "arrow-flight-dest.h"
 
@@ -63,6 +64,9 @@
 %token KW_CAP_MAP
 %token KW_BATCH_BYTES
 %token KW_TIMEOUT
+%token KW_KEEP_ALIVE
+%token KW_TIME
+%token KW_MAX_PINGS_WITHOUT_DATA
 
 %type <ptr> arrow_flight_dest
 
@@ -89,12 +93,28 @@ arrow_flight_dest_option
   : KW_URL '(' string ')' { arrow_flight_dd_set_url(last_driver, $3); free($3); }
   | KW_PATH '(' template_content ')' { arrow_flight_dd_set_path(last_driver, $3); log_template_unref($3); }
   | KW_BATCH_BYTES '(' positive_integer ')' { arrow_flight_dd_set_batch_bytes(last_driver, $3); }
-  | KW_TIMEOUT '(' nonnegative_integer ')' { }
+  | KW_TIMEOUT '(' nonnegative_integer ')'
+    {
+      msg_warning("WARNING: The arrow-flight timeout() option is deprecated and was broken, "
+                  "use the keep-alive() options instead");
+    }
+  | KW_KEEP_ALIVE '(' arrow_flight_keepalive_options ')'
   | KW_SCHEMA '(' arrow_flight_schema_fields ')'
   | threaded_dest_driver_general_option
   | threaded_dest_driver_workers_option
   | threaded_dest_driver_batch_option
   | { last_template_options = arrow_flight_dd_get_template_options(last_driver); } template_option
+  ;
+
+arrow_flight_keepalive_options
+  : arrow_flight_keepalive_option arrow_flight_keepalive_options
+  |
+  ;
+
+arrow_flight_keepalive_option
+  : KW_TIME '(' nonnegative_integer ')' { arrow_flight_dd_set_keepalive_time(last_driver, $3); }
+  | KW_TIMEOUT '(' nonnegative_integer ')' { arrow_flight_dd_set_keepalive_timeout(last_driver, $3); }
+  | KW_MAX_PINGS_WITHOUT_DATA '(' nonnegative_integer ')' { arrow_flight_dd_set_keepalive_max_pings(last_driver, $3); }
   ;
 
 arrow_flight_schema_fields
