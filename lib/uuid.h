@@ -27,5 +27,6 @@
 #include "syslog-ng.h"
 
 void uuid_gen_random(gchar *buf, gsize buflen);
+void uuid_gen_v7(gchar *buf, gsize buflen);
 
 #endif

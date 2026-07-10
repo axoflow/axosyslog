@@ -34,6 +34,7 @@
 
 #include "apphook.h"
 #include "scratch-buffers.h"
+#include "timeutils/cache.h"
 
 static FilterXExpr *
 _create_uuid_expr(void)
@@ -119,6 +120,90 @@ Test(filterx_func_uuid, rejects_arguments)
   cr_assert_null(res);
 
   filterx_expr_unref(fn);
+}
+
+static FilterXExpr *
+_create_uuid7_expr(void)
+{
+  GError *error = NULL;
+  FilterXExpr *fn = filterx_simple_function_new("uuid7", filterx_function_args_new(NULL, NULL),
+                                                filterx_simple_function_uuid7, &error);
+  cr_assert_null(error);
+  return fn;
+}
+
+Test(filterx_func_uuid, uuid7_format_version_and_variant)
+{
+  FilterXExpr *fn = _create_uuid7_expr();
+  FilterXObject *res = init_and_eval_expr(fn);
+
+  cr_assert_not_null(res);
+  cr_assert(filterx_object_is_type(res, &FILTERX_TYPE_NAME(string)));
+
+  gsize len;
+  const gchar *uuid = filterx_string_get_value_ref(res, &len);
+  cr_assert_not_null(uuid);
+
+  cr_assert_eq(len, 36);
+  cr_assert_eq(uuid[8], '-');
+  cr_assert_eq(uuid[13], '-');
+  cr_assert_eq(uuid[18], '-');
+  cr_assert_eq(uuid[23], '-');
+  cr_assert_eq(uuid[14], '7');
+  cr_assert(uuid[19] == '8' || uuid[19] == '9' || uuid[19] == 'a' || uuid[19] == 'b');
+
+  filterx_object_unref(res);
+  filterx_expr_unref(fn);
+}
+
+Test(filterx_func_uuid, uuid7_embeds_current_timestamp)
+{
+  invalidate_cached_realtime();
+  gint64 before_ms = g_get_real_time() / 1000;
+
+  FilterXExpr *fn = _create_uuid7_expr();
+  FilterXObject *res = init_and_eval_expr(fn);
+  cr_assert_not_null(res);
+
+  gint64 after_ms = g_get_real_time() / 1000;
+
+  gsize len;
+  const gchar *uuid = filterx_string_get_value_ref(res, &len);
+
+  gchar ts_hex[13];
+  memcpy(ts_hex, uuid, 8);
+  memcpy(ts_hex + 8, uuid + 9, 4);
+  ts_hex[12] = '\0';
+  gint64 ts_ms = g_ascii_strtoll(ts_hex, NULL, 16);
+
+  cr_assert_geq(ts_ms, before_ms);
+  cr_assert_leq(ts_ms, after_ms);
+
+  filterx_object_unref(res);
+  filterx_expr_unref(fn);
+}
+
+Test(filterx_func_uuid, uuid7_burst_is_strictly_monotonic)
+{
+  gchar prev[37] = "";
+
+  for (gint i = 0; i < 64; i++)
+    {
+      FilterXExpr *fn = _create_uuid7_expr();
+      FilterXObject *res = init_and_eval_expr(fn);
+      cr_assert_not_null(res);
+
+      gsize len;
+      const gchar *uuid = filterx_string_get_value_ref(res, &len);
+      cr_assert_eq(len, 36);
+      cr_assert(strcmp(prev, uuid) < 0);
+
+      memcpy(prev, uuid, 36);
+      prev[36] = '\0';
+
+      filterx_object_unref(res);
+      filterx_expr_unref(fn);
+    }
 }
 
 static void
