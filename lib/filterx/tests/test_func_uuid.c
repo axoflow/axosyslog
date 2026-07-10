@@ -41,7 +41,7 @@ _create_uuid_expr(void)
 {
   GError *error = NULL;
   FilterXExpr *fn = filterx_simple_function_new("uuid", filterx_function_args_new(NULL, NULL),
-                                                filterx_simple_function_uuid, &error);
+                                                filterx_simple_function_uuid4, &error);
   cr_assert_null(error);
   return fn;
 }
@@ -113,7 +113,7 @@ Test(filterx_func_uuid, rejects_arguments)
 
   GError *error = NULL;
   FilterXExpr *fn = filterx_simple_function_new("uuid", filterx_function_args_new(args, NULL),
-                                                filterx_simple_function_uuid, &error);
+                                                filterx_simple_function_uuid4, &error);
   cr_assert_null(error);
 
   FilterXObject *res = init_and_eval_expr(fn);

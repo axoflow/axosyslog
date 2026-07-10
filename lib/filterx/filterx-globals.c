@@ -122,7 +122,8 @@ _simple_init(void)
   g_assert(filterx_builtin_simple_function_register("str_lstrip", filterx_simple_function_str_lstrip));
   g_assert(filterx_builtin_simple_function_register("str_rstrip", filterx_simple_function_str_rstrip));
   g_assert(filterx_builtin_simple_function_register("str_replace", filterx_simple_function_str_replace));
-  g_assert(filterx_builtin_simple_function_register("uuid", filterx_simple_function_uuid));
+  g_assert(filterx_builtin_simple_function_register("uuid", filterx_simple_function_uuid4));
+  g_assert(filterx_builtin_simple_function_register("uuid4", filterx_simple_function_uuid4));
   g_assert(filterx_builtin_simple_function_register("uuid7", filterx_simple_function_uuid7));
   g_assert(filterx_builtin_simple_function_register("md5", filterx_simple_function_md5));
   g_assert(filterx_builtin_simple_function_register("sha1", filterx_simple_function_sha1));
