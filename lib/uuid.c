@@ -25,6 +25,18 @@
 
 #include <openssl/rand.h>
 
+static void
+_format_uuid(const guchar *bytes, gchar *buf, gsize buflen)
+{
+  g_snprintf(buf, buflen,
+             "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
+             bytes[0], bytes[1], bytes[2], bytes[3],
+             bytes[4], bytes[5],
+             bytes[6], bytes[7],
+             bytes[8], bytes[9],
+             bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15]);
+}
+
 void
 uuid_gen_random(gchar *buf, gsize buflen)
 {
@@ -38,11 +50,5 @@ uuid_gen_random(gchar *buf, gsize buflen)
   rnd[6] = (rnd[6] & 0x0F) | 0x40; /* version 4: top nibble of byte 6 */
   rnd[8] = (rnd[8] & 0x3F) | 0x80; /* RFC 4122 variant: top two bits of byte 8 */
 
-  g_snprintf(buf, buflen,
-             "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
-             rnd[0], rnd[1], rnd[2], rnd[3],
-             rnd[4], rnd[5],
-             rnd[6], rnd[7],
-             rnd[8], rnd[9],
-             rnd[10], rnd[11], rnd[12], rnd[13], rnd[14], rnd[15]);
+  _format_uuid(rnd, buf, buflen);
 }
