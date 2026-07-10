@@ -158,13 +158,6 @@ arrow_flight_dd_set_batch_bytes(LogDriver *d, glong b)
 }
 
 void
-arrow_flight_dd_set_timeout(LogDriver *d, glong timeout)
-{
-  ArrowFlightDestDriver *self = (ArrowFlightDestDriver *) d;
-  self->cpp->set_timeout(timeout);
-}
-
-void
 arrow_flight_dd_add_string_schema_field(LogDriver *d, const gchar *name, LogTemplate *value)
 {
   ArrowFlightDestDriver *self = (ArrowFlightDestDriver *) d;

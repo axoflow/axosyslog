@@ -107,16 +107,6 @@ public:
     return this->batch_bytes;
   }
 
-  void set_timeout(glong t)
-  {
-    this->timeout = t;
-  }
-
-  glong get_timeout() const
-  {
-    return this->timeout;
-  }
-
   LogTemplateOptions &get_template_options()
   {
     return this->template_options;
@@ -171,7 +161,6 @@ private:
   std::vector<SchemaField> schema_fields;
   std::shared_ptr<arrow::Schema> arrow_schema;
   size_t batch_bytes = 0;
-  glong timeout = 0;
 };
 
 }
