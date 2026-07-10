@@ -116,7 +116,17 @@ DestinationWorker::connect()
 {
   DestinationDriver *owner = this->get_owner();
 
-  auto client_result = arrow::flight::FlightClient::Connect(this->location);
+  auto client_options = arrow::flight::FlightClientOptions::Defaults();
+  if (owner->get_keepalive_time() != -1)
+    client_options.generic_options.emplace_back("grpc.keepalive_time_ms", owner->get_keepalive_time());
+  if (owner->get_keepalive_timeout() != -1)
+    client_options.generic_options.emplace_back("grpc.keepalive_timeout_ms", owner->get_keepalive_timeout());
+  if (owner->get_keepalive_max_pings() != -1)
+    client_options.generic_options.emplace_back("grpc.http2.max_pings_without_data",
+                                                owner->get_keepalive_max_pings());
+  client_options.generic_options.emplace_back("grpc.keepalive_permit_without_calls", 1);
+
+  auto client_result = arrow::flight::FlightClient::Connect(this->location, client_options);
   if (!client_result.ok())
     {
       msg_error("arrow-flight: Failed to connect to server",

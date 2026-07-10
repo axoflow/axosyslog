@@ -45,7 +45,10 @@ static CfgLexerKeyword arrow_flight_keywords[] =
   { "TIMESTAMP",     KW_CAP_TIMESTAMP },
   { "MAP",           KW_CAP_MAP },
   { "batch_bytes",   KW_BATCH_BYTES },
-  { "timeout",       KW_TIMEOUT, KWS_OBSOLETE, "The timeout() option is deprecated and was broken, use the keep-alive() options instead." },
+  { "timeout",       KW_TIMEOUT },
+  { "keep_alive",    KW_KEEP_ALIVE },
+  { "time",          KW_TIME },
+  { "max_pings_without_data", KW_MAX_PINGS_WITHOUT_DATA },
   { NULL }
 };
 
