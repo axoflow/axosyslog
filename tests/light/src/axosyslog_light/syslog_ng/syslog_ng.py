@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from __future__ import annotations
 #############################################################################
 # Copyright (c) 2015-2018 Balabit
 #
@@ -27,18 +28,21 @@ from pathlib import Path
 from subprocess import Popen
 
 from axosyslog_light.common.blocking import wait_until_false
-from axosyslog_light.common.blocking import wait_until_true
+from axosyslog_light.common.blocking import wait_until_true_custom
 from axosyslog_light.syslog_ng.console_log_reader import ConsoleLogReader
 from axosyslog_light.syslog_ng.syslog_ng_executor import SyslogNgExecutor
 from axosyslog_light.syslog_ng.syslog_ng_executor import SyslogNgStartParams
 from axosyslog_light.syslog_ng.syslog_ng_paths import SyslogNgPaths
-from axosyslog_light.syslog_ng_config.syslog_ng_config import SyslogNgConfig
 from axosyslog_light.syslog_ng_ctl.legacy_stats_handler import LegacyStatsHandler
 from axosyslog_light.syslog_ng_ctl.prometheus_stats_handler import PrometheusStatsHandler
 from axosyslog_light.syslog_ng_ctl.syslog_ng_ctl import SyslogNgCtl
-from axosyslog_light.testcase_parameters.testcase_parameters import TestcaseParameters
+
+if typing.TYPE_CHECKING:
+    from axosyslog_light.syslog_ng_config.syslog_ng_config import SyslogNgConfig
+    from axosyslog_light.testcase_parameters.testcase_parameters import TestcaseParameters
 
 logger = logging.getLogger(__name__)
+CONTROL_SOCKET_TIMEOUT = 60
 
 
 class SyslogNg(object):
@@ -198,7 +202,7 @@ class SyslogNg(object):
                 self.__validate_crash_returncode(self._process.returncode)
                 self.__error_handling("syslog-ng is not running")
             return s._syslog_ng_ctl.is_control_socket_alive()
-        return wait_until_true(is_alive, self)
+        return wait_until_true_custom(is_alive, (self,), timeout=CONTROL_SOCKET_TIMEOUT)
 
     def __wait_for_start(self) -> None:
         # wait for start and check start result
