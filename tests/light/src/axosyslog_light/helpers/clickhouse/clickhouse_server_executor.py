@@ -22,6 +22,9 @@
 #
 #############################################################################
 import logging
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Optional
 
 import clickhouse_connect
 import psutil
@@ -50,6 +53,14 @@ CLICKHOUSE_OPTIONS_WITH_SCHEMA = {
 }
 
 
+@dataclass
+class ClickhouseServerTLS:
+    cert_file: Path
+    key_file: Path
+    ca_cert_file: Optional[Path] = None
+    require_client_auth: bool = False
+
+
 class ClickhouseServerExecutor():
     def __init__(self, testcase_parameters) -> None:
         self.process = None
@@ -58,7 +69,25 @@ class ClickhouseServerExecutor():
         copy_shared_file(testcase_parameters, "clickhouse_server_config.xml")
         copy_shared_file(testcase_parameters, "clickhouse_users.xml")
 
-    def start(self, clickhouse_ports) -> None:
+    @staticmethod
+    def _grpc_ssl_substitutions(tls: Optional[ClickhouseServerTLS]) -> dict:
+        if tls is None:
+            return {
+                "ALLOCATED_GRPC_ENABLE_SSL": "false",
+                "ALLOCATED_GRPC_SSL_CERT_FILE": "/path/to/ssl_cert_file",
+                "ALLOCATED_GRPC_SSL_KEY_FILE": "/path/to/ssl_key_file",
+                "ALLOCATED_GRPC_SSL_REQUIRE_CLIENT_AUTH": "false",
+                "ALLOCATED_GRPC_SSL_CA_CERT_FILE": "/path/to/ssl_ca_cert_file",
+            }
+        return {
+            "ALLOCATED_GRPC_ENABLE_SSL": "true",
+            "ALLOCATED_GRPC_SSL_CERT_FILE": str(Path(tls.cert_file).resolve()),
+            "ALLOCATED_GRPC_SSL_KEY_FILE": str(Path(tls.key_file).resolve()),
+            "ALLOCATED_GRPC_SSL_REQUIRE_CLIENT_AUTH": "true" if tls.require_client_auth else "false",
+            "ALLOCATED_GRPC_SSL_CA_CERT_FILE": str(Path(tls.ca_cert_file).resolve()) if tls.ca_cert_file else "/path/to/ssl_ca_cert_file",
+        }
+
+    def start(self, clickhouse_ports, tls: Optional[ClickhouseServerTLS] = None) -> None:
         command = [
             "clickhouse-server", "start",
             "--config-file", "clickhouse_server_config.xml",
@@ -67,10 +96,15 @@ class ClickhouseServerExecutor():
         self.clickhouse_server_ports.append(clickhouse_ports.http_port)
         self.clickhouse_server_ports.append(clickhouse_ports.grpc_port)
 
+        substitutions = {
+            "ALLOCATED_HTTP_PORT": str(clickhouse_ports.http_port),
+            "ALLOCATED_INTERSERVER_GRPC_PORT": str(clickhouse_ports.grpc_port),
+            **self._grpc_ssl_substitutions(tls),
+        }
         with open("clickhouse_server_config.xml", "r", encoding="utf-8") as file:
             config = file.read()
-        config = config.replace("ALLOCATED_HTTP_PORT", str(clickhouse_ports.http_port))
-        config = config.replace("ALLOCATED_INTERSERVER_GRPC_PORT", str(clickhouse_ports.grpc_port))
+        for placeholder, value in substitutions.items():
+            config = config.replace(placeholder, value)
         with open("clickhouse_server_config.xml", "w", encoding="utf-8") as file:
             file.write(config)
 
