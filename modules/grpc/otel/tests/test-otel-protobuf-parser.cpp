@@ -304,6 +304,7 @@ Test(otel_protobuf_parser, log_record_body_types)
   std::string serialized_kvlist_value = log_record.body().SerializeAsString();
   _assert_log_msg_value(msg, ".otel.log.body", serialized_kvlist_value.c_str(), serialized_kvlist_value.length(),
                         LM_VT_PROTOBUF);
+  log_msg_unref(msg);
 
   msg = _create_dummy_log_msg();
   ArrayValue *protobuf_list_value = log_record.mutable_body()->mutable_array_value();

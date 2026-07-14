@@ -13,7 +13,7 @@ modules_systemd_journal_tests_test_systemd_journal_SOURCES = \
 	modules/systemd-journal/tests/test-source.c
 
 modules_systemd_journal_tests_test_systemd_journal_CFLAGS = $(TEST_CFLAGS) $(libsystemd_CFLAGS) -I$(top_srcdir)/modules/systemd-journal
-modules_systemd_journal_tests_test_systemd_journal_LDADD = $(TEST_LDADD) $(IVYKIS_LIBS)
+modules_systemd_journal_tests_test_systemd_journal_LDADD = $(TEST_LDADD) $(IVYKIS_LIBS) -dlpreopen $(top_builddir)/modules/systemd-journal/libsdjournal.la
 
 modules_systemd_journal_tests_test_journald_mock_SOURCES = \
 	modules/systemd-journal/tests/test-journald-mock.c \

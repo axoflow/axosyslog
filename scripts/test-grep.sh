@@ -27,7 +27,6 @@ sanitizer_exception_list=(
   "modules/correlation/tests/test_patterndb"
   "modules/secure-logging/tests/test_secure_logging"
   "modules/afmongodb/tests/test-mongodb-config"
-  "modules/grpc/otel/tests/test_otel_protobuf_parser"
 )
 
 on_exception_list() {
