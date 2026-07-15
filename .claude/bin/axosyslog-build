@@ -8,7 +8,7 @@
 # worktree -- and build out-of-tree in build/; dbld and alpine need a plain
 # checkout.
 #
-# Usage:  axosyslog-build [mode] [flavors]
+# Usage:  axosyslog-build [mode] [flavors] [actions]
 #
 #   modes:   cmake|cm (default) | autotools|auto|at | dbld | alpine
 #            dbld builds in the build container under dbld/build/ and installs
@@ -30,6 +30,16 @@
 #            --no-install          skip the install step (cmake/autotools only)
 #            --no-jit              disable the filterx LLVM JIT (default: on)
 #
+#   actions: --check               run the unit tests after the build (alpine:
+#                                  they already ran inside the image build)
+#            --light               run the light/e2e suite after build+install
+#                                  (alpine: runs against the built image)
+#
+#   Arguments after `--` go to that action's test runner, so pass them with a
+#   single action: ctest on cmake (`--check -- -R <name>` runs a single test),
+#   make check on autotools/dbld, pytest for --light (e.g. --light -- -k name
+#   -n0). They cannot carry spaces or globs (the runner re-splits them).
+#
 # Flavors are a closed set -- add new ones here on purpose rather than improvising
 # configure flags.
 set -euo pipefail
@@ -41,6 +51,9 @@ CLEAN=0
 MONOLITHIC=0
 DO_INSTALL=1
 NO_JIT=0
+DO_CHECK=0
+DO_LIGHT=0
+EXTRA_ARGS=()
 
 CC="${CC:-clang}"
 CXX="${CXX:-clang++}"
@@ -76,6 +89,9 @@ while [ $# -gt 0 ]; do
     --jobs=*)       JOBS="${1#*=}" ;;
     --no-install)   DO_INSTALL=0 ;;
     --no-jit)       NO_JIT=1 ;;
+    --check)        DO_CHECK=1 ;;
+    --light)        DO_LIGHT=1 ;;
+    --)             shift; EXTRA_ARGS=("$@"); break ;;
     -h|--help)      usage 0 ;;
     *)              fail "unknown argument: $1  (flavors are a closed set; add new ones to axosyslog-build on purpose)" ;;
   esac
@@ -130,6 +146,16 @@ if [ "$MODE" = alpine ] && { [ -n "$SANITIZER" ] || [ "$CLEAN" -eq 1 ] || [ "$NO
   fail "alpine is a fixed production build; it takes no build flavors, only --check/--light"
 fi
 
+# `-- <args>` belong to a test runner, so exactly one action must own them.
+if [ "${#EXTRA_ARGS[@]}" -gt 0 ] && [ "$((DO_CHECK + DO_LIGHT))" -ne 1 ]; then
+  fail "arguments after -- need exactly one of --check/--light to receive them"
+fi
+
+# --light needs the installed binary (alpine runs against its image, rejected above)
+if [ "$DO_LIGHT" -eq 1 ] && [ "$DO_INSTALL" -eq 0 ]; then
+  fail "--light needs the installed binary; drop --no-install"
+fi
+
 # -j defaults only where the wrapper drives make/ninja; dbld/alpine manage their own
 if [ -z "$JOBS" ]; then
   case "$MODE" in
@@ -163,6 +189,18 @@ if [ "$MODE" = alpine ]; then
   fi
   ( cd "$ROOT" && ./dbld/rules docker )
   say "done: image built via ./dbld/rules docker"
+
+  [ "$DO_CHECK" -eq 1 ] && say "note: unit tests ran during the image build (APKBUILD check())"
+
+  # ./dbld/rules docker tagged the image :dbld-snapshot
+  if [ "$DO_LIGHT" -eq 1 ]; then
+    light_image="${CONTAINER_REGISTRY:-ghcr.io/axoflow}/axosyslog:dbld-snapshot"
+    say "light/e2e against the image via the docker runner: $light_image"
+    ( cd "$ROOT/tests/light" \
+      && poetry install \
+      && poetry run python -m pytest --showlocals --verbosity=3 functional_tests \
+           --runner docker --docker-image "$light_image" "${EXTRA_ARGS[@]}" )
+  fi
   exit 0
 fi
 
@@ -266,11 +304,47 @@ build_dbld() {
   BIN="$ROOT/dbld/install/sbin/syslog-ng"
 }
 
+run_check() {
+  case "$MODE" in
+    autotools)
+      say "unit tests: make -j$JOBS check${EXTRA_ARGS[*]:+  ${EXTRA_ARGS[*]}}"
+      make -C "$ROOT/build" -j"$JOBS" check "${EXTRA_ARGS[@]}" ;;
+    cmake)
+      say "unit tests: ctest -j$JOBS${EXTRA_ARGS[*]:+  ${EXTRA_ARGS[*]}}"
+      # the cmake layout links systemd-journal both shared and static, so the
+      # duplicated used_namespaces trips ASan's ODR check; autotools links it
+      # static only
+      ASAN_OPTIONS="detect_odr_violation=0" \
+      ctest --test-dir "$ROOT/build" --parallel "$JOBS" --output-on-failure "${EXTRA_ARGS[@]}" ;;
+    dbld)
+      say "unit tests: dbld make-check${EXTRA_ARGS[*]:+  MAKE_ARGS=${EXTRA_ARGS[*]}}"
+      ( cd "$ROOT" && ./dbld/rules make-check MAKE_ARGS="${EXTRA_ARGS[*]}" ) ;;
+  esac
+}
+
+run_light() {
+  case "$MODE" in
+    autotools)
+      say "light/e2e: make light-check${EXTRA_ARGS[*]:+  PYTEST_OPTS=${EXTRA_ARGS[*]}}"
+      make -C "$ROOT/build" light-check PYTEST_OPTS="${EXTRA_ARGS[*]}" ;;
+    cmake)
+      say "light/e2e: cmake light-check${EXTRA_ARGS[*]:+  EXTRA_ARGS=${EXTRA_ARGS[*]}}"
+      EXTRA_ARGS="${EXTRA_ARGS[*]}" \
+      cmake --build "$ROOT/build" --target light-check ;;
+    dbld)
+      say "light/e2e: dbld make-light-check${EXTRA_ARGS[*]:+  PYTEST_OPTS=${EXTRA_ARGS[*]}}"
+      ( cd "$ROOT" && PYTEST_OPTS="${EXTRA_ARGS[*]}" ./dbld/rules make-light-check ) ;;
+  esac
+}
+
 case "$MODE" in
   autotools) build_autotools ;;
   cmake)     build_cmake ;;
   dbld)      build_dbld ;;
 esac
+
+[ "$DO_CHECK" -eq 1 ] && run_check
+[ "$DO_LIGHT" -eq 1 ] && run_light
 
 if [ -n "$BIN" ] && [ "$DO_INSTALL" -eq 1 ] && [ -x "$BIN" ]; then
   say "installed binary: $BIN"
