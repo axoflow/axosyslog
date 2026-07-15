@@ -13,8 +13,8 @@
 #   flavors: --sanitizer=address|thread|undefined|none
 #                                  default: address
 #            --clean               fresh out-of-tree build dir
-#            --monolithic          link modules into the core lib (autotools/dbld
-#                                  only). Default: dynamic.
+#            --monolithic          link modules into the core lib (autotools/dbld only;
+#                                  --with-linking-mode=monolithic). Default: dynamic.
 #            -j N | --jobs N       parallelism (default: AXOSYSLOG_BUILD_JOBS if
 #                                  set, else nproc-2, floor 1)
 #            --no-install          skip the install step
@@ -107,7 +107,45 @@ ROOT="$(git -C "$(pwd)" rev-parse --show-toplevel 2>/dev/null)" || fail "not ins
 
 BIN=""
 
-build_autotools() { fail "autotools: not implemented yet"; }
+build_autotools() {
+  local prefix="$ROOT/build/install"
+  local extra=()
+  [ "$SANITIZER" != none ] && extra+=(--with-sanitizer="$SANITIZER")
+  [ "$MONOLITHIC" -eq 1 ] && extra+=(--with-linking-mode=monolithic)
+  [ "$NO_JIT" -eq 1 ] && extra+=(--disable-jit)
+
+  if [ "$CLEAN" -eq 1 ]; then
+    say "clean: wiping build/"
+    rm -rf "$ROOT/build"
+  fi
+
+  if [ "$CLEAN" -eq 1 ] || [ ! -x "$ROOT/configure" ]; then
+    say "bootstrap: ./autogen.sh"
+    ( cd "$ROOT" && ./autogen.sh )
+  fi
+
+  mkdir -p "$ROOT/build"
+  if [ ! -f "$ROOT/build/config.status" ]; then
+    say "configure (autotools, sanitizer=$SANITIZER)"
+    # config.status --recheck replays only argument-passed vars, so CC/CXX ride as args
+    ( cd "$ROOT/build" && ../configure \
+        CC="$CC" CXX="$CXX" \
+        "${extra[@]}" \
+        --enable-debug --enable-extra-warnings --enable-all-modules \
+        --disable-java --disable-java-modules --enable-stackdump \
+        --prefix="$prefix" )
+  else
+    warn "reusing existing build/config.status (run --clean to change flavors)"
+  fi
+
+  say "make -j$JOBS"
+  make -C "$ROOT/build" -j"$JOBS"
+  if [ "$DO_INSTALL" -eq 1 ]; then
+    say "make install"
+    make -C "$ROOT/build" install
+  fi
+  BIN="$prefix/sbin/syslog-ng"
+}
 
 build_cmake() {
   local prefix="$ROOT/build/install"
