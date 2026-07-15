@@ -58,3 +58,4 @@ tests/light/dist
 aclocal.m4-e
 .envrc
 .clangd
+.claude/settings.local.json
