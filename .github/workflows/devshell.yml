@@ -39,6 +39,7 @@ jobs:
       - name: Setup environment
         env:
           CC: ${{ matrix.cc }}
+          BUILD_TOOL: ${{ matrix.build-tool }}
         run: |
           . .github/workflows/gh-tools.sh
 
@@ -71,8 +72,19 @@ jobs:
             -DPYTHON_VERSION=3
             `[ $CC = clang ] && echo '-DSANITIZER=address' || true`
           "
+
+          CMAKE_GENERATOR_FLAG=""
+          if [ "$BUILD_TOOL" = cmake ] && [ "$CC" = clang ]; then
+            CMAKE_GENERATOR_FLAG="-G Ninja"
+            CMAKE_FLAGS="$CMAKE_FLAGS
+              -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=lld
+              -DCMAKE_SHARED_LINKER_FLAGS=-fuse-ld=lld
+              -DCMAKE_MODULE_LINKER_FLAGS=-fuse-ld=lld
+            "
+          fi
+
           PYTEST_XDIST_AUTO_NUM_WORKERS=16
-          gh_export COREFILES_DIR PYTHONUSERBASE CC CXX SYSLOG_NG_INSTALL_DIR CONFIGURE_FLAGS CMAKE_FLAGS PYTEST_XDIST_AUTO_NUM_WORKERS
+          gh_export COREFILES_DIR PYTHONUSERBASE CC CXX SYSLOG_NG_INSTALL_DIR CONFIGURE_FLAGS CMAKE_FLAGS CMAKE_GENERATOR_FLAG PYTEST_XDIST_AUTO_NUM_WORKERS
           gh_path "${PYTHONUSERBASE}"
 
       - name: autogen.sh
@@ -91,7 +103,7 @@ jobs:
         run: |
           mkdir build
           cd build
-          cmake ${CMAKE_FLAGS} ..
+          cmake ${CMAKE_GENERATOR_FLAG} ${CMAKE_FLAGS} ..
 
       - name: build (autotools)
         if: matrix.build-tool == 'autotools'
