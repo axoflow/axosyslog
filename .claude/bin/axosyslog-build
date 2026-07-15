@@ -15,7 +15,8 @@
 #            to dbld/install/; alpine produces the musl production docker image.
 #
 #   The default is cmake with the full development stack: clang, lld, ninja,
-#   the filterx LLVM JIT, and the AddressSanitizer.
+#   the filterx LLVM JIT, and the AddressSanitizer. Missing tooling for the
+#   selected setup fails early with an install hint (native modes only).
 #
 #   flavors: --sanitizer=address|thread|undefined|none
 #                                  default: address (dbld: none; alpine: fixed
@@ -68,6 +69,29 @@ fail() { printf '\033[1;31mxx\033[0m %s\n' "$*" >&2; exit 1; }
 usage() {
   awk 'NR==1{next} /^#/{sub(/^# ?/,""); print; next} /^$/{print; next} {exit}' "$0"
   exit "${1:-0}"
+}
+
+have() { command -v "$1" >/dev/null 2>&1; }
+
+# presence hint only -- catches a host with no LLVM at all; the build systems do the real discovery
+have_llvm() {
+  have llvm-config && return 0
+  local c
+  for c in /usr/bin/llvm-config-* /usr/lib/llvm-*/bin/llvm-config \
+           /opt/homebrew/opt/llvm/bin/llvm-config /usr/local/opt/llvm/bin/llvm-config; do
+    [ -x "$c" ] && return 0
+  done
+  return 1
+}
+
+have_ax_macros() {
+  # check the macro file, not just the dir: the aclocal dir preexists with
+  # automake's own macros, so a dir test false-passes without autoconf-archive
+  local d
+  for d in "$(aclocal --print-ac-dir 2>/dev/null)" /usr/local/share/aclocal /opt/homebrew/share/aclocal; do
+    [ -n "$d" ] && [ -f "$d/ax_prefix_config_h.m4" ] && return 0
+  done
+  return 1
 }
 
 default_jobs() {
@@ -184,6 +208,38 @@ if [ -f "$ROOT/.git" ]; then
   esac
 fi
 
+# --- fail early on missing tooling (host builds only) -----------------------
+# dbld/alpine build inside a container image that already carries the toolchain.
+require_tools() {
+  case "$MODE" in autotools|cmake) ;; *) return 0 ;; esac
+
+  local missing=()
+  have "$CC"  || missing+=("$CC (C compiler; the default stack uses clang)")
+  have "$CXX" || missing+=("$CXX (C++ compiler)")
+
+  if [ "$MODE" = cmake ]; then
+    have cmake || missing+=("cmake")
+    have ninja || missing+=("ninja (package: ninja-build)")
+    [ "$NO_LLD" -eq 0 ] && { have ld.lld || have lld || missing+=("lld (ld.lld) -- or pass --no-lld"); }
+  else
+    have make       || missing+=("make")
+    have autoreconf || missing+=("autoreconf (package: autoconf)")
+    have automake   || missing+=("automake")
+    have libtoolize || have glibtoolize || missing+=("libtool")
+    have_ax_macros  || missing+=("autoconf-archive (autogen.sh needs its AX_* macros)")
+  fi
+
+  [ "$NO_JIT" -eq 0 ] && { have_llvm || missing+=("llvm (llvm-config; the filterx JIT needs it) -- or pass --no-jit"); }
+
+  [ "${#missing[@]}" -eq 0 ] && return 0
+
+  warn "missing tooling for the default $MODE setup:"
+  local m
+  for m in "${missing[@]}"; do warn "  - $m"; done
+  warn "install it (Debian/Ubuntu: sudo apt install clang lld llvm ninja-build cmake autoconf automake autoconf-archive libtool)"
+  fail "or choose a lighter setup (e.g. --no-jit, --no-lld, or a different mode)."
+}
+
 if [ "$MODE" = alpine ]; then
   say "alpine: musl production image via dbld docker (this is slow)"
   # pull the exact builder the prod dockerfile FROMs (hardcoded ghcr.io/axoflow),
@@ -211,6 +267,8 @@ if [ "$MODE" = alpine ]; then
   fi
   exit 0
 fi
+
+require_tools
 
 BIN=""
 
