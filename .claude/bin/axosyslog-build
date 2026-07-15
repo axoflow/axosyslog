@@ -21,7 +21,8 @@
 #   flavors: --sanitizer=address|thread|undefined|none
 #                                  default: address (dbld: none; alpine: fixed
 #                                  production build, rejects the flag)
-#            --clean               fresh out-of-tree build dir
+#            --clean               fresh out-of-tree build dir + lib/ivykis recovery;
+#                                  also the supported way to switch modes in a tree
 #            --monolithic          link modules into the core lib (autotools/dbld only;
 #                                  --with-linking-mode=monolithic). Default: dynamic.
 #            -j N | --jobs N       build parallelism, cmake/autotools only
@@ -208,6 +209,24 @@ if [ -f "$ROOT/.git" ]; then
   esac
 fi
 
+# --- one build mode per tree; switch with --clean ---------------------------
+# Mixing modes regenerates lib/ivykis with a different libtool and corrupts it.
+# --clean is the blunt reset (fresh build dir + ivykis recovery), every use.
+detect_mode() {
+  # first match wins: after a sanctioned switch (cmake --clean in a dbld tree) both
+  # a native and a dbld marker exist, since a host build never deletes dbld/build/
+  if   [ -f "$ROOT/build/CMakeCache.txt" ];      then echo cmake
+  elif [ -f "$ROOT/build/config.status" ];       then echo autotools
+  elif [ -f "$ROOT/dbld/build/config.status" ];  then echo dbld
+  else echo none
+  fi
+}
+existing="$(detect_mode)"
+# alpine builds in the container and owns no in-tree build dir, so it is exempt.
+if [ "$MODE" != alpine ] && [ "$existing" != none ] && [ "$existing" != "$MODE" ] && [ "$CLEAN" -eq 0 ]; then
+  fail "this tree is set up for '$existing'; building '$MODE' on top of it would corrupt lib/ivykis. Re-run with --clean to switch (it wipes build/ and recovers lib/ivykis)."
+fi
+
 # --- fail early on missing tooling (host builds only) -----------------------
 # dbld/alpine build inside a container image that already carries the toolchain.
 require_tools() {
@@ -270,6 +289,12 @@ fi
 
 require_tools
 
+ivykis_recover() {
+  say "recovering lib/ivykis (clean -fdx)"
+  # best-effort: on a fresh clone lib/ivykis isn't a repo yet; --clean must still bootstrap
+  git -C "$ROOT/lib/ivykis" clean -fdx >/dev/null 2>&1 || true
+}
+
 BIN=""
 
 build_autotools() {
@@ -282,6 +307,7 @@ build_autotools() {
   if [ "$CLEAN" -eq 1 ]; then
     say "clean: wiping build/"
     rm -rf "$ROOT/build"
+    ivykis_recover
   fi
 
   if [ "$CLEAN" -eq 1 ] || [ ! -x "$ROOT/configure" ]; then
@@ -330,6 +356,7 @@ build_cmake() {
   if [ "$CLEAN" -eq 1 ]; then
     say "clean: wiping build/"
     rm -rf "$ROOT/build"
+    ivykis_recover
   fi
 
   if [ ! -f "$ROOT/build/CMakeCache.txt" ]; then
@@ -366,6 +393,10 @@ build_dbld() {
   if [ "$CLEAN" -eq 1 ]; then
     say "clean: ./dbld/rules clean"
     ( cd "$ROOT" && ./dbld/rules clean ) || true
+    # drop the native build/ marker too, or detect_mode keeps refusing the
+    # switched tree
+    rm -rf "$ROOT/build"
+    ivykis_recover
   fi
 
   # the $CLEAN term: a failed (swallowed) clean must not skip the re-bootstrap
