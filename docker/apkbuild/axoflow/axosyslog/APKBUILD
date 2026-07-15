@@ -12,6 +12,12 @@ url="https://axoflow.com/docs/axosyslog/"
 arch="all"
 license="GPL-3.0-or-later"
 options="!strip" # unit tests require https://github.com/Snaipe/Criterion with deps
+
+# Criterion issues
+case "$CARCH" in
+armv7) options="$options !check" ;;
+esac
+
 makedepends="
 	apache-arrow-dev
 	bison
