@@ -1,0 +1,158 @@
+#!/usr/bin/env python3
+"""AxoSyslog build gate -- Claude Code PreToolUse hook (Bash matcher).
+
+DENIES directly-invoked build-system commands (autogen/autoreconf/configure/
+make/cmake/ninja/ctest, and the dbld build|test|install targets) inside the
+AxoSyslog repo, to keep builds going through `axosyslog-build`. Coarse backstop,
+not a sandbox: only the head of each shell segment is classified, so a build
+behind an interpreter or unusual quoting can pass. Version/help queries,
+non-building dbld/rules targets (shell-devshell), and anything outside the repo
+pass. REPO is derived from this file's path, so it works in any clone.
+"""
+import json
+import os
+import re
+import shlex
+import sys
+
+# <repo>/.claude/hooks/axosyslog-build-gate -> <repo>
+REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+
+DENY_MSG = (
+    "Blocked by axosyslog-build-gate: use `axosyslog-build [mode] [--sanitizer=...] "
+    "[--clean] [-j N] [--check] [--light]` instead of raw build/test/install commands "
+    "in the AxoSyslog tree (see CLAUDE.md). Modes: cmake (default)|autotools|dbld|alpine. "
+    "Need a flavor axosyslog-build lacks? Add it to axosyslog-build on purpose -- do not "
+    "improvise configure flags or partial builds."
+)
+
+# Command boundaries: separators (; && || | &, newline) and grouping chars
+# ( ) { }. Split BEFORE shlex, which only tokenizes these when space-padded --
+# else `a; make`, `(make)`, `{ make; }` hide the build command in a token.
+_SPLIT = re.compile(r"&&|\|\||[;&|()\n{}]")
+LEADING_WRAPPERS = {"env", "sudo", "nice", "time", "ionice", "stdbuf", "exec"}
+# The build-system entry points the wrapper owns.
+BUILD_TOOLS = {"autogen.sh", "autoreconf", "configure", "make", "cmake", "ninja", "ctest"}
+# dbld/rules targets axosyslog-build runs (+ docker-builder, the slow wrong turn
+# it avoids). Release targets (deb/rpm/tarball) stay ungated.
+DBLD_WRAPPER_TARGETS = {"bootstrap", "docker", "docker-builder"}
+_VAR = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
+
+
+def _is_help(arg):
+    # gated tools exit on version/help before doing work; match the real
+    # spellings (make -v, cmake -version, --help=short)
+    return arg in ("-h", "-v", "-V", "-help", "-version") or \
+        arg.startswith("--help") or arg.startswith("--version")
+
+
+def _allow():
+    sys.exit(0)
+
+
+def _deny(reason):
+    print(json.dumps({
+        "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "deny",
+            "permissionDecisionReason": DENY_MSG + "\n(matched: " + reason + ")",
+        }
+    }))
+    sys.exit(0)
+
+
+def _tokenize(piece):
+    try:
+        return shlex.split(piece, comments=False, posix=True)
+    except ValueError:
+        # fail-closed exception to fail-open: an unbalanced quote still gets a
+        # coarse scan -- guessing nothing would be a free bypass.
+        return piece.split()
+
+
+def _strip_wrappers(seg):
+    i = 0
+    saw_wrapper = False
+    while i < len(seg):
+        t = seg[i]
+        if t in LEADING_WRAPPERS:
+            saw_wrapper = True
+            i += 1
+            continue
+        if _VAR.match(t):
+            i += 1
+            continue
+        # skip a wrapper's own option flags, so `sudo -E make` / `env -i make`
+        # still classify (coarse: a separate-value flag like `nice -n 10` hides what follows)
+        if saw_wrapper and t.startswith("-"):
+            i += 1
+            continue
+        break
+    return seg[i:]
+
+
+def _first_target(args):
+    for a in args:
+        if a.startswith("-") or _VAR.match(a):
+            continue
+        return a
+    return ""
+
+
+def _classify_segment(seg):
+    cmd = _strip_wrappers(seg)
+    if not cmd:
+        return None
+    exe = cmd[0]
+    base = os.path.basename(exe)     # ./configure, ../configure, /x/configure -> configure
+    args = cmd[1:]
+
+    if base == "axosyslog-build":    # the wrapper itself
+        return None
+    if base in BUILD_TOOLS:
+        if any(_is_help(a) for a in args):
+            return None
+        return base
+    if base == "rules":              # any script named `rules` inside this repo is dbld's
+        target = _first_target(args)
+        if target in DBLD_WRAPPER_TARGETS:
+            return "dbld/rules " + target
+        if target.startswith("make-"):          # make-install, make-check, make-light-check, ...
+            return "dbld/rules " + target
+        return None
+    return None
+
+
+def main():
+    data = json.load(sys.stdin)
+    if data.get("tool_name") != "Bash":
+        _allow()
+    # fall back to the hook's cwd if the event omits one (a missing cwd must not
+    # disable the gate); realpath it so a symlinked cwd still matches the
+    # resolved REPO.
+    cwd = (data.get("cwd") or "").strip() or os.getcwd()
+    cwd = os.path.realpath(cwd)
+    command = ((data.get("tool_input") or {}).get("command")) or ""
+    if not command.strip():
+        _allow()
+
+    # Scope: only inside this repo (covers the main checkout and every worktree
+    # under it). Everything else is none of this hook's business.
+    if not (cwd == REPO or cwd.startswith(REPO + os.sep)):
+        _allow()
+
+    for piece in _SPLIT.split(command):
+        reason = _classify_segment(_tokenize(piece))
+        if reason:
+            _deny(reason)
+    _allow()
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except SystemExit:
+        raise
+    except Exception:
+        # Fail open: never block a tool call because of a bug in this hook.
+        sys.exit(0)
