@@ -1,23 +1,33 @@
 #!/usr/bin/env bash
 # axosyslog-build -- one wrapper for building & testing AxoSyslog.
 #
-# Builds happen out-of-tree in build/.
+# It encapsulates the four build modes and their legitimate flavors so there is
+# always a correct build path.
+#
+# cmake and autotools work in any checkout -- a plain clone, a branch, or a git
+# worktree -- and build out-of-tree in build/; dbld and alpine need a plain
+# checkout.
 #
 # Usage:  axosyslog-build [mode] [flavors]
 #
 #   modes:   cmake|cm (default) | autotools|auto|at | dbld | alpine
+#            dbld builds in the build container under dbld/build/ and installs
+#            to dbld/install/; alpine produces the musl production docker image.
 #
 #   The default is cmake with the full development stack: clang, ninja,
 #   the filterx LLVM JIT, and the AddressSanitizer.
 #
 #   flavors: --sanitizer=address|thread|undefined|none
-#                                  default: address
+#                                  default: address (dbld: none; alpine: fixed
+#                                  production build, rejects the flag)
 #            --clean               fresh out-of-tree build dir
 #            --monolithic          link modules into the core lib (autotools/dbld only;
 #                                  --with-linking-mode=monolithic). Default: dynamic.
-#            -j N | --jobs N       parallelism (default: AXOSYSLOG_BUILD_JOBS if
-#                                  set, else nproc-2, floor 1)
-#            --no-install          skip the install step
+#            -j N | --jobs N       build parallelism, cmake/autotools only
+#                                  (dbld/alpine manage their own). Default:
+#                                  AXOSYSLOG_BUILD_JOBS if set, else nproc-2,
+#                                  floor 1.
+#            --no-install          skip the install step (cmake/autotools only)
 #            --no-jit              disable the filterx LLVM JIT (default: on)
 #
 # Flavors are a closed set -- add new ones here on purpose rather than improvising
@@ -78,7 +88,6 @@ if [ -n "$JOBS" ]; then
     *[!0-9]*|'') fail "invalid -j '$JOBS'  (want a positive integer)" ;;
   esac
 fi
-[ -n "$JOBS" ] || JOBS="${AXOSYSLOG_BUILD_JOBS:-$(default_jobs)}"
 
 case "$MODE" in
   autotools|auto|at) MODE=autotools ;;
@@ -93,17 +102,69 @@ case "$SANITIZER" in
   *) fail "invalid --sanitizer='$SANITIZER'  (want: address | thread | undefined | none)" ;;
 esac
 
-# ASan by default: an uninstrumented dev build finds nothing; buy the speed
-# back with --sanitizer=none.
-[ -n "$SANITIZER" ] || SANITIZER=address
+# ASan by default (an uninstrumented dev build finds nothing); --sanitizer=none
+# buys the speed back. dbld's CI-parity baseline is opt-in; alpine never gets one.
+if [ -z "$SANITIZER" ]; then
+  case "$MODE" in
+    dbld)   SANITIZER=none ;;
+    alpine) ;;   # left empty; the alpine guard treats a non-empty SANITIZER as an explicit --sanitizer
+    *)      SANITIZER=address ;;
+  esac
+fi
 
 if [ "$MONOLITHIC" -eq 1 ] && [ "$MODE" != autotools ] && [ "$MODE" != dbld ]; then
   fail "--monolithic is autotools/dbld only ($MODE has no monolithic linking mode)"
 fi
 
+if [ "$MODE" = dbld ] && [ "$DO_INSTALL" -eq 0 ]; then
+  fail "--no-install does not apply to dbld; it always installs into the container prefix"
+fi
+
+if [ "$MODE" = dbld ] && [ -n "$JOBS" ]; then
+  fail "-j does not apply to dbld; the container manages build parallelism"
+fi
+
+# alpine is a fixed production image build and takes no build flavor at all.
+if [ "$MODE" = alpine ] && { [ -n "$SANITIZER" ] || [ "$CLEAN" -eq 1 ] || [ "$NO_JIT" -eq 1 ] \
+     || [ "$DO_INSTALL" -eq 0 ] || [ -n "$JOBS" ]; }; then
+  fail "alpine is a fixed production build; it takes no build flavors, only --check/--light"
+fi
+
+# -j defaults only where the wrapper drives make/ninja; dbld/alpine manage their own
+if [ -z "$JOBS" ]; then
+  case "$MODE" in
+    cmake|autotools) JOBS="${AXOSYSLOG_BUILD_JOBS:-$(default_jobs)}" ;;
+  esac
+fi
+
 ROOT="$(git -C "$(pwd)" rev-parse --show-toplevel 2>/dev/null)" || fail "not inside a git checkout"
 # guard the destructive steps (--clean rm -rf) against an unrelated current repo
 [ -f "$ROOT/configure.ac" ] || fail "not an AxoSyslog checkout: $ROOT"
+
+# dbld/alpine bind-mount the checkout into a container. dbld/rules mounts the git
+# common-dir, but a linked worktree's submodule gitdirs (lib/ivykis) are recorded
+# against the main checkout and still don't resolve there -- so plain checkout only.
+if [ -f "$ROOT/.git" ]; then
+  case "$MODE" in
+    dbld|alpine) fail "$MODE does not work from a git worktree; run it from a plain checkout" ;;
+  esac
+fi
+
+if [ "$MODE" = alpine ]; then
+  say "alpine: musl production image via dbld docker (this is slow)"
+  # pull the exact builder the prod dockerfile FROMs (hardcoded ghcr.io/axoflow),
+  # not docker-builder -- that recompiles grpcio (~30 min) and only tags :latest
+  ALPINE_VERSION="$(sed -n 's/^ARG ALPINE_VERSION=//p' "$ROOT/docker/axosyslog.dockerfile" | head -1)"
+  [ -n "$ALPINE_VERSION" ] || fail "cannot parse ALPINE_VERSION from docker/axosyslog.dockerfile"
+  BUILDER_IMG="ghcr.io/axoflow/axosyslog-builder:$ALPINE_VERSION"
+  if ! docker image inspect "$BUILDER_IMG" >/dev/null 2>&1; then
+    say "alpine: pulling $BUILDER_IMG"
+    docker pull "$BUILDER_IMG" || fail "pull of $BUILDER_IMG failed"
+  fi
+  ( cd "$ROOT" && ./dbld/rules docker )
+  say "done: image built via ./dbld/rules docker"
+  exit 0
+fi
 
 BIN=""
 
@@ -183,13 +244,32 @@ build_cmake() {
   BIN="$prefix/sbin/syslog-ng"
 }
 
-build_dbld() { fail "dbld: not implemented yet"; }
+build_dbld() {
+  local extra=""
+  [ "$SANITIZER" != none ] && extra="$extra --with-sanitizer=$SANITIZER"
+  [ "$MONOLITHIC" -eq 1 ] && extra="$extra --with-linking-mode=monolithic"
+  [ "$NO_JIT" -eq 1 ] && extra="$extra --disable-jit"
+  extra="${extra# }"
+
+  if [ "$CLEAN" -eq 1 ]; then
+    say "clean: ./dbld/rules clean"
+    ( cd "$ROOT" && ./dbld/rules clean ) || true
+  fi
+
+  # the $CLEAN term: a failed (swallowed) clean must not skip the re-bootstrap
+  if [ "$CLEAN" -eq 1 ] || [ ! -f "$ROOT/dbld/build/config.status" ]; then
+    say "dbld bootstrap${extra:+ (CONFIGURE_ADD=$extra)}"
+    ( cd "$ROOT" && ./dbld/rules bootstrap CONFIGURE_ADD="$extra" )
+  fi
+  say "dbld make-install"
+  ( cd "$ROOT" && ./dbld/rules make-install )
+  BIN="$ROOT/dbld/install/sbin/syslog-ng"
+}
 
 case "$MODE" in
   autotools) build_autotools ;;
   cmake)     build_cmake ;;
   dbld)      build_dbld ;;
-  alpine)    fail "alpine: not implemented yet" ;;
 esac
 
 if [ -n "$BIN" ] && [ "$DO_INSTALL" -eq 1 ] && [ -x "$BIN" ]; then
