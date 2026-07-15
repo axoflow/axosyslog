@@ -14,7 +14,7 @@
 #            dbld builds in the build container under dbld/build/ and installs
 #            to dbld/install/; alpine produces the musl production docker image.
 #
-#   The default is cmake with the full development stack: clang, ninja,
+#   The default is cmake with the full development stack: clang, lld, ninja,
 #   the filterx LLVM JIT, and the AddressSanitizer.
 #
 #   flavors: --sanitizer=address|thread|undefined|none
@@ -29,6 +29,8 @@
 #                                  floor 1.
 #            --no-install          skip the install step (cmake/autotools only)
 #            --no-jit              disable the filterx LLVM JIT (default: on)
+#            --no-lld              link with the default linker instead of lld
+#                                  (cmake only; lld is on by default)
 #
 #   actions: --check               run the unit tests after the build (alpine:
 #                                  they already ran inside the image build)
@@ -51,6 +53,7 @@ CLEAN=0
 MONOLITHIC=0
 DO_INSTALL=1
 NO_JIT=0
+NO_LLD=0
 DO_CHECK=0
 DO_LIGHT=0
 EXTRA_ARGS=()
@@ -89,6 +92,7 @@ while [ $# -gt 0 ]; do
     --jobs=*)       JOBS="${1#*=}" ;;
     --no-install)   DO_INSTALL=0 ;;
     --no-jit)       NO_JIT=1 ;;
+    --no-lld)       NO_LLD=1 ;;
     --check)        DO_CHECK=1 ;;
     --light)        DO_LIGHT=1 ;;
     --)             shift; EXTRA_ARGS=("$@"); break ;;
@@ -130,6 +134,10 @@ fi
 
 if [ "$MONOLITHIC" -eq 1 ] && [ "$MODE" != autotools ] && [ "$MODE" != dbld ]; then
   fail "--monolithic is autotools/dbld only ($MODE has no monolithic linking mode)"
+fi
+
+if [ "$NO_LLD" -eq 1 ] && [ "$MODE" != cmake ]; then
+  fail "--no-lld is cmake-only; only the cmake build links with lld"
 fi
 
 if [ "$MODE" = dbld ] && [ "$DO_INSTALL" -eq 0 ]; then
@@ -253,6 +261,13 @@ build_cmake() {
   [ "$san" = none ] && san=OFF
   local jitflag=()
   [ "$NO_JIT" -eq 1 ] && jitflag=(-DENABLE_JIT=OFF)
+  local lldflag=()
+  if [ "$NO_LLD" -eq 0 ]; then
+    local kind
+    for kind in EXE SHARED MODULE; do
+      lldflag+=("-DCMAKE_${kind}_LINKER_FLAGS=-fuse-ld=lld")
+    done
+  fi
 
   if [ "$CLEAN" -eq 1 ]; then
     say "clean: wiping build/"
@@ -265,6 +280,7 @@ build_cmake() {
       -DCMAKE_C_COMPILER="$CC" -DCMAKE_CXX_COMPILER="$CXX" \
       -DSANITIZER="$san" \
       "${jitflag[@]}" \
+      "${lldflag[@]}" \
       -DCMAKE_BUILD_TYPE=Debug -DENABLE_EXTRA_WARNINGS=ON \
       -DENABLE_JAVA=OFF -DENABLE_JAVA_MODULES=OFF -DENABLE_LIBUNWIND=ON \
       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
