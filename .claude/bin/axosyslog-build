@@ -30,6 +30,8 @@
 #                                  AXOSYSLOG_BUILD_JOBS if set, else nproc-2,
 #                                  floor 1.
 #            --no-install          skip the install step (cmake/autotools only)
+#            --clangd              refresh the clangd compile DB (autotools, via
+#                                  bear)
 #            --no-jit              disable the filterx LLVM JIT (default: on)
 #            --no-lld              link with the default linker instead of lld
 #                                  (cmake only; lld is on by default)
@@ -54,6 +56,7 @@ SANITIZER=""
 CLEAN=0
 MONOLITHIC=0
 DO_INSTALL=1
+DO_CLANGD=0
 NO_JIT=0
 NO_LLD=0
 DO_CHECK=0
@@ -116,6 +119,7 @@ while [ $# -gt 0 ]; do
     -j*)            JOBS="${1#-j}" ;;
     --jobs=*)       JOBS="${1#*=}" ;;
     --no-install)   DO_INSTALL=0 ;;
+    --clangd)       DO_CLANGD=1 ;;
     --no-jit)       NO_JIT=1 ;;
     --no-lld)       NO_LLD=1 ;;
     --check)        DO_CHECK=1 ;;
@@ -163,6 +167,10 @@ fi
 
 if [ "$NO_LLD" -eq 1 ] && [ "$MODE" != cmake ]; then
   fail "--no-lld is cmake-only; only the cmake build links with lld"
+fi
+
+if [ "$DO_CLANGD" -eq 1 ] && [ "$MODE" != autotools ]; then
+  fail "--clangd is autotools-only; the cmake build always exports the compile DB"
 fi
 
 if [ "$MODE" = dbld ] && [ "$DO_INSTALL" -eq 0 ]; then
@@ -246,6 +254,7 @@ require_tools() {
     have automake   || missing+=("automake")
     have libtoolize || have glibtoolize || missing+=("libtool")
     have_ax_macros  || missing+=("autoconf-archive (autogen.sh needs its AX_* macros)")
+    [ "$DO_CLANGD" -eq 1 ] && { have bear || missing+=("bear (for --clangd compile DB)"); }
   fi
 
   [ "$NO_JIT" -eq 0 ] && { have_llvm || missing+=("llvm (llvm-config; the filterx JIT needs it) -- or pass --no-jit"); }
@@ -255,7 +264,7 @@ require_tools() {
   warn "missing tooling for the default $MODE setup:"
   local m
   for m in "${missing[@]}"; do warn "  - $m"; done
-  warn "install it (Debian/Ubuntu: sudo apt install clang lld llvm ninja-build cmake autoconf automake autoconf-archive libtool)"
+  warn "install it (Debian/Ubuntu: sudo apt install clang lld llvm ninja-build cmake bear autoconf automake autoconf-archive libtool)"
   fail "or choose a lighter setup (e.g. --no-jit, --no-lld, or a different mode)."
 }
 
@@ -329,8 +338,15 @@ build_autotools() {
     warn "reusing existing build/config.status (run --clean to change flavors)"
   fi
 
-  say "make -j$JOBS"
-  make -C "$ROOT/build" -j"$JOBS"
+  if [ "$DO_CLANGD" -eq 1 ]; then
+    say "make + compile DB (bear)"
+    bear --output "$ROOT/build/compile_commands.json" -- make -C "$ROOT/build" -j"$JOBS"
+    # CompilationDatabase is a directory, not a file path
+    printf 'CompileFlags:\n  CompilationDatabase: build\n' > "$ROOT/.clangd"
+  else
+    say "make -j$JOBS"
+    make -C "$ROOT/build" -j"$JOBS"
+  fi
   if [ "$DO_INSTALL" -eq 1 ]; then
     say "make install"
     make -C "$ROOT/build" install
@@ -380,6 +396,10 @@ build_cmake() {
     say "cmake --install"
     cmake --install "$ROOT/build"
   fi
+
+  # cmake emits compile_commands.json for free. clangd finds the pointer file
+  # by walking up from the source file, so it must sit at the checkout root.
+  printf 'CompileFlags:\n  CompilationDatabase: build\n' > "$ROOT/.clangd"
   BIN="$prefix/sbin/syslog-ng"
 }
 
