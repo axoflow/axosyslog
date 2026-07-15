@@ -418,11 +418,16 @@ if(SYSLOG_NG_ENABLE_JIT)
   add_dependencies(filterx-bitcode filterx-grammar-header)
   add_dependencies(syslog-ng filterx-bitcode)
 
+  if(${IVYKIS_INTERNAL})
+    add_dependencies(filterx-bitcode IVYKIS)
+  endif()
+
   set(FILTERX_BITCODE_OBJECT "${CMAKE_CURRENT_BINARY_DIR}/filterx/jit/libfilterx-bc.o")
   add_custom_command(
     OUTPUT "${FILTERX_BITCODE_OBJECT}"
-    COMMAND ${CMAKE_LINKER} --relocatable --format=binary
-            -o "${FILTERX_BITCODE_OBJECT}" lib/filterx/jit/libfilterx.bc
+    COMMAND ${CMAKE_C_COMPILER} -r -nostdlib
+            -Wl,--format=binary,lib/filterx/jit/libfilterx.bc,--format=default
+            -o "${FILTERX_BITCODE_OBJECT}"
     WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
     DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/filterx/jit/libfilterx.bc"
     VERBATIM)
