@@ -303,17 +303,17 @@
     <!-- <grpc_port>9100</grpc_port> -->
     <grpc_port>ALLOCATED_INTERSERVER_GRPC_PORT</grpc_port>
     <grpc>
-        <enable_ssl>false</enable_ssl>
+        <enable_ssl>ALLOCATED_GRPC_ENABLE_SSL</enable_ssl>
 
         <!-- The following two files are used only if enable_ssl=1 -->
-        <ssl_cert_file>/path/to/ssl_cert_file</ssl_cert_file>
-        <ssl_key_file>/path/to/ssl_key_file</ssl_key_file>
+        <ssl_cert_file>ALLOCATED_GRPC_SSL_CERT_FILE</ssl_cert_file>
+        <ssl_key_file>ALLOCATED_GRPC_SSL_KEY_FILE</ssl_key_file>
 
         <!-- Whether server will request client for a certificate -->
-        <ssl_require_client_auth>false</ssl_require_client_auth>
+        <ssl_require_client_auth>ALLOCATED_GRPC_SSL_REQUIRE_CLIENT_AUTH</ssl_require_client_auth>
 
         <!-- The following file is used only if ssl_require_client_auth=1 -->
-        <ssl_ca_cert_file>/path/to/ssl_ca_cert_file</ssl_ca_cert_file>
+        <ssl_ca_cert_file>ALLOCATED_GRPC_SSL_CA_CERT_FILE</ssl_ca_cert_file>
 
         <!-- Default transport compression type (can be overridden by client, see the transport_compression_type field in QueryInfo).
              Supported algorithms: none, deflate, gzip, stream_gzip -->

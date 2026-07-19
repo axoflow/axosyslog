@@ -31,6 +31,7 @@ pyarrow = ">=14.0.0"
 google-cloud-bigquery-storage = "^2.39.0"
 tenacity = "^9.0.0"
 virtualenv = "^20.36.1"
+cryptography = "^49.0.0"
 
 [tool.poetry.group.dev.dependencies]
 pycodestyle = "^2.12.1"
