@@ -47,7 +47,8 @@ typedef struct _LogProtoTextClient
 LogProtoStatus log_proto_text_client_submit_write(LogProtoClient *s, guchar *msg, gsize msg_len,
                                                   GDestroyNotify msg_free, gint next_state);
 void log_proto_text_client_init(LogProtoTextClient *self, LogTransport *transport,
-                                const LogProtoClientOptions *options);
+                                const LogProtoClientOptions *options,
+                                gboolean batching_supported);
 LogProtoClient *log_proto_text_client_new(LogTransport *transport, const LogProtoClientOptions *options);
 
 LogProtoClient *log_proto_unidirectional_text_client_new(LogTransport *transport, const LogProtoClientOptions *options);
