@@ -364,7 +364,8 @@ _calculate_batch_size(const LogProtoClientOptions *options)
 }
 
 void
-log_proto_text_client_init(LogProtoTextClient *self, LogTransport *transport, const LogProtoClientOptions *options)
+log_proto_text_client_init(LogProtoTextClient *self, LogTransport *transport,
+                           const LogProtoClientOptions *options, gboolean batching_supported)
 {
   log_proto_client_init(&self->super, transport, options);
   self->super.poll_prepare = log_proto_text_client_poll_prepare;
@@ -374,8 +375,11 @@ log_proto_text_client_init(LogProtoTextClient *self, LogTransport *transport, co
   self->super.free_fn = log_proto_text_client_free;
   self->next_state = -1;
 
-  self->batch.size = _calculate_batch_size(options);
-  self->batch.iov = g_new0(struct iovec, self->batch.size);
+  if (batching_supported)
+    {
+      self->batch.size = _calculate_batch_size(options);
+      self->batch.iov = g_new0(struct iovec, self->batch.size);
+    }
 }
 
 LogProtoClient *
@@ -383,7 +387,7 @@ log_proto_text_client_new(LogTransport *transport, const LogProtoClientOptions *
 {
   LogProtoTextClient *self = g_new0(LogProtoTextClient, 1);
 
-  log_proto_text_client_init(self, transport, options);
+  log_proto_text_client_init(self, transport, options, TRUE);
   return &self->super;
 }
 
@@ -392,7 +396,7 @@ log_proto_unidirectional_text_client_new(LogTransport *transport, const LogProto
 {
   LogProtoTextClient *self = g_new0(LogProtoTextClient, 1);
 
-  log_proto_text_client_init(self, transport, options);
+  log_proto_text_client_init(self, transport, options, TRUE);
   self->super.poll_prepare = log_proto_unidirectional_text_client_poll_prepare;
   self->super.process_in = _prohibit_in;
 

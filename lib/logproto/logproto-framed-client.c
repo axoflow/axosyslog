@@ -79,15 +79,9 @@ log_proto_framed_client_new(LogTransport *transport, const LogProtoClientOptions
 {
   LogProtoFramedClient *self = g_new0(LogProtoFramedClient, 1);
 
-  log_proto_text_client_init(&self->super, transport, options);
+  log_proto_text_client_init(&self->super, transport, options, FALSE);
   self->super.super.post = log_proto_framed_client_post;
   self->super.state = LPFCS_FRAME_SEND;
-
-  /* the framed client writes the frame header and message through the partial
-   * path, never the batch, so opt out of batching and drop the unused buffer */
-  g_free(self->super.batch.iov);
-  self->super.batch.iov = NULL;
-  self->super.batch.size = 1;
 
   return &self->super.super;
 }
