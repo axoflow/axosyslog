@@ -137,6 +137,9 @@ _isset(FilterXExpr *s)
   FilterXScope *scope = context->scope;
   LogMessage *msg = context->msg;
 
+  if (self->handle_is_macro)
+    return TRUE;
+
   FilterXVariable *variable = filterx_scope_lookup_variable(scope, self->handle, self->scope_var_idx);
   if (variable)
     return filterx_variable_is_set(variable);

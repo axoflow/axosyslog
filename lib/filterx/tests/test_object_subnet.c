@@ -123,6 +123,26 @@ Test(filterx_object_subnet, ipv4_host_bits_are_masked)
   filterx_object_unref(obj);
 }
 
+Test(filterx_object_subnet, ipv4_prefix_zero)
+{
+  /* /0 yields a 0.0.0.0 netmask and every address is a member */
+  FilterXObject *obj = filterx_subnet_new_from_cidr("10.20.30.40/0");
+  cr_assert_not_null(obj);
+  assert_marshaled_object(obj, "0.0.0.0/0.0.0.0", LM_VT_STRING);
+
+  FilterXObject *ip = filterx_string_new("203.0.113.7", -1);
+  FilterXObject *result = filterx_object_is_member_of(obj, ip);
+  cr_assert_not_null(result);
+
+  gboolean b;
+  cr_assert(filterx_boolean_unwrap(result, &b));
+  cr_assert(b);
+
+  filterx_object_unref(result);
+  filterx_object_unref(ip);
+  filterx_object_unref(obj);
+}
+
 /* Marshal / repr */
 
 Test(filterx_object_subnet, ipv4_marshal)

@@ -25,6 +25,8 @@
 #include "filterx/object-extractor.h"
 #include "filterx/filterx-eval.h"
 
+#include <math.h>
+
 /* If you want to make the arithmetic operators support other types,
  * follow the pattern of filterx_operator_plus_new() which uses
  * filterx_object_add() for type-generic addition. */
@@ -116,6 +118,18 @@ _eval_op(FilterXArithmeticOperator *self,
 }
 
 static FilterXObject *
+_double_result(gdouble value)
+{
+  if (!isfinite(value))
+    {
+      filterx_eval_push_error_static_info("Failed to evaluate arithmetic operator",
+                                          "Result is not a finite number");
+      return NULL;
+    }
+  return filterx_double_new(value);
+}
+
+static FilterXObject *
 _do_substraction(FilterXObject *lhs, FilterXObject *rhs, FilterXExpr *expr)
 {
   GenericNumber lhs_number, rhs_number, result;
@@ -128,12 +142,17 @@ _do_substraction(FilterXObject *lhs, FilterXObject *rhs, FilterXExpr *expr)
 
   if (lhs_number.type == GN_INT64 && rhs_number.type == GN_INT64)
     {
-      gn_set_int64(&result, gn_as_int64(&lhs_number) - gn_as_int64(&rhs_number));
+      gint64 res;
+      if (__builtin_sub_overflow(gn_as_int64(&lhs_number), gn_as_int64(&rhs_number), &res))
+        {
+          filterx_eval_push_error_static_info("Failed to evaluate subtraction operator", "Integer overflow");
+          return NULL;
+        }
+      gn_set_int64(&result, res);
       return filterx_integer_new(gn_as_int64(&result));
     }
 
-  gn_set_double(&result, gn_as_double(&lhs_number) - gn_as_double(&rhs_number), -1);
-  return filterx_double_new(gn_as_double(&result));
+  return _double_result(gn_as_double(&lhs_number) - gn_as_double(&rhs_number));
 }
 
 static FilterXObject *
@@ -151,7 +170,11 @@ _optimize_substraction(FilterXExpr *s)
   _optimize_arithmetic_operators_common(self);
 
   if (self->literal_lhs && self->literal_rhs)
-    return filterx_literal_new(_eval_substraction(&self->super.super));
+    {
+      FilterXObject *result = _eval_substraction(&self->super.super);
+      if (result)
+        return filterx_literal_new(result);
+    }
   return NULL;
 }
 
@@ -168,12 +191,17 @@ _do_multiplication(FilterXObject *lhs, FilterXObject *rhs, FilterXExpr *expr)
 
   if (lhs_number.type == GN_INT64 && rhs_number.type == GN_INT64)
     {
-      gn_set_int64(&result, gn_as_int64(&lhs_number) * gn_as_int64(&rhs_number));
+      gint64 res;
+      if (__builtin_mul_overflow(gn_as_int64(&lhs_number), gn_as_int64(&rhs_number), &res))
+        {
+          filterx_eval_push_error_static_info("Failed to evaluate multiplication operator", "Integer overflow");
+          return NULL;
+        }
+      gn_set_int64(&result, res);
       return filterx_integer_new(gn_as_int64(&result));
     }
 
-  gn_set_double(&result, gn_as_double(&lhs_number) * gn_as_double(&rhs_number), -1);
-  return filterx_double_new(gn_as_double(&result));
+  return _double_result(gn_as_double(&lhs_number) * gn_as_double(&rhs_number));
 }
 
 static FilterXObject *
@@ -191,7 +219,11 @@ _optimize_multiplication(FilterXExpr *s)
   _optimize_arithmetic_operators_common(self);
 
   if (self->literal_lhs && self->literal_rhs)
-    return filterx_literal_new(_eval_multiplication(&self->super.super));
+    {
+      FilterXObject *result = _eval_multiplication(&self->super.super);
+      if (result)
+        return filterx_literal_new(result);
+    }
   return NULL;
 }
 
@@ -227,8 +259,7 @@ _do_division(FilterXObject *lhs, FilterXObject *rhs, FilterXExpr *expr)
       return filterx_integer_new(gn_as_int64(&result));
     }
 
-  gn_set_double(&result, gn_as_double(&lhs_number) / gn_as_double(&rhs_number), -1);
-  return filterx_double_new(gn_as_double(&result));
+  return _double_result(gn_as_double(&lhs_number) / gn_as_double(&rhs_number));
 }
 
 static FilterXObject *
@@ -346,7 +377,11 @@ _optimize_plus(FilterXExpr *s)
   _optimize_arithmetic_operators_common(self);
 
   if (self->literal_lhs && self->literal_rhs)
-    return filterx_literal_new(_eval_plus(&self->super.super));
+    {
+      FilterXObject *result = _eval_plus(&self->super.super);
+      if (result)
+        return filterx_literal_new(result);
+    }
   return NULL;
 }
 
@@ -374,13 +409,18 @@ _do_uminus(FilterXObject *operand_obj, FilterXExpr *expr)
 
   if (operand.type == GN_INT64)
     {
+      if (gn_as_int64(&operand) == G_MININT64)
+        {
+          filterx_eval_push_error_static_info("Failed to evaluate arithmetic operator",
+                                              "Integer overflow, negation of INT64_MIN");
+          goto exit;
+        }
       gn_set_int64(&result, -gn_as_int64(&operand));
       out = filterx_integer_new(gn_as_int64(&result));
       goto exit;
     }
 
-  gn_set_double(&result, -gn_as_double(&operand), -1);
-  out = filterx_double_new(gn_as_double(&result));
+  out = _double_result(-gn_as_double(&operand));
 
 exit:
   filterx_object_unref(operand_obj);

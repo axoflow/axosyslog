@@ -120,6 +120,32 @@ Test(filterx_func_flatten, custom_separator)
                   "{\"top_level_field\":42,\"top_level_dict->inner_field\":1337,\"top_level_dict->inner_dict->inner_inner_field\":1}");
 }
 
+Test(filterx_func_flatten, rejects_excessive_nesting)
+{
+  GString *input = g_string_new(NULL);
+  const gint depth = 300;
+  for (gint i = 0; i < depth; i++)
+    g_string_append(input, "{\"a\":");
+  g_string_append(input, "1");
+  for (gint i = 0; i < depth; i++)
+    g_string_append_c(input, '}');
+
+  FilterXObject *dict = filterx_object_from_json(input->str, -1, NULL);
+  cr_assert_not_null(dict);
+
+  GList *args = g_list_append(NULL, filterx_function_arg_new(NULL, filterx_object_expr_new(dict)));
+  GError *err = NULL;
+  GError *args_err = NULL;
+  FilterXExpr *func = filterx_function_flatten_new(filterx_function_args_new(args, &args_err), &err);
+  cr_assert(!err);
+
+  FilterXObject *obj = init_and_eval_expr(func);
+  cr_assert_null(obj);
+
+  filterx_expr_unref(func);
+  g_string_free(input, TRUE);
+}
+
 static void
 setup(void)
 {

@@ -40,6 +40,8 @@
 #include "filterx-globals.h"
 #include "compat/json.h"
 
+#include <math.h>
+
 #define FILTERX_FUNC_STRPTIME_USAGE "Usage: strptime(time_str, format_str_1, ..., format_str_N)"
 #define FILTERX_FUNC_STRFTIME_USAGE "Usage: strftime(format_str, datetime)"
 #define FILTERX_FUNC_GET_TIMEZONE_SOURCE_USAGE "Usage: get_timezone_source(datetime)"
@@ -116,6 +118,16 @@ filterx_datetime_get_value(FilterXObject *s)
 }
 
 
+static gboolean
+_double_seconds_to_usec(gdouble d, gint64 *usec)
+{
+  gdouble scaled = d * USEC_PER_SEC;
+  if (G_UNLIKELY(!isfinite(scaled) || scaled < (gdouble) G_MININT64 || scaled >= (gdouble) G_MAXINT64))
+    return FALSE;
+  *usec = (gint64) scaled;
+  return TRUE;
+}
+
 FilterXObject *
 filterx_typecast_datetime(FilterXExpr *s, FilterXObject *args[], gsize args_len)
 {
@@ -139,7 +151,14 @@ filterx_typecast_datetime(FilterXExpr *s, FilterXObject *args[], gsize args_len)
   gdouble d;
   if (filterx_object_extract_double(object, &d))
     {
-      UnixTime ut = unix_time_from_unix_epoch_usec((gint64)(d * USEC_PER_SEC));
+      gint64 usec;
+      if (!_double_seconds_to_usec(d, &usec))
+        {
+          filterx_eval_push_error_static_info("Failed to cast to datetime",
+                                              "Value is not a finite, in-range number of seconds");
+          return NULL;
+        }
+      UnixTime ut = unix_time_from_unix_epoch_usec(usec);
       return filterx_datetime_new(&ut);
     }
 
@@ -278,7 +297,10 @@ _add(FilterXObject *s, FilterXObject *object)
   gdouble d;
   if (filterx_object_extract_double(object, &d))
     {
-      result = unix_time_add_duration(self->ut, (gint64)(d * USEC_PER_SEC));
+      gint64 usec;
+      if (!_double_seconds_to_usec(d, &usec))
+        return NULL;
+      result = unix_time_add_duration(self->ut, usec);
       goto success;
     }
 
