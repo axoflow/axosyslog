@@ -13,14 +13,18 @@ EXTRA_DIST += \
 	tests/light/src/axosyslog_light/common/session_data.py \
 	tests/light/src/axosyslog_light/common/tests/__init__.py \
 	tests/light/src/axosyslog_light/common/tests/test_blocking.py \
-	tests/light/src/axosyslog_light/driver_io/arrow_flight/__init__.py \
 	tests/light/src/axosyslog_light/driver_io/arrow_flight/arrow_flight_io.py \
-	tests/light/src/axosyslog_light/driver_io/bigquery/__init__.py \
+	tests/light/src/axosyslog_light/driver_io/arrow_flight/__init__.py \
 	tests/light/src/axosyslog_light/driver_io/bigquery/bigquery_io.py \
+	tests/light/src/axosyslog_light/driver_io/bigquery/__init__.py \
+	tests/light/src/axosyslog_light/driver_io/clickhouse/clickhouse_io.py \
 	tests/light/src/axosyslog_light/driver_io/file/file_io.py \
 	tests/light/src/axosyslog_light/driver_io/file/__init__.py \
 	tests/light/src/axosyslog_light/driver_io/file/tests/__init__.py \
 	tests/light/src/axosyslog_light/driver_io/file/tests/test_file_io.py \
+	tests/light/src/axosyslog_light/driver_io/http/http_io.py \
+	tests/light/src/axosyslog_light/driver_io/http/http_server_io.py \
+	tests/light/src/axosyslog_light/driver_io/http/__init__.py \
 	tests/light/src/axosyslog_light/driver_io/__init__.py \
 	tests/light/src/axosyslog_light/driver_io/message_readers.py \
 	tests/light/src/axosyslog_light/driver_io/network/__init__.py \
@@ -32,8 +36,6 @@ EXTRA_DIST += \
 	tests/light/src/axosyslog_light/driver_io/unix_dgram/unix_dgram_io.py \
 	tests/light/src/axosyslog_light/driver_io/unix_stream/__init__.py \
 	tests/light/src/axosyslog_light/driver_io/unix_stream/unix_stream_io.py \
-	tests/light/src/axosyslog_light/driver_io/http/__init__.py \
-	tests/light/src/axosyslog_light/driver_io/http/http_io.py \
 	tests/light/src/axosyslog_light/executors/command_executor.py \
 	tests/light/src/axosyslog_light/executors/__init__.py \
 	tests/light/src/axosyslog_light/executors/process_executor.py \
@@ -41,6 +43,12 @@ EXTRA_DIST += \
 	tests/light/src/axosyslog_light/executors/tests/test_command_executor.py \
 	tests/light/src/axosyslog_light/executors/tests/test_process_executor.py \
 	tests/light/src/axosyslog_light/fixtures.py \
+	tests/light/src/axosyslog_light/helpers/clickhouse/clickhouse_server_executor.py \
+	tests/light/src/axosyslog_light/helpers/dqtool/dqtool_docker_executor.py \
+	tests/light/src/axosyslog_light/helpers/dqtool/dqtool_executor.py \
+	tests/light/src/axosyslog_light/helpers/dqtool/dqtool_local_executor.py \
+	tests/light/src/axosyslog_light/helpers/dqtool/dqtool.py \
+	tests/light/src/axosyslog_light/helpers/dqtool/__init__.py \
 	tests/light/src/axosyslog_light/helpers/__init__.py \
 	tests/light/src/axosyslog_light/helpers/loggen/__init__.py \
 	tests/light/src/axosyslog_light/helpers/loggen/loggen_docker_executor.py \
@@ -52,6 +60,7 @@ EXTRA_DIST += \
 	tests/light/src/axosyslog_light/helpers/secure_logging/__init__.py \
 	tests/light/src/axosyslog_light/helpers/snmptrapd/conftest.py \
 	tests/light/src/axosyslog_light/helpers/snmptrapd/__init__.py \
+	tests/light/src/axosyslog_light/helpers/tls/certificate_generator.py \
 	tests/light/src/axosyslog_light/__init__.py \
 	tests/light/src/axosyslog_light/message_builder/bsd_format.py \
 	tests/light/src/axosyslog_light/message_builder/__init__.py \
@@ -63,9 +72,11 @@ EXTRA_DIST += \
 	tests/light/src/axosyslog_light/syslog_ng_config/statement_group.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/destinations/arrow_flight_destination.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/destinations/bigquery_destination.py \
+	tests/light/src/axosyslog_light/syslog_ng_config/statements/destinations/clickhouse_destination.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/destinations/destination_driver.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/destinations/example_destination.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/destinations/file_destination.py \
+	tests/light/src/axosyslog_light/syslog_ng_config/statements/destinations/http_destination.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/destinations/__init__.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/destinations/network_destination.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/destinations/python_destination.py \
@@ -79,6 +90,8 @@ EXTRA_DIST += \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/filterx/filterx.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/__init__.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/logpath/__init__.py \
+	tests/light/src/axosyslog_light/syslog_ng_config/statements/logpath/log_context_scl_block.py \
+	tests/light/src/axosyslog_light/syslog_ng_config/statements/logpath/logpath_if.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/logpath/logpath.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/parsers/db_parser.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/parsers/__init__.py \
@@ -88,6 +101,7 @@ EXTRA_DIST += \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/sources/example_msg_generator_source.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/sources/file_source.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/sources/__init__.py \
+	tests/light/src/axosyslog_light/syslog_ng_config/statements/sources/inner_source.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/sources/internal_source.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/sources/network_source.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/sources/opentelemetry_source.py \
