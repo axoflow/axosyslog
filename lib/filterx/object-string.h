@@ -267,7 +267,7 @@ void filterx_string_global_deinit(void);
 
 #define FILTERX_STRING_STACK_INIT(cstr, cstr_len) \
   { \
-    .super = FILTERX_OBJECT_STACK_INIT(string), \
+    .super = FILTERX_OBJECT_STACK_INIT(string, TRUE), \
     .str = (cstr), \
     .str_len = (((gssize) cstr_len) == -1 ? (guint32) strlen(cstr) : (guint32) (cstr_len)), \
   }

@@ -202,11 +202,13 @@ struct _FilterXObject
    *
    *     is_nvtable_backed -- are we borrowing the value from an NVTable value
    *
+   *     is_hashable       -- the object can be used as a key in the mapping
+   *
    *     flags             -- to be used by descendant types
    *
    */
   guint weak_referenced:1, is_dirty:1, allocator_used:1, floating_ref:1, early_allocation:1, early_allocation_checked:1,
-        is_nvtable_backed:1, flags:5;
+        is_nvtable_backed:1, is_hashable:1, flags:5;
   volatile guint32 hash;
   FilterXType *type;
 };
@@ -244,6 +246,8 @@ filterx_object_init_instance(FilterXObject *self, FilterXType *type)
 {
   self->ref_cnt = 1;
   self->type = type;
+  if (type->hash && type->equal)
+    self->is_hashable = TRUE;
 }
 
 static inline gboolean
@@ -603,7 +607,7 @@ filterx_object_iter(FilterXObject *self, FilterXObjectIterFunc func, gpointer us
 static inline gboolean
 filterx_object_hashable(FilterXObject *self)
 {
-  return self->type->hash && self->type->equal;
+  return self->is_hashable;
 }
 
 static inline guint
@@ -686,11 +690,12 @@ filterx_object_set_dirty(FilterXObject *self, gboolean value)
   self->is_dirty = value;
 }
 
-#define FILTERX_OBJECT_STACK_INIT(_type) \
+#define FILTERX_OBJECT_STACK_INIT(_type, _hashable) \
   { \
     .ref_cnt = FILTERX_OBJECT_REFCOUNT_STACK, \
     .weak_referenced = FALSE, \
     .is_dirty = FALSE, \
+    .is_hashable = _hashable, \
     .hash = 0, \
     .type = &FILTERX_TYPE_NAME(_type) \
   }
