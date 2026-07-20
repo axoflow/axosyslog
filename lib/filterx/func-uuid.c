@@ -28,7 +28,7 @@
 #include "uuid.h"
 
 FilterXObject *
-filterx_simple_function_uuid(FilterXExpr *s, FilterXObject *args[], gsize args_len)
+filterx_simple_function_uuid4(FilterXExpr *s, FilterXObject *args[], gsize args_len)
 {
   if (args_len != 0)
     {
@@ -38,5 +38,19 @@ filterx_simple_function_uuid(FilterXExpr *s, FilterXObject *args[], gsize args_l
 
   gchar uuid_str[37];
   uuid_gen_random(uuid_str, sizeof(uuid_str));
+  return filterx_string_new(uuid_str, 36);
+}
+
+FilterXObject *
+filterx_simple_function_uuid7(FilterXExpr *s, FilterXObject *args[], gsize args_len)
+{
+  if (args_len != 0)
+    {
+      filterx_simple_function_argument_error(s, "Requires no arguments");
+      return NULL;
+    }
+
+  gchar uuid_str[37];
+  uuid_gen_v7(uuid_str, sizeof(uuid_str));
   return filterx_string_new(uuid_str, 36);
 }

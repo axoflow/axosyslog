@@ -1160,6 +1160,19 @@ def test_uuid(config, syslog_ng):
     assert re.match(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", uuid_str)
 
 
+def test_uuid7(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    $MSG = string(uuid7());
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    uuid_str = file_final.read_log().strip()
+    assert re.match(r"^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$", uuid_str)
+
+
 def test_digest(config, syslog_ng):
     (file_final,) = create_config(
         config, r"""

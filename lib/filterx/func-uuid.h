@@ -27,6 +27,7 @@
 #include "filterx/filterx-object.h"
 #include "filterx/filterx-expr.h"
 
-FilterXObject *filterx_simple_function_uuid(FilterXExpr *s, FilterXObject *args[], gsize args_len);
+FilterXObject *filterx_simple_function_uuid4(FilterXExpr *s, FilterXObject *args[], gsize args_len);
+FilterXObject *filterx_simple_function_uuid7(FilterXExpr *s, FilterXObject *args[], gsize args_len);
 
 #endif
