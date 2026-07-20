@@ -28,6 +28,7 @@ EXTRA_DIST += \
 	tests/light/src/axosyslog_light/driver_io/opentelemetry/opentelemetry_io.py \
 	tests/light/src/axosyslog_light/driver_io/pipe/__init__.py \
 	tests/light/src/axosyslog_light/driver_io/pipe/pipe_io.py \
+	tests/light/src/axosyslog_light/driver_io/s3/s3_io.py \
 	tests/light/src/axosyslog_light/driver_io/unix_dgram/unix_dgram_io.py \
 	tests/light/src/axosyslog_light/driver_io/unix_stream/__init__.py \
 	tests/light/src/axosyslog_light/driver_io/unix_stream/unix_stream_io.py \
@@ -46,6 +47,7 @@ EXTRA_DIST += \
 	tests/light/src/axosyslog_light/helpers/loggen/loggen_executor.py \
 	tests/light/src/axosyslog_light/helpers/loggen/loggen_local_executor.py \
 	tests/light/src/axosyslog_light/helpers/loggen/loggen.py \
+	tests/light/src/axosyslog_light/helpers/s3/s3_server_executor.py \
 	tests/light/src/axosyslog_light/helpers/secure_logging/conftest.py \
 	tests/light/src/axosyslog_light/helpers/secure_logging/__init__.py \
 	tests/light/src/axosyslog_light/helpers/snmptrapd/conftest.py \
@@ -67,6 +69,7 @@ EXTRA_DIST += \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/destinations/__init__.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/destinations/network_destination.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/destinations/python_destination.py \
+	tests/light/src/axosyslog_light/syslog_ng_config/statements/destinations/s3_destination.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/destinations/snmp_destination.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/destinations/sql_destination.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/destinations/unix_dgram_destination.py \

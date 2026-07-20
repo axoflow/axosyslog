@@ -25,6 +25,7 @@ import typing
 
 from axosyslog_light.common.file import File
 from axosyslog_light.common.operations import cast_to_list
+from axosyslog_light.driver_io.s3.s3_io import S3Client
 from axosyslog_light.syslog_ng_config import stringify
 from axosyslog_light.syslog_ng_config.renderer import ConfigRenderer
 from axosyslog_light.syslog_ng_config.statement_group import StatementGroup
@@ -37,6 +38,7 @@ from axosyslog_light.syslog_ng_config.statements.destinations.file_destination i
 from axosyslog_light.syslog_ng_config.statements.destinations.http_destination import HttpDestination
 from axosyslog_light.syslog_ng_config.statements.destinations.network_destination import NetworkDestination
 from axosyslog_light.syslog_ng_config.statements.destinations.python_destination import PythonDestination
+from axosyslog_light.syslog_ng_config.statements.destinations.s3_destination import S3Destination
 from axosyslog_light.syslog_ng_config.statements.destinations.snmp_destination import SnmpDestination
 from axosyslog_light.syslog_ng_config.statements.destinations.sql_destination import SqlDestination
 from axosyslog_light.syslog_ng_config.statements.destinations.unix_dgram_destination import UnixDgramDestination
@@ -325,6 +327,19 @@ class SyslogNgConfig(object):
     def create_clickhouse_destination(self, **options):
         clickhouse_destination = ClickhouseDestination(self._stats_handler, self._prometheus_stats_handler, **options)
         return clickhouse_destination
+
+    def create_s3_destination(self, s3_server, bucket, **options):
+        options.setdefault("url", s3_server.endpoint_url)
+        options.setdefault("access_key", s3_server.access_key)
+        options.setdefault("secret_key", s3_server.secret_key)
+        options.setdefault("region", s3_server.region)
+        s3_client = S3Client(
+            endpoint_url=s3_server.endpoint_url,
+            access_key=options["access_key"],
+            secret_key=options["secret_key"],
+            region=options["region"],
+        )
+        return S3Destination(self._stats_handler, self._prometheus_stats_handler, s3_client, bucket=bucket, **options)
 
     def create_db_parser(self, config, **options):
         return DBParser(self._stats_handler, self._prometheus_stats_handler, config, **options)
