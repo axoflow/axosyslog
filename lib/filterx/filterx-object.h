@@ -200,6 +200,8 @@ struct _FilterXObject
    *
    *     early_allocation_checked -- the early_allocation check was already done
    *
+   *     is_nvtable_backed -- are we borrowing the value from an NVTable value
+   *
    *     flags             -- to be used by descendant types
    *
    */
