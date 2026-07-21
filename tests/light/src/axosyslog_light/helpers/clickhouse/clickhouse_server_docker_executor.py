@@ -28,6 +28,7 @@ from subprocess import DEVNULL
 from subprocess import Popen
 
 from axosyslog_light.common.blocking import wait_until_true
+from axosyslog_light.common.docker_operations import ensure_image_exists
 from axosyslog_light.executors.process_executor import ProcessExecutor
 from axosyslog_light.helpers.clickhouse.clickhouse_server_executor import ClickhouseServerExecutor
 from axosyslog_light.helpers.clickhouse.clickhouse_server_executor import CONFIG_FILE
@@ -44,6 +45,7 @@ class ClickhouseServerDockerExecutor(ClickhouseServerExecutor):
         self.__image = CLICKHOUSE_IMAGE
 
     def _start_server(self):
+        ensure_image_exists(self.__image)
         Popen(["docker", "rm", "-f", self.__container_name], stdout=DEVNULL, stderr=DEVNULL).wait()
 
         cwd = Path.cwd().absolute()

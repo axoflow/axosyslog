@@ -3,6 +3,7 @@
 EXTRA_DIST += \
 	tests/light/src/axosyslog_light/common/asynchronous.py \
 	tests/light/src/axosyslog_light/common/blocking.py \
+	tests/light/src/axosyslog_light/common/docker_operations.py \
 	tests/light/src/axosyslog_light/common/file.py \
 	tests/light/src/axosyslog_light/common/__init__.py \
 	tests/light/src/axosyslog_light/common/network_operations.py \

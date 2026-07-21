@@ -27,6 +27,7 @@ from pathlib import Path
 from subprocess import DEVNULL
 from subprocess import Popen as subprocess_Popen
 
+from axosyslog_light.common.docker_operations import ensure_image_exists
 from axosyslog_light.executors.process_executor import ProcessExecutor
 from axosyslog_light.helpers.snmptrapd.snmptrapd_executor import SnmpTrapdExecutor
 from psutil import Popen
@@ -41,6 +42,7 @@ class SnmpTrapdDockerExecutor(SnmpTrapdExecutor):
         self.__proc = None
 
     def start(self, snmptrapd_options: typing.List, stdout_path: Path, stderr_path: Path) -> Popen:
+        ensure_image_exists(self.__image)
         subprocess_Popen(["docker", "rm", "-f", self.__container_name], stdout=DEVNULL, stderr=DEVNULL).wait()
 
         cwd = Path.cwd().absolute()
