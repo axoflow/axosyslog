@@ -424,4 +424,6 @@ FILTERX_DEFINE_TYPE(list, FILTERX_TYPE_NAME(sequence),
                     .len = _filterx_list_len,
                     .freeze = _filterx_list_freeze,
                     .dedup = _filterx_list_dedup,
+                    .add = filterx_sequence_generic_add_method,
+                    .add_inplace = filterx_sequence_generic_add_inplace_method,
                    );
