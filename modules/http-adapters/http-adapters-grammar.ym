@@ -21,7 +21,7 @@
  */
 
 %code top {
-#include "splunk-adapter.h"
+#include "http-adapter.h"
 
 }
 
@@ -73,9 +73,9 @@ driver
 http_response_adapter
     : KW_RESPONSE_ADAPTER '(' string ')'
       {
-        CHECK_ERROR(strcmp($3, "splunk") == 0, @3, "Unknown response adapter \"%s\"", $3);
-        $$ = splunk_adapter_new();
-	free($3);
+        $$ = http_adapter_new_by_name($3);
+        CHECK_ERROR($$ != NULL, @3, "Unknown response adapter \"%s\"", $3);
+        free($3);
       }
     ;
 
