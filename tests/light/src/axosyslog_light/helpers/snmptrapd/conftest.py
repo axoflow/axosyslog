@@ -27,6 +27,7 @@ from pathlib import Path
 import pytest
 from axosyslog_light.common.blocking import wait_until_true
 from axosyslog_light.common.file import File
+from axosyslog_light.fixtures import third_party_runner_uses_docker
 from axosyslog_light.helpers.snmptrapd.snmptrapd_docker_executor import SnmpTrapdDockerExecutor
 from axosyslog_light.helpers.snmptrapd.snmptrapd_local_executor import SnmpTrapdLocalExecutor
 
@@ -116,7 +117,7 @@ class SNMPtrapd(object):
 
 @pytest.fixture
 def snmptrapd(request, port_allocator, container_name):
-    if request.config.getoption("--third-party-runner") == "docker":
+    if third_party_runner_uses_docker(request, "snmptrapd"):
         executor = SnmpTrapdDockerExecutor(
             f"snmptrapd_{container_name}",
         )

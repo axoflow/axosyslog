@@ -26,6 +26,7 @@ import argparse
 import logging
 import os
 import re
+import shutil
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -102,9 +103,9 @@ def pytest_addoption(parser):
 
     parser.addoption(
         "--third-party-runner",
-        default="local",
-        choices=["local", "docker"],
-        help="How to run 3rd party services (ClickHouse server, snmptrapd): as host binaries ('local') or in containers ('docker'). Default: local.",
+        default="auto",
+        choices=["auto", "local", "docker"],
+        help="How to run 3rd party services (ClickHouse server, snmptrapd): as host binaries ('local') or in containers ('docker'). 'auto' uses the host binary when installed and falls back to a container. Default: auto.",
     )
 
     parser.addoption(
@@ -261,9 +262,16 @@ def dqtool(testcase_parameters):
     yield instance
 
 
+def third_party_runner_uses_docker(request, binary: str) -> bool:
+    runner = request.config.getoption("--third-party-runner")
+    if runner == "auto":
+        return shutil.which(binary) is None
+    return runner == "docker"
+
+
 @pytest.fixture
 def clickhouse_server(request, testcase_parameters, container_name):
-    if request.config.getoption("--third-party-runner") == "docker":
+    if third_party_runner_uses_docker(request, "clickhouse-server"):
         clickhouse_server_instance = ClickhouseServerDockerExecutor(
             testcase_parameters,
             f"clickhouse_{container_name}",

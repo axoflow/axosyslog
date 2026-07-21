@@ -14,10 +14,12 @@ It is designed to facilitate the testing of AxoSyslog components and ensure thei
 ## Running 3rd party services in containers
 
 Some tests need 3rd party services (`clickhouse-server`, `snmptrapd`). By default
-(`--third-party-runner local`) these are expected to be installed on the host.
+(`--third-party-runner auto`) each service runs from the host binary when it is
+installed, and falls back to a container otherwise — so tests work out of the box
+both on a host with the services installed and on one without them.
 
-To run them in containers instead — so they don't need to be installed locally —
-pass `--third-party-runner docker`:
+To force one mode for all services, pass `--third-party-runner local` (host
+binaries only) or `--third-party-runner docker` (containers only):
 
 ```
 make light-check PYTEST_OPTS="--third-party-runner docker"
