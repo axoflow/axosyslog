@@ -26,6 +26,7 @@ import argparse
 import logging
 import os
 import re
+import shutil
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -39,7 +40,8 @@ from axosyslog_light.common.file import copy_file
 from axosyslog_light.common.pytest_operations import calculate_testcase_name
 from axosyslog_light.common.session_data import get_session_data
 from axosyslog_light.common.session_data import SessionData
-from axosyslog_light.helpers.clickhouse.clickhouse_server_executor import ClickhouseServerExecutor
+from axosyslog_light.helpers.clickhouse.clickhouse_server_docker_executor import ClickhouseServerDockerExecutor
+from axosyslog_light.helpers.clickhouse.clickhouse_server_local_executor import ClickhouseServerLocalExecutor
 from axosyslog_light.helpers.dqtool.dqtool import DqTool
 from axosyslog_light.helpers.dqtool.dqtool_docker_executor import DqToolDockerExecutor
 from axosyslog_light.helpers.dqtool.dqtool_executor import DqToolExecutor
@@ -97,6 +99,13 @@ def pytest_addoption(parser):
         "--docker-image",
         default="ghcr.io/axoflow/axosyslog:latest",
         help="Docker image to use for running syslog-ng. Used when 'runner' is 'docker'. Default: ghcr.io/axoflow/axosyslog:latest",
+    )
+
+    parser.addoption(
+        "--third-party-runner",
+        default="auto",
+        choices=["auto", "local", "docker"],
+        help="How to run 3rd party services (ClickHouse server, snmptrapd): as host binaries ('local') or in containers ('docker'). 'auto' uses the host binary when installed and falls back to a container. Default: auto.",
     )
 
     parser.addoption(
@@ -253,9 +262,22 @@ def dqtool(testcase_parameters):
     yield instance
 
 
+def third_party_runner_uses_docker(request, binary: str) -> bool:
+    runner = request.config.getoption("--third-party-runner")
+    if runner == "auto":
+        return shutil.which(binary) is None
+    return runner == "docker"
+
+
 @pytest.fixture
-def clickhouse_server(request, testcase_parameters):
-    clickhouse_server_instance = ClickhouseServerExecutor(testcase_parameters)
+def clickhouse_server(request, testcase_parameters, container_name):
+    if third_party_runner_uses_docker(request, "clickhouse-server"):
+        clickhouse_server_instance = ClickhouseServerDockerExecutor(
+            testcase_parameters,
+            f"clickhouse_{container_name}",
+        )
+    else:
+        clickhouse_server_instance = ClickhouseServerLocalExecutor(testcase_parameters)
     yield clickhouse_server_instance
     if clickhouse_server_instance.process is not None:
         clickhouse_server_instance.stop()
