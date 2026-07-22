@@ -805,9 +805,6 @@ tls_options
 	;
 
 tls_option
-        : KW_IFDEF {
-}
-
 	| KW_PEER_VERIFY '(' yesno ')'
 	  {
 	    gint verify_mode = $3 ? (TVM_REQUIRED | TVM_TRUSTED) : (TVM_OPTIONAL | TVM_UNTRUSTED);
@@ -916,8 +913,6 @@ tls_option
 	    GError *error = NULL;
 	    CHECK_ERROR_GERROR(tls_context_set_conf_cmds(last_tls_context, $3, &error), @3, error, "Error setting conf-cmds()");
 	  }
-        | KW_ENDIF {
-}
         ;
 
 tls_conf_cmds

@@ -403,9 +403,6 @@ main_location_print (FILE *yyo, YYLTYPE const * const yylocp)
 %token KW_NO                          10381
 %token KW_AUTO                        10382
 
-%token KW_IFDEF                       10383
-%token KW_ENDIF                       10384
-
 %token LL_DOTDOT                      10420
 %token LL_DOTDOTDOT                   10421
 %token LL_PRAGMA                      10422
