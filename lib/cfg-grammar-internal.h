@@ -59,6 +59,7 @@
 
 #include "stats/stats.h"
 #include "healthcheck/healthcheck-stats.h"
+#include "transport/tls-context.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -93,6 +94,7 @@ extern CfgArgs *last_block_params;
 extern DNSCacheOptions *last_dns_cache_options;
 extern MultiLineOptions *last_multi_line_options;
 extern DynMetricsTemplate *last_dyn_metrics_template;
+extern TLSContext *last_tls_context;
 
 
 #endif

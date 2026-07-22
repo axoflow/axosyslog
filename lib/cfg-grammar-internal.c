@@ -49,3 +49,4 @@ DNSCacheOptions *last_dns_cache_options;
 LogRewrite *last_rewrite;
 MultiLineOptions *last_multi_line_options;
 DynMetricsTemplate *last_dyn_metrics_template;
+TLSContext *last_tls_context;

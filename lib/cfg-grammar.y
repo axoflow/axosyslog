@@ -449,6 +449,31 @@ main_location_print (FILE *yyo, YYLTYPE const * const yylocp)
 /* metrics template */
 %token KW_LABELS                      10530
 
+/* TLS support (shared tls() option block, see the tls_option rule) */
+%token KW_TLS                         10540
+%token KW_PEER_VERIFY                 10541
+%token KW_KEY_FILE                    10542
+%token KW_KEYLOG_FILE                 10543
+%token KW_CERT_FILE                   10544
+%token KW_DHPARAM_FILE                10545
+%token KW_PKCS12_FILE                 10546
+%token KW_CA_DIR                      10547
+%token KW_CRL_DIR                     10548
+%token KW_CA_FILE                     10549
+%token KW_TRUSTED_KEYS                10550
+%token KW_TRUSTED_FINGERPRINTS        10551
+%token KW_TRUSTED_DN                  10552
+%token KW_CIPHER_SUITE                10553
+%token KW_TLS12_AND_OLDER             10554
+%token KW_TLS13                       10555
+%token KW_SIGALGS                     10556
+%token KW_CLIENT_SIGALGS              10557
+%token KW_ECDH_CURVE_LIST             10558
+%token KW_SSL_OPTIONS                 10559
+%token KW_SSL_VERSION                 10560
+%token KW_ALLOW_COMPRESS              10561
+%token KW_CONF_CMDS                   10562
+
 
 /* END_DECLS */
 
@@ -530,6 +555,9 @@ main_location_print (FILE *yyo, YYLTYPE const * const yylocp)
 %type	<cptr> path_secret
 %type	<cptr> path_check
 %type	<cptr> path
+
+%type   <ptr> tls_conf_cmds
+%type   <ptr> tls_conf_cmd_list_build
 
 /* END_DECLS */
 
@@ -1829,6 +1857,173 @@ _inner_src_context_push: { cfg_lexer_push_context(lexer, LL_CONTEXT_INNER_SRC, N
 _inner_src_context_pop: { cfg_lexer_pop_context(lexer); };
 _options_context_push: { cfg_lexer_push_context(lexer, LL_CONTEXT_OPTIONS, NULL, "options statement"); };
 _options_context_pop: { cfg_lexer_pop_context(lexer); };
+
+/*
+ * Shared tls() option block for drivers that terminate TLS with the OpenSSL
+ * based TLSContext (see transport/tls-context.h).  A driver enters this from
+ * its own grammar by opening a tls() context, storing the freshly created
+ * TLSContext in the global last_tls_context, then referencing tls_options:
+ *
+ *   | KW_TLS { last_tls_context = tls_context_new(TM_SERVER, ...); }
+ *     '(' tls_options ')' { <driver>_set_tls_context(last_driver, last_tls_context); }
+ *
+ * The options themselves are transport agnostic, so both sources (TM_SERVER)
+ * and destinations (TM_CLIENT) share them; client-only options (sni(),
+ * ocsp-stapling-verify(), ...) stay in the driver grammar that needs them.
+ */
+tls_options
+        : tls_option tls_options
+        |
+        ;
+
+tls_option
+        : KW_PEER_VERIFY '(' yesno ')'
+          {
+            gint verify_mode = $3 ? (TVM_REQUIRED | TVM_TRUSTED) : (TVM_OPTIONAL | TVM_UNTRUSTED);
+            tls_context_set_verify_mode(last_tls_context, verify_mode);
+          }
+        | KW_PEER_VERIFY '(' string ')'
+          {
+            CHECK_ERROR(tls_context_set_verify_mode_by_name(last_tls_context, $3), @3,
+                        "unknown peer-verify() argument");
+            free($3);
+          }
+        | KW_KEY_FILE '(' path_secret ')'
+          {
+            tls_context_set_key_file(last_tls_context, $3);
+            free($3);
+          }
+        | KW_KEYLOG_FILE '(' string ')'
+          {
+            GError *error = NULL;
+            CHECK_ERROR_GERROR(tls_context_set_keylog_file(last_tls_context, $3, &error), @3, error, "Error setting keylog-file()");
+            free($3);
+          }
+        | KW_CERT_FILE '(' path_check ')'
+          {
+            tls_context_set_cert_file(last_tls_context, $3);
+            free($3);
+          }
+        | KW_DHPARAM_FILE '(' path_check ')'
+          {
+            tls_context_set_dhparam_file(last_tls_context, $3);
+            free($3);
+          }
+        | KW_PKCS12_FILE '(' path_check ')'
+          {
+            tls_context_set_pkcs12_file(last_tls_context, $3);
+            free($3);
+          }
+        | KW_CA_DIR '(' string ')'
+          {
+            tls_context_set_ca_dir(last_tls_context, $3);
+            free($3);
+          }
+        | KW_CRL_DIR '(' string ')'
+          {
+            tls_context_set_crl_dir(last_tls_context, $3);
+            free($3);
+          }
+        | KW_CA_FILE '(' path_check ')'
+          {
+            tls_context_set_ca_file(last_tls_context, $3);
+            free($3);
+          }
+        | KW_TRUSTED_KEYS '(' string_list ')'
+          {
+            tls_context_set_trusted_fingerprints(last_tls_context, $3, FALSE);
+          }
+        | KW_TRUSTED_FINGERPRINTS '(' string_list ')'
+          {
+            tls_context_set_trusted_fingerprints(last_tls_context, $3, TRUE);
+          }
+        | KW_TRUSTED_DN '(' string_list ')'
+          {
+            tls_context_set_trusted_dn(last_tls_context, $3);
+          }
+        | KW_CIPHER_SUITE '(' tls_cipher_suites ')'
+        | KW_CIPHER_SUITE '(' string ')'
+          {
+            /* compat for specifying TLS 1.2-or-older ciphers */
+            tls_context_set_cipher_suite(last_tls_context, $3);
+            free($3);
+          }
+        | KW_SIGALGS '(' string ')'
+          {
+            GError *error = NULL;
+            CHECK_ERROR_GERROR(tls_context_set_sigalgs(last_tls_context, $3, &error), @3, error, "Error setting sigalgs()");
+            free($3);
+          }
+        | KW_CLIENT_SIGALGS '(' string ')'
+          {
+            GError *error = NULL;
+            CHECK_ERROR_GERROR(tls_context_set_client_sigalgs(last_tls_context, $3, &error), @3, error, "Error setting client-sigalgs()");
+            free($3);
+          }
+        | KW_ECDH_CURVE_LIST '(' string ')'
+          {
+            tls_context_set_ecdh_curve_list(last_tls_context, $3);
+            free($3);
+          }
+        | KW_SSL_OPTIONS '(' string_list ')'
+          {
+            CHECK_ERROR(tls_context_set_ssl_options_by_name(last_tls_context, $3), @3,
+                        "unknown ssl-options() argument");
+          }
+        | KW_SSL_VERSION '(' string ')'
+          {
+            CHECK_ERROR(tls_context_set_ssl_version_by_name(last_tls_context, $3), @3,
+                        "unknown ssl-version() argument");
+            free($3);
+          }
+        | KW_ALLOW_COMPRESS '(' yesno ')'
+          {
+            tls_context_set_allow_compress(last_tls_context, $3);
+          }
+        | KW_CONF_CMDS '(' tls_conf_cmds ')'
+          {
+            GError *error = NULL;
+            CHECK_ERROR_GERROR(tls_context_set_conf_cmds(last_tls_context, $3, &error), @3, error, "Error setting conf-cmds()");
+          }
+        ;
+
+tls_conf_cmds
+        : tls_conf_cmd_list_build      { $$ = $1; }
+        ;
+
+tls_conf_cmd_list_build
+        : string LL_ARROW string tls_conf_cmd_list_build
+          {
+            /* reverse order is important here as this is inside of a bison right recursion */
+            $$ = g_list_prepend($4, g_strdup($3));
+            $$ = g_list_prepend($$, g_strdup($1));
+            free($1);
+            free($3);
+          }
+        |
+          {
+            $$ = NULL;
+          }
+        ;
+
+tls_cipher_suites
+        : tls_cipher_suite tls_cipher_suites
+        |
+        ;
+
+tls_cipher_suite
+        : KW_TLS12_AND_OLDER '(' string ')'
+          {
+            tls_context_set_cipher_suite(last_tls_context, $3);
+            free($3);
+          }
+        | KW_TLS13 '(' string ')'
+          {
+            GError *error = NULL;
+            CHECK_ERROR_GERROR(tls_context_set_tls13_cipher_suite(last_tls_context, $3, &error), @3, error, "Error setting cipher-suite(tls13())");
+            free($3);
+          }
+        ;
 
 /* END_RULES */
 
