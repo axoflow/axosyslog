@@ -70,6 +70,7 @@ EXTRA_DIST += \
 	tests/light/functional_tests/source_drivers/file_source/test_follow_freq_value.py \
 	tests/light/functional_tests/source_drivers/file_source/test_no_header_flag.py \
 	tests/light/functional_tests/source_drivers/generator_source/test_generator_source.py \
+	tests/light/functional_tests/source_drivers/http_source/test_http_source.py \
 	tests/light/functional_tests/source_drivers/internal_source/test_internal_acceptance.py \
 	tests/light/functional_tests/source_drivers/network_source/proxyprotocol/test_pp_acceptance.py \
 	tests/light/functional_tests/source_drivers/network_source/proxyprotocol/test_pp_reload.py \
@@ -82,6 +83,7 @@ EXTRA_DIST += \
 	tests/light/functional_tests/source_drivers/network_source/text_with_nuls/test_embedded_nul.py \
 	tests/light/functional_tests/source_drivers/network_source/text_with_nuls/test_nul_terminated.py \
 	tests/light/functional_tests/source_drivers/opentelemetry_source/test_opentelemetry_source_acceptance.py \
+	tests/light/functional_tests/source_drivers/splunk_hec_source/test_splunk_hec_source.py \
 	tests/light/functional_tests/source_drivers/syslog_source/auto/test_auto_proto.py \
 	tests/light/functional_tests/source_drivers/syslog_source/test_syslog_transports.py \
 	tests/light/functional_tests/source_drivers/unix_dgram_source/test_unix_dgram_source_acceptance.py \
