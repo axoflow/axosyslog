@@ -46,6 +46,9 @@ static CfgLexerKeyword arrow_flight_keywords[] =
   { "MAP",           KW_CAP_MAP },
   { "batch_bytes",   KW_BATCH_BYTES },
   { "timeout",       KW_TIMEOUT },
+  { "keep_alive",    KW_KEEP_ALIVE },
+  { "time",          KW_TIME },
+  { "max_pings_without_data", KW_MAX_PINGS_WITHOUT_DATA },
   { NULL }
 };
 
