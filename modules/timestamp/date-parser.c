@@ -194,15 +194,17 @@ static LogPipe *
 date_parser_clone(LogPipe *s)
 {
   DateParser *self = (DateParser *) s;
-  LogParser *cloned;
+  DateParser *cloned;
 
-  cloned = date_parser_new(log_pipe_get_config(&self->super.super));
-  log_parser_clone_settings(&self->super, cloned);
-  date_parser_set_formats(cloned, string_list_clone(self->date_formats));
-  date_parser_set_timezone(cloned, self->date_tz);
-  date_parser_set_time_stamp(cloned, self->time_stamp);
+  cloned = (DateParser *) date_parser_new(log_pipe_get_config(&self->super.super));
+  log_parser_clone_settings(&self->super, &cloned->super);
+  date_parser_set_formats(&cloned->super, string_list_clone(self->date_formats));
+  date_parser_set_timezone(&cloned->super, self->date_tz);
+  date_parser_set_time_stamp(&cloned->super, self->time_stamp);
+  cloned->flags = self->flags;
+  cloned->value_handle = self->value_handle;
 
-  return &cloned->super;
+  return &cloned->super.super;
 }
 
 static void
