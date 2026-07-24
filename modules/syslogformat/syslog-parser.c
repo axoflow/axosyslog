@@ -73,6 +73,7 @@ syslog_parser_clone(LogPipe *s)
   cloned = (SyslogParser *) syslog_parser_new(s->cfg);
   log_parser_clone_settings(&self->super, &cloned->super);
   msg_format_options_copy(&cloned->parse_options, &self->parse_options);
+  cloned->drop_invalid = self->drop_invalid;
   return &cloned->super.super;
 }
 
