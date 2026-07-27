@@ -515,7 +515,12 @@ _bytes_add(FilterXObject *s, FilterXObject *object)
   const gchar *other_str;
   gsize other_str_len;
   if (!filterx_object_extract_bytes_ref(object, &other_str, &other_str_len))
-    return NULL;
+    {
+      filterx_eval_push_error_info_printf("Failed to add object to bytes",
+                                          "Right hand side must be bytes, got: %s",
+                                          filterx_object_get_type_name(object));
+      return NULL;
+    }
 
   gsize buffer_len = self->str_len + other_str_len;
   gchar *buffer = g_malloc(buffer_len);
