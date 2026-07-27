@@ -46,7 +46,12 @@ filterx_mapping_merge(FilterXObject *s, FilterXObject *other)
 {
   other = filterx_ref_unwrap_ro(other);
   if (!filterx_object_is_type(other, &FILTERX_TYPE_NAME(mapping)))
-    return FALSE;
+    {
+      filterx_eval_push_error_info_printf("Failed to merge mapping",
+                                          "argument must be a mapping, got: %s",
+                                          filterx_object_get_type_name(other));
+      return FALSE;
+    }
 
   return filterx_object_iter(other, _add_elem, s);
 }

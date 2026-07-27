@@ -76,7 +76,12 @@ filterx_sequence_merge(FilterXObject *s, FilterXObject *other)
 {
   other = filterx_ref_unwrap_ro(other);
   if (!filterx_object_is_type(other, &FILTERX_TYPE_NAME(sequence)))
-    return FALSE;
+    {
+      filterx_eval_push_error_info_printf("Failed to merge sequence",
+                                          "argument must be a sequence, got: %s",
+                                          filterx_object_get_type_name(other));
+      return FALSE;
+    }
 
   return filterx_object_iter(other, _add_elem, s);
 }
