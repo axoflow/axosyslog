@@ -354,8 +354,6 @@ static FilterXObject *
 _do_plus(FilterXObject *lhs, FilterXObject *rhs, FilterXExpr *expr)
 {
   FilterXObject *result = filterx_object_add(lhs, rhs);
-  if (!result)
-    filterx_eval_push_error_static_info("Failed to add values", "add() method failed");
 
   filterx_object_unref(lhs);
   filterx_object_unref(rhs);
