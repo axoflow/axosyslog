@@ -40,12 +40,6 @@ _eval_plus_assign(FilterXExpr *s)
 
   FilterXObject *res = filterx_expr_plus_assign(self->super.lhs, rhs_object);
   filterx_object_unref(rhs_object);
-  if (!res)
-    {
-      filterx_eval_push_error_static_info("Failed to add values in place", "plus_assign() method failed");
-      return NULL;
-    }
-
   return res;
 }
 
