@@ -395,6 +395,7 @@ filterx_eval_begin_context(FilterXEvalContext *context,
   context->previous_context = previous_context;
 
   context->eval_control_modifier = FXC_UNSET;
+  context->allocations_shared = FALSE;
   filterx_eval_set_context(context);
 }
 
@@ -435,6 +436,7 @@ filterx_eval_begin_restricted_context(FilterXEvalContext *context, FilterXEnviro
   context->eval_control_modifier = FXC_UNSET;
   context->previous_context = filterx_eval_get_context();
   context->env = env;
+  context->allocations_shared = TRUE;
   filterx_eval_set_context(context);
 }
 
@@ -477,7 +479,7 @@ filterx_eval_freeze_object(FilterXObject **object)
 
   if (context && context->env)
     {
-      if (filterx_eval_context_is_production(context))
+      if (!filterx_eval_context_allocations_are_shared(context))
         g_assert_not_reached();
       /* only compile contexts have an env. We can only freeze objects during compile time. */
       filterx_env_freeze_object(context->env, object);
