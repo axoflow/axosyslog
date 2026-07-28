@@ -308,6 +308,7 @@ static struct
 {
   LogMessage *msg;
   FilterXScope *scope;
+  FilterXEnvironment test_env;
   FilterXEvalContext context;
 } filterx_env;
 
@@ -322,9 +323,24 @@ init_libtest_filterx(void)
   FILTERX_TYPE_NAME(test_dict) = FILTERX_TYPE_NAME(dict);
   FILTERX_TYPE_NAME(test_list) = FILTERX_TYPE_NAME(list);
 
+  /* We are setting up a context that allows us to exercise most things.
+   *
+   *   1) compile-time things (freeze, dedup): allocator is unset, e.g.  all
+   *      objects will be heap allocated.  FilterXEnvironment is populated,
+   *      e.g.  dedup storage, weak refs, etc are available.
+   *
+   *   2) production-time things (eval, error state): msg and scope are both
+   *      set.
+   *
+   * Objects are never allocated from the thread-specific allocator,
+   * everything is on the heap.
+   */
   filterx_env.msg = create_sample_message();
   filterx_env.scope = filterx_scope_new(NULL, NULL);
+  filterx_env_init(&filterx_env.test_env);
   filterx_eval_begin_context(&filterx_env.context, NULL, filterx_env.scope, filterx_env.msg);
+  filterx_env.context.env = &filterx_env.test_env;
+  filterx_env.context.allocator = NULL;
 }
 
 void
@@ -347,6 +363,7 @@ deinit_libtest_filterx(void)
   filterx_scope_free(filterx_env.scope);
   filterx_eval_clear_errors();
   filterx_eval_end_context(&filterx_env.context);
+  filterx_env_clear(&filterx_env.test_env);
 }
 
 FILTERX_DEFINE_TYPE(test_dict, FILTERX_TYPE_NAME(object), .is_abstract = TRUE);
