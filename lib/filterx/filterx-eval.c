@@ -479,8 +479,7 @@ filterx_eval_freeze_object(FilterXObject **object)
 
   if (context && context->env)
     {
-      if (!filterx_eval_context_allocations_are_shared(context))
-        g_assert_not_reached();
+      g_assert(!(*object)->allocator_used);
       /* only compile contexts have an env. We can only freeze objects during compile time. */
       filterx_env_freeze_object(context->env, object);
     }
