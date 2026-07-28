@@ -44,6 +44,8 @@ jobs:
           find /usr/local/bin/ -lname "*Python.framework*" -delete
 
       - name: Install dependencies
+        env:
+          HOMEBREW_BUNDLE_NO_JOBS: "1"
         run: |
           brew update
           brew bundle --force --file=contrib/Brewfile
