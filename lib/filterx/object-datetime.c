@@ -304,6 +304,9 @@ _add(FilterXObject *s, FilterXObject *object)
       goto success;
     }
 
+  filterx_eval_push_error_info_printf("Failed to add to datetime",
+                                      "rhs requires an integer or double, got: %s",
+                                      filterx_object_get_type_name(object));
   return NULL;
 
 success:

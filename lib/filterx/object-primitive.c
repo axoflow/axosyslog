@@ -75,7 +75,11 @@ static FilterXObject *
 _double_add_result(gdouble value)
 {
   if (!isfinite(value))
-    return NULL;
+    {
+      filterx_eval_push_error_static_info("Failed to perform addition",
+                                          "double overflow");
+      return NULL;
+    }
   return filterx_double_new(value);
 }
 
@@ -89,7 +93,11 @@ _integer_add(FilterXObject *s, FilterXObject *object)
     {
       gint64 res;
       if (__builtin_add_overflow(gn_as_int64(&self->value), i, &res))
-        return NULL;
+        {
+          filterx_eval_push_error_static_info("Failed to perform addition",
+                                              "integer overflow");
+          return NULL;
+        }
       return filterx_integer_new(res);
     }
 

@@ -233,7 +233,7 @@ filterx_dpath_lvalue_plus_assign(FilterXExpr *s, FilterXObject *new_value)
   FilterXObject *dict = _dpath_touch(self, TRUE, &last_object);
 
   if (!dict)
-    return FALSE;
+    return NULL;
 
   FilterXObject *result = filterx_object_add_inplace(last_object, new_value);
   if (result && result != last_object)
