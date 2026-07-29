@@ -22,30 +22,35 @@
 #include "http-adapter.h"
 #include <json.h>
 
+/* only confirmed event rejections are flagged as critical errors, other
+ * 4XX/5XX responses (auth failures, server errors) are left to the default
+ * status code mapping, which knows which of those are worth retrying */
 static void
 _adapt_splunk_response(HttpAdapter *self, HttpResponseSignalData *data)
 {
-  if (data->http_code >= 400)
-    {
-      data->result = HTTP_SLOT_CRITICAL_ERROR;
-      struct json_object *jso = http_adapter_parse_response_json(data->response_body);
-      if (jso)
-        {
-          struct json_object *text_jso = NULL;
-          struct json_object *event_num_jso = NULL;
-          if (!json_object_object_get_ex(jso, "text", &text_jso))
-            goto exit;
-          if (!json_object_object_get_ex(jso, "invalid-event-number", &event_num_jso))
-            goto exit;
-          data->offending_message = json_object_get_int(event_num_jso);
-          if (data->offending_message >= data->batch_size)
-            data->offending_message = 0;
-          else
-            http_adapter_locate_offending_payload(data);
+  if (data->http_code < 400)
+    return;
+
+  struct json_object *jso = http_adapter_parse_response_json(data->response_body);
+  if (!jso)
+    return;
+
+  struct json_object *text_jso = NULL;
+  struct json_object *event_num_jso = NULL;
+  if (!json_object_object_get_ex(jso, "text", &text_jso))
+    goto exit;
+  if (!json_object_object_get_ex(jso, "invalid-event-number", &event_num_jso))
+    goto exit;
+
+  data->result = HTTP_SLOT_CRITICAL_ERROR;
+  data->offending_message = json_object_get_int(event_num_jso);
+  if (data->offending_message >= data->batch_size)
+    data->offending_message = 0;
+  else
+    http_adapter_locate_offending_payload(data);
+
 exit:
-          json_object_put(jso);
-        }
-    }
+  json_object_put(jso);
 }
 
 

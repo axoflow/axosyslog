@@ -48,6 +48,7 @@ Test(http_adapters, test_splunk_adapter_extract_offending_message)
 
   http_adapter_adapt_response(sa, &data);
 
+  cr_assert_eq(data.result, HTTP_SLOT_CRITICAL_ERROR);
   cr_assert_eq(data.offending_message, 1);
 
   gchar *offending_request = _extract_offending_request(&data);
@@ -73,6 +74,7 @@ Test(http_adapters, test_splunk_adapter_request_is_short)
   };
 
   http_adapter_adapt_response(sa, &data);
+  cr_assert_eq(data.result, HTTP_SLOT_CRITICAL_ERROR);
   cr_assert_eq(data.offending_message, 3);
   cr_assert_eq(data.offending_request_start, 0);
   cr_assert_eq(data.offending_request_len, 0);
@@ -96,7 +98,54 @@ Test(http_adapters, test_splunk_adapter_request_is_even_shorter)
   };
 
   http_adapter_adapt_response(sa, &data);
+  cr_assert_eq(data.result, HTTP_SLOT_CRITICAL_ERROR);
   cr_assert_eq(data.offending_message, 3);
+  cr_assert_eq(data.offending_request_start, 0);
+  cr_assert_eq(data.offending_request_len, 0);
+
+  g_string_free(data.request_body, TRUE);
+  g_string_free(data.response_body, TRUE);
+  http_adapter_free(sa);
+}
+
+Test(http_adapters, test_splunk_adapter_generic_error_uses_default_mapping)
+{
+  HttpAdapter *sa = splunk_adapter_new();
+  HttpResponseSignalData data =
+  {
+    .http_code = 403,
+    .batch_size = 2,
+    .request_body = g_string_new("foo1\nfoo2\n"),
+    .response_body = g_string_new("{\"text\":\"Invalid token\",\"code\":4}"),
+    0
+  };
+
+  http_adapter_adapt_response(sa, &data);
+  cr_assert_eq(data.result, HTTP_SLOT_SUCCESS);
+  cr_assert_eq(data.offending_message, 0);
+  cr_assert_eq(data.offending_request_start, 0);
+  cr_assert_eq(data.offending_request_len, 0);
+
+  g_string_free(data.request_body, TRUE);
+  g_string_free(data.response_body, TRUE);
+  http_adapter_free(sa);
+}
+
+Test(http_adapters, test_splunk_adapter_non_json_error_uses_default_mapping)
+{
+  HttpAdapter *sa = splunk_adapter_new();
+  HttpResponseSignalData data =
+  {
+    .http_code = 401,
+    .batch_size = 2,
+    .request_body = g_string_new("foo1\nfoo2\n"),
+    .response_body = g_string_new("<html>unauthorized</html>"),
+    0
+  };
+
+  http_adapter_adapt_response(sa, &data);
+  cr_assert_eq(data.result, HTTP_SLOT_SUCCESS);
+  cr_assert_eq(data.offending_message, 0);
   cr_assert_eq(data.offending_request_start, 0);
   cr_assert_eq(data.offending_request_len, 0);
 
