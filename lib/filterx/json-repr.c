@@ -153,7 +153,16 @@ _convert_from_json_number(const gchar *json_text, gsize json_len, jsmntok_t *tok
   if (!parse_generic_number(buf, &gn))
     return NULL;
 
-  return filterx_primitive_new_from_gn(&gn);
+  switch (gn.type)
+    {
+    case GN_DOUBLE:
+    case GN_NAN:
+      return filterx_double_new_with_prec(gn_as_double(&gn), gn.precision);
+    case GN_INT64:
+      return filterx_integer_new(gn_as_int64(&gn));
+    default:
+      g_assert_not_reached();
+    }
 }
 
 static FilterXObject *
