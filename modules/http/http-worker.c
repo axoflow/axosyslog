@@ -801,7 +801,7 @@ _flush_on_target(HTTPDestinationWorker *self, const gchar *url)
   switch (self->response_signal.result)
     {
     case HTTP_SLOT_RESOLVED:
-      msg_debug("http: HTTP slot resolved issue the error, retry",
+      msg_debug("http: HTTP slot resolved the error, retry",
                 evt_tag_long("http_code", http_code));
       return LTR_RETRY;
     case HTTP_SLOT_CRITICAL_ERROR:
