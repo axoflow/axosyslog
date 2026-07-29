@@ -26,8 +26,8 @@ import pytest
 OPENOBSERVE_PARTIAL_FAILURE = '{"code":200,"status":[{"name":"stream","successful":0,"failed":1,"error":"Cant parse timestamp"}]}'
 OPENOBSERVE_SUCCESS = '{"code":200,"status":[{"name":"stream","successful":1,"failed":0}]}'
 
-SPLUNK_PARTIAL_FAILURE = '"{\"text\":\"Event field cannot be blank\",\"code\":13,\"invalid-event-number\":1}"'
-SPLUNK_SUCCESS = '"{\"text\":\"everything ok\",\"code\":0}"'
+SPLUNK_PARTIAL_FAILURE = '{"text":"Event field cannot be blank","code":13,"invalid-event-number":0}'
+SPLUNK_SUCCESS = '{"text":"Success","code":0}'
 
 
 def test_http_destination_accepts_messages(config, syslog_ng, port_allocator):
