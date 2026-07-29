@@ -13,6 +13,8 @@ set(HTTP_ADAPTERS_SOURCES
     http-adapters-plugin.c
     splunk-adapter.c
     splunk-adapter.h
+    openobserve-adapter.c
+    openobserve-adapter.h
 )
 
 add_module(
