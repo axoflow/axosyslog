@@ -308,8 +308,9 @@ static struct
 {
   LogMessage *msg;
   FilterXScope *scope;
+  FilterXEnvironment test_env;
   FilterXEvalContext context;
-} filterx_env;
+} filterx_world;
 
 void
 init_libtest_filterx(void)
@@ -322,19 +323,34 @@ init_libtest_filterx(void)
   FILTERX_TYPE_NAME(test_dict) = FILTERX_TYPE_NAME(dict);
   FILTERX_TYPE_NAME(test_list) = FILTERX_TYPE_NAME(list);
 
-  filterx_env.msg = create_sample_message();
-  filterx_env.scope = filterx_scope_new(NULL, NULL);
-  filterx_eval_begin_context(&filterx_env.context, NULL, filterx_env.scope, filterx_env.msg);
+  /* We are setting up a context that allows us to exercise most things.
+   *
+   *   1) compile-time things (freeze, dedup): allocator is unset, e.g.  all
+   *      objects will be heap allocated.  FilterXEnvironment is populated,
+   *      e.g.  dedup storage, weak refs, etc are available.
+   *
+   *   2) production-time things (eval, error state): msg and scope are both
+   *      set.
+   *
+   * Objects are never allocated from the thread-specific allocator,
+   * everything is on the heap.
+   */
+  filterx_world.msg = create_sample_message();
+  filterx_world.scope = filterx_scope_new(NULL, NULL);
+  filterx_env_init(&filterx_world.test_env);
+  filterx_eval_begin_context(&filterx_world.context, NULL, filterx_world.scope, filterx_world.msg);
+  filterx_world.context.env = &filterx_world.test_env;
+  filterx_world.context.allocator = NULL;
 }
 
 void
 set_libtest_filterx_scope(FilterXScope *scope)
 {
-  FilterXScope *old_scope = filterx_env.scope;
+  FilterXScope *old_scope = filterx_world.scope;
 
-  filterx_scope_set_message(scope, filterx_env.msg);
-  filterx_env.context.scope = scope;
-  filterx_env.scope = scope;
+  filterx_scope_set_message(scope, filterx_world.msg);
+  filterx_world.context.scope = scope;
+  filterx_world.scope = scope;
 
   if (old_scope)
     filterx_scope_free(old_scope);
@@ -343,10 +359,11 @@ set_libtest_filterx_scope(FilterXScope *scope)
 void
 deinit_libtest_filterx(void)
 {
-  log_msg_unref(filterx_env.msg);
-  filterx_scope_free(filterx_env.scope);
+  log_msg_unref(filterx_world.msg);
+  filterx_scope_free(filterx_world.scope);
   filterx_eval_clear_errors();
-  filterx_eval_end_context(&filterx_env.context);
+  filterx_eval_end_context(&filterx_world.context);
+  filterx_env_clear(&filterx_world.test_env);
 }
 
 FILTERX_DEFINE_TYPE(test_dict, FILTERX_TYPE_NAME(object), .is_abstract = TRUE);

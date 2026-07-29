@@ -113,8 +113,8 @@ _format_json(FilterXObject *value, GString *json)
   return TRUE;
 }
 
-static FilterXObject *
-_add(FilterXObject *self, FilterXObject *other)
+FilterXObject *
+filterx_sequence_generic_add_method(FilterXObject *self, FilterXObject *other)
 {
   FilterXObject *cloned = filterx_object_copy(self);
 
@@ -127,8 +127,8 @@ error:
   return NULL;
 }
 
-static FilterXObject *
-_add_inplace(FilterXObject *self, FilterXObject *container, FilterXObject *other)
+FilterXObject *
+filterx_sequence_generic_add_inplace_method(FilterXObject *self, FilterXObject *container, FilterXObject *other)
 {
   if (!filterx_sequence_merge(container, other))
     return NULL;
@@ -140,6 +140,4 @@ FILTERX_DEFINE_TYPE(sequence, FILTERX_TYPE_NAME(object),
                     .is_mutable = TRUE,
                     .is_abstract = TRUE,
                     .format_json = _format_json,
-                    .add = _add,
-                    .add_inplace = _add_inplace,
                    );

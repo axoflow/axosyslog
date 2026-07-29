@@ -30,9 +30,6 @@
 #include "apphook.h"
 #include "cfg.h"
 
-FilterXEvalContext compile_context;
-
-
 Test(filterx_cow, test_filterx_cow_wrap_adds_an_xref_wrapper)
 {
   FilterXObject *d = filterx_dict_new();
@@ -214,13 +211,13 @@ setup(void)
   app_startup();
 
   configuration = cfg_new_snippet();
-  filterx_eval_begin_compile(&compile_context, configuration);
+  init_libtest_filterx();
 }
 
 static void
 teardown(void)
 {
-  filterx_eval_end_compile(&compile_context);
+  deinit_libtest_filterx();
   cfg_free(configuration);
   scratch_buffers_explicit_gc();
   app_shutdown();

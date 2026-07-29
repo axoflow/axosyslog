@@ -75,7 +75,7 @@ struct _FilterXEvalContext
   FilterXEvalControl eval_control_modifier;
   FilterXEvalContext *previous_context;
 
-  guint8 failure_info_collect_falsy:1;
+  guint8 failure_info_collect_falsy:1, allocations_shared:1;
   GArray *failure_info;
   gint weak_refs_offset;
   FilterXEnvironment *env;
@@ -198,11 +198,11 @@ filterx_eval_store_weak_ref(FilterXObject *object)
   } while(0)
 
 static inline gboolean
-filterx_eval_context_is_production(FilterXEvalContext *context)
+filterx_eval_context_allocations_are_shared(FilterXEvalContext *context)
 {
   if (!context)
     return FALSE;
-  return context->scope != NULL;
+  return context->allocations_shared;
 }
 
 static inline FilterXObject *
@@ -221,7 +221,7 @@ filterx_eval_malloc_object(gsize object_size, gsize alloc_size)
       result = (FilterXObject *) filterx_allocator_malloc(context->allocator, alloc_size, object_size);
       result->allocator_used = TRUE;
     }
-  result->early_allocation = !filterx_eval_context_is_production(context);
+  result->early_allocation = filterx_eval_context_allocations_are_shared(context);
 
   return result;
 }

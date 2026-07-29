@@ -499,5 +499,7 @@ FILTERX_DEFINE_TYPE(otel_array, FILTERX_TYPE_NAME(sequence),
                     .len = _len,
                     .iter = _iter,
                     .repr = _repr,
+                    .add = filterx_sequence_generic_add_method,
+                    .add_inplace = filterx_sequence_generic_add_inplace_method,
                     .free_fn = _free,
                    );
