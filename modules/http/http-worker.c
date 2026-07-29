@@ -805,9 +805,9 @@ _flush_on_target(HTTPDestinationWorker *self, const gchar *url)
                 evt_tag_long("http_code", http_code));
       return LTR_RETRY;
     case HTTP_SLOT_CRITICAL_ERROR:
-      msg_debug("http: HTTP slot indicated critical error, reporting broken connection",
+      msg_debug("http: HTTP slot indicated critical error, reporting error",
                 evt_tag_long("http_code", http_code));
-      return LTR_NOT_CONNECTED;
+      return LTR_ERROR;
     default:
       break;
     }
