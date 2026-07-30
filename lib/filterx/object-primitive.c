@@ -341,29 +341,6 @@ filterx_primitive_get_value(FilterXObject *s)
 }
 
 FilterXObject *
-filterx_primitive_new_from_gn(const GenericNumber *gn)
-{
-  FilterXType *type;
-
-  switch (gn->type)
-    {
-    case GN_DOUBLE:
-    case GN_NAN:
-      type = &FILTERX_TYPE_NAME(double);
-      break;
-    case GN_INT64:
-      type = &FILTERX_TYPE_NAME(integer);
-      break;
-    default:
-      g_assert_not_reached();
-    }
-  FilterXPrimitive *self = filterx_primitive_new(type);
-  self->value = *gn;
-  return &self->super;
-
-}
-
-FilterXObject *
 filterx_typecast_boolean(FilterXExpr *s, FilterXObject *args[], gsize args_len)
 {
   FilterXObject *object = filterx_typecast_get_arg(s, args, args_len);

@@ -56,7 +56,6 @@ FilterXObject *filterx_double_new(gdouble value);
 FilterXObject *filterx_double_new_with_prec(gdouble value, gint prec);
 FilterXObject *filterx_enum_new(GlobalConfig *cfg, const gchar *namespace_name, const gchar *enum_name);
 GenericNumber filterx_primitive_get_value(FilterXObject *s);
-FilterXObject *filterx_primitive_new_from_gn(const GenericNumber *gn);
 
 FilterXObject *filterx_typecast_boolean(FilterXExpr *s, FilterXObject *args[], gsize args_len);
 FilterXObject *filterx_typecast_integer(FilterXExpr *s, FilterXObject *args[], gsize args_len);
