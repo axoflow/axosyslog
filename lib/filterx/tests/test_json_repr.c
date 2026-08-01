@@ -50,6 +50,35 @@ Test(filterx_json_repr, deeply_nested_array_does_not_overflow_stack)
   cr_assert(TRUE);
 }
 
+/* the legacy hardcoded jsmn token limit was 65536, use a token count comfortably above that */
+#define LARGE_ARRAY_ELEMENT_COUNT 100000
+
+Test(filterx_json_repr, array_exceeding_legacy_max_tokens_is_parsed_successfully)
+{
+  GString *large = g_string_sized_new(LARGE_ARRAY_ELEMENT_COUNT * 2 + 2);
+  g_string_append_c(large, '[');
+  for (gint i = 0; i < LARGE_ARRAY_ELEMENT_COUNT; i++)
+    {
+      if (i > 0)
+        g_string_append_c(large, ',');
+      g_string_append_c(large, '1');
+    }
+  g_string_append_c(large, ']');
+
+  GError *error = NULL;
+  FilterXObject *obj = filterx_object_from_json(large->str, large->len, &error);
+
+  cr_assert_null(error, "%s", error ? error->message : "");
+  cr_assert_not_null(obj);
+
+  guint64 len = 0;
+  cr_assert(filterx_object_len(obj, &len));
+  cr_assert_eq(len, LARGE_ARRAY_ELEMENT_COUNT);
+
+  filterx_object_unref(obj);
+  g_string_free(large, TRUE);
+}
+
 static void
 setup(void)
 {

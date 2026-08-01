@@ -262,7 +262,6 @@ FilterXObject *
 filterx_object_from_json(const gchar *repr, gssize repr_len, GError **error)
 {
   const gint min_tokens = 256;
-  const gint max_tokens = 65536;
 
   g_return_val_if_fail(error == NULL || (*error) == NULL, NULL);
 
@@ -278,6 +277,12 @@ filterx_object_from_json(const gchar *repr, gssize repr_len, GError **error)
       jsmn_tokens = g_new(jsmntok_t, jsmn_tokens_len);
     }
 
+  /* NOTE: a token consumes at least one byte of input, so the number of
+   * tokens can never exceed the length of the JSON text.  This gives us a
+   * natural, input-driven ceiling for the doubling loop below, without
+   * resorting to an arbitrary hardcoded limit. */
+  gint64 max_tokens = MAX(repr_len, min_tokens);
+
   gint r;
   gboolean try_again;
   do
@@ -287,8 +292,18 @@ filterx_object_from_json(const gchar *repr, gssize repr_len, GError **error)
       r = jsmn_parse(&parser, repr, repr_len, jsmn_tokens, jsmn_tokens_len);
       if (r == JSMN_ERROR_NOMEM && jsmn_tokens_len < max_tokens)
         {
-          jsmn_tokens_len *= 2;
-          jsmn_tokens = g_renew(jsmntok_t, jsmn_tokens, jsmn_tokens_len);
+          gint64 new_tokens_len = MIN((gint64) jsmn_tokens_len * 2, max_tokens);
+          jsmntok_t *new_tokens = g_try_renew(jsmntok_t, jsmn_tokens, new_tokens_len);
+          if (!new_tokens)
+            {
+              g_set_error(error, FILTERX_JSON_ERROR, FILTERX_JSON_ERROR_TOO_LARGE,
+                          "JSON text too large, could not allocate memory for %"
+                          G_GINT64_FORMAT " tokens (size %" G_GSSIZE_FORMAT " bytes)",
+                          new_tokens_len, repr_len);
+              return NULL;
+            }
+          jsmn_tokens = new_tokens;
+          jsmn_tokens_len = new_tokens_len;
           try_again = TRUE;
         }
     }
@@ -300,7 +315,8 @@ filterx_object_from_json(const gchar *repr, gssize repr_len, GError **error)
         {
         case JSMN_ERROR_NOMEM:
           g_set_error(error, FILTERX_JSON_ERROR, FILTERX_JSON_ERROR_TOO_LARGE,
-                      "JSON text too large, number of tokens exceeds the maximum of %d tokens (size %ld bytes)",
+                      "JSON text too large, number of tokens exceeds the maximum of %"
+                      G_GINT64_FORMAT " tokens (size %" G_GSSIZE_FORMAT " bytes)",
                       max_tokens, repr_len);
           break;
         case JSMN_ERROR_INVAL:
