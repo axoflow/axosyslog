@@ -470,6 +470,107 @@ filterx_eval_set_control_modifier(FilterXEvalContext *context, FilterXEvalContro
   context->eval_control_modifier = modifier;
 }
 
+static FilterXObject *
+_dup_retain_value(FilterXObject *value, gpointer user_data)
+{
+  if (!value)
+    return NULL;
+
+  /* Decouples the value from the thread specific allocator (always, via
+   * the allocator_used check inside filterx_eval_retain_dup_needed()) and
+   * from the current configuration, guaranteeing an independent,
+   * heap-allocated, refcounted object that remains valid regardless of
+   * which thread ends up using this duplicated context. */
+  return filterx_eval_retain_dup(value, FX_RETAIN_DECOUPLE_CONFIG);
+}
+
+FilterXEvalContext *
+filterx_eval_context_dup(FilterXEvalContext *context)
+{
+  g_assert(context == filterx_eval_get_context());
+
+  FilterXEvalContext *new_context = g_new0(FilterXEvalContext, 1);
+
+  /* standalone context: not linked to where it was taken from, and always
+   * allocates via g_malloc(), which is safe on any thread */
+  new_context->weak_refs = g_ptr_array_new_full(32, (GDestroyNotify) filterx_object_unref);
+  new_context->previous_context = NULL;
+  new_context->allocator = NULL;
+  new_context->env = context->env;
+  new_context->eval_control_modifier = FXC_UNSET;
+  new_context->allocations_shared = FALSE;
+
+  /*
+   * Cloning a recursive, mutable structure (e.g.  a dict containing a
+   * dict) re-establishes a parent_container weakref on every nested
+   * FilterXRef as it goes (see _table_clone_index() et al.), and each of
+   * those calls filterx_eval_store_weak_ref() to keep the (freshly cloned)
+   * parent alive -- because ownership between a container and its element
+   * only flows top-down, a nested container that isn't *also* reachable
+   * through some other strong reference would otherwise be freed right
+   * away, leaving that parent_container weakref dangling.
+   *
+   * filterx_eval_store_weak_ref() always targets whatever
+   * filterx_eval_get_context() currently returns.  So the entire retain
+   * pass below has to run with @new_context (not @context) set as the
+   * active context, or those protections would land in @context->weak_refs
+   * instead -- which stops existing the moment @context ends, silently
+   * turning every such parent_container in the "independent" copy into a
+   * dangling pointer (a use-after-free waiting to happen the next time
+   * something mutates through it and CoW walks back up via
+   * parent_container).
+   */
+  filterx_eval_set_context(new_context);
+
+  new_context->scope = filterx_scope_dup(context->scope, _dup_retain_value, NULL);
+  /* the scope owns the only reference to the message, context->msg is
+   * just a borrowed convenience pointer, mirroring filterx_eval_begin_context() */
+  new_context->msg = new_context->scope->msg;
+  new_context->current_frame_meta = _dup_retain_value(context->current_frame_meta, NULL);
+
+  filterx_eval_set_context(context);
+
+  return new_context;
+}
+
+void
+filterx_eval_context_free_dup(FilterXEvalContext *context)
+{
+  if (!context)
+    return;
+
+  /* filterx_scope_dup() may have produced a pair of scopes (see its
+   * comment): the "own" scope returned as context->scope, optionally
+   * parented onto a frozen, flattened ancestor scope. Each owns its own
+   * layout and must be freed individually -- filterx_scope_free() does
+   * not recurse into parent_scope, since that pointer is a live,
+   * externally owned link in the normal (non-dup'd) case. */
+  FilterXScope *scope = context->scope;
+  FilterXScope *ancestor_scope = scope->parent_scope;
+
+  FilterXScopeVariableLayout *layout = scope->layout;
+  /* also unrefs the retained message and all variable values */
+  filterx_scope_free(scope);
+  filterx_scope_variable_layout_free(layout);
+
+  if (ancestor_scope)
+    {
+      FilterXScopeVariableLayout *ancestor_layout = ancestor_scope->layout;
+      filterx_scope_free(ancestor_scope);
+      filterx_scope_variable_layout_free(ancestor_layout);
+    }
+
+  filterx_object_unref(context->current_frame_meta);
+  g_ptr_array_free(context->weak_refs, TRUE);
+  _clear_errors(context);
+  if (context->failure_info)
+    {
+      _clear_failure_info(context->failure_info);
+      g_array_free(context->failure_info, TRUE);
+    }
+  g_free(context);
+}
+
 void
 filterx_eval_freeze_object(FilterXObject **object)
 {

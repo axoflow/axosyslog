@@ -425,3 +425,187 @@ filterx_scope_free(FilterXScope *self)
   filterx_scope_clear(self);
   g_free(self);
 }
+
+typedef struct _FilterXScopeVariableSnapshot
+{
+  FilterXVariableHandle handle;
+  FilterXVariableType variable_type;
+  guint16 assigned;
+  FilterXObject *value;
+} FilterXScopeVariableSnapshot;
+
+typedef struct _FilterXScopeDupCollector
+{
+  GArray *snapshots;
+  FilterXScopeValueRetainFunc retain;
+  gpointer user_data;
+  /* if TRUE, plain (undeclared) floating variables are skipped: they are
+   * scoped to a single generation by design and were never meant to
+   * survive a scope boundary, unlike declared floating or message-tied
+   * ones (see filterx_variable_is_declared()/_validate_variable()) */
+  gboolean declared_and_message_tied_only;
+} FilterXScopeDupCollector;
+
+static gboolean
+_collect_variable_for_dup(FilterXVariable *variable, gpointer user_data)
+{
+  FilterXScopeDupCollector *collector = (FilterXScopeDupCollector *) user_data;
+
+  if (collector->declared_and_message_tied_only &&
+      !filterx_variable_is_declared(variable) && !filterx_variable_is_message_tied(variable))
+    return TRUE;
+
+  FilterXScopeVariableSnapshot snapshot =
+  {
+    .handle = variable->handle,
+    .variable_type = variable->variable_type,
+    .assigned = variable->assigned,
+    .value = collector->retain(variable->value, collector->user_data),
+  };
+  g_array_append_val(collector->snapshots, snapshot);
+  return TRUE;
+}
+
+/* returns -1 if @handle is not present in @handles */
+static gint
+_bsearch_handle_index(FilterXVariableHandle *handles, guint32 num_handles, FilterXVariableHandle handle)
+{
+  gint l = 0, h = (gint) num_handles - 1;
+
+  while (l <= h)
+    {
+      gint m = (l + h) >> 1;
+
+      if (handles[m] == handle)
+        return m;
+      else if (handles[m] > handle)
+        h = m - 1;
+      else
+        l = m + 1;
+    }
+  return -1;
+}
+
+/* consumes (unrefs) every snapshot value it doesn't end up placing */
+static FilterXScope *
+_dup_scope_from_snapshots(FilterXScope *parent, LogMessage *msg, FilterXScopeVariableLayout *layout, GArray *snapshots)
+{
+  FilterXScope *new_scope = filterx_scope_new(parent, layout);
+  filterx_scope_set_message(new_scope, msg);
+
+  for (guint32 i = 0; i < snapshots->len; i++)
+    {
+      FilterXScopeVariableSnapshot *snapshot = &g_array_index(snapshots, FilterXScopeVariableSnapshot, i);
+      gint idx = _bsearch_handle_index(layout->handles, layout->num_variables, snapshot->handle);
+      if (idx < 0)
+        {
+          filterx_object_unref(snapshot->value);
+          continue;
+        }
+
+      FilterXVariable *v = &new_scope->variables[idx];
+      filterx_variable_init_instance(v, snapshot->variable_type, snapshot->handle);
+      new_scope->variables_used++;
+
+      if (filterx_variable_is_message_tied(v))
+        new_scope->syncable = TRUE;
+
+      FilterXObject *value = snapshot->value;
+      FilterXGenCounter generation = filterx_variable_is_message_tied(v) ? new_scope->msg->generation : new_scope->generation;
+      filterx_variable_set_value(v, &value, snapshot->assigned, generation);
+      filterx_object_unref(value);
+    }
+
+  return new_scope;
+}
+
+static FilterXScopeVariableLayout *
+_layout_copy(FilterXScopeVariableLayout *source)
+{
+  return filterx_scope_variable_layout_new_from_handles(source ? source->handles : NULL,
+                                                        source ? source->num_variables : 0);
+}
+
+static FilterXScopeVariableLayout *
+_layout_from_snapshot_handles(GArray *snapshots)
+{
+  guint32 n = snapshots->len;
+  FilterXVariableHandle *handles = NULL;
+  if (n > 0)
+    {
+      handles = g_new(FilterXVariableHandle, n);
+      for (guint32 i = 0; i < n; i++)
+        handles[i] = g_array_index(snapshots, FilterXScopeVariableSnapshot, i).handle;
+    }
+  FilterXScopeVariableLayout *layout = filterx_scope_variable_layout_new_from_handles(handles, n);
+  g_free(handles);
+  return layout;
+}
+
+/*
+ * A single flattened scope cannot represent everything a duplicate needs:
+ * @self's own variables must keep @self's exact layout, so every
+ * scope_var_idx the compiler assigned against it (including for variables
+ * not yet bound at dup time) stays valid in the duplicate; variables
+ * inherited from an ancestor scope (an earlier, already finished
+ * filterx{} block chained onto this one) have no such fixed indices to
+ * preserve and are only ever reached via the generic handle-based lookup.
+ * Two scopes, chained together, cover both:
+ *
+ *   1) an ancestor scope: a flattened snapshot of every message-tied or
+ *      declared floating variable visible through @self's parent chain.
+ *      Plain (undeclared) floating variables are intentionally excluded:
+ *      they are scoped to a single generation by design and were never
+ *      meant to survive a scope boundary. This scope is frozen (marked as
+ *      a fork point) -- it is never synced or mutated once built.
+ *
+ *   2) the "own" scope (returned): an exact copy of @self, using @self's
+ *      own layout, parented onto (1).
+ */
+FilterXScope *
+filterx_scope_dup(FilterXScope *self, FilterXScopeValueRetainFunc retain, gpointer user_data)
+{
+  FilterXScopeDupCollector own_collector =
+  {
+    .snapshots = g_array_new(FALSE, FALSE, sizeof(FilterXScopeVariableSnapshot)),
+    .retain = retain,
+    .user_data = user_data,
+    .declared_and_message_tied_only = FALSE,
+  };
+  for (guint32 i = 0; i < self->variables_size; i++)
+    {
+      FilterXVariable *variable = &self->variables[i];
+      if (!variable->variable_type || !variable->value)
+        continue;
+      if (!_validate_variable(self, variable))
+        continue;
+      _collect_variable_for_dup(variable, &own_collector);
+    }
+
+  FilterXScope *ancestor_scope = NULL;
+  if (self->parent_scope)
+    {
+      FilterXScopeDupCollector ancestor_collector =
+      {
+        .snapshots = g_array_new(FALSE, FALSE, sizeof(FilterXScopeVariableSnapshot)),
+        .retain = retain,
+        .user_data = user_data,
+        .declared_and_message_tied_only = TRUE,
+      };
+      filterx_scope_foreach_variable_readonly(self->parent_scope, _collect_variable_for_dup, &ancestor_collector);
+
+      if (ancestor_collector.snapshots->len > 0)
+        {
+          FilterXScopeVariableLayout *ancestor_layout = _layout_from_snapshot_handles(ancestor_collector.snapshots);
+          ancestor_scope = _dup_scope_from_snapshots(NULL, self->msg, ancestor_layout, ancestor_collector.snapshots);
+        }
+      g_array_free(ancestor_collector.snapshots, TRUE);
+    }
+
+  FilterXScopeVariableLayout *own_layout = _layout_copy(self->layout);
+  FilterXScope *new_scope = _dup_scope_from_snapshots(ancestor_scope, self->msg, own_layout, own_collector.snapshots);
+  new_scope->dirty = TRUE;
+  g_array_free(own_collector.snapshots, TRUE);
+
+  return new_scope;
+}

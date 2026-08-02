@@ -109,6 +109,45 @@ void filterx_eval_begin_compile(FilterXEvalContext *context, GlobalConfig *cfg);
 void filterx_eval_end_compile(FilterXEvalContext *context);
 void filterx_eval_freeze_object(FilterXObject **object);
 
+/*
+ * filterx_eval_context_dup():
+ *
+ * Takes a full, self contained snapshot of @context: its scope (and the
+ * scope's entire parent chain) with all of its variables/values, and
+ * current_frame_meta.  Every retained value is decoupled from the thread
+ * specific allocator and from the current configuration (see
+ * FX_RETAIN_DECOUPLE_CONFIG), producing independent, owned copies.
+ *
+ * The result starts out with its own, empty weak_refs, but cloning a
+ * recursive mutable structure (a dict containing a dict, etc) re-populates
+ * it as it goes: every nested FilterXRef's parent_container weakref is
+ * re-established against the *cloned* parent, which is only reachable
+ * top-down (ownership flows container -> element, never the other way),
+ * so filterx_eval_store_weak_ref() is what keeps such a parent alive at
+ * all.  That call always targets whatever filterx_eval_get_context()
+ * currently returns, so the whole retain pass runs with the new context
+ * (not @context) set as active, ensuring those protections end up in the
+ * new context's own weak_refs -- and therefore keep working long after
+ * @context (and its weak_refs) are gone -- rather than in @context's,
+ * where they would otherwise silently turn into dangling pointers the
+ * moment @context ends.
+ *
+ * The result is a heap allocated, standalone FilterXEvalContext with no
+ * previous_context and no allocator (allocations always fall back to
+ * g_malloc()), so it can be kept around and used to resume evaluation
+ * later, potentially on a different thread, long after @context (and the
+ * thread specific allocator/stack storage it may be using) has gone away.
+ *
+ * @context must be the context that is currently active in this thread
+ * (i.e.  filterx_eval_get_context() == context), as retaining objects out
+ * of the thread specific allocator relies on that.
+ *
+ * The returned context must eventually be released with
+ * filterx_eval_context_free_dup().
+ */
+FilterXEvalContext *filterx_eval_context_dup(FilterXEvalContext *context);
+void filterx_eval_context_free_dup(FilterXEvalContext *context);
+
 FilterXEvalControl filterx_eval_get_control_modifier(FilterXEvalContext *context);
 void filterx_eval_set_control_modifier(FilterXEvalContext *context, FilterXEvalControl modifier);
 

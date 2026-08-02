@@ -55,6 +55,12 @@ struct _FilterXScope
 
 typedef gboolean (*FilterXScopeForeachFunc)(FilterXVariable *variable, gpointer user_data);
 
+/* Used by filterx_scope_dup() to detach a variable's value from anything
+ * that would not survive the duplication (e.g.  a thread specific
+ * allocator, or config reload).  Must return an independent, owned
+ * reference. */
+typedef FilterXObject *(*FilterXScopeValueRetainFunc)(FilterXObject *value, gpointer user_data);
+
 void filterx_scope_sync(FilterXScope *self, LogMessage **pmsg, const LogPathOptions *path_options);
 
 FilterXVariable *filterx_scope_lookup_variable(FilterXScope *self, FilterXVariableHandle handle, gint scope_var_idx);
@@ -71,6 +77,19 @@ void filterx_scope_init_instance(FilterXScope *storage, gsize storage_size, Filt
 void filterx_scope_clear(FilterXScope *self);
 FilterXScope *filterx_scope_new(FilterXScope *parent_scope, FilterXScopeVariableLayout *layout);
 void filterx_scope_free(FilterXScope *self);
+
+/* Duplicates @self into an independent copy that is safe to keep around
+ * (and hand to another thread) past the lifetime of @self, e.g. to resume
+ * evaluation later. The result is @self's own variables under @self's own
+ * layout (so every scope_var_idx the compiler assigned against @self
+ * stays valid), optionally parented onto a second, frozen scope holding a
+ * flattened snapshot of the message-tied and declared floating variables
+ * visible through @self's ancestor chain (plain floating variables don't
+ * survive a scope boundary by design, see filterx_variable_is_declared()).
+ * Each scope in the returned chain owns its own FilterXScopeVariableLayout
+ * (retrievable/freeable via ->layout); the caller must free both -- see
+ * filterx_eval_context_free_dup() for the pattern. */
+FilterXScope *filterx_scope_dup(FilterXScope *self, FilterXScopeValueRetainFunc retain, gpointer user_data);
 
 static inline void
 filterx_scope_set_dirty(FilterXScope *self)
