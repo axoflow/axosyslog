@@ -383,6 +383,20 @@ _optimize_plus(FilterXExpr *s)
   return NULL;
 }
 
+#if SYSLOG_NG_ENABLE_JIT
+static void
+_infer_types_plus(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  filterx_expr_infer_types_default(s, env);
+  FilterXArithmeticOperator *self = (FilterXArithmeticOperator *) s;
+  FilterXStaticTypeSpec lhs_spec = self->super.lhs ? self->super.lhs->static_type : INITIAL_FILTERX_STATIC_TYPE_SPEC;
+  FilterXStaticTypeSpec rhs_spec = self->super.rhs ? self->super.rhs->static_type : INITIAL_FILTERX_STATIC_TYPE_SPEC;
+
+  s->static_type = filterx_static_type_spec_meet(lhs_spec, rhs_spec);
+}
+
+#endif
+
 static FilterXObject *
 _do_uminus(FilterXObject *operand_obj, FilterXExpr *expr)
 {
@@ -651,6 +665,7 @@ filterx_operator_plus_new(FilterXExpr *lhs, FilterXExpr *rhs)
   self->super.super.free_fn = _free_arithmetic_common;
 #if SYSLOG_NG_ENABLE_JIT
   self->super.super.compile = _compile_plus;
+  self->super.super.infer_types = _infer_types_plus;
 #endif
 
   return &self->super.super;

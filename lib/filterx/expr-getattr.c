@@ -153,6 +153,16 @@ fx_jit_do_getattr(FilterXObject *variable, FilterXObject *attr, FilterXExpr *exp
   return _do_getattr(variable, attr, expr);
 }
 
+static void
+_getattr_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  filterx_expr_infer_types_default(s, env);
+  FilterXGetAttr *self = (FilterXGetAttr *) s;
+  /* Result is one nesting level shallower than the operand. */
+  s->static_type = filterx_static_type_element(self->operand ? self->operand->static_type :
+                                               INITIAL_FILTERX_STATIC_TYPE_SPEC);
+}
+
 static FilterXIRValue
 _getattr_compile(FilterXExpr *s, FilterXJIT *jit)
 {
@@ -186,6 +196,7 @@ filterx_getattr_new(FilterXExpr *operand, FilterXObject *attr_name)
   self->super.walk_children = _getattr_walk;
   self->super.free_fn = _free;
 #if SYSLOG_NG_ENABLE_JIT
+  self->super.infer_types = _getattr_infer_types;
   self->super.compile = _getattr_compile;
 #endif
   self->operand = operand;

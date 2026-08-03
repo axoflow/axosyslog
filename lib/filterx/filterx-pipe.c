@@ -95,7 +95,11 @@ log_filterx_pipe_init(LogPipe *s)
 
   filterx_eval_end_compile(&compile_context);
 
+#if SYSLOG_NG_ENABLE_JIT
+  /* Only the JIT consumes the inferred types, and the per-expression hooks are compiled out
+   * without it — running the pass here would walk the whole tree to produce nothing. */
   filterx_expr_infer_types_root(self->block);
+#endif
 
   return success;
 }

@@ -156,6 +156,19 @@ _free(FilterXExpr *s)
   filterx_expr_free_method(s);
 }
 
+#if SYSLOG_NG_ENABLE_JIT
+static void
+_get_subscript_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  filterx_expr_infer_types_default(s, env);
+  FilterXGetSubscript *self = (FilterXGetSubscript *) s;
+  /* Result is one nesting level shallower than the operand. */
+  s->static_type = filterx_static_type_element(self->operand ? self->operand->static_type :
+                                               INITIAL_FILTERX_STATIC_TYPE_SPEC);
+}
+
+#endif
+
 static gboolean
 _get_subscript_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
@@ -185,6 +198,9 @@ filterx_get_subscript_new(FilterXExpr *operand, FilterXExpr *key)
   self->super.walk_children = _get_subscript_walk;
   self->super.move = _move;
   self->super.free_fn = _free;
+#if SYSLOG_NG_ENABLE_JIT
+  self->super.infer_types = _get_subscript_infer_types;
+#endif
   self->operand = operand;
   self->key = key;
   return &self->super;

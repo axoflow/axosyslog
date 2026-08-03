@@ -244,6 +244,16 @@ fx_jit_assign_variable_in_scope(FilterXEvalContext *context, FilterXExpr *s, Fil
   return new_value;
 }
 
+static void
+_variable_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  FilterXVariableExpr *self = (FilterXVariableExpr *) s;
+  if (self->handle_is_macro)
+    s->static_type = INITIAL_FILTERX_STATIC_TYPE_SPEC;
+  else
+    s->static_type = filterx_type_spec_get(env, self->handle);
+}
+
 static FilterXIRValue
 _variable_compile(FilterXExpr *s, FilterXJIT *jit)
 {
@@ -337,6 +347,7 @@ filterx_variable_expr_new(const gchar *name, FilterXVariableType variable_type)
   self->super.free_fn = _free;
   self->super.eval = _eval_variable;
 #if SYSLOG_NG_ENABLE_JIT
+  self->super.infer_types = _variable_infer_types;
   self->super.compile = _variable_compile;
 #endif
   self->super._update_repr = _update_repr;

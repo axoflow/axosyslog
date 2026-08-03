@@ -20,6 +20,7 @@
  *
  */
 #include "filterx/expr-assign.h"
+#include "filterx/expr-variable.h"
 #include "filterx/object-primitive.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/object-null.h"
@@ -208,6 +209,47 @@ _nullv_assign_compile(FilterXExpr *s, FilterXJIT *jit)
   return _compile_nullv_assign_to_lhs(self, jit);
 }
 
+static void
+_assign_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  FilterXAssign *self = (FilterXAssign *) s;
+
+  filterx_expr_infer_types(self->super.rhs, env);
+  /* LHS may be e.g. setattr / set-subscript; visit it so deep variable reads in the LHS
+   * see the env. We do not derive the assign's result type from the LHS's static_type. */
+  filterx_expr_infer_types(self->super.lhs, env);
+
+  FilterXStaticTypeSpec rhs_spec = self->super.rhs ? self->super.rhs->static_type : INITIAL_FILTERX_STATIC_TYPE_SPEC;
+
+  FilterXVariableHandle handle;
+  if (filterx_variable_expr_get_handle(self->super.lhs, &handle))
+    filterx_type_spec_set(env, handle, rhs_spec);
+
+  s->static_type = rhs_spec;
+}
+
+static void
+_nullv_assign_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  FilterXAssign *self = (FilterXAssign *) s;
+
+  filterx_expr_infer_types(self->super.rhs, env);
+  filterx_expr_infer_types(self->super.lhs, env);
+
+  FilterXStaticTypeSpec rhs_spec = self->super.rhs ? self->super.rhs->static_type : INITIAL_FILTERX_STATIC_TYPE_SPEC;
+
+  /* nullv-assign keeps the LHS's prior value if RHS is null. The post-statement type is
+   * therefore meet(prior, rhs), and prior is what the env currently has. */
+  FilterXVariableHandle handle;
+  if (filterx_variable_expr_get_handle(self->super.lhs, &handle))
+    {
+      FilterXStaticTypeSpec prior = filterx_type_spec_get(env, handle);
+      filterx_type_spec_set(env, handle, filterx_static_type_spec_meet(prior, rhs_spec));
+    }
+
+  s->static_type = INITIAL_FILTERX_STATIC_TYPE_SPEC;
+}
+
 #endif
 
 static void
@@ -227,6 +269,7 @@ filterx_assign_new(FilterXExpr *lhs, FilterXExpr *rhs)
   filterx_assign_init_instance(self, "assign", lhs, rhs);
   self->super.super.eval = _assign_eval;
 #if SYSLOG_NG_ENABLE_JIT
+  self->super.super.infer_types = _assign_infer_types;
   self->super.super.compile = _assign_compile;
 #endif
   return &self->super.super;
@@ -240,6 +283,7 @@ filterx_nullv_assign_new(FilterXExpr *lhs, FilterXExpr *rhs)
   filterx_assign_init_instance(self, "nullv-assign", lhs, rhs);
   self->super.super.eval = _nullv_assign_eval;
 #if SYSLOG_NG_ENABLE_JIT
+  self->super.super.infer_types = _nullv_assign_infer_types;
   self->super.super.compile = _nullv_assign_compile;
 #endif
   return &self->super.super;
