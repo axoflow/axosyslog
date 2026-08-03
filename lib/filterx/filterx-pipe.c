@@ -24,6 +24,7 @@
 #include "filterx/filterx-eval.h"
 #include "filterx/filterx-config.h"
 #include "filterx/filterx-scope-var-layout.h"
+#include "filterx/filterx-type-inference.h"
 #include "filterx/jit/jit.h"
 #include "stats/stats-registry.h"
 
@@ -93,6 +94,9 @@ log_filterx_pipe_init(LogPipe *s)
     filterx_eval_dump_errors("FILTERX ERROR");
 
   filterx_eval_end_compile(&compile_context);
+
+  filterx_expr_infer_types_root(self->block);
+
   return success;
 }
 
