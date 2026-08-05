@@ -24,7 +24,7 @@
 #ifndef AFUNIX_SOURCE_H_INCLUDED
 #define AFUNIX_SOURCE_H_INCLUDED
 
-#include "afsocket-source.h"
+#include "socket/afsocket-source.h"
 #include "transport-mapper-unix.h"
 #include "file-perms.h"
 

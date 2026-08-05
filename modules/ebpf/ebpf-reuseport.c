@@ -20,7 +20,7 @@
  *
  */
 #include "ebpf-reuseport.h"
-#include "modules/afsocket/afsocket-signals.h"
+#include "socket/afsocket-signals.h"
 #include "syslog-ng.h"
 #include "messages.h"
 #include "gprocess.h"

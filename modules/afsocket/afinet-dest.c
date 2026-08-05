@@ -27,7 +27,7 @@
 #include "messages.h"
 #include "gprocess.h"
 #include "compat/openssl_support.h"
-#include "afsocket-signals.h"
+#include "socket/afsocket-signals.h"
 #include "transport/transport-tls.h"
 #include "transport/transport-stack.h"
 #if SYSLOG_NG_ENABLE_SPOOF_SOURCE

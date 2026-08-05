@@ -26,7 +26,7 @@
 #ifndef SYSTEMD_SYSLOG_SOURCE_H_INCLUDED
 #define SYSTEMD_SYSLOG_SOURCE_H_INCLUDED 1
 
-#include "afsocket-source.h"
+#include "socket/afsocket-source.h"
 #include "transport-mapper-unix.h"
 
 

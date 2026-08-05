@@ -137,7 +137,6 @@ lib/transport/transport-adapter\.[ch]
 lib/transport/transport-globals\.[ch]
 syslog-ng-ctl/commands/log-level.[ch]
 syslog-ng-ctl/commands/attach.[ch]
-modules/afsocket/afsocket-signals.h
 syslog-ng-ctl/commands/healthcheck.[ch]
 modules/python-modules/syslogng/confgen\.py
 modules/python-modules/syslogng/dest\.py
