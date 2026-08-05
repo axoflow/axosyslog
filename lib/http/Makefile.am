@@ -7,11 +7,13 @@ httpinclude_HEADERS = \
   lib/http/http-status.h \
   lib/http/http-message.h \
   lib/http/http-message-internal.h \
-  lib/http/http-parser.h
+  lib/http/http-parser.h \
+  lib/http/logproto-http-server.h
 
 http_sources = \
   lib/http/http-message.c \
-  lib/http/http-parser.c
+  lib/http/http-parser.c \
+  lib/http/logproto-http-server.c
 
 noinst_LTLIBRARIES += lib/http/libllhttp.la
 
