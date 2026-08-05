@@ -70,6 +70,7 @@ filterx_jit_ffi_init(FilterXJIT *jit)
   jit->ffi.expr_make_typed_object = _declare_func(mod, "fx_jit_expr_make_typed_object", ptr, p2, 2);
 
   jit->ffi.object_ref = _declare_func(mod, "fx_jit_object_ref", ptr, p1, 1);
+  jit->ffi.object_ref_typed = _declare_func(mod, "fx_jit_object_ref_typed", ptr, p1, 1);
   jit->ffi.object_unref = _declare_func(mod, "fx_jit_object_unref", v, p1, 1);
   jit->ffi.object_cow_fork2 = _declare_func(mod, "fx_jit_object_cow_fork2", ptr, p1, 1);
   jit->ffi.object_truthy = _declare_func(mod, "fx_jit_object_truthy", i32, p1, 1);
@@ -158,6 +159,12 @@ fx_jit_emit_object_ref(FilterXJIT *jit, LLVMValueRef obj)
   return _emit_call(jit, jit->ffi.object_ref, &obj, 1);
 }
 
+FilterXIRValue
+fx_jit_emit_object_ref_typed(FilterXJIT *jit, LLVMValueRef obj)
+{
+  return _emit_call(jit, jit->ffi.object_ref_typed, &obj, 1);
+}
+
 void
 fx_jit_emit_object_unref(FilterXJIT *jit, LLVMValueRef obj)
 {
@@ -244,6 +251,7 @@ static const gchar *const _always_typed_helpers[] =
   "fx_jit_arithmetic_uminus",
   "fx_jit_boolean_new",
   "fx_jit_expr_eval_typed",
+  "fx_jit_object_ref_typed",
 };
 
 /* Helpers that may return marshalled objects but have a "<name>_typed" twin
@@ -271,20 +279,48 @@ _name_in_list(const gchar *name, const gchar *const *list, gsize len)
   return FALSE;
 }
 
-gboolean
-fx_jit_try_make_call_result_typed(FilterXJIT *jit, FilterXIRValue value)
+/* Name of the helper @value is a call to, or NULL if it is not a call at all. */
+static const gchar *
+_called_helper_name(FilterXIRValue value)
 {
   if (!value || !LLVMIsACallInst(value))
-    return FALSE;
+    return NULL;
 
   LLVMValueRef callee = LLVMGetCalledValue(value);
   if (!callee)
-    return FALSE;
+    return NULL;
 
   gsize name_len = 0;
   const gchar *name = LLVMGetValueName2(callee, &name_len);
   if (!name || !name_len)
+    return NULL;
+
+  return name;
+}
+
+gboolean
+fx_jit_call_result_is_typed(FilterXJIT *jit, FilterXIRValue value)
+{
+  const gchar *name = _called_helper_name(value);
+  if (!name)
     return FALSE;
+
+  /* a copy-on-write fork hands back either its input or a copy of it, so it never turns a
+   * typed object into a marshalled one (or the other way around) */
+  if (strcmp(name, "fx_jit_object_cow_fork2") == 0)
+    return fx_jit_call_result_is_typed(jit, LLVMGetOperand(value, 0));
+
+  return _name_in_list(name, _always_typed_helpers, G_N_ELEMENTS(_always_typed_helpers));
+}
+
+gboolean
+fx_jit_try_make_call_result_typed(FilterXJIT *jit, FilterXIRValue value)
+{
+  const gchar *name = _called_helper_name(value);
+  if (!name)
+    return FALSE;
+
+  LLVMValueRef callee = LLVMGetCalledValue(value);
 
   if (_name_in_list(name, _always_typed_helpers, G_N_ELEMENTS(_always_typed_helpers)))
     return TRUE;

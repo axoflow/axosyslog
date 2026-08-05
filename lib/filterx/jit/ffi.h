@@ -50,6 +50,7 @@ typedef struct _FilterXJITFFI
   FilterXJITFFICall expr_make_typed_object;
 
   FilterXJITFFICall object_ref;
+  FilterXJITFFICall object_ref_typed;
   FilterXJITFFICall object_unref;
   FilterXJITFFICall object_cow_fork2;
   FilterXJITFFICall object_truthy;
@@ -71,6 +72,8 @@ FilterXIRValue fx_jit_emit_expr_make_typed_object(FilterXJIT *jit, FilterXExpr *
 FilterXIRValue fx_jit_emit_expr_propagate_to_error_if_null(FilterXJIT *jit, FilterXExpr *expr, FilterXIRValue result);
 
 FilterXIRValue fx_jit_emit_object_ref(FilterXJIT *jit, FilterXIRValue obj);
+/* Like fx_jit_emit_object_ref(), but also marks @obj as already unmarshalled. */
+FilterXIRValue fx_jit_emit_object_ref_typed(FilterXJIT *jit, FilterXIRValue obj);
 void fx_jit_emit_object_unref(FilterXJIT *jit, FilterXIRValue obj);
 FilterXIRValue fx_jit_emit_object_cow_fork2(FilterXJIT *jit, FilterXIRValue obj);
 FilterXIRValue fx_jit_emit_object_truthy(FilterXJIT *jit, FilterXIRValue obj);
@@ -93,6 +96,10 @@ FilterXIRValue fx_jit_emit_extern_call(FilterXJIT *jit, const gchar *name, Filte
  * make_typed_object() call does not have to be emitted.  Returns TRUE if the
  * value is guaranteed to be typed. */
 gboolean fx_jit_try_make_call_result_typed(FilterXJIT *jit, FilterXIRValue value);
+
+/* Side-effect free variant: TRUE if @value is a call whose result is inherently typed.
+ * Unlike the above it never retargets the call, so it is safe to use as a predicate. */
+gboolean fx_jit_call_result_is_typed(FilterXJIT *jit, FilterXIRValue value);
 
 /* Statement postlude shared by compound statements and the "<name>_stmt"
  * combined helpers, implemented in expr-compound.c. */

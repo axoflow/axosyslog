@@ -76,6 +76,16 @@ fx_jit_object_ref(FilterXObject *self)
   return filterx_object_ref(self);
 }
 
+/* Identical to fx_jit_object_ref() at runtime.  The distinct name is what marks the
+ * referenced value as already unmarshalled, so filterx_expr_compile_typed() does not
+ * have to emit a make_typed_object() call for it. */
+__attribute__((used))
+FilterXObject *
+fx_jit_object_ref_typed(FilterXObject *self)
+{
+  return filterx_object_ref(self);
+}
+
 __attribute__((used))
 FilterXObject *
 fx_jit_object_cow_fork2(FilterXObject *self)
