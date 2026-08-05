@@ -24,7 +24,7 @@
 #ifndef AFINET_SOURCE_H_INCLUDED
 #define AFINET_SOURCE_H_INCLUDED
 
-#include "afinet.h"
+#include "socket/afinet.h"
 #include "afsocket-source.h"
 #include "transport/tls-context.h"
 

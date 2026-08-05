@@ -22,7 +22,7 @@
 
 #include "afinet-dest-failover.h"
 #include "messages.h"
-#include "afinet.h"
+#include "socket/afinet.h"
 #include "timeutils/misc.h"
 
 #include <iv.h>

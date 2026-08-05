@@ -24,7 +24,7 @@
 #ifndef AFINET_DEST_H_INCLUDED
 #define AFINET_DEST_H_INCLUDED
 
-#include "afinet.h"
+#include "socket/afinet.h"
 #include "afsocket-dest.h"
 #include "afinet-dest-failover.h"
 #include "transport/tls-context.h"

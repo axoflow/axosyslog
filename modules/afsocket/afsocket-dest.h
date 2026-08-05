@@ -25,8 +25,8 @@
 #define AFSOCKET_DEST_H_INCLUDED
 
 #include "afsocket.h"
-#include "socket-options.h"
-#include "transport-mapper.h"
+#include "socket/socket-options.h"
+#include "socket/transport-mapper.h"
 #include "driver.h"
 #include "logwriter.h"
 

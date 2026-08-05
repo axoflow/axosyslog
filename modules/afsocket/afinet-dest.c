@@ -22,8 +22,8 @@
  */
 
 #include "afinet-dest.h"
-#include "transport-mapper-inet.h"
-#include "socket-options-inet.h"
+#include "socket/transport-mapper-inet.h"
+#include "socket/socket-options-inet.h"
 #include "messages.h"
 #include "gprocess.h"
 #include "compat/openssl_support.h"

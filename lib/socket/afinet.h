@@ -24,7 +24,7 @@
 #ifndef AFINET_H_INCLUDED
 #define AFINET_H_INCLUDED
 
-#include "afsocket.h"
+#include "syslog-ng.h"
 #include "transport-mapper.h"
 
 guint16 afinet_lookup_service(const TransportMapper *transport_mapper, const gchar *service);

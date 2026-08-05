@@ -25,7 +25,7 @@
 
 #include "syslog-ng.h"
 #include "gsocket.h"
-#include "transport-mapper-inet.h"
+#include "socket/transport-mapper-inet.h"
 #include "cfg.h"
 
 typedef struct _AFInetDestDriverFailover AFInetDestDriverFailover;

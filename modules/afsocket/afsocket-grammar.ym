@@ -39,9 +39,9 @@
 #include "syslog-names.h"
 #include "plugin.h"
 #include "cfg-grammar-internal.h"
-#include "socket-options-inet.h"
+#include "socket/socket-options-inet.h"
 #include "socket-options-unix.h"
-#include "transport-mapper-inet.h"
+#include "socket/transport-mapper-inet.h"
 #include "service-management.h"
 
 #include "systemd-syslog-source.h"
