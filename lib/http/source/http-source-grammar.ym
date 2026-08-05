@@ -1,0 +1,235 @@
+/*
+ * Copyright (c) 2018 Balabit
+ *
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *
+ * As an additional exemption you are allowed to compile & link against the
+ * OpenSSL libraries as published by the OpenSSL project. See the file
+ * COPYING for details.
+ *
+ */
+
+/* START_DECLS */
+
+%code {
+
+#include "http/source/http-source-grammar-internal.h"
+#include "socket/afsocket-source.h"
+
+#if ! SYSLOG_NG_ENABLE_IPV6
+#undef AF_INET6
+#define AF_INET6 0; g_assert_not_reached()
+
+#endif
+
+}
+
+%token KW_TRANSPORT
+%token KW_IP_PROTOCOL
+
+%token KW_IP_TTL
+%token KW_SO_BROADCAST
+%token KW_IP_TOS
+%token KW_IP_FREEBIND
+%token KW_SO_SNDBUF
+%token KW_SO_RCVBUF
+%token KW_SO_KEEPALIVE
+%token KW_TCP_KEEPALIVE_TIME
+%token KW_TCP_KEEPALIVE_PROBES
+%token KW_TCP_KEEPALIVE_INTVL
+%token KW_LISTEN_BACKLOG
+
+%token KW_KEEP_ALIVE
+%token KW_MAX_CONNECTIONS
+
+%token KW_LOCALIP
+%token KW_IP
+%token KW_LOCALPORT
+
+%token KW_TLS
+%token KW_PEER_VERIFY
+%token KW_KEY_FILE
+%token KW_CERT_FILE
+%token KW_DHPARAM_FILE
+%token KW_PKCS12_FILE
+%token KW_CA_DIR
+%token KW_CRL_DIR
+%token KW_TRUSTED_KEYS
+%token KW_TRUSTED_DN
+%token KW_CIPHER_SUITE
+%token KW_ECDH_CURVE_LIST
+%token KW_SSL_OPTIONS
+
+%type <num> ip_protocol_option
+
+/* END_DECLS */
+
+/* START_RULES */
+
+http_source_options
+	: http_source_option http_source_options
+	|
+	;
+
+http_source_option
+	: KW_LOCALIP '(' string ')'		{ http_sd_set_localip(last_driver, $3); free($3); }
+	| KW_IP '(' string ')'			{ http_sd_set_localip(last_driver, $3); free($3); }
+	| KW_LOCALPORT '(' string_or_number ')'	{ http_sd_set_localport(last_driver, $3); free($3); }
+	| KW_PORT '(' string_or_number ')'	{ http_sd_set_localport(last_driver, $3); free($3); }
+	| KW_TRANSPORT '(' string { transport_mapper_set_transport(last_http_transport_mapper, $3); } ')'	{ free($3); }
+	| KW_TRANSPORT '(' KW_TLS ')'                    { transport_mapper_set_transport(last_http_transport_mapper, "tls"); }
+	| KW_IP_PROTOCOL '(' ip_protocol_option ')' { transport_mapper_set_address_family(last_http_transport_mapper, $3); }
+	| KW_TLS
+	  {
+	    gchar buf[256];
+	    last_http_tls_context = tls_context_new(TM_SERVER, cfg_lexer_format_location(lexer, &@1, buf, sizeof(buf)));
+	    tls_context_set_verify_mode(last_http_tls_context, TVM_OPTIONAL | TVM_UNTRUSTED);
+	  }
+	  '(' ssl_options ')'
+	  {
+	    http_sd_set_tls_context(last_driver, last_http_tls_context);
+	  }
+	| KW_KEEP_ALIVE '(' yesno ')'		{ afsocket_sd_set_keep_alive(last_driver, $3); }
+	| KW_MAX_CONNECTIONS '(' positive_integer ')'	 { afsocket_sd_set_max_connections(last_driver, $3); }
+	| KW_LISTEN_BACKLOG '(' positive_integer ')'	{ afsocket_sd_set_listen_backlog(last_driver, $3); }
+	| source_reader_option
+	| source_driver_option
+	| tcp_ip_option
+	;
+
+ssl_options
+	: ssl_option ssl_options
+	|
+	;
+
+ssl_option
+	: KW_PEER_VERIFY '(' yesno ')'
+	  {
+	    gint verify_mode = $3 ? (TVM_REQUIRED | TVM_TRUSTED) : (TVM_OPTIONAL | TVM_UNTRUSTED);
+	    tls_context_set_verify_mode(last_http_tls_context, verify_mode);
+          }
+	| KW_PEER_VERIFY '(' string ')'
+	  {
+	    CHECK_ERROR(tls_context_set_verify_mode_by_name(last_http_tls_context, $3), @3,
+	                "unknown peer-verify() argument");
+            free($3);
+          }
+	| KW_KEY_FILE '(' string ')'
+	  {
+	    tls_context_set_key_file(last_http_tls_context, $3);
+            free($3);
+          }
+	| KW_CERT_FILE '(' string ')'
+	  {
+	    tls_context_set_cert_file(last_http_tls_context, $3);
+            free($3);
+          }
+	| KW_DHPARAM_FILE '(' string ')'
+          {
+            tls_context_set_dhparam_file(last_http_tls_context, $3);
+            free($3);
+          }
+	| KW_PKCS12_FILE '(' string ')'
+          {
+            tls_context_set_pkcs12_file(last_http_tls_context, $3);
+            free($3);
+          }
+	| KW_CA_DIR '(' string ')'
+	  {
+	    tls_context_set_ca_dir(last_http_tls_context, $3);
+            free($3);
+          }
+	| KW_CRL_DIR '(' string ')'
+	  {
+	    tls_context_set_crl_dir(last_http_tls_context, $3);
+            free($3);
+          }
+	| KW_TRUSTED_KEYS '(' string_list ')'
+          {
+            tls_context_set_trusted_fingerprints(last_http_tls_context, $3, FALSE);
+          }
+	| KW_TRUSTED_DN '(' string_list ')'
+          {
+            tls_context_set_trusted_dn(last_http_tls_context, $3);
+          }
+	| KW_CIPHER_SUITE '(' string ')'
+	  {
+            tls_context_set_cipher_suite(last_http_tls_context, $3);
+            free($3);
+	  }
+	| KW_ECDH_CURVE_LIST '(' string ')'
+          {
+            tls_context_set_ecdh_curve_list(last_http_tls_context, $3);
+            free($3);
+          }
+	| KW_SSL_OPTIONS '(' string_list ')'
+	  {
+            CHECK_ERROR(tls_context_set_ssl_options_by_name(last_http_tls_context, $3), @3,
+                        "unknown ssl-options() argument");
+	  }
+  ;
+
+sock_option
+	: KW_SO_SNDBUF '(' nonnegative_integer ')'
+    {
+      CHECK_ERROR($3 <= G_MAXINT, @3, "Invalid so_sndbuf, it has to be less than %d", G_MAXINT);
+      last_http_sock_options->so_sndbuf = $3;
+    }
+	| KW_SO_RCVBUF '(' nonnegative_integer ')'
+    {
+      CHECK_ERROR($3 <= G_MAXINT, @3, "Invalid so_rcvbuf, it has to be less than %d", G_MAXINT);
+      last_http_sock_options->so_rcvbuf = $3;
+    }
+	| KW_SO_BROADCAST '(' yesno ')'             { last_http_sock_options->so_broadcast = $3; }
+	| KW_SO_KEEPALIVE '(' yesno ')'             { last_http_sock_options->so_keepalive = $3; }
+	;
+
+tcp_ip_option
+	: sock_option
+	| KW_IP_TTL '(' nonnegative_integer ')'               { ((SocketOptionsInet *) last_http_sock_options)->ip_ttl = $3; }
+	| KW_IP_TOS '(' nonnegative_integer ')'               { ((SocketOptionsInet *) last_http_sock_options)->ip_tos = $3; }
+	| KW_IP_FREEBIND '(' yesno ')'              { ((SocketOptionsInet *) last_http_sock_options)->ip_freebind = $3; }
+	| KW_TCP_KEEPALIVE_TIME '(' nonnegative_integer ')'
+	  {
+	    CHECK_ERROR(socket_options_inet_set_tcp_keepalive_time((SocketOptionsInet *) last_http_sock_options, $3), @1,
+		            "The tcp-keepalive-time() option is not supported on this platform");
+	  }
+	| KW_TCP_KEEPALIVE_INTVL '(' nonnegative_integer ')'
+	  {
+	    CHECK_ERROR(socket_options_inet_set_tcp_keepalive_intvl((SocketOptionsInet *) last_http_sock_options, $3), @1,
+		            "The tcp-keepalive-intvl() option is not supported on this platform");
+	  }
+	| KW_TCP_KEEPALIVE_PROBES '(' nonnegative_integer ')'
+	  {
+	    CHECK_ERROR(socket_options_inet_set_tcp_keepalive_probes((SocketOptionsInet *) last_http_sock_options, $3), @1,
+		            "The tcp-keepalive-probes() option is not supported on this platform");
+	  }
+	;
+
+ip_protocol_option
+  : LL_NUMBER
+    {
+      CHECK_ERROR($1 == 4 || $1 == 6, @1, "ip-protocol option can only be 4 or 6!");
+      if ($1 == 4)
+        {
+          $$ = AF_INET;
+        }
+      else
+        {
+          $$ = AF_INET6;
+        }
+    }
+  ;
+
+/* END_RULES */

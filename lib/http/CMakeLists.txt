@@ -11,6 +11,8 @@ set(HTTP_SOURCES
     http/http-message.c
     http/http-parser.c
     http/logproto-http-server.c
+    http/source/http-source.c
+    http/source/http-source-grammar-internal.c
     http/llhttp/src/llhttp.c
     http/llhttp/src/api.c
     http/llhttp/src/http.c

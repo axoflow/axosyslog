@@ -47,7 +47,7 @@
 #define SYSLOG_TRANSPORT_TCP_PORT 601
 #define SYSLOG_TRANSPORT_TLS_PORT 6514
 
-static gboolean
+gboolean
 transport_mapper_inet_validate_tls_options(TransportMapperInet *self)
 {
   if (!self->tls_context && self->require_tls_configuration)
