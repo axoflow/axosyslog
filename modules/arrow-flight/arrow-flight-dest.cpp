@@ -158,10 +158,24 @@ arrow_flight_dd_set_batch_bytes(LogDriver *d, glong b)
 }
 
 void
-arrow_flight_dd_set_timeout(LogDriver *d, glong timeout)
+arrow_flight_dd_set_keepalive_time(LogDriver *d, gint t)
 {
   ArrowFlightDestDriver *self = (ArrowFlightDestDriver *) d;
-  self->cpp->set_timeout(timeout);
+  self->cpp->set_keepalive_time(t);
+}
+
+void
+arrow_flight_dd_set_keepalive_timeout(LogDriver *d, gint t)
+{
+  ArrowFlightDestDriver *self = (ArrowFlightDestDriver *) d;
+  self->cpp->set_keepalive_timeout(t);
+}
+
+void
+arrow_flight_dd_set_keepalive_max_pings(LogDriver *d, gint p)
+{
+  ArrowFlightDestDriver *self = (ArrowFlightDestDriver *) d;
+  self->cpp->set_keepalive_max_pings(p);
 }
 
 void
