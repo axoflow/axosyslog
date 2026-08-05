@@ -11,6 +11,7 @@ scl/syslogconf/convert-syslogconf.awk$
 .*/[^/]+-grammar\.[ch]$
 (.*/)?(README|\.gitignore|\.trivyignore|pylintrc)$
 lib/ivykis
+lib/http/llhttp
 lib/eventlog
 modules/java/org_syslog_ng_[^./_-]+\.h$
 modules/(afmongodb|afamqp)/dummy\.c$
@@ -167,7 +168,7 @@ autogen\.sh$
 autotools/sub-configure\.sh$
 configure\.ac$
 Makefile\.am$
-lib/(compat|str-repr|timeutils|control|debugger|filter|logproto|multi-line|parser|rewrite|stats|template|tests|transport|logmsg|value-pairs|secret-storage|logthrdest|logthrsource|ack-tracker|signal-slot-connector|socket|[^/]*$)
+lib/(compat|str-repr|timeutils|control|debugger|filter|logproto|multi-line|parser|rewrite|stats|template|tests|transport|logmsg|value-pairs|secret-storage|logthrdest|logthrsource|ack-tracker|signal-slot-connector|socket|http|[^/]*$)
 lib/scanner/(csv-scanner|list-scanner|kv-scanner|xml-scanner|[^/]*$)
 libtest
 syslog-ng(-ctl)?
