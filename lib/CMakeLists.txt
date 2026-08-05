@@ -379,7 +379,14 @@ set(CORE_INCLUDE_DIRS
     ${Libsystemd_INCLUDE_DIRS}
     ${LIBUNWIND_INCLUDE_DIRS}
     ${WRAP_INCLUDE_DIRS}
+    ${PROJECT_SOURCE_DIR}/lib/http/llhttp/include
 )
+
+set_source_files_properties(
+    http/llhttp/src/llhttp.c
+    http/llhttp/src/api.c
+    http/llhttp/src/http.c
+    PROPERTIES COMPILE_FLAGS -Wno-switch-default)
 
 add_library(syslog-ng SHARED ${LIB_SOURCES})
 
