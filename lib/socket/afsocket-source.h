@@ -24,9 +24,9 @@
 #ifndef AFSOCKET_SOURCE_H_INCLUDED
 #define AFSOCKET_SOURCE_H_INCLUDED
 
-#include "afsocket.h"
-#include "socket/socket-options.h"
-#include "socket/transport-mapper.h"
+#include "syslog-ng.h"
+#include "socket-options.h"
+#include "transport-mapper.h"
 #include "driver.h"
 #include "logreader.h"
 #include "dynamic-window-pool.h"

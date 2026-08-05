@@ -375,6 +375,7 @@ set(CORE_INCLUDE_DIRS
     ${LIBPCRE_INCLUDE_DIRS}
     ${Libsystemd_INCLUDE_DIRS}
     ${LIBUNWIND_INCLUDE_DIRS}
+    ${WRAP_INCLUDE_DIRS}
 )
 
 add_library(syslog-ng SHARED ${LIB_SOURCES})
@@ -404,6 +405,7 @@ target_link_libraries(
     PkgConfig::LIBPCRE
     ${Libsystemd_LIBRARIES}
     ${LIBUNWIND_LIBRARIES}
+    ${WRAP_LIBRARIES}
     resolv
     libcap
     OpenSSL::SSL
