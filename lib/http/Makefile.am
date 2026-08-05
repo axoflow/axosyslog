@@ -1,3 +1,5 @@
+include lib/http/source/Makefile.am
+
 httpincludedir = ${pkgincludedir}/http
 
 EXTRA_DIST += lib/http/CMakeLists.txt
@@ -13,7 +15,8 @@ httpinclude_HEADERS = \
 http_sources = \
   lib/http/http-message.c \
   lib/http/http-parser.c \
-  lib/http/logproto-http-server.c
+  lib/http/logproto-http-server.c \
+  $(http_source_sources)
 
 noinst_LTLIBRARIES += lib/http/libllhttp.la
 
