@@ -30,6 +30,7 @@
 --ignore-exclude-errors
 --exclude="lib/ivykis"
 --exclude="lib/compat/strcasestr.c"
+--exclude="lib/http/llhttp"
 --exclude="dbld"
 
 # allow opening curly bracket in the same line as namespace e.g.: `namespace foobar {`
