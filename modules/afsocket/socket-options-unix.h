@@ -22,7 +22,7 @@
 #ifndef SOCKET_OPTIONS_UNIX_H_INCLUDED
 #define SOCKET_OPTIONS_UNIX_H_INCLUDED
 
-#include "socket-options.h"
+#include "socket/socket-options.h"
 
 typedef struct _SocketOptionsUnix
 {

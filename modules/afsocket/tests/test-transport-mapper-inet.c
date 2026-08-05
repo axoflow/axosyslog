@@ -21,12 +21,12 @@
  *
  */
 
-#include "afinet.h"
+#include "socket/afinet.h"
 #include "afsocket.h"
 #include "stats/stats-registry.h"
 #include "apphook.h"
-#include "transport-mapper-inet.h"
-#include "socket-options-inet.h"
+#include "socket/transport-mapper-inet.h"
+#include "socket/socket-options-inet.h"
 #include "transport-mapper-lib.h"
 
 #include <unistd.h>

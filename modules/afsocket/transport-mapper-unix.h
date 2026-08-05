@@ -23,7 +23,7 @@
 #ifndef TRANSPORT_MAPPER_UNIX_H_INCLUDED
 #define TRANSPORT_MAPPER_UNIX_H_INCLUDED
 
-#include "transport-mapper.h"
+#include "socket/transport-mapper.h"
 
 typedef struct _TransportMapperUnix TransportMapperUnix;
 

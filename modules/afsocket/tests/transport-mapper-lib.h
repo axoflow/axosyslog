@@ -26,7 +26,7 @@
 
 #include <criterion/criterion.h>
 
-#include "transport-mapper.h"
+#include "socket/transport-mapper.h"
 
 extern TransportMapper *transport_mapper;
 

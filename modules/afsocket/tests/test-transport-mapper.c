@@ -22,7 +22,7 @@
  */
 
 #include "afsocket.h"
-#include "transport-mapper.h"
+#include "socket/transport-mapper.h"
 #include "transport-mapper-lib.h"
 #include "apphook.h"
 

@@ -30,6 +30,7 @@ include lib/logthrdest/Makefile.am
 include lib/signal-slot-connector/Makefile.am
 include lib/multi-line/Makefile.am
 include lib/perf/Makefile.am
+include lib/socket/Makefile.am
 
 LSNG_RELEASE		= $(shell echo @PACKAGE_VERSION@ | cut -d. -f1,2)
 
@@ -317,7 +318,8 @@ lib_libsyslog_ng_la_SOURCES		= \
 	$(logthrsource_sources)		\
 	$(logthrdest_sources) \
 	$(signal_slot_connector_sources) \
-	$(perf_sources)
+	$(perf_sources)		\
+	$(socket_sources)
 
 # each line with closely related files (e.g. the ones generated from the same source)
 BUILT_SOURCES += lib/cfg-lex.c lib/cfg-lex.h						\
