@@ -246,7 +246,7 @@ if(SYSLOG_NG_ENABLE_JIT)
       COMMAND ${LLVM_CLANG}
               -D_GNU_SOURCE=1 -D_LARGEFILE64_SOURCE=1
               "-I$<JOIN:$<TARGET_PROPERTY:syslog-ng,INCLUDE_DIRECTORIES>,;-I>"
-              -emit-llvm -O3 --no-warnings
+              -emit-llvm -O3 --no-warnings -mno-outline-atomics
               -c "${CMAKE_CURRENT_SOURCE_DIR}/${_src}" -o "${_bc}"
       DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/${_src}"
       COMMAND_EXPAND_LISTS
