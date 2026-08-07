@@ -31,4 +31,12 @@ FilterXExpr *filterx_compound_expr_new(gboolean return_value_of_last_expr);
 FilterXExpr *filterx_compound_expr_new_va(gboolean return_value_of_last_expr, FilterXExpr *first, ...);
 gsize filterx_compound_expr_get_count(FilterXExpr *s);
 
+FILTERX_EXPR_DECLARE_TYPE(compound);
+
+static inline gboolean
+filterx_expr_is_compound(FilterXExpr *expr)
+{
+  return expr && expr->type == FILTERX_EXPR_TYPE_NAME(compound);
+}
+
 #endif
