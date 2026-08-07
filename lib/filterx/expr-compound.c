@@ -251,6 +251,38 @@ _compound_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
   return filterx_expr_list_foreach_ref(&self->exprs, _expr_walk_cb, args);
 }
 
+/*
+ * Give each of our own statements a FilterXEvalContinuation of their own,
+ * with parent_compound = s, so that resuming it later re-enters us at the
+ * right index (via filterx_compound_expr_eval_ext()) instead of just
+ * re-running the statement in isolation.  The index is looked up here
+ * (once, at init time) rather than at resume time, since resuming isn't
+ * rare enough to justify a scan on that path.
+ */
+static gboolean
+_init_child_with_own_continuation(FilterXExpr *s, FilterXExpr *child, GlobalConfig *cfg)
+{
+  FilterXCompoundExpr *self = (FilterXCompoundExpr *) s;
+  FilterXEvalContext *compile_context = filterx_eval_get_context();
+  FilterXEvalContinuation *outer_continuation = compile_context->continuation;
+
+  gsize statement_index = filterx_expr_list_index_of(&self->exprs, child);
+
+  FilterXEvalContinuation continuation =
+  {
+    .owner_pipe = outer_continuation ? outer_continuation->owner_pipe : NULL,
+    .statement_expr = child,
+    .parent_compound = s,
+    .statement_index = statement_index,
+  };
+  compile_context->continuation = &continuation;
+
+  gboolean ok = filterx_expr_init(child, cfg);
+
+  compile_context->continuation = outer_continuation;
+  return ok;
+}
+
 #if SYSLOG_NG_ENABLE_JIT
 
 #include "filterx/jit/jit.h"
@@ -397,6 +429,7 @@ filterx_compound_expr_new(gboolean return_value_of_last_expr)
   self->super.eval = _eval_compound;
   self->super.init = _init;
   self->super.walk_children = _compound_walk;
+  self->super.init_child = _init_child_with_own_continuation;
   self->super.free_fn = _free;
 #if SYSLOG_NG_ENABLE_JIT
   self->super.compile = _compound_compile;
