@@ -60,6 +60,22 @@ typedef struct _FilterXFailureInfo
   gint error_count;
 } FilterXFailureInfo;
 
+/*
+ * FilterXEvalContinuation: describes how to resume evaluation later, e.g.
+ * once some function call within a statement (like aggregate()) decides a
+ * delayed continuation is needed.  Resuming re-enters parent_compound at
+ * statement_index.
+ *
+ * All fields are borrowed: the struct carries no ownership of its own.
+ */
+typedef struct _FilterXEvalContinuation
+{
+  LogPipe *owner_pipe;
+  FilterXExpr *statement_expr;
+  FilterXExpr *parent_compound;
+  gsize statement_index;
+} FilterXEvalContinuation;
+
 typedef struct _FilterXEvalContext FilterXEvalContext;
 struct _FilterXEvalContext
 {
@@ -78,10 +94,21 @@ struct _FilterXEvalContext
   GArray *failure_info;
   gint weak_refs_offset;
   FilterXEnvironment *env;
+
+  /* NOTE: Only meaningful while this context is active during compilation */
+  FilterXEvalContinuation *continuation;
 };
 
 FilterXEvalContext *filterx_eval_get_context(void);
 FilterXScope *filterx_eval_get_scope(void);
+
+static inline FilterXEvalContinuation *
+filterx_eval_get_continuation(void)
+{
+  FilterXEvalContext *context = filterx_eval_get_context();
+  return context ? context->continuation : NULL;
+}
+
 void filterx_eval_update_error_location_from_expr(FilterXExpr *expr);
 void filterx_eval_push_error(const gchar *message, FilterXObject *object);
 void filterx_eval_push_falsy_error(const gchar *message, FilterXObject *object);

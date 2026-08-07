@@ -81,7 +81,16 @@ _initialize_block(LogFilterXPipe *self, FilterXEvalContext *compile_context)
   GlobalConfig *cfg = log_pipe_get_config(&self->super);
   self->block = filterx_expr_optimize(self->block);
 
-  if (!filterx_expr_init(self->block, cfg))
+  /* set up continuation at the top level.  I don't expect to ever try to
+   * continue at the top-level block, but we need to initialize the
+   * "owner_pipe" member, which can only happen here */
+
+  FilterXEvalContinuation continuation = { .owner_pipe = &self->super, .statement_expr = self->block };
+  compile_context->continuation = &continuation;
+  gboolean success = filterx_expr_init(self->block, cfg);
+  compile_context->continuation = NULL;
+
+  if (!success)
     return FALSE;
 
   _infer_block_types(self);
