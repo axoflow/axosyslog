@@ -39,6 +39,8 @@ typedef struct _FilterXCompoundExpr
   gboolean return_value_of_last_expr;
 } FilterXCompoundExpr;
 
+FILTERX_EXPR_DEFINE_TYPE(compound);
+
 static inline gboolean
 _process_expr_result(FilterXExpr *expr, FilterXObject *result)
 {
@@ -391,7 +393,7 @@ filterx_compound_expr_new(gboolean return_value_of_last_expr)
 {
   FilterXCompoundExpr *self = g_new0(FilterXCompoundExpr, 1);
 
-  filterx_expr_init_instance(&self->super, "compound", FXE_READ);
+  filterx_expr_init_instance(&self->super, FILTERX_EXPR_TYPE_NAME(compound), FXE_READ);
   self->super.eval = _eval_compound;
   self->super.init = _init;
   self->super.walk_children = _compound_walk;
