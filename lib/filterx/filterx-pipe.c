@@ -36,6 +36,34 @@ typedef struct _LogFilterXPipe
   FilterXJITExecFunc jit_exec;
 } LogFilterXPipe;
 
+void
+log_filterx_pipe_resume_and_forward(LogPipe *s, FilterXEvalContext *saved_context, FilterXEvalContinuation *continuation,
+                                    FilterXObject *resume_value)
+{
+  /* we must not already be in the middle of some other filterx evaluation
+   * when a continuation gets resumed, this is assumed to be called from an
+   * async event, like a timer */
+  g_assert(filterx_eval_get_context() == NULL);
+  filterx_eval_set_context(saved_context);
+
+  LogMessage *out_msg = NULL;
+  FilterXEvalResult result = filterx_eval_resume_continuation(saved_context, continuation, resume_value, &out_msg);
+
+  if (result == FXE_SUCCESS)
+    {
+      g_assert(out_msg != NULL);
+      LogPathOptions path_options = LOG_PATH_OPTIONS_INIT_NOACK;
+      path_options.filterx_context = saved_context;
+      log_pipe_forward_msg(s, out_msg, &path_options);
+    }
+  else
+    {
+      g_assert(out_msg == NULL);
+    }
+
+  filterx_eval_set_context(NULL);
+}
+
 static inline const gchar *
 _jit_block_name(LogFilterXPipe *self, gchar *block_name_buf, gsize block_name_buf_size)
 {
