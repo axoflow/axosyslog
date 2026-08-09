@@ -223,6 +223,7 @@ _release_dirlock(gint fd)
 {
   flock(fd, LOCK_UN);
   g_mutex_unlock(&filename_lock);
+  close(fd);
 }
 
 gchar *
