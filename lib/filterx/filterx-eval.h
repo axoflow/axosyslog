@@ -97,6 +97,9 @@ struct _FilterXEvalContext
 
   /* NOTE: Only meaningful while this context is active during compilation */
   FilterXEvalContinuation *continuation;
+
+  /* NOTE: only meaningful while resuming a FilterXEvalContinuation */
+  FilterXObject *resume_value;
 };
 
 FilterXEvalContext *filterx_eval_get_context(void);
@@ -109,6 +112,19 @@ filterx_eval_get_continuation(void)
   return context ? context->continuation : NULL;
 }
 
+/* one-shot: clears resume_value as it returns it */
+static inline FilterXObject *
+filterx_eval_take_resume_value(void)
+{
+  FilterXEvalContext *context = filterx_eval_get_context();
+  if (!context || !context->resume_value)
+    return NULL;
+
+  FilterXObject *value = context->resume_value;
+  context->resume_value = NULL;
+  return value;
+}
+
 void filterx_eval_update_error_location_from_expr(FilterXExpr *expr);
 void filterx_eval_push_error(const gchar *message, FilterXObject *object);
 void filterx_eval_push_falsy_error(const gchar *message, FilterXObject *object);
@@ -116,6 +132,8 @@ void filterx_eval_push_error_static_info(const gchar *message, const gchar *info
 void filterx_eval_push_error_info_printf(const gchar *message, const gchar *fmt, ...) G_GNUC_PRINTF(2, 3);
 void filterx_eval_set_context(FilterXEvalContext *context);
 FilterXEvalResult filterx_eval_exec(FilterXEvalContext *context, FilterXExpr *expr, FilterXJITExecFunc jit_exec);
+FilterXEvalResult filterx_eval_resume_continuation(FilterXEvalContext *context, FilterXEvalContinuation *continuation,
+                                                   FilterXObject *resume_value, LogMessage **pmsg);
 const gchar *filterx_eval_get_last_error(void);
 const gchar *filterx_eval_get_error(gint index);
 gint filterx_eval_get_error_count(void);

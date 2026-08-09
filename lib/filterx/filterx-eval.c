@@ -23,6 +23,7 @@
 #include "filterx/filterx-error.h"
 #include "filterx/filterx-expr.h"
 #include "filterx/filterx-config.h"
+#include "filterx/expr-compound.h"
 #include "logpipe.h"
 #include "scratch-buffers.h"
 #include "tls-support.h"
@@ -354,6 +355,49 @@ exit:
   _clear_errors(context);
   filterx_object_unref(res);
   filterx_scope_set_dirty(context->scope);
+  return result;
+}
+
+FilterXEvalResult
+filterx_eval_resume_continuation(FilterXEvalContext *context, FilterXEvalContinuation *continuation,
+                                 FilterXObject *resume_value, LogMessage **pmsg)
+{
+
+  FilterXEvalResult result = FXE_FAILURE;
+  *pmsg = NULL;
+
+  context->resume_value = filterx_object_ref(resume_value);
+
+  FilterXObject *res = continuation->parent_compound
+                       ? filterx_compound_expr_eval_ext(continuation->parent_compound, continuation->statement_index)
+                       : filterx_expr_eval(continuation->statement_expr);
+
+  /* whoever the continuation resumed into was supposed to consume this via
+   * filterx_eval_take_resume_value(); if it's still here, nothing did */
+  filterx_object_unref(context->resume_value);
+  context->resume_value = NULL;
+
+  if (res)
+    {
+      if (context->eval_control_modifier == FXC_DROP)
+        result = FXE_DROP;
+      else if (filterx_object_truthy(res))
+        result = FXE_SUCCESS;
+    }
+  else
+    {
+      filterx_eval_dump_errors("FILTERX ERROR (continuation resume)");
+    }
+  filterx_object_unref(res);
+  filterx_scope_set_dirty(context->scope);
+
+  if (result == FXE_SUCCESS)
+    {
+      *pmsg = log_msg_ref(context->msg);
+      LogPathOptions sync_path_options = LOG_PATH_OPTIONS_INIT_NOACK;
+      filterx_eval_sync_message(context, pmsg, &sync_path_options);
+    }
+
   return result;
 }
 
