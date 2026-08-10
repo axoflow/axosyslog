@@ -309,6 +309,8 @@ filterx_expr_infer_types(FilterXExpr *self, FilterXTypeEnv *env)
     self->infer_types(self, env);
   else
     filterx_expr_infer_types_default(self, env);
+
+  self->types_inferred = TRUE;
 #endif
 }
 
