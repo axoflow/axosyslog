@@ -238,6 +238,87 @@ Test(filterx_type_inference, plus_of_two_strings_is_string)
   filterx_expr_unref(p);
 }
 
+/* Build `<var> = <literal>;` — plus constant-folds a literal+literal pair, so operands have
+ * to come from variables for _infer_types_plus to be the thing under test. */
+static FilterXExpr *
+_assign_literal(const gchar *name, FilterXObject *value)
+{
+  return filterx_assign_new(filterx_floating_variable_expr_new(name), filterx_literal_new(value));
+}
+
+Test(filterx_type_inference, plus_of_two_integers_is_integer)
+{
+  /* a = 1; b = 2; a + b  ->  INTEGER. */
+  FilterXExpr *sum = filterx_operator_plus_new(filterx_floating_variable_expr_new("a"),
+                                               filterx_floating_variable_expr_new("b"));
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE,
+                                                    _assign_literal("a", filterx_integer_new(1)),
+                                                    _assign_literal("b", filterx_integer_new(2)),
+                                                    sum, NULL);
+  block = _run(block);
+
+  cr_assert_eq(filterx_static_type_kind(sum->static_type), FILTERX_STATIC_TYPE_INTEGER);
+  filterx_expr_unref(block);
+}
+
+Test(filterx_type_inference, plus_of_integer_and_double_is_double)
+{
+  /* a = 1; d = 2.5; a + d  ->  DOUBLE, in both operand orders: filterx_object_add() widens
+   * to double whichever side carries it, so the result kind does not depend on the order. */
+  FilterXExpr *int_first = filterx_operator_plus_new(filterx_floating_variable_expr_new("a"),
+                                                     filterx_floating_variable_expr_new("d"));
+  FilterXExpr *double_first = filterx_operator_plus_new(filterx_floating_variable_expr_new("d"),
+                                                        filterx_floating_variable_expr_new("a"));
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE,
+                                                    _assign_literal("a", filterx_integer_new(1)),
+                                                    _assign_literal("d", filterx_double_new(2.5)),
+                                                    int_first, double_first, NULL);
+  block = _run(block);
+
+  cr_assert_eq(filterx_static_type_kind(int_first->static_type), FILTERX_STATIC_TYPE_DOUBLE);
+  cr_assert_eq(filterx_static_type_kind(double_first->static_type), FILTERX_STATIC_TYPE_DOUBLE);
+  filterx_expr_unref(block);
+}
+
+Test(filterx_type_inference, plus_of_integer_and_unknown_is_unknown)
+{
+  /* a = 1; a + $u  ->  UNKNOWN, NOT INTEGER. $u is a macro, so it is statically unknown and
+   * may well be a double at runtime, which would widen the sum. An INTEGER claim here would
+   * be a claim an integer-speculating consumer is entitled to act on. */
+  FilterXExpr *sum = filterx_operator_plus_new(filterx_floating_variable_expr_new("a"),
+                                               filterx_msg_variable_expr_new("FACILITY"));
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE,
+                                                    _assign_literal("a", filterx_integer_new(1)),
+                                                    sum, NULL);
+  block = _run(block);
+
+  cr_assert_eq(filterx_static_type_kind(sum->static_type), FILTERX_STATIC_TYPE_UNKNOWN);
+  filterx_expr_unref(block);
+}
+
+Test(filterx_type_inference, mixed_numeric_sum_does_not_poison_a_later_sum)
+{
+  /* a = 1; d = 2.5; x = a + d; x + a  ->  DOUBLE throughout.
+   *
+   * The chain is what makes an over-eager INTEGER claim dangerous rather than merely
+   * imprecise: `a + d` is a double at runtime, so recording x as INTEGER would hand the
+   * following `x + a` an integer-typed operand that is not one. */
+  FilterXExpr *inner = filterx_operator_plus_new(filterx_floating_variable_expr_new("a"),
+                                                 filterx_floating_variable_expr_new("d"));
+  FilterXExpr *assign_x = filterx_assign_new(filterx_floating_variable_expr_new("x"), inner);
+  FilterXExpr *outer = filterx_operator_plus_new(filterx_floating_variable_expr_new("x"),
+                                                 filterx_floating_variable_expr_new("a"));
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE,
+                                                    _assign_literal("a", filterx_integer_new(1)),
+                                                    _assign_literal("d", filterx_double_new(2.5)),
+                                                    assign_x, outer, NULL);
+  block = _run(block);
+
+  cr_assert_eq(filterx_static_type_kind(inner->static_type), FILTERX_STATIC_TYPE_DOUBLE);
+  cr_assert_eq(filterx_static_type_kind(outer->static_type), FILTERX_STATIC_TYPE_DOUBLE);
+  filterx_expr_unref(block);
+}
+
 Test(filterx_type_inference, folded_literal_dict_of_string_tracks_element_type)
 {
   /* {"a": "x", "b": "y"} — fully literal, folds to a single FilterXDict literal. */
