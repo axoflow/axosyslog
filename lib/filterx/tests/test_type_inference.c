@@ -61,6 +61,52 @@ Test(filterx_type_inference, literal_string_is_string)
   filterx_expr_unref(lit);
 }
 
+Test(filterx_type_inference, literal_double_is_double)
+{
+  FilterXExpr *lit = filterx_literal_new(filterx_double_new(2.5));
+  lit = _run(lit);
+  cr_assert_eq(filterx_static_type_kind(lit->static_type), FILTERX_STATIC_TYPE_DOUBLE);
+  filterx_expr_unref(lit);
+}
+
+Test(filterx_type_inference, assign_propagates_double_type_to_subsequent_reads)
+{
+  FilterXExpr *assign_d = filterx_assign_new(
+                            filterx_floating_variable_expr_new("d"),
+                            filterx_literal_new(filterx_double_new(2.5)));
+  FilterXExpr *read_d = filterx_floating_variable_expr_new("d");
+
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_d, read_d, NULL);
+  block = _run(block);
+
+  cr_assert_eq(filterx_static_type_kind(read_d->static_type), FILTERX_STATIC_TYPE_DOUBLE);
+  filterx_expr_unref(block);
+}
+
+Test(filterx_type_inference, integer_and_double_are_distinct_kinds)
+{
+  /* if (c) { n = 1; } else { n = 2.5; } n  ->  UNKNOWN. DOUBLE is its own kind, so it does
+   * not silently unify with INTEGER: a value that may be either is not statically an
+   * integer, which is exactly what keeps an integer-only fast path from claiming it. */
+  FilterXExpr *then_assign = filterx_assign_new(
+                               filterx_floating_variable_expr_new("n"),
+                               filterx_literal_new(filterx_integer_new(1)));
+  FilterXExpr *else_assign = filterx_assign_new(
+                               filterx_floating_variable_expr_new("n"),
+                               filterx_literal_new(filterx_double_new(2.5)));
+
+  FilterXExpr *iff = filterx_conditional_new(filterx_floating_variable_expr_new("c"));
+  filterx_conditional_set_true_branch(iff, then_assign);
+  filterx_conditional_set_false_branch(iff, else_assign);
+
+  FilterXExpr *read_n = filterx_floating_variable_expr_new("n");
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, iff, read_n, NULL);
+  block = _run(block);
+
+  cr_assert_eq(filterx_static_type_kind(read_n->static_type), FILTERX_STATIC_TYPE_UNKNOWN);
+  filterx_expr_unref(block);
+}
+
 Test(filterx_type_inference, literal_dict_is_dict)
 {
   FilterXExpr *empty_dict = filterx_literal_dict_new(NULL);

@@ -108,6 +108,9 @@ _spec_from_filterx_object(FilterXObject *obj)
   if (filterx_object_is_type_or_ref(obj, &FILTERX_TYPE_NAME(integer)))
     return filterx_static_type_kind_only(FILTERX_STATIC_TYPE_INTEGER);
 
+  if (filterx_object_is_type_or_ref(obj, &FILTERX_TYPE_NAME(double)))
+    return filterx_static_type_kind_only(FILTERX_STATIC_TYPE_DOUBLE);
+
   FilterXStaticType outer_kind = FILTERX_STATIC_TYPE_UNKNOWN;
   if (filterx_object_is_type_or_ref(obj, &FILTERX_TYPE_NAME(dict)))
     outer_kind = FILTERX_STATIC_TYPE_DICT;

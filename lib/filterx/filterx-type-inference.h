@@ -34,6 +34,7 @@ typedef enum
   FILTERX_STATIC_TYPE_LIST    = 2,
   FILTERX_STATIC_TYPE_STRING  = 3,
   FILTERX_STATIC_TYPE_INTEGER = 4,
+  FILTERX_STATIC_TYPE_DOUBLE  = 5,
   /* Sentinel for "freshly built empty container, element type not yet committed".
    * Seeded by literal inference for empty {} / [] containers and carried through the
    * env, where the first write to the container lifts it to the written value's type
