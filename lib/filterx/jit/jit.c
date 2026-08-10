@@ -204,8 +204,57 @@ _inherit_libfilterx_function_attributes(FilterXJIT *self, FilterXIRValue dest)
     _copy_attrs_at_index(tmpl, dest, paramidx);
 }
 
+static const guint8 _fx_jit_var_uninitialized;
+
+static inline LLVMTypeRef
+_variable_storage_type(FilterXJIT *self)
+{
+  return LLVMArrayType(self->ffi.ptr_ty, self->current_block_variables_size);
+}
+
+static FilterXIRValue
+_variable_uninitialized_sentinel(FilterXJIT *self)
+{
+  return fx_jit_emit_const_ptr(self, &_fx_jit_var_uninitialized);
+}
+
+FilterXIRValue
+filterx_jit_ir_is_variable_uninitialized(FilterXJIT *self, FilterXIRValue variable)
+{
+  return LLVMBuildICmp(self->ir, LLVMIntEQ, variable, _variable_uninitialized_sentinel(self), "var_is_unloaded");
+}
+
+static void
+_reset_variables(FilterXJIT *self)
+{
+  if (!self->current_block_variables)
+    return;
+
+  FilterXIRValue sentinel = _variable_uninitialized_sentinel(self);
+
+  LLVMValueRef *elements = g_newa(LLVMValueRef, self->current_block_variables_size);
+  for (guint32 i = 0; i < self->current_block_variables_size; i++)
+    elements[i] = sentinel;
+
+  LLVMBuildStore(self->ir, LLVMConstArray(self->ffi.ptr_ty, elements, self->current_block_variables_size),
+                 self->current_block_variables);
+}
+
+static inline void
+_init_variables(FilterXJIT *self, FilterXScopeVariableLayout *layout)
+{
+  guint32 num_variables = layout ? layout->num_variables : 0;
+  self->current_block_variables_size = num_variables;
+  self->current_block_variables = NULL;
+  if (num_variables > 0)
+    {
+      self->current_block_variables = LLVMBuildAlloca(self->ir, _variable_storage_type(self), "variables");
+      _reset_variables(self);
+    }
+}
+
 void
-filterx_jit_ir_add_new_block(FilterXJIT *self, const gchar *block_name)
+filterx_jit_ir_add_new_block(FilterXJIT *self, const gchar *block_name, FilterXScopeVariableLayout *layout)
 {
   g_assert(!self->mod_finalized);
   g_assert(!self->current_ir_block);
@@ -221,6 +270,34 @@ filterx_jit_ir_add_new_block(FilterXJIT *self, const gchar *block_name)
 
   FilterXIRSequence entry = filterx_jit_ir_add_new_sequence_to_block(self, "entry", self->current_ir_block);
   filterx_jit_ir_set_insert_point_to_sequence_tail(self, entry);
+
+  _init_variables(self, layout);
+}
+
+FilterXIRValue
+filterx_jit_ir_get_variable(FilterXJIT *self, gint scope_var_idx)
+{
+  g_assert(!self->mod_finalized);
+  g_assert(scope_var_idx >= 0 && scope_var_idx < self->current_block_variables_size);
+
+  LLVMValueRef indices[] =
+  {
+    LLVMConstInt(self->ffi.i32_ty, 0, FALSE),
+    LLVMConstInt(self->ffi.i32_ty, scope_var_idx, FALSE),
+  };
+
+  gchar name[32];
+  g_snprintf(name, sizeof(name), "var_%d", scope_var_idx);
+  return LLVMBuildGEP2(self->ir, _variable_storage_type(self), self->current_block_variables,
+                       indices, G_N_ELEMENTS(indices), name);
+}
+
+void
+filterx_jit_ir_clear_variables(FilterXJIT *self)
+{
+  g_assert(!self->mod_finalized);
+
+  _reset_variables(self);
 }
 
 FilterXIRValue
@@ -243,6 +320,9 @@ filterx_jit_ir_finish_current_block(FilterXJIT *self, FilterXIRValue result)
     LLVMDIBuilderFinalizeSubprogram(self->debug, self->current_debug_info_block);
 
   _assert_verify_block(self, self->current_ir_block);
+
+  self->current_block_variables = NULL;
+  self->current_block_variables_size = 0;
 
   self->current_ir_block = NULL;
   self->current_eval_context = NULL;
@@ -709,6 +789,7 @@ FilterXJIT *filterx_jit_new(const gchar *module_name, FilterXJITDebugInfo debug_
 {
   return NULL;
 }
+
 void filterx_jit_free(FilterXJIT *self) {}
 void filterx_jit_global_init(void) {}
 void filterx_jit_global_deinit(void) {}
@@ -717,14 +798,17 @@ FilterXIRBuilder filterx_jit_get_ir_builder(FilterXJIT *self)
 {
   g_assert_not_reached();
 }
-void filterx_jit_ir_add_new_block(FilterXJIT *self, const gchar *block_name)
+
+void filterx_jit_ir_add_new_block(FilterXJIT *self, const gchar *block_name, FilterXScopeVariableLayout *layout)
 {
   g_assert_not_reached();
 }
+
 void filterx_jit_ir_finish_current_block(FilterXJIT *self, FilterXIRValue result)
 {
   g_assert_not_reached();
 }
+
 FilterXIRValue filterx_jit_ir_get_current_block(FilterXJIT *self)
 {
   g_assert_not_reached();
@@ -735,10 +819,26 @@ FilterXIRValue filterx_jit_ir_get_eval_context(FilterXJIT *self)
   g_assert_not_reached();
 }
 
+FilterXIRValue filterx_jit_ir_get_variable(FilterXJIT *self, gint scope_var_idx)
+{
+  g_assert_not_reached();
+}
+
+FilterXIRValue filterx_jit_ir_is_variable_uninitialized(FilterXJIT *self, FilterXIRValue variable)
+{
+  g_assert_not_reached();
+}
+
+void filterx_jit_ir_clear_variables(FilterXJIT *self)
+{
+  g_assert_not_reached();
+}
+
 gboolean filterx_jit_finalize(FilterXJIT *self, GError **error)
 {
   g_assert_not_reached();
 }
+
 FilterXJITAddress filterx_jit_lookup(FilterXJIT *self, const gchar *block_name, GError **error)
 {
   g_assert_not_reached();

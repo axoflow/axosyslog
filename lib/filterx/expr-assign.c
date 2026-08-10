@@ -96,40 +96,116 @@ _nullv_assign_eval(FilterXExpr *s)
 
 __attribute__((used))
 FilterXObject *
-fx_jit_do_assign(FilterXExpr *s, FilterXObject *value)
+fx_jit_nullv_assign_suppress_error(void)
 {
-  return _do_assign((FilterXAssign *) s, value);
-}
-
-__attribute__((used))
-FilterXObject *
-fx_jit_do_nullv_assign(FilterXExpr *s, FilterXObject *value)
-{
-  return _do_nullv_assign((FilterXAssign *) s, value);
+  return _suppress_error();
 }
 
 static FilterXIRValue
-_compile_assignment(FilterXExpr *s, FilterXJIT *jit, const gchar *fn_name)
+_compile_assign_to_lhs(FilterXAssign *self, FilterXJIT *jit)
 {
-  FilterXAssign *self = (FilterXAssign *) s;
   FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
+  FilterXIRBuilder ir = filterx_jit_get_ir_builder(jit);
+  FilterXIRValue block = filterx_jit_ir_get_current_block(jit);
 
   FilterXIRValue value = filterx_expr_compile_or_eval(self->super.rhs, jit);
-  FilterXIRValue args[] = { fx_jit_emit_const_ptr(jit, self), value };
-  FilterXIRType param_tys[] = { ffi->ptr_ty, ffi->ptr_ty };
-  return fx_jit_emit_extern_call(jit, fn_name, ffi->ptr_ty, param_tys, args, 2);
+
+  FilterXIRSequence rhs_null = filterx_jit_ir_create_sequence(jit, "assign_rhs_null", block);
+  FilterXIRSequence assign = filterx_jit_ir_create_sequence(jit, "assign_value", block);
+  FilterXIRSequence finish = filterx_jit_ir_create_sequence(jit, "assign_finish", block);
+
+  LLVMBuildCondBr(ir, LLVMBuildIsNull(ir, value, "rhs_is_null"), rhs_null, assign);
+
+  filterx_jit_ir_add_sequence_to_block(jit, rhs_null, block);
+  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, rhs_null);
+  fx_jit_emit_eval_push_error_static_info(jit, "Failed to assign value", "Failed to evaluate right hand side");
+  LLVMBuildBr(ir, finish);
+
+  filterx_jit_ir_add_sequence_to_block(jit, assign, block);
+  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, assign);
+  FilterXIRValue cloned = fx_jit_emit_object_cow_fork2(jit, value);
+  FilterXIRValue assigned = filterx_expr_compile_assign(self->super.lhs, jit, cloned);
+  FilterXIRSequence assigned_seq = LLVMGetInsertBlock(ir);
+  LLVMBuildBr(ir, finish);
+
+  filterx_jit_ir_add_sequence_to_block(jit, finish, block);
+  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, finish);
+  FilterXIRValue result = LLVMBuildPhi(ir, ffi->ptr_ty, "assign_result");
+  FilterXIRValue incoming_values[] = { LLVMConstNull(ffi->ptr_ty), assigned };
+  FilterXIRSequence incoming_blocks[] = { rhs_null, assigned_seq };
+  LLVMAddIncoming(result, incoming_values, incoming_blocks, 2);
+  return result;
 }
 
 static FilterXIRValue
 _assign_compile(FilterXExpr *s, FilterXJIT *jit)
 {
-  return _compile_assignment(s, jit, "fx_jit_do_assign");
+  FilterXAssign *self = (FilterXAssign *) s;
+
+  if (!filterx_expr_can_compile_assign(self->super.lhs))
+    return fx_jit_emit_expr_eval(jit, s);
+
+  return _compile_assign_to_lhs(self, jit);
+}
+
+static FilterXIRValue
+_compile_nullv_assign_to_lhs(FilterXAssign *self, FilterXJIT *jit)
+{
+  FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
+  FilterXIRBuilder ir = filterx_jit_get_ir_builder(jit);
+  FilterXIRValue block = filterx_jit_ir_get_current_block(jit);
+
+  FilterXIRValue value = filterx_expr_compile_or_eval(self->super.rhs, jit);
+
+  FilterXIRSequence rhs_error = filterx_jit_ir_create_sequence(jit, "nullv_assign_rhs_error", block);
+  FilterXIRSequence check_null = filterx_jit_ir_create_sequence(jit, "nullv_assign_check_null", block);
+  FilterXIRSequence assign = filterx_jit_ir_create_sequence(jit, "nullv_assign_value", block);
+  FilterXIRSequence finish = filterx_jit_ir_create_sequence(jit, "nullv_assign_finish", block);
+
+  LLVMBuildCondBr(ir, LLVMBuildIsNull(ir, value, "rhs_is_null"), rhs_error, check_null);
+
+  filterx_jit_ir_add_sequence_to_block(jit, rhs_error, block);
+  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, rhs_error);
+  FilterXIRValue suppressed = fx_jit_emit_extern_call(jit, "fx_jit_nullv_assign_suppress_error",
+                                                      ffi->ptr_ty, NULL, NULL, 0);
+  LLVMBuildBr(ir, finish);
+
+  filterx_jit_ir_add_sequence_to_block(jit, check_null, block);
+  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, check_null);
+  FilterXIRType extract_param_tys[] = { ffi->ptr_ty };
+  FilterXIRValue extract_args[] = { value };
+  FilterXIRValue extracted = fx_jit_emit_extern_call(jit, "fx_jit_object_extract_null",
+                                                     ffi->i32_ty, extract_param_tys, extract_args, 1);
+  FilterXIRValue rhs_is_null_object = LLVMBuildICmp(ir, LLVMIntNE, extracted,
+                                                    LLVMConstInt(ffi->i32_ty, 0, FALSE), "rhs_is_null_object");
+  FilterXIRSequence check_null_seq = LLVMGetInsertBlock(ir);
+  LLVMBuildCondBr(ir, rhs_is_null_object, finish, assign);
+
+  filterx_jit_ir_add_sequence_to_block(jit, assign, block);
+  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, assign);
+  FilterXIRValue cloned = fx_jit_emit_object_cow_fork2(jit, value);
+  FilterXIRValue assigned = filterx_expr_compile_assign(self->super.lhs, jit, cloned);
+  FilterXIRSequence assigned_seq = LLVMGetInsertBlock(ir);
+  LLVMBuildBr(ir, finish);
+
+  filterx_jit_ir_add_sequence_to_block(jit, finish, block);
+  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, finish);
+  FilterXIRValue result = LLVMBuildPhi(ir, ffi->ptr_ty, "nullv_assign_result");
+  FilterXIRValue incoming_values[] = { suppressed, value, assigned };
+  FilterXIRSequence incoming_blocks[] = { rhs_error, check_null_seq, assigned_seq };
+  LLVMAddIncoming(result, incoming_values, incoming_blocks, 3);
+  return result;
 }
 
 static FilterXIRValue
 _nullv_assign_compile(FilterXExpr *s, FilterXJIT *jit)
 {
-  return _compile_assignment(s, jit, "fx_jit_do_nullv_assign");
+  FilterXAssign *self = (FilterXAssign *) s;
+
+  if (!filterx_expr_can_compile_assign(self->super.lhs))
+    return fx_jit_emit_expr_eval(jit, s);
+
+  return _compile_nullv_assign_to_lhs(self, jit);
 }
 
 #endif

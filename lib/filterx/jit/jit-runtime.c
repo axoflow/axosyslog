@@ -24,6 +24,7 @@
 #include "filterx/filterx-object.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/object-primitive.h"
+#include "filterx/object-extractor.h"
 
 #if SYSLOG_NG_ENABLE_JIT
 
@@ -89,6 +90,13 @@ gboolean
 fx_jit_object_truthy(FilterXObject *self)
 {
   return filterx_object_truthy(self);
+}
+
+__attribute__((used))
+gboolean
+fx_jit_object_extract_null(FilterXObject *self)
+{
+  return filterx_object_extract_null(self);
 }
 
 __attribute__((used))

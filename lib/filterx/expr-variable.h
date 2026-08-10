@@ -35,6 +35,11 @@ void filterx_variable_expr_declare(FilterXExpr *s);
 FilterXVariableHandle filterx_variable_expr_get_handle(FilterXExpr *s);
 gboolean filterx_variable_expr_is_macro(FilterXExpr *s);
 void filterx_variable_expr_set_scope_var_idx(FilterXExpr *s, gint idx);
+gint filterx_variable_expr_get_scope_var_idx(FilterXExpr *s);
+
+#if SYSLOG_NG_ENABLE_JIT
+void filterx_variable_expr_compile_repr_update(FilterXExpr *s, FilterXJIT *jit, FilterXIRValue new_repr);
+#endif
 
 FILTERX_EXPR_DECLARE_TYPE(variable);
 
