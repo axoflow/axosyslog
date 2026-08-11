@@ -261,6 +261,77 @@ Test(filterx_expr, test_filterx_assign)
   filterx_scope_variable_layout_free(l);
 }
 
+/* destructuring assignment, e.g. "(a, b) = expr;" or "[a, b] = expr;" --
+ * exercised end-to-end (tuple/list targets, nesting, message-field targets)
+ * by tests/light/functional_tests/filterx/test_filterx_destructuring_assignment.py;
+ * these unit tests stick to the parts that need direct expr-tree access:
+ * a representative happy path plus the two runtime failure branches of
+ * _literal_container_assign(). */
+Test(filterx_expr, test_filterx_tuple_unpack_assignment)
+{
+  FilterXExpr *var_a = filterx_msg_variable_expr_new("a");
+  FilterXExpr *var_b = filterx_msg_variable_expr_new("b");
+  FilterXExpr *var_c = filterx_msg_variable_expr_new("c");
+
+  /* (a, (b, c)) = (1, (2, 3)); -- nesting exercises the same code path
+   * recursively, covering both the tuple and list container types in one
+   * go since _literal_container_assign() is shared between them. */
+  FilterXExpr *lhs = filterx_literal_tuple_of(var_a, filterx_literal_list_of(var_b, var_c, NULL), NULL);
+  FilterXExpr *rhs = filterx_literal_tuple_of(_int_literal(1),
+                                              filterx_literal_list_of(_int_literal(2), _int_literal(3), NULL), NULL);
+  FilterXExpr *assign = filterx_assign_new(lhs, rhs);
+
+  FilterXScopeVariableLayout *l = filterx_scope_variable_layout_new(assign);
+  set_libtest_filterx_scope(filterx_scope_new(NULL, l));
+
+  FilterXObject *res = init_and_eval_expr(assign);
+  cr_assert_not_null(res);
+  filterx_object_unref(res);
+
+  _assert_int_value_and_unref(init_and_eval_expr(var_a), 1);
+  _assert_int_value_and_unref(init_and_eval_expr(var_b), 2);
+  _assert_int_value_and_unref(init_and_eval_expr(var_c), 3);
+
+  filterx_expr_unref(assign);
+  filterx_scope_variable_layout_free(l);
+}
+
+Test(filterx_expr, test_filterx_tuple_unpack_assignment_element_count_mismatch)
+{
+  FilterXExpr *lhs = filterx_literal_tuple_of(filterx_msg_variable_expr_new("a"), filterx_msg_variable_expr_new("b"),
+                                              NULL);
+  FilterXExpr *rhs = filterx_literal_tuple_of(_int_literal(1), _int_literal(2), _int_literal(3), NULL);
+  FilterXExpr *assign = filterx_assign_new(lhs, rhs);
+
+  FilterXScopeVariableLayout *l = filterx_scope_variable_layout_new(assign);
+  set_libtest_filterx_scope(filterx_scope_new(NULL, l));
+
+  FilterXObject *res = init_and_eval_expr(assign);
+  cr_assert_null(res);
+  filterx_eval_clear_errors();
+
+  filterx_expr_unref(assign);
+  filterx_scope_variable_layout_free(l);
+}
+
+Test(filterx_expr, test_filterx_tuple_unpack_assignment_rejects_non_sequence_rhs)
+{
+  FilterXExpr *lhs = filterx_literal_tuple_of(filterx_msg_variable_expr_new("a"), filterx_msg_variable_expr_new("b"),
+                                              NULL);
+  FilterXExpr *rhs = filterx_literal_new(filterx_string_new("xy", -1));
+  FilterXExpr *assign = filterx_assign_new(lhs, rhs);
+
+  FilterXScopeVariableLayout *l = filterx_scope_variable_layout_new(assign);
+  set_libtest_filterx_scope(filterx_scope_new(NULL, l));
+
+  FilterXObject *res = init_and_eval_expr(assign);
+  cr_assert_null(res);
+  filterx_eval_clear_errors();
+
+  filterx_expr_unref(assign);
+  filterx_scope_variable_layout_free(l);
+}
+
 Test(filterx_expr, test_filterx_setattr)
 {
   FilterXObject *dict = filterx_dict_new();
