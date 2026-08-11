@@ -3,6 +3,7 @@
 EXTRA_DIST += \
 	tests/light/src/axosyslog_light/common/asynchronous.py \
 	tests/light/src/axosyslog_light/common/blocking.py \
+	tests/light/src/axosyslog_light/common/docker_operations.py \
 	tests/light/src/axosyslog_light/common/file.py \
 	tests/light/src/axosyslog_light/common/__init__.py \
 	tests/light/src/axosyslog_light/common/network_operations.py \
@@ -37,6 +38,9 @@ EXTRA_DIST += \
 	tests/light/src/axosyslog_light/executors/tests/test_process_executor.py \
 	tests/light/src/axosyslog_light/fixtures.py \
 	tests/light/src/axosyslog_light/helpers/__init__.py \
+	tests/light/src/axosyslog_light/helpers/clickhouse/clickhouse_server_docker_executor.py \
+	tests/light/src/axosyslog_light/helpers/clickhouse/clickhouse_server_executor.py \
+	tests/light/src/axosyslog_light/helpers/clickhouse/clickhouse_server_local_executor.py \
 	tests/light/src/axosyslog_light/helpers/loggen/__init__.py \
 	tests/light/src/axosyslog_light/helpers/loggen/loggen_docker_executor.py \
 	tests/light/src/axosyslog_light/helpers/loggen/loggen_executor.py \
@@ -45,6 +49,9 @@ EXTRA_DIST += \
 	tests/light/src/axosyslog_light/helpers/secure_logging/conftest.py \
 	tests/light/src/axosyslog_light/helpers/secure_logging/__init__.py \
 	tests/light/src/axosyslog_light/helpers/snmptrapd/conftest.py \
+	tests/light/src/axosyslog_light/helpers/snmptrapd/snmptrapd_docker_executor.py \
+	tests/light/src/axosyslog_light/helpers/snmptrapd/snmptrapd_executor.py \
+	tests/light/src/axosyslog_light/helpers/snmptrapd/snmptrapd_local_executor.py \
 	tests/light/src/axosyslog_light/helpers/snmptrapd/__init__.py \
 	tests/light/src/axosyslog_light/__init__.py \
 	tests/light/src/axosyslog_light/message_builder/bsd_format.py \
