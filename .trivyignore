@@ -1,0 +1,18 @@
+# msgpack: SEGV/DoS on Unpacker reuse after an error.
+# pip only calls one-shot dumps()/loads(), never an Unpacker.
+# Remove with a pip vendoring msgpack 1.2.1+, expected in 26.3:
+# https://github.com/pypa/pip/issues/14224
+GHSA-6v7p-g79w-8964
+
+# setuptools: path traversal in PackageIndex.download.
+# pip vendors only pkg_resources, and the image ships no package_index.py.
+# Remove once pip stops pinning a vulnerable setuptools:
+# https://github.com/pypa/pip/issues/14224
+# https://github.com/pypa/pip/issues/14031
+CVE-2025-47273
+
+# setuptools: MANIFEST.in exclusion bypass when building sdists.
+# Not vendored into pip either.
+# The image's own setuptools is 84.0.0, past the 83.0.0 fix.
+# Remove once pip stops pinning a vulnerable setuptools.
+CVE-2026-59890
