@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2016 Marc Falzon
+ * Copyright (c) 2018 Balabit
+ * Copyright (c) 2018 László Várady <laszlo.varady@balabit.com>
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
@@ -20,39 +21,27 @@
  *
  */
 
-#include "http-parser.h"
-#include "plugin.h"
-#include "plugin-types.h"
+#ifndef HTTP_SOURCE_H
+#define HTTP_SOURCE_H
 
-extern CfgParser http_source_parser;
+#include "syslog-ng.h"
+#include "http/source/http-source.h"
 
-static Plugin http_plugins[] =
+typedef struct EHTTPSourceDriver EHTTPSourceDriver;
+typedef enum _EHTTPSourceMode
 {
-  {
-    .type = LL_CONTEXT_DESTINATION,
-    .name = "http",
-    .parser = &http_parser,
-  },
-  {
-    .type = LL_CONTEXT_SOURCE,
-    .name = "ehttp",
-    .parser = &http_source_parser,
-  },
+  EHTTP_SINGLE,
+  EHTTP_LINE_SEPARATED,
+  EHTTP_JSON_ARRAY
+} EHTTPSourceMode;
+
+struct EHTTPSourceDriver
+{
+  HTTPSourceDriver super;
+  EHTTPSourceMode mode;
 };
 
-gboolean
-http_module_init(PluginContext *context, CfgArgs *args)
-{
-  plugin_register(context, http_plugins, G_N_ELEMENTS(http_plugins));
-  return TRUE;
-}
+EHTTPSourceDriver *ehttp_sd_new(GlobalConfig *cfg);
+gboolean ehttp_sd_set_mode(LogDriver *d, const gchar *mode);
 
-const ModuleInfo http_module_info =
-{
-  .canonical_name = "http",
-  .version = SYSLOG_NG_VERSION,
-  .description = "The http module provides HTTP destination support for syslog-ng.",
-  .core_revision = SYSLOG_NG_SOURCE_REVISION,
-  .plugins = http_plugins,
-  .plugins_len = G_N_ELEMENTS(http_plugins),
-};
+#endif

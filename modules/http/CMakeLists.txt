@@ -51,6 +51,9 @@ add_module(
   SOURCES ${HTTP_DESTINATION_SOURCES}
 )
 
+add_subdirectory(source)
+target_link_libraries(http PRIVATE ehttp-source)
+
 function (curl_detect_compile_option NAME)
   set(CMAKE_REQUIRED_INCLUDES "${Curl_INCLUDE_DIR}")
   set(CMAKE_EXTRA_INCLUDE_FILES "curl/curl.h")

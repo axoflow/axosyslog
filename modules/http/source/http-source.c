@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2016 Marc Falzon
+ * Copyright (c) 2018 Balabit
+ * Copyright (c) 2018 László Várady <laszlo.varady@balabit.com>
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
@@ -20,39 +21,35 @@
  *
  */
 
-#include "http-parser.h"
-#include "plugin.h"
-#include "plugin-types.h"
+#include "http-source.h"
+#include "socket/socket-options-inet.h"
 
-extern CfgParser http_source_parser;
-
-static Plugin http_plugins[] =
-{
-  {
-    .type = LL_CONTEXT_DESTINATION,
-    .name = "http",
-    .parser = &http_parser,
-  },
-  {
-    .type = LL_CONTEXT_SOURCE,
-    .name = "ehttp",
-    .parser = &http_source_parser,
-  },
-};
+#include <strings.h>
 
 gboolean
-http_module_init(PluginContext *context, CfgArgs *args)
+ehttp_sd_set_mode(LogDriver *d, const gchar *mode)
 {
-  plugin_register(context, http_plugins, G_N_ELEMENTS(http_plugins));
+  EHTTPSourceDriver *self = (EHTTPSourceDriver *) d;
+
+  if (strcasecmp(mode, "single") == 0)
+    self->mode = EHTTP_SINGLE;
+  else if (strcasecmp(mode, "line-separated") == 0 || strcasecmp(mode, "jsonl") == 0)
+    self->mode = EHTTP_LINE_SEPARATED;
+  else if (strcasecmp(mode, "json-array") == 0)
+    self->mode = EHTTP_JSON_ARRAY;
+  else
+    return FALSE;
+
   return TRUE;
 }
 
-const ModuleInfo http_module_info =
+EHTTPSourceDriver *
+ehttp_sd_new(GlobalConfig *cfg)
 {
-  .canonical_name = "http",
-  .version = SYSLOG_NG_VERSION,
-  .description = "The http module provides HTTP destination support for syslog-ng.",
-  .core_revision = SYSLOG_NG_SOURCE_REVISION,
-  .plugins = http_plugins,
-  .plugins_len = G_N_ELEMENTS(http_plugins),
-};
+  EHTTPSourceDriver *self = g_new0(EHTTPSourceDriver, 1);
+  http_sd_init_instance(&self->super, socket_options_inet_new(), http_transport_mapper_new(), cfg);
+
+  self->mode = EHTTP_SINGLE;
+
+  return self;
+}

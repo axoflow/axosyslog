@@ -1,0 +1,89 @@
+/*
+ * Copyright (c) 2018 Balabit
+ * Copyright (c) 2018 László Várady <laszlo.varady@balabit.com>
+ *
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *
+ * As an additional exemption you are allowed to compile & link against the
+ * OpenSSL libraries as published by the OpenSSL project. See the file
+ * COPYING for details.
+ *
+ */
+
+/* REQUIRE lib/http/source/http-source-grammar.ym */
+
+%code requires {
+
+#include "http-source-parser.h"
+
+}
+
+%code {
+
+#include "cfg-grammar-internal.h"
+#include "syslog-ng.h"
+#include "cfg-parser.h"
+#include "http-source.h"
+#include "messages.h"
+#include "syslog-names.h"
+#include "plugin.h"
+#include "service-management.h"
+
+}
+
+%define api.prefix {http_source_}
+%lex-param {CfgLexer *lexer}
+%parse-param {CfgLexer *lexer}
+%parse-param {LogDriver **instance}
+%parse-param {gpointer arg}
+
+/* INCLUDE_DECLS */
+
+%token KW_EHTTP
+%token KW_MODE
+
+%%
+
+start
+  : LL_CONTEXT_SOURCE KW_EHTTP
+    {
+      EHTTPSourceDriver *d = ehttp_sd_new(configuration);
+      http_source_grammar_set_source_driver(&d->super);
+      *instance = &d->super.super.super.super;
+    }
+    '(' source_http_options ')'
+    {
+      if (yychar != HTTP_SOURCE_EMPTY)
+        cfg_lexer_unput_token(lexer, &yylval);
+      YYACCEPT;
+    }
+  ;
+
+source_http_options
+	: source_http_option source_http_options
+	|
+	;
+
+source_http_option
+	: KW_MODE '(' string ')'
+    {
+      CHECK_ERROR(ehttp_sd_set_mode(last_driver, $3), @3, "invalid mode() value");
+      free($3);
+    }
+	| http_source_option
+  ;
+
+/* INCLUDE_RULES */
+
+%%
