@@ -30,4 +30,12 @@ extern CfgParser filterx_parser;
 
 CFG_PARSER_DECLARE_LEXER_BINDING(filterx_, FILTERX_, FilterXExpr **)
 
+/* Compile an entire input as filterx code, e.g. as if it were the body of a
+ * filterx {} block, and throw away the result: this only validates that the code
+ * compiles.  @lexer is consumed.  If @ast is not NULL, the abstract syntax tree
+ * of the compiled script is returned there as JSON (owned by the caller), it is
+ * left intact unless the script compiles. */
+gboolean filterx_compile_script(GlobalConfig *cfg, CfgLexer *lexer, GString **ast);
+gboolean filterx_compile_script_file(GlobalConfig *cfg, const gchar *fname, GString **ast);
+
 #endif
