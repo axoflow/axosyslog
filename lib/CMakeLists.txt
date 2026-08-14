@@ -94,6 +94,7 @@ set (LIB_HEADERS
     cfg-source.h
     cfg-tree.h
     cfg-graph.h
+    cfg-ast.h
     cfg-persist.h
     children.h
     crypto.h
@@ -195,6 +196,7 @@ set(LIB_SOURCES
     cfg-source.c
     cfg-tree.c
     cfg-graph.c
+    cfg-ast.c
     cfg-persist.c
     children.c
     dnscache.c
