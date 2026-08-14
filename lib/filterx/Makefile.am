@@ -36,6 +36,7 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/expr-string-operators.h \
 	lib/filterx/filterx-access-path.h \
 	lib/filterx/filterx-allocator.h \
+	lib/filterx/filterx-ast.h \
 	lib/filterx/filterx-config.h \
 	lib/filterx/filterx-error.h \
 	lib/filterx/filterx-eval.h \
@@ -136,6 +137,7 @@ lib_filterx_libfilterx_la_SOURCES = \
 	$(filterxjit_sources) \
 	lib/filterx/filterx-access-path.c \
 	lib/filterx/filterx-allocator.c \
+	lib/filterx/filterx-ast.c \
 	lib/filterx/filterx-config.c \
 	lib/filterx/filterx-dpath.c \
 	lib/filterx/filterx-env.c \
