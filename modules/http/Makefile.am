@@ -33,7 +33,7 @@ modules_http_libhttp_la_CPPFLAGS  =     \
   -I$(top_srcdir)/modules/http        \
   -I$(top_builddir)/modules/http
 
-modules_http_libhttp_la_LIBADD  = $(MODULE_DEPS_LIBS) $(LIBCURL_LIBS) $(ZLIB_LIBS) \
+modules_http_libhttp_la_LIBADD  = $(MODULE_DEPS_LIBS) $(LIBCURL_LIBS) $(ZLIB_LIBS) $(JSON_LIBS) \
   modules/http/source/libehttp-source.la
 
 modules_http_libhttp_la_LDFLAGS = $(MODULE_LDFLAGS)
