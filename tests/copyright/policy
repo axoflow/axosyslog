@@ -190,6 +190,7 @@ modules/python/python-global.(c|h)$
 modules/diskq/tests/test_diskq_counters\.c
 modules/http/http-plugin\.[ch]
 modules/http/http-parser.h
+modules/http/source
 modules/timestamp/rewrite-.*$
 modules/timestamp/tf-format-date.*$
 modules/timestamp/tests/test_format_date.*$

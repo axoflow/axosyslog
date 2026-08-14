@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2016 Marc Falzon
+ * Copyright (c) 2018 Balabit
+ * Copyright (c) 2018 László Várady <laszlo.varady@balabit.com>
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
@@ -20,39 +21,32 @@
  *
  */
 
-#include "http-parser.h"
-#include "plugin.h"
-#include "plugin-types.h"
+#include "driver.h"
+#include "cfg-parser.h"
+#include "http-source-grammar.h"
+#include "http/source/http-source-parser.h"
 
-extern CfgParser http_source_parser;
+extern int http_source_debug;
 
-static Plugin http_plugins[] =
+int http_source_parse(CfgLexer *lexer, LogDriver **instance, gpointer arg);
+
+static CfgLexerKeyword http_source_keywords[] =
 {
-  {
-    .type = LL_CONTEXT_DESTINATION,
-    .name = "http",
-    .parser = &http_parser,
-  },
-  {
-    .type = LL_CONTEXT_SOURCE,
-    .name = "ehttp",
-    .parser = &http_source_parser,
-  },
+  { "ehttp", KW_EHTTP },
+  { "mode", KW_MODE },
+  HTTP_SOURCE_KEYWORDS,
+  { NULL }
 };
 
-gboolean
-http_module_init(PluginContext *context, CfgArgs *args)
+CfgParser http_source_parser =
 {
-  plugin_register(context, http_plugins, G_N_ELEMENTS(http_plugins));
-  return TRUE;
-}
-
-const ModuleInfo http_module_info =
-{
-  .canonical_name = "http",
-  .version = SYSLOG_NG_VERSION,
-  .description = "The http module provides HTTP destination support for syslog-ng.",
-  .core_revision = SYSLOG_NG_SOURCE_REVISION,
-  .plugins = http_plugins,
-  .plugins_len = G_N_ELEMENTS(http_plugins),
+#if SYSLOG_NG_ENABLE_DEBUG
+  .debug_flag = &http_source_debug,
+#endif
+  .name = "http_source",
+  .keywords = http_source_keywords,
+  .parse = (gint (*)(CfgLexer *, gpointer *, gpointer)) http_source_parse,
+  .cleanup = (void (*)(gpointer)) log_pipe_unref,
 };
+
+CFG_PARSER_IMPLEMENT_LEXER_BINDING(http_source_, HTTP_SOURCE_, LogDriver **)
