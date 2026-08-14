@@ -157,6 +157,16 @@ http_sd_setup_addresses(AFSocketSourceDriver *s)
 gboolean
 http_sd_init_method(LogPipe *s)
 {
+  HTTPSourceDriver *self = (HTTPSourceDriver *) s;
+  GlobalConfig *cfg = log_pipe_get_config(s);
+
+  LogProtoServerOptions *proto_options = &self->super.reader_options.proto_options.super;
+  if (proto_options->init_buffer_size == -1)
+    {
+      gint max_msg_size = proto_options->max_msg_size != -1 ? proto_options->max_msg_size : cfg->log_msg_size;
+      proto_options->init_buffer_size = max_msg_size * 1000;
+    }
+
   return afsocket_sd_init_method(s);
 }
 
