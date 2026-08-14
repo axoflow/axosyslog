@@ -85,6 +85,7 @@ static GOptionEntry syslogng_options[] =
   { "persist-file",      'R',         0, G_OPTION_ARG_STRING, &resolved_configurable_paths.persist_file, "Set the name of the persistent configuration file, default=" PATH_PERSIST_CONFIG, "<fname>" },
   { "preprocess-into",     0,         0, G_OPTION_ARG_STRING, &main_loop_options.preprocess_into, "Write the preprocessed configuration file to the file specified and quit", "output" },
   { "syntax-only",       's',         0, G_OPTION_ARG_NONE, &main_loop_options.syntax_only, "Only read and parse config file", NULL},
+  { "filterx-only",        0,         0, G_OPTION_ARG_NONE, &main_loop_options.filterx_only, "Compile the given file provided by --cfgfile as a filterx script and quit", NULL},
   { "check-startup",       0,         0, G_OPTION_ARG_NONE, &main_loop_options.check_startup, "Check if syslog-ng would start up and then exit", NULL},
   { "config-id",           0,         0, G_OPTION_ARG_NONE, &main_loop_options.config_id, "Parse config file, print configuration ID, and quit", NULL},
   { "print-ast",           0,         0, G_OPTION_ARG_NONE, &main_loop_options.print_ast, "Parse config file, print its abstract syntax tree as JSON, and quit", NULL},

@@ -144,6 +144,21 @@
           </listitem>
         </varlistentry>
         <varlistentry>
+          <term>
+            <command>--filterx-only</command>
+            <indexterm type="parameter">
+              <primary>--filterx-only</primary>
+            </indexterm>
+            <indexterm type="parameter">
+              <primary>filterx-only</primary>
+            </indexterm>
+          </term>
+          <listitem>
+            <para>Compile the file specified with <parameter>--cfgfile</parameter> as a standalone filterx script instead of a syslog-ng configuration, then exit. The entire file is parsed as filterx code, as if its contents were the body of a <parameter>filterx {}</parameter> block, so it must not contain sources, destinations or log paths. Useful for validating filterx code from CI or an editor.</para>
+            <para>Add <parameter>--print-ast</parameter> to print the abstract syntax tree of the compiled script to the standard output as JSON. The tree is the one that would be evaluated, e.g. it is already optimized, and nothing is printed if the script fails to compile.</para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
           <term><command>--foreground</command> or <command>-F</command>
                         <indexterm type="parameter"><primary>--foreground</primary></indexterm>
                         <indexterm type="parameter"><primary>foreground</primary></indexterm>
