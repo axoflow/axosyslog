@@ -25,6 +25,7 @@
 #define LOGPROTO_SERVER_H_INCLUDED
 
 #include "logproto.h"
+#include "syslog-ng.h"
 #include "persist-state.h"
 #include "transport/transport-aux-data.h"
 #include "ack-tracker/bookmark.h"
@@ -86,6 +87,7 @@ struct _LogProtoServer
   gboolean (*restart_with_state)(LogProtoServer *s, PersistState *state, const gchar *persist_name);
   LogProtoStatus (*fetch)(LogProtoServer *s, const guchar **msg, gsize *msg_len, gboolean *may_read,
                           LogTransportAuxData *aux, Bookmark *bookmark);
+  LogProtoStatus (*fetch_structured)(LogProtoServer *s, LogMessage **msg, LogTransportAuxData *aux, Bookmark *bookmark);
   gboolean (*validate_options)(LogProtoServer *s);
   LogProtoStatus (*handshake)(LogProtoServer *s, gboolean *handshake_finished, LogProtoServer **proto_replacement);
   void (*free_fn)(LogProtoServer *s);
@@ -176,6 +178,21 @@ log_proto_server_wakeup_cb_call(LogProtoServerWakeupCallback *wakeup_callback)
 {
   if (wakeup_callback->func)
     wakeup_callback->func(wakeup_callback->user_data);
+}
+
+static inline gboolean
+log_proto_server_is_structured(LogProtoServer *s)
+{
+  return !!s->fetch_structured;
+}
+
+static inline LogProtoStatus
+log_proto_server_fetch_structured(LogProtoServer *s, LogMessage **msg, LogTransportAuxData *aux, Bookmark *bookmark)
+{
+  if (s->status == LPS_SUCCESS)
+    return s->fetch_structured(s, msg, aux, bookmark);
+
+  return s->status;
 }
 
 AckTrackerFactory *log_proto_server_get_ack_tracker_factory(LogProtoServer *s);

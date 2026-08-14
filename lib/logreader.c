@@ -531,6 +531,7 @@ log_reader_fetch_log(LogReader *self)
   gint msg_count = 0;
   gboolean may_read = TRUE;
   LogTransportAuxData aux_storage = {0}, *aux = &aux_storage;
+  gboolean is_structured = log_proto_server_is_structured(self->proto);
 
   if ((self->options->flags & LR_IGNORE_AUX_DATA))
     aux = NULL;
@@ -550,6 +551,7 @@ log_reader_fetch_log(LogReader *self)
       Bookmark *bookmark;
       const guchar *line = NULL;
       gsize line_len = 0;
+      LogMessage *msg = NULL;
       LogProtoStatus status;
 
       /* NOTE: may_read is used to implement multi-read checking. It
@@ -560,7 +562,12 @@ log_reader_fetch_log(LogReader *self)
 
       log_transport_aux_data_reinit(aux);
       bookmark = ack_tracker_request_bookmark(self->super.ack_tracker);
-      status = log_proto_server_fetch(self->proto, &line, &line_len, &may_read, aux, bookmark);
+
+      if (G_UNLIKELY(is_structured))
+        status = log_proto_server_fetch_structured(self->proto, &msg, aux, bookmark);
+      else
+        status = log_proto_server_fetch(self->proto, &line, &line_len, &may_read, aux, bookmark);
+
       switch (status)
         {
         case LPS_EOF:
@@ -578,16 +585,17 @@ log_reader_fetch_log(LogReader *self)
           break;
         }
 
-      if (!line)
-        {
-          /* no more messages for now */
-          break;
-        }
+      gboolean message_fetched = line || msg;
+      if (!message_fetched)
+        break;
+
       msg_count++;
 
-      LogMessage *msg = log_reader_construct_message(self, line, line_len);
-      if (!msg)
-        continue;
+      if (!is_structured)
+        {
+          if (!(msg = log_reader_construct_message(self, line, line_len)))
+            continue;
+        }
 
       if (!log_reader_post_message(self, msg, aux))
         {
