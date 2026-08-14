@@ -87,6 +87,7 @@ static GOptionEntry syslogng_options[] =
   { "syntax-only",       's',         0, G_OPTION_ARG_NONE, &main_loop_options.syntax_only, "Only read and parse config file", NULL},
   { "check-startup",       0,         0, G_OPTION_ARG_NONE, &main_loop_options.check_startup, "Check if syslog-ng would start up and then exit", NULL},
   { "config-id",           0,         0, G_OPTION_ARG_NONE, &main_loop_options.config_id, "Parse config file, print configuration ID, and quit", NULL},
+  { "print-ast",           0,         0, G_OPTION_ARG_NONE, &main_loop_options.print_ast, "Parse config file, print its abstract syntax tree as JSON, and quit", NULL},
   { "control",           'c',         0, G_OPTION_ARG_STRING, &resolved_configurable_paths.ctlfilename, "Set syslog-ng control socket, default=" PATH_CONTROL_SOCKET, "<ctlpath>" },
   { "interactive",       'i',         0, G_OPTION_ARG_NONE, &main_loop_options.interactive_mode, "Enable interactive mode" },
   { NULL },

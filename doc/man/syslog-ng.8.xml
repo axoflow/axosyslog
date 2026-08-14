@@ -236,6 +236,23 @@
         </varlistentry>
         <varlistentry>
           <term>
+            <command>--print-ast</command>
+            <indexterm type="parameter">
+              <primary>--print-ast</primary>
+            </indexterm>
+            <indexterm type="parameter">
+              <primary>print-ast</primary>
+            </indexterm>
+          </term>
+          <listitem>
+            <para>Parse the configuration file, print its abstract syntax tree to the standard output as JSON, and exit. The configuration is not initialized, so this is as cheap and as side effect free as <parameter>--syntax-only</parameter>. Nothing is printed if the configuration fails to parse.</para>
+            <para>The <parameter>statements</parameter> array contains every root level statement of the configuration in source order, including the ones that are not log expressions (<parameter>options</parameter>, <parameter>template</parameter>, <parameter>template-function</parameter>, <parameter>block</parameter> and root context plugins such as <parameter>python</parameter>). Log expression statements also carry an <parameter>expr</parameter> member describing the tree of the expression, and <parameter>filterx {}</parameter> blocks carry a <parameter>filterx</parameter> member describing the parsed filterx expression.</para>
+            <para>Every expression node carries a <parameter>layout</parameter> and a <parameter>content</parameter> member, using the same terms as the configuration tree: a <parameter>content</parameter> of <parameter>log</parameter> with a <parameter>layout</parameter> of <parameter>sequence</parameter> is a log statement, while a <parameter>layout</parameter> of <parameter>single</parameter> is an individual driver or pipe, in which case the <parameter>plugin</parameter> member names the plugin it was created from, if it came from one.</para>
+            <para>This makes it possible to validate what the parser actually built, for example that a snippet of generated configuration did not escape the block it was embedded into.</para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
             <command>--process-mode &lt;mode&gt;</command>
             <indexterm type="parameter">
               <primary>--process-mode</primary>

@@ -27,6 +27,7 @@
 #include "mainloop-control.h"
 #include "apphook.h"
 #include "cfg.h"
+#include "cfg-ast.h"
 #include "stats/stats-registry.h"
 #include "stats/stats-counter.h"
 #include "stats/stats-cluster-single.h"
@@ -706,6 +707,14 @@ main_loop_read_and_init_config(MainLoop *self)
       cfg_format_id(self->current_configuration, config_id);
       fprintf(stdout, "%s\n", config_id->str);
       g_string_free(config_id, TRUE);
+      return 0;
+    }
+
+  if (options->print_ast)
+    {
+      GString *ast = cfg_ast_format(self->current_configuration);
+      fprintf(stdout, "%s\n", ast->str);
+      g_string_free(ast, TRUE);
       return 0;
     }
 

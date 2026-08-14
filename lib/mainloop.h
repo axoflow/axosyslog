@@ -36,6 +36,7 @@ typedef struct _MainLoopOptions
   gboolean syntax_only;
   gboolean check_startup;
   gboolean config_id;
+  gboolean print_ast;
   gboolean interactive_mode;
   gboolean disable_module_discovery;
 } MainLoopOptions;
@@ -46,7 +47,8 @@ main_loop_is_dry_run(const MainLoopOptions *options)
   if (!options)
     return FALSE;
 
-  return options->syntax_only || options->preprocess_into || options->config_id || options->check_startup;
+  return options->syntax_only || options->preprocess_into || options->config_id
+         || options->print_ast || options->check_startup;
 }
 
 extern ThreadId main_thread_handle;
