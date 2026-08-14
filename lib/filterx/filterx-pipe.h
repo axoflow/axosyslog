@@ -28,4 +28,6 @@
 
 LogPipe *log_filterx_pipe_new(FilterXExpr *expr, GlobalConfig *cfg);
 
+FilterXExpr *log_filterx_pipe_get_block(LogPipe *s);
+
 #endif
