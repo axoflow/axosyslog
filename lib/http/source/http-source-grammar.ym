@@ -52,6 +52,7 @@
 
 %token KW_KEEP_ALIVE
 %token KW_MAX_CONNECTIONS
+%token KW_MAX_REQUEST_SIZE
 
 %token KW_LOCALIP
 %token KW_IP
@@ -102,6 +103,7 @@ http_source_option
 	  }
 	| KW_KEEP_ALIVE '(' yesno ')'		{ afsocket_sd_set_keep_alive(last_driver, $3); }
 	| KW_MAX_CONNECTIONS '(' positive_integer ')'	 { afsocket_sd_set_max_connections(last_driver, $3); }
+	| KW_MAX_REQUEST_SIZE '(' positive_integer ')'	{ last_proto_server_options->init_buffer_size = $3; }
 	| KW_LISTEN_BACKLOG '(' positive_integer ')'	{ afsocket_sd_set_listen_backlog(last_driver, $3); }
 	| source_reader_option
 	| source_driver_option

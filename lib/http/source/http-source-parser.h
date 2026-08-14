@@ -57,6 +57,7 @@
   { "transport",          KW_TRANSPORT }, \
   { "ip_protocol",        KW_IP_PROTOCOL }, \
   { "max_connections",    KW_MAX_CONNECTIONS }, \
+  { "max_request_size",   KW_MAX_REQUEST_SIZE }, \
   { "listen_backlog",     KW_LISTEN_BACKLOG }, \
   { "keep_alive",         KW_KEEP_ALIVE }
 
