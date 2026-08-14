@@ -167,6 +167,12 @@ http_sd_init_method(LogPipe *s)
       proto_options->init_buffer_size = max_msg_size * 1000;
     }
 
+  if (self->super.reader_options.super.init_window_size == -1)
+    {
+      self->super.reader_options.super.init_window_size =
+        atomic_gssize_get(&self->super.max_connections) * cfg->min_iw_size_per_reader;
+    }
+
   return afsocket_sd_init_method(s);
 }
 
@@ -189,4 +195,6 @@ http_sd_init_instance(HTTPSourceDriver *self, SocketOptions *socket_options,
   self->super.super.super.super.free_fn = http_sd_free_method;
   self->super.setup_addresses = http_sd_setup_addresses;
   self->super.construct_proto = http_sd_construct_proto;
+
+  atomic_gssize_set(&self->super.max_connections, 100);
 }
