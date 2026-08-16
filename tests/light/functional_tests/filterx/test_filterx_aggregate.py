@@ -28,8 +28,8 @@ import pytest
 from axosyslog_light.syslog_ng_config.renderer import render_statement
 
 
-def create_config(config, port_allocator, aggregate_call):
-    network_source = config.create_network_source(port=port_allocator(), flags="no-parse")
+def create_config(config, port_allocator, aggregate_call, port=None):
+    network_source = config.create_network_source(port=port or port_allocator(), flags="no-parse")
     file_destination = config.create_file_destination(file_name="output.log", template="'$MSG\n'")
 
     raw_config = f"""
@@ -357,3 +357,52 @@ def test_aggregators_as_number_variants_coerce_string_values(config, port_alloca
     results = read_results(file_destination, 2)
     assert results[0] == {"status": "absorbed", "values": {"total": 5, "lo": 5, "hi": 5, "avg": 5.0}}
     assert results[1] == {"status": "absorbed", "values": {"total": 8, "lo": 3, "hi": 5, "avg": 4.0}}
+
+
+def test_id_argument_survives_a_config_reload(config, port_allocator, syslog_ng):
+    port = port_allocator()
+    aggregate_call = 'aggregate(key=(input["key"]), values={"cnt": input["cnt"]}, id="reload-test", timeout=3600)'
+
+    network_source, file_destination_before = create_config(config, port_allocator, aggregate_call, port=port)
+    syslog_ng.start(config)
+
+    send_messages(network_source, [{"key": "host-a", "cnt": 1}])
+    # wait for the pre-reload message to be fully processed before reloading,
+    # otherwise it could race with the reload and land in either generation
+    results_before = read_results(file_destination_before, 1)
+    assert results_before[0] == {"status": "absorbed", "values": {"cnt": 1}}
+
+    # rebuild the exact same config (as a real reload normally would, e.g.
+    # after editing something unrelated elsewhere in the file) and reload;
+    # network_source is just a client-side socket helper bound to `port`,
+    # still valid for sending after the reload since the port doesn't change
+    _, file_destination_after = create_config(config, port_allocator, aggregate_call, port=port)
+    syslog_ng.reload(config)
+
+    send_messages(network_source, [{"key": "host-a", "cnt": 1}])
+
+    # 1 (before reload) + 1 (after reload) == 2: the running total survived
+    # the reload instead of starting over
+    results_after = read_results(file_destination_after, 2)
+    assert results_after[1] == {"status": "absorbed", "values": {"cnt": 2}}
+
+
+def test_without_id_argument_state_does_not_survive_a_config_reload(config, port_allocator, syslog_ng):
+    port = port_allocator()
+    aggregate_call = 'aggregate(key=(input["key"]), values={"cnt": input["cnt"]}, timeout=3600)'
+
+    network_source, file_destination_before = create_config(config, port_allocator, aggregate_call, port=port)
+    syslog_ng.start(config)
+
+    send_messages(network_source, [{"key": "host-a", "cnt": 1}])
+    results_before = read_results(file_destination_before, 1)
+    assert results_before[0] == {"status": "absorbed", "values": {"cnt": 1}}
+
+    _, file_destination_after = create_config(config, port_allocator, aggregate_call, port=port)
+    syslog_ng.reload(config)
+
+    send_messages(network_source, [{"key": "host-a", "cnt": 1}])
+
+    # starts fresh at 1, NOT 2 -- no id means no carry-over across a reload
+    results_after = read_results(file_destination_after, 2)
+    assert results_after[1] == {"status": "absorbed", "values": {"cnt": 1}}
