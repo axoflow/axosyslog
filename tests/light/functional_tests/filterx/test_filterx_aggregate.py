@@ -197,10 +197,12 @@ def test_close_argument_cancels_the_pending_timeout(config, port_allocator, sysl
     )
     syslog_ng.start(config)
 
-    send_messages(network_source, [
-        {"key": "host-a", "cnt": 1, "close": False},
-        {"key": "host-a", "cnt": 2, "close": True},
-    ])
+    send_messages(
+        network_source, [
+            {"key": "host-a", "cnt": 1, "close": False},
+            {"key": "host-a", "cnt": 2, "close": True},
+        ],
+    )
 
     results = read_results(file_destination, 2)
     assert results[1]["status"] == "closed"
@@ -235,3 +237,53 @@ def test_timeout_is_armed_only_once_per_entry(config, port_allocator, syslog_ng)
 
     time.sleep(1.5)
     assert file_destination.get_stats()["processed"] == 3
+
+
+def test_aggregators_argument_selects_replace_for_named_field_and_sum_for_others(config, port_allocator, syslog_ng):
+    network_source, file_destination = create_config(
+        config, port_allocator,
+        'aggregate(key=(input["key"]), values={"total": input["amount"], "last": input["amount"]}, '
+        'aggregators={"last": "replace"}, timeout=3600)',
+    )
+    syslog_ng.start(config)
+
+    send_messages(
+        network_source, [
+            {"key": "host-a", "amount": 100},
+            {"key": "host-a", "amount": 200},
+        ],
+    )
+
+    results = read_results(file_destination, 2)
+    assert results[0] == {"status": "absorbed", "values": {"total": 100, "last": 100}}
+    assert results[1] == {"status": "absorbed", "values": {"total": 300, "last": 200}}
+
+
+def test_aggregators_argument_defaults_unlisted_fields_to_sum(config, port_allocator, syslog_ng):
+    network_source, file_destination = create_config(
+        config, port_allocator,
+        'aggregate(key=(input["key"]), values={"total": input["amount"], "last": input["amount"]}, '
+        'aggregators={}, timeout=3600)',
+    )
+    syslog_ng.start(config)
+
+    send_messages(
+        network_source, [
+            {"key": "host-a", "amount": 3},
+            {"key": "host-a", "amount": 4},
+        ],
+    )
+
+    results = read_results(file_destination, 2)
+    assert results[1] == {"status": "absorbed", "values": {"total": 7, "last": 7}}
+
+
+def test_aggregators_argument_rejects_unknown_function_name(config, port_allocator, syslog_ng):
+    create_config(
+        config, port_allocator,
+        'aggregate(key=(input["key"]), values={"total": input["amount"]}, '
+        'aggregators={"total": "no-such-function"}, timeout=3600)',
+    )
+
+    with pytest.raises(Exception):
+        syslog_ng.start(config)
