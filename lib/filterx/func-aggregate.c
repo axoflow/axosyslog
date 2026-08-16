@@ -75,10 +75,11 @@ _aggregate_merge(FilterXObject *target, FilterXObject *incoming_values)
   return filterx_object_iter(incoming_values, _aggregate_elem, &ctx);
 }
 
-#define FILTERX_FUNC_AGGREGATE_USAGE "Usage: aggregate(key=dict, values=dict)"
+#define FILTERX_FUNC_AGGREGATE_USAGE "Usage: aggregate(key=expr, values=dict, [close=expr])"
 
 /* aggregate() returns a (status, values) tuple */
 #define FILTERX_FUNC_AGGREGATE_STATUS_ABSORBED "absorbed"
+#define FILTERX_FUNC_AGGREGATE_STATUS_CLOSED "closed"
 
 static FilterXObject *
 _wrap_result(const gchar *status, FilterXObject *values)
@@ -132,6 +133,7 @@ typedef struct _AggregateEntry
   AggregateSharedState *shared;
   FilterXObject *tuple_key;
   FilterXObject *values;
+  gboolean closed;
 } AggregateEntry;
 
 static AggregateEntry *_aggregate_entry_ref(AggregateEntry *entry);
@@ -192,6 +194,13 @@ _aggregate_entry_unref(AggregateEntry *entry)
     }
 }
 
+static void
+_close_entry(AggregateSharedState *shared, AggregateEntry *entry)
+{
+  entry->closed = TRUE;
+  g_hash_table_remove(shared->entries, entry->tuple_key);
+}
+
 static AggregateEntry *
 _new_entry(AggregateSharedState *shared, FilterXObject *tuple_key)
 {
@@ -208,7 +217,7 @@ _new_entry(AggregateSharedState *shared, FilterXObject *tuple_key)
 }
 
 static FilterXObject *
-_aggregate(AggregateSharedState *shared, FilterXObject *tuple_key, FilterXObject *values)
+_aggregate(AggregateSharedState *shared, FilterXObject *tuple_key, FilterXObject *values, gboolean close)
 {
   AggregateEntry *entry = g_hash_table_lookup(shared->entries, tuple_key);
   if (!entry)
@@ -222,6 +231,11 @@ _aggregate(AggregateSharedState *shared, FilterXObject *tuple_key, FilterXObject
 
   FilterXObject *merged_values = filterx_ref_float(filterx_object_copy(entry->values));
 
+  if (close)
+    {
+      _close_entry(shared, entry);
+      return _wrap_result(FILTERX_FUNC_AGGREGATE_STATUS_CLOSED, merged_values);
+    }
   return _wrap_result(FILTERX_FUNC_AGGREGATE_STATUS_ABSORBED, merged_values);
 }
 
@@ -230,6 +244,7 @@ typedef struct FilterXFunctionAggregate_
   FilterXFunction super;
   FilterXExpr *key_expr;
   FilterXExpr *values_expr;
+  FilterXExpr *close_expr;
   AggregateSharedState *shared;
 } FilterXFunctionAggregate;
 
@@ -256,6 +271,7 @@ _eval_fx_aggregate(FilterXExpr *s)
   FilterXObject *result = NULL;
   FilterXObject *key = NULL;
   FilterXObject *values = NULL;
+  FilterXObject *close_value = NULL;
 
   key = filterx_expr_eval_typed(self->key_expr);
   if (!key)
@@ -271,13 +287,22 @@ _eval_fx_aggregate(FilterXExpr *s)
       goto exit;
     }
 
+  gboolean close = FALSE;
+  if (self->close_expr)
+    {
+      close_value = filterx_expr_eval_typed(self->close_expr);
+      if (!close_value)
+        goto exit;
+      close = filterx_object_truthy(close_value);
+    }
+
   gpointer allocator_state;
   filterx_eval_disable_allocator(&allocator_state);
 
   FilterXObject *tuple_key = _normalize_key_as_tuple(key);
 
   g_mutex_lock(&self->shared->lock);
-  result = _aggregate(self->shared, tuple_key, values);
+  result = _aggregate(self->shared, tuple_key, values, close);
   g_mutex_unlock(&self->shared->lock);
 
   filterx_object_unref(tuple_key);
@@ -285,6 +310,7 @@ _eval_fx_aggregate(FilterXExpr *s)
   filterx_eval_restore_allocator(&allocator_state);
 
 exit:
+  filterx_object_unref(close_value);
   filterx_object_unref(key);
   filterx_object_unref(values);
   return result;
@@ -312,7 +338,7 @@ _aggregate_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXFunctionAggregate *self = (FilterXFunctionAggregate *) s;
 
-  FilterXExpr **exprs[] = { &self->key_expr, &self->values_expr };
+  FilterXExpr **exprs[] = { &self->key_expr, &self->values_expr, &self->close_expr };
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {
@@ -348,6 +374,8 @@ _extract_args(FilterXFunctionAggregate *self, FilterXFunctionArgs *args, GError 
                   "values argument is required. " FILTERX_FUNC_AGGREGATE_USAGE);
       return FALSE;
     }
+  self->close_expr = filterx_function_args_get_named_expr(args, "close");
+
   return TRUE;
 }
 
@@ -358,6 +386,7 @@ _free(FilterXExpr *s)
 
   filterx_expr_unref(self->key_expr);
   filterx_expr_unref(self->values_expr);
+  filterx_expr_unref(self->close_expr);
   _shared_state_unref(self->shared);
   filterx_function_free_method(&self->super);
 }
