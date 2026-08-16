@@ -287,3 +287,73 @@ def test_aggregators_argument_rejects_unknown_function_name(config, port_allocat
 
     with pytest.raises(Exception):
         syslog_ng.start(config)
+
+
+def test_aggregators_argument_supports_count_min_max_average(config, port_allocator, syslog_ng):
+    network_source, file_destination = create_config(
+        config, port_allocator,
+        'aggregate(key=(input["key"]), '
+        'values={"n": input["amount"], "lo": input["amount"], "hi": input["amount"], "avg": input["amount"]}, '
+        'aggregators={"n": "count", "lo": "min", "hi": "max", "avg": "average"}, timeout=3600)',
+    )
+    syslog_ng.start(config)
+
+    send_messages(
+        network_source, [
+            {"key": "host-a", "amount": 10},
+            {"key": "host-a", "amount": 4},
+            {"key": "host-a", "amount": 7},
+        ],
+    )
+
+    results = read_results(file_destination, 3)
+    assert results[0] == {"status": "absorbed", "values": {"n": 1, "lo": 10, "hi": 10, "avg": 10.0}}
+    assert results[1] == {"status": "absorbed", "values": {"n": 2, "lo": 4, "hi": 10, "avg": 7.0}}
+    assert results[2] == {"status": "absorbed", "values": {"n": 3, "lo": 4, "hi": 10, "avg": 7.0}}
+
+
+def test_count_aggregator_does_not_count_null_values(config, port_allocator, syslog_ng):
+    network_source, file_destination = create_config(
+        config, port_allocator,
+        'aggregate(key=(input["key"]), values={"n": input["amount"]}, aggregators={"n": "count"}, timeout=3600)',
+    )
+    syslog_ng.start(config)
+
+    send_messages(
+        network_source, [
+            {"key": "host-a", "amount": 1},
+            {"key": "host-a", "amount": None},
+            {"key": "host-a", "amount": 2},
+            {"key": "host-a", "amount": None},
+        ],
+    )
+
+    results = read_results(file_destination, 4)
+    assert results[0] == {"status": "absorbed", "values": {"n": 1}}
+    assert results[1] == {"status": "absorbed", "values": {"n": 1}}
+    assert results[2] == {"status": "absorbed", "values": {"n": 2}}
+    assert results[3] == {"status": "absorbed", "values": {"n": 2}}
+
+
+def test_aggregators_as_number_variants_coerce_string_values(config, port_allocator, syslog_ng):
+    network_source, file_destination = create_config(
+        config, port_allocator,
+        'aggregate(key=(input["key"]), '
+        'values={"total": input["amount"], "lo": input["amount"], "hi": input["amount"], "avg": input["amount"]}, '
+        'aggregators={"total": "sum_as_number", "lo": "min_as_number", "hi": "max_as_number", '
+        '"avg": "average_as_number"}, timeout=3600)',
+    )
+    syslog_ng.start(config)
+
+    # "amount" arrives as a string, not a number: the plain sum/min/max/average
+    # aggregators would fail to merge it past the first message
+    send_messages(
+        network_source, [
+            {"key": "host-a", "amount": "5"},
+            {"key": "host-a", "amount": "3"},
+        ],
+    )
+
+    results = read_results(file_destination, 2)
+    assert results[0] == {"status": "absorbed", "values": {"total": 5, "lo": 5, "hi": 5, "avg": 5.0}}
+    assert results[1] == {"status": "absorbed", "values": {"total": 8, "lo": 3, "hi": 5, "avg": 4.0}}
