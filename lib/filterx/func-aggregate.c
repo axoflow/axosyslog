@@ -22,6 +22,7 @@
  */
 
 #include "filterx/func-aggregate.h"
+#include "filterx/expr-literal.h"
 #include "filterx/filterx-mapping.h"
 #include "filterx/object-primitive.h"
 #include "filterx/object-string.h"
@@ -34,6 +35,25 @@
 #include "ml-batched-timer.h"
 #include "mainloop.h"
 
+/*
+ * Aggregator functions: combine an existing accumulated value with an
+ * incoming new value.  `existing` is NULL when a key is seen for the
+ * first time.  The returned object is owned by the caller.
+ */
+typedef FilterXObject *(*FilterXAggregateFunc)(FilterXObject *existing, FilterXObject *incoming);
+
+
+/* NOTE: all aggregators _MUST_ either return a reference counted object on
+ * the heap or they must allocate a new object instance with the current
+ * allocator.
+ *
+ * FIXME: this is easy to get wrong, do something about it...
+ */
+static FilterXObject *
+_agg_replace(FilterXObject *existing, FilterXObject *incoming)
+{
+  return filterx_object_dup(incoming);
+}
 
 static FilterXObject *
 _agg_sum(FilterXObject *existing, FilterXObject *incoming)
@@ -43,18 +63,123 @@ _agg_sum(FilterXObject *existing, FilterXObject *incoming)
   return filterx_object_dup(incoming);
 }
 
+static const struct
+{
+  const gchar *name;
+  FilterXAggregateFunc aggregate;
+} _named_aggregate_funcs[] =
+{
+  { "replace", _agg_replace },
+  { "sum", _agg_sum },
+};
+
+static FilterXAggregateFunc
+_lookup_named_aggregate_func(const gchar *name, gsize name_len)
+{
+  for (gsize i = 0; i < G_N_ELEMENTS(_named_aggregate_funcs); i++)
+    {
+      if (strlen(_named_aggregate_funcs[i].name) == name_len &&
+          memcmp(_named_aggregate_funcs[i].name, name, name_len) == 0)
+        return _named_aggregate_funcs[i].aggregate;
+    }
+  return NULL;
+}
+
+/* per-field override of the aggregator function, resolved once at init()
+ * time from the "aggregators" argument (see _resolve_field_aggregators());
+ * field_name is an owned copy since the literal dict it was extracted from
+ * does not outlive init(). */
+typedef struct
+{
+  gchar *field_name;
+  gsize field_name_len;
+  FilterXAggregateFunc aggregate;
+} FieldAggregator;
+
+static void
+_field_aggregator_clear(FieldAggregator *fa)
+{
+  g_free(fa->field_name);
+}
+
+static void
+_field_aggregators_free(GArray *field_aggregators)
+{
+  if (!field_aggregators)
+    return;
+
+  for (guint i = 0; i < field_aggregators->len; i++)
+    _field_aggregator_clear(&g_array_index(field_aggregators, FieldAggregator, i));
+  g_array_free(field_aggregators, TRUE);
+}
+
 typedef struct
 {
   FilterXObject *target;
+  GArray *field_aggregators;  /* of FieldAggregator, sorted by field_name; NULL means "no overrides, always use sum" */
 } AggregateMergeContext;
+
+static gint
+_compare_field_names(const gchar *a, gsize a_len, const gchar *b, gsize b_len)
+{
+  gsize min_len = MIN(a_len, b_len);
+  gint cmp = min_len ? memcmp(a, b, min_len) : 0;
+  if (cmp != 0)
+    return cmp;
+  if (a_len != b_len)
+    return a_len < b_len ? -1 : 1;
+  return 0;
+}
+
+static gint
+_compare_field_aggregators(gconstpointer a, gconstpointer b)
+{
+  const FieldAggregator *fa = (const FieldAggregator *) a;
+  const FieldAggregator *fb = (const FieldAggregator *) b;
+  return _compare_field_names(fa->field_name, fa->field_name_len, fb->field_name, fb->field_name_len);
+}
+
+/* field_aggregators is small and sorted once at init() time (see
+ * _resolve_field_aggregators()), so a binary search here beats both a
+ * linear scan (fewer comparisons) and a GHashTable (no NUL-terminated key
+ * required -- field_name arrives as a plain (ptr, len) pair from
+ * filterx_object_extract_string_ref(), same as the compiled table). */
+static FilterXAggregateFunc
+_lookup_field_aggregator(GArray *field_aggregators, const gchar *field_name, gsize field_name_len)
+{
+  if (!field_aggregators)
+    return _agg_sum;
+
+  gint l = 0, h = (gint) field_aggregators->len - 1;
+  while (l <= h)
+    {
+      gint m = (l + h) >> 1;
+      FieldAggregator *fa = &g_array_index(field_aggregators, FieldAggregator, m);
+      gint cmp = _compare_field_names(field_name, field_name_len, fa->field_name, fa->field_name_len);
+
+      if (cmp == 0)
+        return fa->aggregate;
+      else if (cmp < 0)
+        h = m - 1;
+      else
+        l = m + 1;
+    }
+  return _agg_sum;
+}
 
 static gboolean
 _aggregate_elem(FilterXObject *key, FilterXObject *incoming, gpointer user_data)
 {
   AggregateMergeContext *ctx = (AggregateMergeContext *) user_data;
 
+  FilterXAggregateFunc aggregate = _agg_sum;
+  const gchar *field_name;
+  gsize field_name_len;
+  if (filterx_object_extract_string_ref(key, &field_name, &field_name_len))
+    aggregate = _lookup_field_aggregator(ctx->field_aggregators, field_name, field_name_len);
+
   FilterXObject *existing = filterx_object_get_subscript(ctx->target, key);
-  FilterXObject *new_value = _agg_sum(existing, incoming);
+  FilterXObject *new_value = aggregate(existing, incoming);
   filterx_object_unref(existing);
 
   if (!new_value)
@@ -70,16 +195,17 @@ _aggregate_elem(FilterXObject *key, FilterXObject *incoming, gpointer user_data)
 }
 
 static gboolean
-_aggregate_merge(FilterXObject *target, FilterXObject *incoming_values)
+_aggregate_merge(FilterXObject *target, FilterXObject *incoming_values, GArray *field_aggregators)
 {
   if (!filterx_object_is_type_or_ref(incoming_values, &FILTERX_TYPE_NAME(mapping)))
     return FALSE;
 
-  AggregateMergeContext ctx = { .target = target };
+  AggregateMergeContext ctx = { .target = target, .field_aggregators = field_aggregators };
   return filterx_object_iter(incoming_values, _aggregate_elem, &ctx);
 }
 
-#define FILTERX_FUNC_AGGREGATE_USAGE "Usage: aggregate(key=expr, values=dict, timeout=seconds, [close=expr])"
+#define FILTERX_FUNC_AGGREGATE_USAGE \
+  "Usage: aggregate(key=expr, values=dict, timeout=seconds, [close=expr], [aggregators=dict])"
 
 /* aggregate() returns a (status, values) tuple */
 #define FILTERX_FUNC_AGGREGATE_STATUS_ABSORBED "absorbed"
@@ -217,6 +343,8 @@ _aggregate_entry_unref(AggregateEntry *entry)
     }
 }
 
+/* aggregation logic, operates on shared state */
+
 static void
 _replay_and_forward(AggregateSharedState *shared, AggregateEntry *entry)
 {
@@ -292,14 +420,17 @@ _arm_new_entry(AggregateSharedState *shared, AggregateEntry *entry, gint64 timeo
 }
 
 static FilterXObject *
-_aggregate(AggregateSharedState *shared, FilterXObject *tuple_key, FilterXObject *values, gboolean close, gint64 timeout_seconds)
+_aggregate(AggregateSharedState *shared, FilterXObject *tuple_key, FilterXObject *values,
+           gboolean close,
+           gint64 timeout_seconds,
+           GArray *field_aggregators)
 {
   AggregateEntry *entry = g_hash_table_lookup(shared->entries, tuple_key);
   gboolean is_new_entry = !entry;
   if (!entry)
     entry = _new_entry(shared, tuple_key);
 
-  if (!_aggregate_merge(entry->values, values))
+  if (!_aggregate_merge(entry->values, values, field_aggregators))
     {
       filterx_eval_push_error("aggregate(): failed to merge values", values);
       return NULL;
@@ -325,9 +456,97 @@ typedef struct FilterXFunctionAggregate_
   FilterXExpr *key_expr;
   FilterXExpr *values_expr;
   FilterXExpr *close_expr;
+  FilterXExpr *aggregators_expr;
+  GArray *field_aggregators;
   gint64 timeout_seconds;
   AggregateSharedState *shared;
 } FilterXFunctionAggregate;
+
+typedef struct
+{
+  GArray *field_aggregators;
+  gchar *error;
+} FieldAggregatorParseContext;
+
+static gboolean
+_parse_field_aggregator(FilterXObject *key, FilterXObject *value, gpointer user_data)
+{
+  FieldAggregatorParseContext *ctx = (FieldAggregatorParseContext *) user_data;
+
+  const gchar *field_name;
+  gsize field_name_len;
+  if (!filterx_object_extract_string_ref(key, &field_name, &field_name_len))
+    {
+      ctx->error = g_strdup("aggregators argument keys must be strings");
+      return FALSE;
+    }
+
+  const gchar *func_name;
+  gsize func_name_len;
+  if (!filterx_object_extract_string_ref(value, &func_name, &func_name_len))
+    {
+      ctx->error = g_strdup_printf("aggregators[\"%.*s\"] must be a string", (gint) field_name_len, field_name);
+      return FALSE;
+    }
+
+  FilterXAggregateFunc aggregate = _lookup_named_aggregate_func(func_name, func_name_len);
+  if (!aggregate)
+    {
+      ctx->error = g_strdup_printf("aggregators[\"%.*s\"] names an unknown aggregator function: \"%.*s\"",
+                                   (gint) field_name_len, field_name, (gint) func_name_len, func_name);
+      return FALSE;
+    }
+
+  FieldAggregator fa =
+  {
+    .field_name = g_strndup(field_name, field_name_len),
+    .field_name_len = field_name_len,
+    .aggregate = aggregate,
+  };
+  g_array_append_val(ctx->field_aggregators, fa);
+  return TRUE;
+}
+
+static gboolean
+_resolve_field_aggregators(FilterXFunctionAggregate *self)
+{
+  if (!self->aggregators_expr)
+    return TRUE;
+
+  if (!filterx_expr_is_literal(self->aggregators_expr))
+    {
+      filterx_eval_push_error_static_info("aggregate(): failed to resolve aggregators argument",
+                                          "aggregators argument must be a literal dict. "
+                                          FILTERX_FUNC_AGGREGATE_USAGE);
+      return FALSE;
+    }
+
+  FilterXObject *aggregators = filterx_literal_get_value(self->aggregators_expr);
+  if (!filterx_object_is_type_or_ref(aggregators, &FILTERX_TYPE_NAME(mapping)))
+    {
+      filterx_eval_push_error_static_info("aggregate(): failed to resolve aggregators argument",
+                                          "aggregators argument must be a dict. " FILTERX_FUNC_AGGREGATE_USAGE);
+      return FALSE;
+    }
+
+  self->field_aggregators = g_array_new(FALSE, FALSE, sizeof(FieldAggregator));
+
+  FieldAggregatorParseContext ctx = { .field_aggregators = self->field_aggregators, .error = NULL };
+  if (!filterx_object_iter(aggregators, _parse_field_aggregator, &ctx))
+    {
+      filterx_eval_push_error_info_printf("aggregate(): failed to resolve aggregators argument",
+                                          "%s. " FILTERX_FUNC_AGGREGATE_USAGE,
+                                          ctx.error ? ctx.error : "invalid aggregators argument");
+      g_free(ctx.error);
+      return FALSE;
+    }
+
+  /* dict keys are unique, so no duplicates to worry about here -- sort
+   * once so _lookup_field_aggregator() can binary search it. */
+  g_array_sort(self->field_aggregators, _compare_field_aggregators);
+
+  return TRUE;
+}
 
 static FilterXObject *
 _normalize_key_as_tuple(FilterXObject *key)
@@ -389,7 +608,7 @@ _eval_fx_aggregate(FilterXExpr *s)
   FilterXObject *tuple_key = _normalize_key_as_tuple(key);
 
   g_mutex_lock(&self->shared->lock);
-  result = _aggregate(self->shared, tuple_key, values, close, self->timeout_seconds);
+  result = _aggregate(self->shared, tuple_key, values, close, self->timeout_seconds, self->field_aggregators);
   g_mutex_unlock(&self->shared->lock);
 
   filterx_object_unref(tuple_key);
@@ -407,6 +626,9 @@ static gboolean
 _aggregate_init(FilterXExpr *s, GlobalConfig *cfg)
 {
   FilterXFunctionAggregate *self = (FilterXFunctionAggregate *) s;
+
+  if (!_resolve_field_aggregators(self))
+    return FALSE;
 
   FilterXEvalContinuation *continuation = filterx_eval_get_continuation();
   if (continuation)
@@ -431,7 +653,7 @@ _aggregate_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXFunctionAggregate *self = (FilterXFunctionAggregate *) s;
 
-  FilterXExpr **exprs[] = { &self->key_expr, &self->values_expr, &self->close_expr };
+  FilterXExpr **exprs[] = { &self->key_expr, &self->values_expr, &self->close_expr, &self->aggregators_expr };
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {
@@ -490,6 +712,7 @@ _extract_args(FilterXFunctionAggregate *self, FilterXFunctionArgs *args, GError 
     }
 
   self->close_expr = filterx_function_args_get_named_expr(args, "close");
+  self->aggregators_expr = filterx_function_args_get_named_expr(args, "aggregators");
 
   return TRUE;
 }
@@ -502,6 +725,8 @@ _free(FilterXExpr *s)
   filterx_expr_unref(self->key_expr);
   filterx_expr_unref(self->values_expr);
   filterx_expr_unref(self->close_expr);
+  filterx_expr_unref(self->aggregators_expr);
+  _field_aggregators_free(self->field_aggregators);
   _shared_state_unref(self->shared);
   filterx_function_free_method(&self->super);
 }
