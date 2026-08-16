@@ -29,7 +29,11 @@
 #include "filterx/object-dict.h"
 #include "filterx/object-tuple.h"
 #include "filterx/filterx-eval.h"
+#include "filterx/filterx-pipe.h"
 #include "scratch-buffers.h"
+#include "ml-batched-timer.h"
+#include "mainloop.h"
+
 
 static FilterXObject *
 _agg_sum(FilterXObject *existing, FilterXObject *incoming)
@@ -75,11 +79,12 @@ _aggregate_merge(FilterXObject *target, FilterXObject *incoming_values)
   return filterx_object_iter(incoming_values, _aggregate_elem, &ctx);
 }
 
-#define FILTERX_FUNC_AGGREGATE_USAGE "Usage: aggregate(key=expr, values=dict, [close=expr])"
+#define FILTERX_FUNC_AGGREGATE_USAGE "Usage: aggregate(key=expr, values=dict, timeout=seconds, [close=expr])"
 
 /* aggregate() returns a (status, values) tuple */
 #define FILTERX_FUNC_AGGREGATE_STATUS_ABSORBED "absorbed"
 #define FILTERX_FUNC_AGGREGATE_STATUS_CLOSED "closed"
+#define FILTERX_FUNC_AGGREGATE_STATUS_TIMEOUT "timeout"
 
 static FilterXObject *
 _wrap_result(const gchar *status, FilterXObject *values)
@@ -118,6 +123,7 @@ typedef struct _AggregateSharedState
   GAtomicCounter ref_cnt;
   GMutex lock;
   GHashTable *entries;            /* tuple_key (ref) -> AggregateEntry* (ref) */
+  FilterXEvalContinuation continuation;
 } AggregateSharedState;
 
 /*
@@ -133,6 +139,8 @@ typedef struct _AggregateEntry
   AggregateSharedState *shared;
   FilterXObject *tuple_key;
   FilterXObject *values;
+  FilterXEvalContext *saved_context;
+  MlBatchedTimer timer;
   gboolean closed;
 } AggregateEntry;
 
@@ -158,6 +166,19 @@ _shared_state_unref(AggregateSharedState *shared)
         g_hash_table_unref(shared->entries);
       g_mutex_clear(&shared->lock);
       g_free(shared);
+    }
+}
+
+static void
+_shared_state_cancel_timers(AggregateSharedState *shared)
+{
+  GHashTableIter iter;
+  gpointer key, value;
+  g_hash_table_iter_init(&iter, shared->entries);
+  while (g_hash_table_iter_next(&iter, &key, &value))
+    {
+      AggregateEntry *entry = (AggregateEntry *) value;
+      ml_batched_timer_unregister(&entry->timer);
     }
 }
 
@@ -187,18 +208,59 @@ _aggregate_entry_unref(AggregateEntry *entry)
 {
   if (g_atomic_counter_dec_and_test(&entry->ref_cnt))
     {
+      filterx_eval_context_free_dup(entry->saved_context);
       filterx_object_unref(entry->tuple_key);
       filterx_object_unref(entry->values);
+      ml_batched_timer_free(&entry->timer);
       _shared_state_unref(entry->shared);
       g_free(entry);
     }
 }
 
 static void
+_replay_and_forward(AggregateSharedState *shared, AggregateEntry *entry)
+{
+  FilterXObject *values = filterx_ref_float(filterx_object_copy(entry->values));
+  FilterXObject *result = _wrap_result(FILTERX_FUNC_AGGREGATE_STATUS_TIMEOUT, values);
+  log_filterx_pipe_resume_and_forward(shared->continuation.owner_pipe, entry->saved_context, &shared->continuation,
+                                      result);
+  filterx_object_unref(result);
+}
+
+static void
+_expire_entry(AggregateSharedState *shared, AggregateEntry *entry)
+{
+  g_mutex_lock(&shared->lock);
+  gboolean already_closed = entry->closed;
+  entry->closed = TRUE;
+  g_mutex_unlock(&shared->lock);
+
+  if (already_closed)
+    return;
+
+  if (shared->continuation.statement_expr)
+    _replay_and_forward(shared, entry);
+
+  g_mutex_lock(&shared->lock);
+  g_hash_table_remove(shared->entries, entry->tuple_key);
+  g_mutex_unlock(&shared->lock);
+}
+
+static void
 _close_entry(AggregateSharedState *shared, AggregateEntry *entry)
 {
   entry->closed = TRUE;
+  ml_batched_timer_cancel(&entry->timer);
   g_hash_table_remove(shared->entries, entry->tuple_key);
+}
+
+static void
+_on_aggregate_entry_expired(gpointer cookie)
+{
+  AggregateEntry *entry = (AggregateEntry *) cookie;
+
+  main_loop_assert_main_thread();
+  _expire_entry(entry->shared, entry);
 }
 
 static AggregateEntry *
@@ -212,14 +274,28 @@ _new_entry(AggregateSharedState *shared, FilterXObject *tuple_key)
   entry->values = filterx_dict_new();
   filterx_object_cow_prepare(&entry->values);
 
+  ml_batched_timer_init(&entry->timer);
+  entry->timer.cookie = entry;
+  entry->timer.handler = _on_aggregate_entry_expired;
+  entry->timer.ref_cookie = (void *(*)(void *)) _aggregate_entry_ref;
+  entry->timer.unref_cookie = (void (*)(void *)) _aggregate_entry_unref;
+
   g_hash_table_insert(shared->entries, filterx_object_ref(tuple_key), entry);
   return entry;
 }
 
+static void
+_arm_new_entry(AggregateSharedState *shared, AggregateEntry *entry, gint64 timeout_seconds)
+{
+  entry->saved_context = filterx_eval_context_dup(filterx_eval_get_context());
+  ml_batched_timer_postpone(&entry->timer, timeout_seconds);
+}
+
 static FilterXObject *
-_aggregate(AggregateSharedState *shared, FilterXObject *tuple_key, FilterXObject *values, gboolean close)
+_aggregate(AggregateSharedState *shared, FilterXObject *tuple_key, FilterXObject *values, gboolean close, gint64 timeout_seconds)
 {
   AggregateEntry *entry = g_hash_table_lookup(shared->entries, tuple_key);
+  gboolean is_new_entry = !entry;
   if (!entry)
     entry = _new_entry(shared, tuple_key);
 
@@ -236,6 +312,10 @@ _aggregate(AggregateSharedState *shared, FilterXObject *tuple_key, FilterXObject
       _close_entry(shared, entry);
       return _wrap_result(FILTERX_FUNC_AGGREGATE_STATUS_CLOSED, merged_values);
     }
+
+  if (is_new_entry && timeout_seconds > 0 && shared->continuation.statement_expr)
+    _arm_new_entry(shared, entry, timeout_seconds);
+
   return _wrap_result(FILTERX_FUNC_AGGREGATE_STATUS_ABSORBED, merged_values);
 }
 
@@ -245,6 +325,7 @@ typedef struct FilterXFunctionAggregate_
   FilterXExpr *key_expr;
   FilterXExpr *values_expr;
   FilterXExpr *close_expr;
+  gint64 timeout_seconds;
   AggregateSharedState *shared;
 } FilterXFunctionAggregate;
 
@@ -263,10 +344,16 @@ _normalize_key_as_tuple(FilterXObject *key)
   return tuple_key;
 }
 
-
 static FilterXObject *
 _eval_fx_aggregate(FilterXExpr *s)
 {
+  FilterXObject *resumed = filterx_eval_take_resume_value();
+  if (resumed)
+    {
+      /* resume on continunation */
+      return resumed;
+    }
+
   FilterXFunctionAggregate *self = (FilterXFunctionAggregate *) s;
   FilterXObject *result = NULL;
   FilterXObject *key = NULL;
@@ -302,7 +389,7 @@ _eval_fx_aggregate(FilterXExpr *s)
   FilterXObject *tuple_key = _normalize_key_as_tuple(key);
 
   g_mutex_lock(&self->shared->lock);
-  result = _aggregate(self->shared, tuple_key, values, close);
+  result = _aggregate(self->shared, tuple_key, values, close, self->timeout_seconds);
   g_mutex_unlock(&self->shared->lock);
 
   filterx_object_unref(tuple_key);
@@ -315,11 +402,15 @@ exit:
   filterx_object_unref(values);
   return result;
 }
+
 static gboolean
 _aggregate_init(FilterXExpr *s, GlobalConfig *cfg)
 {
   FilterXFunctionAggregate *self = (FilterXFunctionAggregate *) s;
 
+  FilterXEvalContinuation *continuation = filterx_eval_get_continuation();
+  if (continuation)
+    self->shared->continuation = *continuation;
 
   return filterx_function_init_method(&self->super, cfg);
 }
@@ -329,7 +420,9 @@ _aggregate_deinit(FilterXExpr *s, GlobalConfig *cfg)
 {
   FilterXFunctionAggregate *self = (FilterXFunctionAggregate *) s;
 
+  _shared_state_cancel_timers(self->shared);
   g_hash_table_remove_all(self->shared->entries);
+
   filterx_function_deinit_method(&self->super, cfg);
 }
 
@@ -374,6 +467,28 @@ _extract_args(FilterXFunctionAggregate *self, FilterXFunctionArgs *args, GError 
                   "values argument is required. " FILTERX_FUNC_AGGREGATE_USAGE);
       return FALSE;
     }
+
+  gboolean exists, eval_error;
+  self->timeout_seconds = filterx_function_args_get_named_literal_integer(args, "timeout", &exists, &eval_error);
+  if (!exists)
+    {
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "timeout argument is required. " FILTERX_FUNC_AGGREGATE_USAGE);
+      return FALSE;
+    }
+  if (eval_error)
+    {
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "timeout argument must be a literal integer. " FILTERX_FUNC_AGGREGATE_USAGE);
+      return FALSE;
+    }
+  if (self->timeout_seconds <= 0)
+    {
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "timeout argument must be a positive number of seconds. " FILTERX_FUNC_AGGREGATE_USAGE);
+      return FALSE;
+    }
+
   self->close_expr = filterx_function_args_get_named_expr(args, "close");
 
   return TRUE;
