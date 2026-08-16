@@ -124,3 +124,47 @@ def test_basic_aggregation_merges_multiple_fields_independently(config, port_all
     results = read_results(file_destination, 2)
     assert results[0] == {"status": "absorbed", "values": {"a": 1, "b": 100}}
     assert results[1] == {"status": "absorbed", "values": {"a": 3, "b": 300}}
+
+
+def test_close_argument_finalizes_entry_and_starts_fresh_afterwards(config, port_allocator, syslog_ng):
+    network_source, file_destination = create_config(
+        config, port_allocator,
+        'aggregate(key=(input["key"]), values={"cnt": input["cnt"]}, close=input["close"])',
+    )
+    syslog_ng.start(config)
+
+    send_messages(
+        network_source, [
+            {"key": "host-a", "cnt": 1, "close": False},
+            {"key": "host-a", "cnt": 2, "close": True},
+            {"key": "host-a", "cnt": 5, "close": False},
+        ],
+    )
+
+    results = read_results(file_destination, 3)
+    assert results[0] == {"status": "absorbed", "values": {"cnt": 1}}
+    assert results[1] == {"status": "closed", "values": {"cnt": 3}}
+    assert results[2] == {"status": "absorbed", "values": {"cnt": 5}}
+
+
+def test_close_argument_only_affects_the_closed_key(config, port_allocator, syslog_ng):
+    network_source, file_destination = create_config(
+        config, port_allocator,
+        'aggregate(key=(input["key"]), values={"cnt": input["cnt"]}, close=input["close"])',
+    )
+    syslog_ng.start(config)
+
+    send_messages(
+        network_source, [
+            {"key": "host-a", "cnt": 1, "close": False},
+            {"key": "host-b", "cnt": 10, "close": False},
+            {"key": "host-a", "cnt": 1, "close": True},
+            {"key": "host-b", "cnt": 10, "close": False},
+        ],
+    )
+
+    results = read_results(file_destination, 4)
+    assert results[0] == {"status": "absorbed", "values": {"cnt": 1}}
+    assert results[1] == {"status": "absorbed", "values": {"cnt": 10}}
+    assert results[2] == {"status": "closed", "values": {"cnt": 2}}
+    assert results[3] == {"status": "absorbed", "values": {"cnt": 20}}
