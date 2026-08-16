@@ -36,6 +36,7 @@
 #include "mainloop.h"
 #include "generic-number.h"
 #include "parse-number.h"
+#include "cfg.h"
 
 /*
  * Aggregator functions: combine an existing accumulated value with an
@@ -427,7 +428,7 @@ _aggregate_merge(FilterXObject *target, FilterXObject *incoming_values, GArray *
 }
 
 #define FILTERX_FUNC_AGGREGATE_USAGE \
-  "Usage: aggregate(key=expr, values=dict, timeout=seconds, [close=expr], [aggregators=dict])"
+  "Usage: aggregate(key=expr, values=dict, timeout=seconds, [close=expr], [aggregators=dict], [id=name])"
 
 /* aggregate() returns a (status, values) tuple */
 #define FILTERX_FUNC_AGGREGATE_STATUS_ABSORBED "absorbed"
@@ -696,6 +697,7 @@ typedef struct FilterXFunctionAggregate_
   FilterXExpr *aggregators_expr;
   GArray *field_aggregators;
   gint64 timeout_seconds;
+  gchar *id;
   AggregateSharedState *shared;
 } FilterXFunctionAggregate;
 
@@ -859,6 +861,26 @@ exit:
   return result;
 }
 
+static gchar *
+_format_persist_name(const gchar *id)
+{
+  return g_strdup_printf("filterx-aggregate.%s", id);
+}
+
+static void
+_rearm_persisted_entries(AggregateSharedState *shared, gint64 timeout_seconds)
+{
+  GHashTableIter iter;
+  gpointer key, value;
+  g_hash_table_iter_init(&iter, shared->entries);
+  while (g_hash_table_iter_next(&iter, &key, &value))
+    {
+      AggregateEntry *entry = (AggregateEntry *) value;
+      if (entry->saved_context)
+        ml_batched_timer_postpone(&entry->timer, timeout_seconds);
+    }
+}
+
 static gboolean
 _aggregate_init(FilterXExpr *s, GlobalConfig *cfg)
 {
@@ -867,9 +889,24 @@ _aggregate_init(FilterXExpr *s, GlobalConfig *cfg)
   if (!_resolve_field_aggregators(self))
     return FALSE;
 
+  if (self->id)
+    {
+      gchar *persist_name = _format_persist_name(self->id);
+      AggregateSharedState *persisted = cfg_persist_config_fetch(cfg, persist_name);
+      g_free(persist_name);
+      if (persisted)
+        {
+          _shared_state_unref(self->shared);
+          self->shared = persisted;
+        }
+    }
+
   FilterXEvalContinuation *continuation = filterx_eval_get_continuation();
   if (continuation)
     self->shared->continuation = *continuation;
+
+  if (self->id)
+    _rearm_persisted_entries(self->shared, self->timeout_seconds);
 
   return filterx_function_init_method(&self->super, cfg);
 }
@@ -879,8 +916,28 @@ _aggregate_deinit(FilterXExpr *s, GlobalConfig *cfg)
 {
   FilterXFunctionAggregate *self = (FilterXFunctionAggregate *) s;
 
+  /* cfg->persist only exists while a *real* reload is in flight (set by
+   * main_loop_reload_config_apply() right before calling cfg_deinit(), and
+   * cleared again once the new generation's cfg_init() succeeds) -- it is
+   * NULL for every other deinit path (final shutdown, a syntax-only check,
+   * etc). Handing shared state off via cfg_persist_config_add() only makes
+   * sense when there is a next generation's init() that will actually come
+   * fetch it back; otherwise the entries (and everything they carry, e.g.
+   * each one's saved_context) would just sit there unreachable once this
+   * FilterXExpr itself is freed, since nothing would ever adopt them. So
+   * outside of a real reload, "id" must drain exactly like the no-id case. */
+  gboolean handing_off_to_next_generation = self->id && cfg->persist;
+
   _shared_state_cancel_timers(self->shared);
-  g_hash_table_remove_all(self->shared->entries);
+  if (!handing_off_to_next_generation)
+    g_hash_table_remove_all(self->shared->entries);
+
+  if (handing_off_to_next_generation)
+    {
+      gchar *persist_name = _format_persist_name(self->id);
+      cfg_persist_config_add(cfg, persist_name, _shared_state_ref(self->shared), (GDestroyNotify) _shared_state_unref);
+      g_free(persist_name);
+    }
 
   filterx_function_deinit_method(&self->super, cfg);
 }
@@ -951,6 +1008,15 @@ _extract_args(FilterXFunctionAggregate *self, FilterXFunctionArgs *args, GError 
   self->close_expr = filterx_function_args_get_named_expr(args, "close");
   self->aggregators_expr = filterx_function_args_get_named_expr(args, "aggregators");
 
+  gboolean id_exists;
+  self->id = filterx_function_args_get_named_literal_string_dup(args, "id", &id_exists);
+  if (id_exists && !self->id)
+    {
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "id argument must be a literal string. " FILTERX_FUNC_AGGREGATE_USAGE);
+      return FALSE;
+    }
+
   return TRUE;
 }
 
@@ -964,6 +1030,7 @@ _free(FilterXExpr *s)
   filterx_expr_unref(self->close_expr);
   filterx_expr_unref(self->aggregators_expr);
   _field_aggregators_free(self->field_aggregators);
+  g_free(self->id);
   _shared_state_unref(self->shared);
   filterx_function_free_method(&self->super);
 }

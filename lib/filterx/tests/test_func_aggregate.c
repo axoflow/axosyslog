@@ -131,6 +131,33 @@ _new_aggregate(const gchar *key, gint64 count, gint64 timeout)
   return agg;
 }
 
+static FilterXExpr *
+_new_aggregate_with_id(const gchar *key, gint64 count, gint64 timeout, const gchar *id)
+{
+  GList *args = NULL;
+
+  args = g_list_append(args, filterx_function_arg_new("key", filterx_literal_new(filterx_string_new(key, -1))));
+
+  FilterXObject *values_dict = filterx_dict_new();
+  FILTERX_STRING_DECLARE_ON_STACK(count_key, "count", -1);
+  FilterXObject *count_value = filterx_integer_new(count);
+  cr_assert(filterx_object_set_subscript(values_dict, count_key, &count_value));
+  filterx_object_unref(count_value);
+  FILTERX_STRING_CLEAR_FROM_STACK(count_key);
+  args = g_list_append(args, filterx_function_arg_new("values", filterx_literal_new(values_dict)));
+
+  args = g_list_append(args, filterx_function_arg_new("timeout", filterx_literal_new(filterx_integer_new(timeout))));
+  args = g_list_append(args, filterx_function_arg_new("id", filterx_literal_new(filterx_string_new(id, -1))));
+
+  GError *args_err = NULL;
+  GError *err = NULL;
+  FilterXExpr *agg = filterx_function_aggregate_new(filterx_function_args_new(args, &args_err), &err);
+  cr_assert_null(args_err);
+  cr_assert_null(err);
+  cr_assert_not_null(agg);
+  return agg;
+}
+
 static FilterXObject *
 _new_field_aggregators_dict(const gchar *explicit_sum_func, const gchar *replaced_func)
 {
@@ -268,6 +295,18 @@ _result_values(FilterXObject *result)
   return filterx_sequence_get_subscript(result, 1);
 }
 
+static gint64
+_extract_int_field(FilterXObject *values, const gchar *name)
+{
+  FILTERX_STRING_DECLARE_ON_STACK(field_key, name, -1);
+  gint64 value = -1;
+  FilterXObject *field_value = filterx_object_get_subscript(values, field_key);
+  cr_assert(filterx_object_extract_integer(field_value, &value));
+  filterx_object_unref(field_value);
+  FILTERX_STRING_CLEAR_FROM_STACK(field_key);
+  return value;
+}
+
 /* end-to-end scenarios (message ordering, timer firing, per-field
  * aggregator selection, the "closed"/"timeout"/"absorbed" status
  * transitions as observed via syslog-ng) are covered by
@@ -354,6 +393,139 @@ Test(func_aggregate, test_deinit_drains_pending_entries_without_crashing)
   log_pipe_deinit(&sink->super);
   log_pipe_unref(&sink->super);
   log_pipe_unref(owner_pipe);
+}
+
+/* with "id" set, deinit() must hand the shared state to configuration's
+ * PersistConfig instead of draining it, and a *new* aggregate() expr
+ * constructed with the same id must pick it back up in init() -- this is
+ * what makes state survive a config reload instead of starting fresh.
+ * There's no real GlobalConfig reload machinery available at the unit
+ * test level, so this simulates one directly: create a PersistConfig on
+ * the shared `configuration`, deinit the "old" instance (which stores
+ * into it), then init a "new" instance with the same id (which fetches
+ * from it) -- exactly what main_loop_reload_config_apply() does around
+ * cfg_deinit(old)/cfg_init(new). */
+Test(func_aggregate, test_shared_state_survives_a_simulated_reload_when_id_is_set)
+{
+  cr_assert_null(configuration->persist);
+  configuration->persist = persist_config_new();
+
+  FilterXExpr *agg1 = _new_aggregate_with_id("reloadkey", 1, 60, "myagg");
+
+  LogPipeMock *sink1 = log_pipe_mock_new(configuration);
+  cr_assert(log_pipe_init(&sink1->super));
+  LogPipe *owner_pipe1 = _new_owner_pipe();
+  log_pipe_append(owner_pipe1, &sink1->super);
+
+  _init_aggregate_as_sole_statement(agg1, owner_pipe1);
+
+  FilterXObject *result1 = filterx_expr_eval(agg1);
+  cr_assert_not_null(result1);
+  filterx_object_unref(result1);
+
+  /* simulate a reload: deinit'ing agg1 with "id" set must persist its
+   * shared state instead of draining it */
+  filterx_expr_deinit(agg1, configuration);
+  filterx_expr_unref(agg1);
+  log_pipe_deinit(owner_pipe1);
+  log_pipe_deinit(&sink1->super);
+  log_pipe_unref(&sink1->super);
+  log_pipe_unref(owner_pipe1);
+
+  /* the "new" config's instance: same id, same key -- must pick up where
+   * agg1 left off, both the accumulated value and the timer */
+  FilterXExpr *agg2 = _new_aggregate_with_id("reloadkey", 1, 60, "myagg");
+
+  LogPipeMock *sink2 = log_pipe_mock_new(configuration);
+  cr_assert(log_pipe_init(&sink2->super));
+  LogPipe *owner_pipe2 = _new_owner_pipe();
+  log_pipe_append(owner_pipe2, &sink2->super);
+
+  _init_aggregate_as_sole_statement(agg2, owner_pipe2);
+
+  FilterXObject *result2 = filterx_expr_eval(agg2);
+  cr_assert_not_null(result2);
+  FilterXObject *values2 = _result_values(result2);
+  /* 1 (from agg1) + 1 (this message) == 2: the running total survived */
+  cr_assert_eq(_extract_int_field(values2, "count"), 2);
+  filterx_object_unref(values2);
+  filterx_object_unref(result2);
+
+  /* the timer must have been re-armed too, not just the value carried
+   * over -- otherwise this key would never time out again */
+  FilterXEvalContext *standing_context = filterx_eval_get_context();
+  filterx_eval_set_context(NULL);
+  FILTERX_STRING_DECLARE_ON_STACK(fx_key, "reloadkey", -1);
+  cr_assert(filterx_function_aggregate_test_expire(agg2, fx_key));
+  FILTERX_STRING_CLEAR_FROM_STACK(fx_key);
+  filterx_eval_set_context(standing_context);
+
+  cr_assert_eq(sink2->captured_messages->len, 1);
+
+  filterx_expr_deinit(agg2, configuration);
+  filterx_expr_unref(agg2);
+  log_pipe_deinit(owner_pipe2);
+  log_pipe_deinit(&sink2->super);
+  log_pipe_unref(&sink2->super);
+  log_pipe_unref(owner_pipe2);
+
+  persist_config_free(configuration->persist);
+  configuration->persist = NULL;
+}
+
+/* without "id", a (simulated) reload must NOT carry state over -- this is
+ * the regression guard for the opt-in behavior. */
+Test(func_aggregate, test_shared_state_does_not_survive_a_simulated_reload_without_id)
+{
+  cr_assert_null(configuration->persist);
+  configuration->persist = persist_config_new();
+
+  FilterXExpr *agg1 = _new_aggregate("reloadkey2", 1, 60);
+
+  LogPipeMock *sink1 = log_pipe_mock_new(configuration);
+  cr_assert(log_pipe_init(&sink1->super));
+  LogPipe *owner_pipe1 = _new_owner_pipe();
+  log_pipe_append(owner_pipe1, &sink1->super);
+
+  _init_aggregate_as_sole_statement(agg1, owner_pipe1);
+
+  FilterXObject *result1 = filterx_expr_eval(agg1);
+  cr_assert_not_null(result1);
+  filterx_object_unref(result1);
+
+  filterx_expr_deinit(agg1, configuration);
+  filterx_expr_unref(agg1);
+  log_pipe_deinit(owner_pipe1);
+  log_pipe_deinit(&sink1->super);
+  log_pipe_unref(&sink1->super);
+  log_pipe_unref(owner_pipe1);
+
+  FilterXExpr *agg2 = _new_aggregate("reloadkey2", 1, 60);
+
+  LogPipeMock *sink2 = log_pipe_mock_new(configuration);
+  cr_assert(log_pipe_init(&sink2->super));
+  LogPipe *owner_pipe2 = _new_owner_pipe();
+  log_pipe_append(owner_pipe2, &sink2->super);
+
+  _init_aggregate_as_sole_statement(agg2, owner_pipe2);
+
+  FilterXObject *result2 = filterx_expr_eval(agg2);
+  cr_assert_not_null(result2);
+  FilterXObject *values2 = _result_values(result2);
+  /* starts fresh at 1, NOT 2 -- no id means no carry-over */
+  cr_assert_eq(_extract_int_field(values2, "count"), 1);
+  filterx_object_unref(values2);
+  filterx_object_unref(result2);
+
+  filterx_expr_deinit(agg2, configuration);
+  filterx_expr_unref(agg2);
+  log_pipe_deinit(owner_pipe2);
+  log_pipe_deinit(&sink2->super);
+  log_pipe_unref(&sink2->super);
+  log_pipe_unref(owner_pipe2);
+
+  persist_config_free(configuration->persist);
+  configuration->persist = NULL;
 }
 
 /* "average" is the only aggregator that allocates its own per-(entry,
