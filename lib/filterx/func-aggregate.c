@@ -34,13 +34,23 @@
 #include "scratch-buffers.h"
 #include "ml-batched-timer.h"
 #include "mainloop.h"
+#include "generic-number.h"
+#include "parse-number.h"
 
 /*
  * Aggregator functions: combine an existing accumulated value with an
  * incoming new value.  `existing` is NULL when a key is seen for the
  * first time.  The returned object is owned by the caller.
+ *
+ * `aux_state` is a per-(entry, field) storage slot an aggregator can use to
+ * keep bookkeeping data that doesn't fit into the displayed accumulated
+ * value itself (see _agg_average() below); most aggregators ignore it.
+ * *aux_state is NULL until an aggregator allocates something and stores it
+ * there; whatever gets stored is g_free()d once, unconditionally, when the
+ * owning entry is destroyed (see _aggregate_entry_unref()), so it must be a
+ * single, flat heap block with no further ownership of its own.
  */
-typedef FilterXObject *(*FilterXAggregateFunc)(FilterXObject *existing, FilterXObject *incoming);
+typedef FilterXObject *(*FilterXAggregateFunc)(FilterXObject *existing, FilterXObject *incoming, gpointer *aux_state);
 
 
 /* NOTE: all aggregators _MUST_ either return a reference counted object on
@@ -50,17 +60,205 @@ typedef FilterXObject *(*FilterXAggregateFunc)(FilterXObject *existing, FilterXO
  * FIXME: this is easy to get wrong, do something about it...
  */
 static FilterXObject *
-_agg_replace(FilterXObject *existing, FilterXObject *incoming)
+_agg_replace(FilterXObject *existing, FilterXObject *incoming, gpointer *aux_state)
 {
   return filterx_object_dup(incoming);
 }
 
 static FilterXObject *
-_agg_sum(FilterXObject *existing, FilterXObject *incoming)
+_agg_sum(FilterXObject *existing, FilterXObject *incoming, gpointer *aux_state)
 {
   if (existing)
     return filterx_object_add(existing, incoming);
   return filterx_object_dup(incoming);
+}
+
+static FilterXObject *
+_agg_count(FilterXObject *existing, FilterXObject *incoming, gpointer *aux_state)
+{
+  /* like SQL's COUNT(column): a null value is present, but doesn't count */
+  if (filterx_object_extract_null(incoming))
+    return existing ? filterx_object_dup(existing) : filterx_integer_new(0);
+
+  if (!existing)
+    return filterx_integer_new(1);
+
+  gint64 n;
+  if (!filterx_object_extract_integer(existing, &n))
+    return NULL;
+  return filterx_integer_new(n + 1);
+}
+
+static FilterXObject *
+_agg_min(FilterXObject *existing, FilterXObject *incoming, gpointer *aux_state)
+{
+  if (!existing)
+    return filterx_object_dup(incoming);
+
+  GenericNumber gn_existing, gn_incoming;
+  if (!filterx_object_extract_generic_number(existing, &gn_existing) ||
+      !filterx_object_extract_generic_number(incoming, &gn_incoming))
+    return NULL;
+
+  return filterx_object_dup(gn_compare(&gn_incoming, &gn_existing) < 0 ? incoming : existing);
+}
+
+static FilterXObject *
+_agg_max(FilterXObject *existing, FilterXObject *incoming, gpointer *aux_state)
+{
+  if (!existing)
+    return filterx_object_dup(incoming);
+
+  GenericNumber gn_existing, gn_incoming;
+  if (!filterx_object_extract_generic_number(existing, &gn_existing) ||
+      !filterx_object_extract_generic_number(incoming, &gn_incoming))
+    return NULL;
+
+  return filterx_object_dup(gn_compare(&gn_incoming, &gn_existing) > 0 ? incoming : existing);
+}
+
+/* per-(entry, field) aux state for _agg_average(): the displayed value is
+ * only ever the average itself, which isn't enough on its own to fold in
+ * the next incoming value without drifting, so the running sum and count
+ * are kept alongside it instead. A flat POD struct, so a plain g_free() in
+ * _aggregate_entry_unref() is enough to release it. */
+typedef struct
+{
+  gdouble sum;
+  gint64 count;
+} FieldAverageState;
+
+static FilterXObject *
+_agg_average(FilterXObject *existing, FilterXObject *incoming, gpointer *aux_state)
+{
+  GenericNumber gn_incoming;
+  if (!filterx_object_extract_generic_number(incoming, &gn_incoming))
+    return NULL;
+
+  FieldAverageState *state = *aux_state;
+  if (!state)
+    {
+      state = g_new0(FieldAverageState, 1);
+      *aux_state = state;
+    }
+
+  state->sum += gn_as_double(&gn_incoming);
+  state->count++;
+
+  return filterx_double_new(state->sum / (gdouble) state->count);
+}
+
+/*
+ * "_as_number" variants of the numeric aggregators: min/max/average/sum
+ * above use filterx_object_extract_generic_number() directly, which is
+ * strict -- it happily unmarshals a message-tied field (message_value) into
+ * a number, but gives up on e.g. a plain FilterXObject string like "5"
+ * (there's no message_value wrapper left to unmarshal). These variants
+ * additionally parse such values, so a field coming from a literal/parsed
+ * string still aggregates numerically instead of failing the merge.
+ *
+ * They also always normalize the stored value to a real number (even the
+ * very first time a key is seen), unlike their plain counterparts, which
+ * simply dup() whatever came in on the first message. Without that, e.g.
+ * min_as_number would store the first incoming value's original string
+ * form, then fail to parse it back out of `existing` on the very next
+ * message.
+ */
+static gboolean
+_coerce_to_generic_number(FilterXObject *obj, GenericNumber *gn)
+{
+  if (filterx_object_extract_generic_number(obj, gn))
+    return TRUE;
+
+  const gchar *str;
+  if (filterx_object_extract_string_as_cstr(obj, &str))
+    return parse_generic_number(str, gn);
+
+  return FALSE;
+}
+
+static FilterXObject *
+_generic_number_to_filterx_object(const GenericNumber *gn)
+{
+  if (gn->type == GN_INT64)
+    return filterx_integer_new(gn_as_int64(gn));
+  return filterx_double_new(gn_as_double(gn));
+}
+
+static FilterXObject *
+_agg_sum_as_number(FilterXObject *existing, FilterXObject *incoming, gpointer *aux_state)
+{
+  GenericNumber gn_incoming;
+  if (!_coerce_to_generic_number(incoming, &gn_incoming))
+    return NULL;
+
+  if (!existing)
+    return _generic_number_to_filterx_object(&gn_incoming);
+
+  GenericNumber gn_existing;
+  if (!_coerce_to_generic_number(existing, &gn_existing))
+    return NULL;
+
+  FilterXObject *existing_num = _generic_number_to_filterx_object(&gn_existing);
+  FilterXObject *incoming_num = _generic_number_to_filterx_object(&gn_incoming);
+  FilterXObject *result = filterx_object_add(existing_num, incoming_num);
+  filterx_object_unref(existing_num);
+  filterx_object_unref(incoming_num);
+  return result;
+}
+
+static FilterXObject *
+_agg_min_as_number(FilterXObject *existing, FilterXObject *incoming, gpointer *aux_state)
+{
+  GenericNumber gn_incoming;
+  if (!_coerce_to_generic_number(incoming, &gn_incoming))
+    return NULL;
+
+  if (!existing)
+    return _generic_number_to_filterx_object(&gn_incoming);
+
+  GenericNumber gn_existing;
+  if (!_coerce_to_generic_number(existing, &gn_existing))
+    return NULL;
+
+  return _generic_number_to_filterx_object(gn_compare(&gn_incoming, &gn_existing) < 0 ? &gn_incoming : &gn_existing);
+}
+
+static FilterXObject *
+_agg_max_as_number(FilterXObject *existing, FilterXObject *incoming, gpointer *aux_state)
+{
+  GenericNumber gn_incoming;
+  if (!_coerce_to_generic_number(incoming, &gn_incoming))
+    return NULL;
+
+  if (!existing)
+    return _generic_number_to_filterx_object(&gn_incoming);
+
+  GenericNumber gn_existing;
+  if (!_coerce_to_generic_number(existing, &gn_existing))
+    return NULL;
+
+  return _generic_number_to_filterx_object(gn_compare(&gn_incoming, &gn_existing) > 0 ? &gn_incoming : &gn_existing);
+}
+
+static FilterXObject *
+_agg_average_as_number(FilterXObject *existing, FilterXObject *incoming, gpointer *aux_state)
+{
+  GenericNumber gn_incoming;
+  if (!_coerce_to_generic_number(incoming, &gn_incoming))
+    return NULL;
+
+  FieldAverageState *state = *aux_state;
+  if (!state)
+    {
+      state = g_new0(FieldAverageState, 1);
+      *aux_state = state;
+    }
+
+  state->sum += gn_as_double(&gn_incoming);
+  state->count++;
+
+  return filterx_double_new(state->sum / (gdouble) state->count);
 }
 
 static const struct
@@ -71,6 +269,14 @@ static const struct
 {
   { "replace", _agg_replace },
   { "sum", _agg_sum },
+  { "count", _agg_count },
+  { "min", _agg_min },
+  { "max", _agg_max },
+  { "average", _agg_average },
+  { "sum_as_number", _agg_sum_as_number },
+  { "min_as_number", _agg_min_as_number },
+  { "max_as_number", _agg_max_as_number },
+  { "average_as_number", _agg_average_as_number },
 };
 
 static FilterXAggregateFunc
@@ -117,6 +323,7 @@ typedef struct
 {
   FilterXObject *target;
   GArray *field_aggregators;  /* of FieldAggregator, sorted by field_name; NULL means "no overrides, always use sum" */
+  GPtrArray *field_aux_state; /* per-entry, indexed 1:1 with field_aggregators; NULL iff field_aggregators is NULL */
 } AggregateMergeContext;
 
 static gint
@@ -143,12 +350,17 @@ _compare_field_aggregators(gconstpointer a, gconstpointer b)
  * _resolve_field_aggregators()), so a binary search here beats both a
  * linear scan (fewer comparisons) and a GHashTable (no NUL-terminated key
  * required -- field_name arrives as a plain (ptr, len) pair from
- * filterx_object_extract_string_ref(), same as the compiled table). */
-static FilterXAggregateFunc
+ * filterx_object_extract_string_ref(), same as the compiled table).
+ *
+ * Returns NULL if @field_name has no override (caller defaults to sum); the
+ * returned pointer is stable for the lifetime of @field_aggregators (sorted
+ * once, never reallocated afterwards), so callers may keep using it (e.g.
+ * to compute an index into a parallel per-entry array) after this returns. */
+static FieldAggregator *
 _lookup_field_aggregator(GArray *field_aggregators, const gchar *field_name, gsize field_name_len)
 {
   if (!field_aggregators)
-    return _agg_sum;
+    return NULL;
 
   gint l = 0, h = (gint) field_aggregators->len - 1;
   while (l <= h)
@@ -158,13 +370,13 @@ _lookup_field_aggregator(GArray *field_aggregators, const gchar *field_name, gsi
       gint cmp = _compare_field_names(field_name, field_name_len, fa->field_name, fa->field_name_len);
 
       if (cmp == 0)
-        return fa->aggregate;
+        return fa;
       else if (cmp < 0)
         h = m - 1;
       else
         l = m + 1;
     }
-  return _agg_sum;
+  return NULL;
 }
 
 static gboolean
@@ -173,13 +385,22 @@ _aggregate_elem(FilterXObject *key, FilterXObject *incoming, gpointer user_data)
   AggregateMergeContext *ctx = (AggregateMergeContext *) user_data;
 
   FilterXAggregateFunc aggregate = _agg_sum;
+  gpointer *aux_state = NULL;
   const gchar *field_name;
   gsize field_name_len;
   if (filterx_object_extract_string_ref(key, &field_name, &field_name_len))
-    aggregate = _lookup_field_aggregator(ctx->field_aggregators, field_name, field_name_len);
+    {
+      FieldAggregator *fa = _lookup_field_aggregator(ctx->field_aggregators, field_name, field_name_len);
+      if (fa)
+        {
+          aggregate = fa->aggregate;
+          gsize idx = fa - (FieldAggregator *) ctx->field_aggregators->data;
+          aux_state = (gpointer *) &g_ptr_array_index(ctx->field_aux_state, idx);
+        }
+    }
 
   FilterXObject *existing = filterx_object_get_subscript(ctx->target, key);
-  FilterXObject *new_value = aggregate(existing, incoming);
+  FilterXObject *new_value = aggregate(existing, incoming, aux_state);
   filterx_object_unref(existing);
 
   if (!new_value)
@@ -195,12 +416,13 @@ _aggregate_elem(FilterXObject *key, FilterXObject *incoming, gpointer user_data)
 }
 
 static gboolean
-_aggregate_merge(FilterXObject *target, FilterXObject *incoming_values, GArray *field_aggregators)
+_aggregate_merge(FilterXObject *target, FilterXObject *incoming_values, GArray *field_aggregators,
+                 GPtrArray *field_aux_state)
 {
   if (!filterx_object_is_type_or_ref(incoming_values, &FILTERX_TYPE_NAME(mapping)))
     return FALSE;
 
-  AggregateMergeContext ctx = { .target = target, .field_aggregators = field_aggregators };
+  AggregateMergeContext ctx = { .target = target, .field_aggregators = field_aggregators, .field_aux_state = field_aux_state };
   return filterx_object_iter(incoming_values, _aggregate_elem, &ctx);
 }
 
@@ -265,6 +487,13 @@ typedef struct _AggregateEntry
   AggregateSharedState *shared;
   FilterXObject *tuple_key;
   FilterXObject *values;
+  /* per-field aux state (e.g. running sum/count for "average"), indexed
+   * 1:1 with the aggregate() call site's field_aggregators; NULL iff that
+   * is NULL. Self-describing (GPtrArray tracks its own length), so freeing
+   * it never needs to reach back into field_aggregators, which may already
+   * be gone by the time an entry is torn down as part of _free() -- see
+   * _aggregate_entry_unref(). */
+  GPtrArray *field_aux_state;
   FilterXEvalContext *saved_context;
   MlBatchedTimer timer;
   gboolean closed;
@@ -337,6 +566,8 @@ _aggregate_entry_unref(AggregateEntry *entry)
       filterx_eval_context_free_dup(entry->saved_context);
       filterx_object_unref(entry->tuple_key);
       filterx_object_unref(entry->values);
+      if (entry->field_aux_state)
+        g_ptr_array_free(entry->field_aux_state, TRUE);
       ml_batched_timer_free(&entry->timer);
       _shared_state_unref(entry->shared);
       g_free(entry);
@@ -392,7 +623,7 @@ _on_aggregate_entry_expired(gpointer cookie)
 }
 
 static AggregateEntry *
-_new_entry(AggregateSharedState *shared, FilterXObject *tuple_key)
+_new_entry(AggregateSharedState *shared, FilterXObject *tuple_key, GArray *field_aggregators)
 {
   AggregateEntry *entry = g_new0(AggregateEntry, 1);
 
@@ -401,6 +632,12 @@ _new_entry(AggregateSharedState *shared, FilterXObject *tuple_key)
   entry->tuple_key = filterx_object_ref(tuple_key);
   entry->values = filterx_dict_new();
   filterx_object_cow_prepare(&entry->values);
+
+  if (field_aggregators)
+    {
+      entry->field_aux_state = g_ptr_array_new_with_free_func(g_free);
+      g_ptr_array_set_size(entry->field_aux_state, field_aggregators->len);
+    }
 
   ml_batched_timer_init(&entry->timer);
   entry->timer.cookie = entry;
@@ -428,9 +665,9 @@ _aggregate(AggregateSharedState *shared, FilterXObject *tuple_key, FilterXObject
   AggregateEntry *entry = g_hash_table_lookup(shared->entries, tuple_key);
   gboolean is_new_entry = !entry;
   if (!entry)
-    entry = _new_entry(shared, tuple_key);
+    entry = _new_entry(shared, tuple_key, field_aggregators);
 
-  if (!_aggregate_merge(entry->values, values, field_aggregators))
+  if (!_aggregate_merge(entry->values, values, field_aggregators, entry->field_aux_state))
     {
       filterx_eval_push_error("aggregate(): failed to merge values", values);
       return NULL;
