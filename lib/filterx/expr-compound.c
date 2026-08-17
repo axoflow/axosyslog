@@ -300,6 +300,23 @@ fx_jit_process_compound_result(FilterXCompoundExpr *self, gint32 success, Filter
   return _process_compound_result(self, success, result);
 }
 
+static void
+_compound_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  FilterXCompoundExpr *self = (FilterXCompoundExpr *) s;
+  gsize n = filterx_expr_list_get_length(&self->exprs);
+
+  FilterXStaticType last = FILTERX_STATIC_TYPE_UNKNOWN;
+  for (gsize i = 0; i < n; i++)
+    {
+      FilterXExpr *child = filterx_expr_list_index(&self->exprs, i);
+      filterx_expr_infer_types(child, env);
+      last = child ? child->static_type : FILTERX_STATIC_TYPE_UNKNOWN;
+    }
+
+  s->static_type = self->return_value_of_last_expr ? last : FILTERX_STATIC_TYPE_UNKNOWN;
+}
+
 static inline FilterXIRValue
 _emit_process_compound_result(FilterXJIT *jit, FilterXCompoundExpr *self, FilterXIRValue success, FilterXIRValue result)
 {
@@ -397,6 +414,7 @@ filterx_compound_expr_new(gboolean return_value_of_last_expr)
   self->super.walk_children = _compound_walk;
   self->super.free_fn = _free;
 #if SYSLOG_NG_ENABLE_JIT
+  self->super.infer_types = _compound_infer_types;
   self->super.compile = _compound_compile;
 #endif
   self->return_value_of_last_expr = return_value_of_last_expr;
