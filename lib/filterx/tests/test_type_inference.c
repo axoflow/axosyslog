@@ -1654,6 +1654,62 @@ Test(filterx_type_inference, a_nullv_element_costs_the_container_its_closed_key_
   filterx_expr_unref(block);
 }
 
+Test(filterx_type_inference, nullv_setattr_meets_the_written_type_with_the_existing_one)
+{
+  /* d = {}; d.a = 1; d.a ??= s;  ->  UNKNOWN: the ??= writes only when its value is not null, so
+   * what holds afterwards is a meet, not the written type alone. */
+  FilterXExpr *assign_d = _assign_empty_dict("d");
+  FilterXExpr *set_a = _write_attr("d", "a", filterx_literal_new(filterx_integer_new(1)));
+  FilterXExpr *nullv_set = filterx_nullv_setattr_new(filterx_floating_variable_expr_new("d"),
+                                                     filterx_string_new("a", -1),
+                                                     filterx_floating_variable_expr_new("s"));
+  FilterXExpr *read_a = _read_attr("d", "a");
+
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_d, set_a, nullv_set, read_a, NULL);
+  block = _optimize_and_infer(block);
+
+  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  filterx_expr_unref(block);
+}
+
+Test(filterx_type_inference, nullv_setattr_keeps_a_type_both_outcomes_agree_on)
+{
+  /* d = {}; d.a = 1; d.a ??= 2;  -> INTEGER either way, so the meet keeps it. */
+  FilterXExpr *assign_d = _assign_empty_dict("d");
+  FilterXExpr *set_a = _write_attr("d", "a", filterx_literal_new(filterx_integer_new(1)));
+  FilterXExpr *nullv_set = filterx_nullv_setattr_new(filterx_floating_variable_expr_new("d"),
+                                                     filterx_string_new("a", -1),
+                                                     filterx_literal_new(filterx_integer_new(2)));
+  FilterXExpr *read_a = _read_attr("d", "a");
+
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_d, set_a, nullv_set, read_a, NULL);
+  block = _optimize_and_infer(block);
+
+  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_INTEGER);
+  filterx_expr_unref(block);
+}
+
+Test(filterx_type_inference, nullv_set_subscript_meets_the_written_type_with_the_existing_one)
+{
+  /* d = {}; d["a"] = 1; d["a"] ??= "s";  ->  UNKNOWN, the subscript form of ??= being inferred
+   * the same way the attribute form is. */
+  FilterXExpr *assign_d = _assign_empty_dict("d");
+  FilterXExpr *set_a = filterx_set_subscript_new(filterx_floating_variable_expr_new("d"),
+                                                 filterx_literal_new(filterx_string_new("a", -1)),
+                                                 filterx_literal_new(filterx_integer_new(1)));
+  FilterXExpr *nullv_set = filterx_nullv_set_subscript_new(
+                             filterx_floating_variable_expr_new("d"),
+                             filterx_literal_new(filterx_string_new("a", -1)),
+                             filterx_literal_new(filterx_string_new("s", -1)));
+  FilterXExpr *read_a = _read_attr("d", "a");
+
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_d, set_a, nullv_set, read_a, NULL);
+  block = _optimize_and_infer(block);
+
+  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  filterx_expr_unref(block);
+}
+
 Test(filterx_type_inference, env_entries_outlive_the_expression_tree_they_came_from)
 {
   /* FilterXExpr::name borrows its characters from the string object the getattr owns, so an env

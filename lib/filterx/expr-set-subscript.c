@@ -185,6 +185,21 @@ _set_subscript_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
   _set_subscript_record_write((FilterXSetSubscript *) s, env);
 }
 
+static void
+_nullv_set_subscript_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  filterx_expr_infer_types_default(s, env);
+
+  /* ??= leaves the target alone when the value is null, so what holds afterwards is the meet of
+   * having written and of not having written. */
+  FilterXTypeEnv *assigned_env = filterx_type_env_clone(env);
+
+  _set_subscript_record_write((FilterXSetSubscript *) s, assigned_env);
+
+  filterx_type_env_meet_into(env, assigned_env);
+  filterx_type_env_free(assigned_env);
+}
+
 #endif
 
 static gboolean
@@ -230,5 +245,8 @@ filterx_nullv_set_subscript_new(FilterXExpr *object, FilterXExpr *key, FilterXEx
 
   self->type = "nullv_set_subscript";
   self->eval = _nullv_set_subscript_eval;
+#if SYSLOG_NG_ENABLE_JIT
+  self->infer_types = _nullv_set_subscript_infer_types;
+#endif
   return self;
 }
