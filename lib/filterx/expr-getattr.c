@@ -200,6 +200,7 @@ filterx_getattr_new(FilterXExpr *operand, FilterXObject *attr_name)
   self->super.free_fn = _free;
   self->super.get_path = _getattr_get_path;
 #if SYSLOG_NG_ENABLE_JIT
+  self->super.infer_types = filterx_expr_infer_types_from_path;
   self->super.compile = _getattr_compile;
 #endif
   self->operand = operand;

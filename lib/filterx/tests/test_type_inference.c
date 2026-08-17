@@ -84,6 +84,12 @@ _read_attr(const gchar *var, const gchar *key)
   return filterx_getattr_new(filterx_floating_variable_expr_new(var), filterx_string_new(key, -1));
 }
 
+static FilterXExpr *
+_read_attr_of(FilterXExpr *object, const gchar *key)
+{
+  return filterx_getattr_new(object, filterx_string_new(key, -1));
+}
+
 /* ownership of @value is taken */
 static FilterXExpr *
 _write_attr(const gchar *var, const gchar *key, FilterXExpr *value)
@@ -281,6 +287,35 @@ Test(filterx_type_inference, if_one_sided_assign_collapses_to_unknown)
   block = _optimize_and_infer(block);
 
   cr_assert_eq(read_u->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  filterx_expr_unref(block);
+}
+
+Test(filterx_type_inference, getattr_chain_propagates_through_three_levels)
+{
+  /* d = {"a": {"b": {"c": "leaf"}}}; d.a.b.c -> STRING, one path lookup per node. */
+  GList *l3 = g_list_append(NULL, filterx_literal_element_new(
+                              filterx_literal_new(filterx_string_new("c", -1)),
+                              filterx_literal_new(filterx_string_new("leaf", -1))));
+  GList *l2 = g_list_append(NULL, filterx_literal_element_new(
+                              filterx_literal_new(filterx_string_new("b", -1)),
+                              filterx_literal_dict_new(l3)));
+  GList *l1 = g_list_append(NULL, filterx_literal_element_new(
+                              filterx_literal_new(filterx_string_new("a", -1)),
+                              filterx_literal_dict_new(l2)));
+  FilterXExpr *assign = filterx_assign_new(
+                          filterx_floating_variable_expr_new("d"),
+                          filterx_literal_dict_new(l1));
+  FilterXExpr *read_var = filterx_floating_variable_expr_new("d");
+  FilterXExpr *get_a = _read_attr_of(read_var, "a");
+  FilterXExpr *get_b = _read_attr_of(get_a, "b");
+  FilterXExpr *get_c = _read_attr_of(get_b, "c");
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign, get_c, NULL);
+  block = _optimize_and_infer(block);
+
+  cr_assert_eq(read_var->static_type, FILTERX_STATIC_TYPE_DICT);
+  cr_assert_eq(get_a->static_type, FILTERX_STATIC_TYPE_DICT);
+  cr_assert_eq(get_b->static_type, FILTERX_STATIC_TYPE_DICT);
+  cr_assert_eq(get_c->static_type, FILTERX_STATIC_TYPE_STRING);
   filterx_expr_unref(block);
 }
 
