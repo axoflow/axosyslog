@@ -179,6 +179,17 @@ Test(filterx_type_inference, boolean_and_integer_are_distinct_static_types)
   filterx_expr_unref(block);
 }
 
+Test(filterx_type_inference, boolean_is_not_numeric_for_the_plus_operator)
+{
+  /* a boolean has no add() method */
+  FilterXExpr *sum = filterx_operator_plus_new(
+                       filterx_literal_new(filterx_boolean_new(TRUE)),
+                       filterx_literal_new(filterx_integer_new(1)));
+  sum = _optimize_and_infer(sum);
+  cr_assert_eq(sum->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  filterx_expr_unref(sum);
+}
+
 Test(filterx_type_inference, literal_dict_is_dict)
 {
   FilterXExpr *empty_dict = filterx_literal_dict_new(NULL);
@@ -287,6 +298,92 @@ Test(filterx_type_inference, if_one_sided_assign_collapses_to_unknown)
   block = _optimize_and_infer(block);
 
   cr_assert_eq(read_u->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  filterx_expr_unref(block);
+}
+
+Test(filterx_type_inference, plus_of_two_strings_is_string)
+{
+  FilterXExpr *p = filterx_operator_plus_new(
+                     filterx_literal_new(filterx_string_new("a", -1)),
+                     filterx_literal_new(filterx_string_new("b", -1)));
+  p = _optimize_and_infer(p);
+  /* plus optimizes literal+literal to a literal; either way the static_type should resolve. */
+  cr_assert_eq(p->static_type, FILTERX_STATIC_TYPE_STRING);
+  filterx_expr_unref(p);
+}
+
+/* Build `<var> = <literal>;` — plus constant-folds a literal+literal pair, so operands have
+ * to come from variables for _infer_plus_types to be the thing under test. */
+static FilterXExpr *
+_assign_literal(const gchar *name, FilterXObject *value)
+{
+  return filterx_assign_new(filterx_floating_variable_expr_new(name), filterx_literal_new(value));
+}
+
+Test(filterx_type_inference, plus_of_two_integers_is_integer)
+{
+  /* a = 1; b = 2; a + b  ->  INTEGER. */
+  FilterXExpr *sum = filterx_operator_plus_new(filterx_floating_variable_expr_new("a"),
+                                               filterx_floating_variable_expr_new("b"));
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE,
+                                                    _assign_literal("a", filterx_integer_new(1)),
+                                                    _assign_literal("b", filterx_integer_new(2)),
+                                                    sum, NULL);
+  block = _optimize_and_infer(block);
+
+  cr_assert_eq(sum->static_type, FILTERX_STATIC_TYPE_INTEGER);
+  filterx_expr_unref(block);
+}
+
+Test(filterx_type_inference, plus_of_integer_and_double_is_double)
+{
+  /* a = 1; d = 2.5; a + d  ->  DOUBLE, in both operand orders: filterx_object_add() widens
+   * to double whichever side carries it, so the result does not depend on the order. */
+  FilterXExpr *int_first = filterx_operator_plus_new(filterx_floating_variable_expr_new("a"),
+                                                     filterx_floating_variable_expr_new("d"));
+  FilterXExpr *double_first = filterx_operator_plus_new(filterx_floating_variable_expr_new("d"),
+                                                        filterx_floating_variable_expr_new("a"));
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE,
+                                                    _assign_literal("a", filterx_integer_new(1)),
+                                                    _assign_literal("d", filterx_double_new(2.5)),
+                                                    int_first, double_first, NULL);
+  block = _optimize_and_infer(block);
+
+  cr_assert_eq(int_first->static_type, FILTERX_STATIC_TYPE_DOUBLE);
+  cr_assert_eq(double_first->static_type, FILTERX_STATIC_TYPE_DOUBLE);
+  filterx_expr_unref(block);
+}
+
+Test(filterx_type_inference, plus_of_integer_and_unknown_is_unknown)
+{
+  /* a = 1; a + $FACILITY  ->  UNKNOWN: a macro may be a double at runtime, which widens the sum */
+  FilterXExpr *sum = filterx_operator_plus_new(filterx_floating_variable_expr_new("a"),
+                                               filterx_msg_variable_expr_new("FACILITY"));
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE,
+                                                    _assign_literal("a", filterx_integer_new(1)),
+                                                    sum, NULL);
+  block = _optimize_and_infer(block);
+
+  cr_assert_eq(sum->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  filterx_expr_unref(block);
+}
+
+Test(filterx_type_inference, mixed_numeric_sum_does_not_poison_a_later_sum)
+{
+  /* a = 1; d = 2.5; x = a + d; x + a  ->  DOUBLE throughout */
+  FilterXExpr *inner = filterx_operator_plus_new(filterx_floating_variable_expr_new("a"),
+                                                 filterx_floating_variable_expr_new("d"));
+  FilterXExpr *assign_x = filterx_assign_new(filterx_floating_variable_expr_new("x"), inner);
+  FilterXExpr *outer = filterx_operator_plus_new(filterx_floating_variable_expr_new("x"),
+                                                 filterx_floating_variable_expr_new("a"));
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE,
+                                                    _assign_literal("a", filterx_integer_new(1)),
+                                                    _assign_literal("d", filterx_double_new(2.5)),
+                                                    assign_x, outer, NULL);
+  block = _optimize_and_infer(block);
+
+  cr_assert_eq(inner->static_type, FILTERX_STATIC_TYPE_DOUBLE);
+  cr_assert_eq(outer->static_type, FILTERX_STATIC_TYPE_DOUBLE);
   filterx_expr_unref(block);
 }
 
