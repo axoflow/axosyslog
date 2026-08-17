@@ -20,12 +20,14 @@
  *
  */
 
-/* The path layer is independent of the JIT, so unlike test_type_inference.c this suite runs in
- * the --disable-jit configuration too. */
+/* The path ordering and the type env are both independent of the JIT, so unlike
+ * test_type_inference.c this suite runs in the --disable-jit configuration too. */
 
 #include <criterion/criterion.h>
 
 #include "filterx/filterx-expr.h"
+#include "filterx/filterx-type-inference.h"
+#include "filterx/filterx-type-inference-private.h"
 #include "filterx/expr-variable.h"
 #include "filterx/expr-getattr.h"
 #include "filterx/expr-get-subscript.h"
@@ -206,6 +208,282 @@ Test(filterx_access_path, a_path_is_immediately_followed_by_exactly_its_descenda
   cr_assert_eq(paths[1].steps[0], filterx_access_path_intern_key("cfg"));
 }
 
+/* --- the env -------------------------------------------------------------------------------- */
+
+static FilterXStaticType
+_static_type_at(FilterXTypeEnv *env, FilterXAccessPath path)
+{
+  return filterx_type_env_get_static_type_at_path(env, &path);
+}
+
+static void
+_set(FilterXTypeEnv *env, FilterXAccessPath path, FilterXStaticType static_type, gboolean closed)
+{
+  filterx_type_env_set_at_path(env, &path, static_type, closed);
+}
+
+Test(filterx_type_env, an_entry_of_an_unknown_static_type_is_not_the_same_as_no_entry)
+{
+  /* A closed container holding one key whose type nobody knows must not read as empty. */
+  FilterXTypeEnv *env = filterx_type_env_new();
+
+  _set(env, ROOT(7), FILTERX_STATIC_TYPE_DICT, TRUE);
+  _set(env, PATH(7, "a"), FILTERX_STATIC_TYPE_UNKNOWN, FALSE);
+
+  FilterXAccessPath present = PATH(7, "a");
+  FilterXAccessPath absent = PATH(7, "b");
+
+  cr_assert(filterx_type_env_get_fact_at_path(env, &present, NULL, NULL));
+  cr_assert_not(filterx_type_env_get_fact_at_path(env, &absent, NULL, NULL));
+
+  filterx_type_env_free(env);
+}
+
+Test(filterx_type_env, a_write_replaces_one_location_and_leaves_its_siblings_alone)
+{
+  FilterXTypeEnv *env = filterx_type_env_new();
+
+  _set(env, ROOT(7), FILTERX_STATIC_TYPE_DICT, TRUE);
+  _set(env, PATH(7, "a"), FILTERX_STATIC_TYPE_STRING, FALSE);
+  _set(env, PATH(7, "b"), FILTERX_STATIC_TYPE_INTEGER, FALSE);
+
+  /* d.a = "s"; d.a = 1;  -- an overwrite, not a meet. */
+  _set(env, PATH(7, "a"), FILTERX_STATIC_TYPE_INTEGER, FALSE);
+
+  cr_assert_eq(_static_type_at(env, PATH(7, "a")), FILTERX_STATIC_TYPE_INTEGER);
+  cr_assert_eq(_static_type_at(env, PATH(7, "b")), FILTERX_STATIC_TYPE_INTEGER);
+
+  filterx_type_env_free(env);
+}
+
+Test(filterx_type_env, writing_a_new_key_keeps_the_parent_closed)
+{
+  FilterXTypeEnv *env = filterx_type_env_new();
+
+  _set(env, ROOT(7), FILTERX_STATIC_TYPE_DICT, TRUE);
+  _set(env, PATH(7, "a"), FILTERX_STATIC_TYPE_STRING, FALSE);
+
+  FilterXAccessPath root = ROOT(7);
+  gboolean closed = FALSE;
+  cr_assert(filterx_type_env_get_fact_at_path(env, &root, NULL, &closed));
+  cr_assert(closed);
+
+  filterx_type_env_free(env);
+}
+
+Test(filterx_type_env, an_unrecorded_key_reads_as_unknown_whether_its_container_is_open_or_closed)
+{
+  FilterXTypeEnv *env = filterx_type_env_new();
+
+  _set(env, ROOT(7), FILTERX_STATIC_TYPE_DICT, FALSE);
+  _set(env, PATH(7, "x"), FILTERX_STATIC_TYPE_STRING, FALSE);
+
+  cr_assert_eq(_static_type_at(env, PATH(7, "x")), FILTERX_STATIC_TYPE_STRING);
+  cr_assert_eq(_static_type_at(env, PATH(7, "whatever")), FILTERX_STATIC_TYPE_UNKNOWN);
+
+  _set(env, ROOT(7), FILTERX_STATIC_TYPE_DICT, TRUE);
+  _set(env, PATH(7, "x"), FILTERX_STATIC_TYPE_STRING, FALSE);
+  cr_assert_eq(_static_type_at(env, PATH(7, "whatever")), FILTERX_STATIC_TYPE_UNKNOWN);
+
+  filterx_type_env_free(env);
+}
+
+Test(filterx_type_env, a_truncated_path_reads_as_unknown)
+{
+  /* d[$k] addresses no location, so nothing recorded under d answers for it. */
+  FilterXTypeEnv *env = filterx_type_env_new();
+
+  _set(env, ROOT(7), FILTERX_STATIC_TYPE_DICT, TRUE);
+  _set(env, PATH(7, "x"), FILTERX_STATIC_TYPE_INTEGER, FALSE);
+
+  FilterXAccessPath dynamic = ROOT(7);
+  filterx_access_path_append_step(&dynamic, NULL);
+
+  cr_assert(dynamic.truncated);
+  cr_assert_eq(_static_type_at(env, dynamic), FILTERX_STATIC_TYPE_UNKNOWN);
+
+  filterx_type_env_free(env);
+}
+
+Test(filterx_type_env, unset_of_a_named_key_keeps_the_parent_closed)
+{
+  FilterXTypeEnv *env = filterx_type_env_new();
+
+  _set(env, ROOT(7), FILTERX_STATIC_TYPE_DICT, TRUE);
+  _set(env, PATH(7, "port"), FILTERX_STATIC_TYPE_INTEGER, FALSE);
+  _set(env, PATH(7, "host"), FILTERX_STATIC_TYPE_STRING, FALSE);
+
+  FilterXAccessPath port = PATH(7, "port");
+  filterx_type_env_clear_at_path(env, &port);
+
+  FilterXAccessPath root = ROOT(7);
+  gboolean closed = FALSE;
+  cr_assert(filterx_type_env_get_fact_at_path(env, &root, NULL, &closed));
+  cr_assert(closed, "removing a named key shrinks the key set, it does not make it unknown");
+  cr_assert_eq(_static_type_at(env, PATH(7, "port")), FILTERX_STATIC_TYPE_UNKNOWN);
+  cr_assert_eq(_static_type_at(env, PATH(7, "host")), FILTERX_STATIC_TYPE_STRING);
+
+  filterx_type_env_free(env);
+}
+
+Test(filterx_type_env, a_write_through_an_unnameable_key_empties_the_container_it_hit)
+{
+  /* d[$k] = 42 may have landed on any key of d, so d keeps its static type and loses its whole interior. */
+  FilterXTypeEnv *env = filterx_type_env_new();
+
+  _set(env, ROOT(7), FILTERX_STATIC_TYPE_DICT, TRUE);
+  _set(env, PATH(7, "net"), FILTERX_STATIC_TYPE_DICT, TRUE);
+  _set(env, PATH(7, "net", "host"), FILTERX_STATIC_TYPE_STRING, FALSE);
+  _set(env, PATH(7, "tls"), FILTERX_STATIC_TYPE_DICT, TRUE);
+
+  FilterXAccessPath dynamic = ROOT(7);
+  filterx_access_path_append_step(&dynamic, NULL);
+  filterx_type_env_set_shape_at_path(env, &dynamic, NULL);
+
+  cr_assert_eq(_static_type_at(env, ROOT(7)), FILTERX_STATIC_TYPE_DICT,
+               "the write reached into d, it did not replace it");
+  cr_assert_eq(_static_type_at(env, PATH(7, "net")), FILTERX_STATIC_TYPE_UNKNOWN);
+  cr_assert_eq(_static_type_at(env, PATH(7, "net", "host")), FILTERX_STATIC_TYPE_UNKNOWN);
+  cr_assert_eq(_static_type_at(env, PATH(7, "tls")), FILTERX_STATIC_TYPE_UNKNOWN);
+
+  FilterXAccessPath root = ROOT(7);
+  gboolean closed = TRUE;
+  cr_assert(filterx_type_env_get_fact_at_path(env, &root, NULL, &closed));
+  cr_assert_not(closed, "the key the write landed on is not among the recorded ones");
+
+  /* ... and a key written afterwards is then simply what that key is. */
+  _set(env, PATH(7, "a"), FILTERX_STATIC_TYPE_INTEGER, FALSE);
+  cr_assert_eq(_static_type_at(env, PATH(7, "a")), FILTERX_STATIC_TYPE_INTEGER);
+
+  filterx_type_env_free(env);
+}
+
+/* --- the join ------------------------------------------------------------------------------- */
+
+Test(filterx_type_env, meet_keeps_a_key_the_other_side_proves_absent)
+{
+  /* d = {}; if (c) { d.a = 1; }  -- the else side still has d closed, which proves "a" absent
+   * there, so it constrains nothing and the written branch's type survives the join. */
+  FilterXTypeEnv *dst = filterx_type_env_new();
+  FilterXTypeEnv *src = filterx_type_env_new();
+
+  _set(dst, ROOT(7), FILTERX_STATIC_TYPE_DICT, TRUE);
+  _set(dst, PATH(7, "a"), FILTERX_STATIC_TYPE_INTEGER, FALSE);
+  _set(src, ROOT(7), FILTERX_STATIC_TYPE_DICT, TRUE);
+
+  filterx_type_env_meet_into(dst, src);
+
+  cr_assert_eq(_static_type_at(dst, PATH(7, "a")), FILTERX_STATIC_TYPE_INTEGER);
+  cr_assert_eq(_static_type_at(dst, ROOT(7)), FILTERX_STATIC_TYPE_DICT);
+
+  filterx_type_env_free(dst);
+  filterx_type_env_free(src);
+}
+
+Test(filterx_type_env, meet_drops_a_key_the_other_side_cannot_vouch_for)
+{
+  /* d = {}; d[$k] = "s"; if (c) { d.a = 1; }  -- the other side left d open, so it may hold "a" at
+   * a type nobody here has seen, and d.a must not answer INTEGER. */
+  FilterXTypeEnv *dst = filterx_type_env_new();
+  FilterXTypeEnv *src = filterx_type_env_new();
+
+  _set(dst, ROOT(7), FILTERX_STATIC_TYPE_DICT, FALSE);
+  _set(dst, PATH(7, "a"), FILTERX_STATIC_TYPE_INTEGER, FALSE);
+  _set(src, ROOT(7), FILTERX_STATIC_TYPE_DICT, FALSE);
+
+  filterx_type_env_meet_into(dst, src);
+
+  FilterXAccessPath a = PATH(7, "a");
+  cr_assert_not(filterx_type_env_get_fact_at_path(dst, &a, NULL, NULL));
+  cr_assert_eq(_static_type_at(dst, PATH(7, "a")), FILTERX_STATIC_TYPE_UNKNOWN);
+  cr_assert_eq(_static_type_at(dst, PATH(7, "an_unrelated_key")), FILTERX_STATIC_TYPE_UNKNOWN,
+               "d.a's type must not have been published over any other key either");
+
+  filterx_type_env_free(dst);
+  filterx_type_env_free(src);
+}
+
+Test(filterx_type_env, meet_gives_up_closed_on_the_parent_of_a_key_it_drops)
+{
+  /* `closed` bounds the key set from above by the recorded children.  Dropping one of those
+   * children without proving it gone tightens that bound onto a key set that did not shrink, so
+   * the claim has to go with it. */
+  FilterXTypeEnv *dst = filterx_type_env_new();
+  FilterXTypeEnv *src = filterx_type_env_new();
+
+  _set(dst, ROOT(7), FILTERX_STATIC_TYPE_DICT, TRUE);
+  _set(dst, PATH(7, "a"), FILTERX_STATIC_TYPE_INTEGER, FALSE);
+
+  /* src is open, so it cannot prove "a" absent -- and its own key set is not bounded either. */
+  _set(src, ROOT(7), FILTERX_STATIC_TYPE_DICT, FALSE);
+
+  filterx_type_env_meet_into(dst, src);
+
+  FilterXAccessPath root = ROOT(7);
+  gboolean closed = TRUE;
+  cr_assert(filterx_type_env_get_fact_at_path(dst, &root, NULL, &closed));
+  cr_assert_not(closed, "d would otherwise claim to have no keys at all");
+
+  filterx_type_env_free(dst);
+  filterx_type_env_free(src);
+}
+
+Test(filterx_type_env, meet_keeps_a_disagreeing_key_present_at_an_unknown_static_type)
+{
+  FilterXTypeEnv *dst = filterx_type_env_new();
+  FilterXTypeEnv *src = filterx_type_env_new();
+
+  _set(dst, ROOT(7), FILTERX_STATIC_TYPE_DICT, TRUE);
+  _set(dst, PATH(7, "a"), FILTERX_STATIC_TYPE_INTEGER, FALSE);
+  _set(src, ROOT(7), FILTERX_STATIC_TYPE_DICT, TRUE);
+  _set(src, PATH(7, "a"), FILTERX_STATIC_TYPE_STRING, FALSE);
+
+  filterx_type_env_meet_into(dst, src);
+
+  FilterXAccessPath a = PATH(7, "a");
+  cr_assert(filterx_type_env_get_fact_at_path(dst, &a, NULL, NULL),
+            "both sides claim the key exists, so it stays recorded even at an unknown static type");
+  cr_assert_eq(_static_type_at(dst, PATH(7, "a")), FILTERX_STATIC_TYPE_UNKNOWN);
+
+  filterx_type_env_free(dst);
+  filterx_type_env_free(src);
+}
+
+Test(filterx_type_env, meet_gives_up_closed_when_the_other_side_knows_of_an_extra_key)
+{
+  FilterXTypeEnv *dst = filterx_type_env_new();
+  FilterXTypeEnv *src = filterx_type_env_new();
+
+  _set(dst, ROOT(7), FILTERX_STATIC_TYPE_DICT, TRUE);
+  _set(src, ROOT(7), FILTERX_STATIC_TYPE_DICT, TRUE);
+  _set(src, PATH(7, "extra"), FILTERX_STATIC_TYPE_INTEGER, FALSE);
+
+  filterx_type_env_meet_into(dst, src);
+
+  FilterXAccessPath root = ROOT(7);
+  gboolean closed = TRUE;
+  cr_assert(filterx_type_env_get_fact_at_path(dst, &root, NULL, &closed));
+  cr_assert_not(closed, "dst's key set was only complete on dst's own path");
+
+  filterx_type_env_free(dst);
+  filterx_type_env_free(src);
+}
+
+Test(filterx_type_env, meet_drops_a_variable_the_other_side_says_nothing_about)
+{
+  FilterXTypeEnv *dst = filterx_type_env_new();
+  FilterXTypeEnv *src = filterx_type_env_new();
+
+  _set(dst, ROOT(7), FILTERX_STATIC_TYPE_STRING, FALSE);
+
+  filterx_type_env_meet_into(dst, src);
+
+  cr_assert_eq(_static_type_at(dst, ROOT(7)), FILTERX_STATIC_TYPE_UNKNOWN);
+
+  filterx_type_env_free(dst);
+  filterx_type_env_free(src);
+}
+
 /* --- depth ---------------------------------------------------------------------------------- */
 
 Test(filterx_access_path, a_path_past_the_depth_cap_is_truncated_not_rejected)
@@ -220,6 +498,64 @@ Test(filterx_access_path, a_path_past_the_depth_cap_is_truncated_not_rejected)
   cr_assert_not(filterx_access_path_append_step(&path, filterx_access_path_intern_key("one_too_many")));
   cr_assert(path.truncated);
   cr_assert_eq(path.n_steps, FILTERX_ACCESS_PATH_MAX_DEPTH);
+}
+
+Test(filterx_type_env, a_truncated_write_opens_the_deepest_addressable_ancestor)
+{
+  FilterXTypeEnv *env = filterx_type_env_new();
+  FilterXAccessPath deep;
+
+  memset(&deep, 0, sizeof(deep));
+  deep.root = 7;
+  for (guint i = 0; i < FILTERX_ACCESS_PATH_MAX_DEPTH; i++)
+    filterx_access_path_append_step(&deep, filterx_access_path_intern_key("k"));
+
+  _set(env, ROOT(7), FILTERX_STATIC_TYPE_DICT, TRUE);
+  filterx_type_env_set_at_path(env, &deep, FILTERX_STATIC_TYPE_DICT, TRUE);
+
+  FilterXAccessPath over = deep;
+  over.truncated = TRUE;
+  filterx_type_env_set_shape_at_path(env, &over, NULL);
+
+  /* The root is untouched: only the ancestor that could not address the write gives up its
+   * complete key set. */
+  cr_assert_eq(_static_type_at(env, ROOT(7)), FILTERX_STATIC_TYPE_DICT);
+  cr_assert_eq(_static_type_at(env, deep), FILTERX_STATIC_TYPE_DICT);
+
+  gboolean closed = TRUE;
+  cr_assert(filterx_type_env_get_fact_at_path(env, &deep, NULL, &closed));
+  cr_assert_not(closed);
+
+  filterx_type_env_free(env);
+}
+
+/* --- cloning -------------------------------------------------------------------------------- */
+
+static gboolean
+_is_root_seven(FilterXVariableHandle handle, gpointer user_data)
+{
+  return handle == 7;
+}
+
+Test(filterx_type_env, a_filtered_clone_selects_on_the_root_of_the_path)
+{
+  FilterXTypeEnv *env = filterx_type_env_new();
+
+  _set(env, ROOT(7), FILTERX_STATIC_TYPE_DICT, TRUE);
+  _set(env, PATH(7, "a"), FILTERX_STATIC_TYPE_STRING, FALSE);
+  _set(env, ROOT(9), FILTERX_STATIC_TYPE_DICT, TRUE);
+  _set(env, PATH(9, "a"), FILTERX_STATIC_TYPE_STRING, FALSE);
+
+  FilterXTypeEnv *clone = filterx_type_env_clone_filtered(env, _is_root_seven, NULL);
+
+  cr_assert_eq(_static_type_at(clone, PATH(7, "a")), FILTERX_STATIC_TYPE_STRING);
+  cr_assert_eq(_static_type_at(clone, ROOT(9)), FILTERX_STATIC_TYPE_UNKNOWN);
+
+  FilterXAccessPath nine_a = PATH(9, "a");
+  cr_assert_not(filterx_type_env_get_fact_at_path(clone, &nine_a, NULL, NULL));
+
+  filterx_type_env_free(clone);
+  filterx_type_env_free(env);
 }
 
 /* --- peeling an expression ------------------------------------------------------------------ */
@@ -383,3 +719,4 @@ teardown(void)
 }
 
 TestSuite(filterx_access_path, .init = setup, .fini = teardown);
+TestSuite(filterx_type_env, .init = setup, .fini = teardown);
