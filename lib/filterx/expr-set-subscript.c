@@ -20,6 +20,7 @@
  *
  */
 #include "filterx/expr-set-subscript.h"
+#include "filterx/expr-literal.h"
 #include "filterx/object-primitive.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/object-null.h"
@@ -154,6 +155,19 @@ _free(FilterXExpr *s)
   filterx_expr_free_method(s);
 }
 
+/* the location this statement writes: one hop down its object, at the step its key names */
+static gboolean
+_set_subscript_get_path(FilterXExpr *s, FilterXAccessPath *path_out)
+{
+  FilterXSetSubscript *self = (FilterXSetSubscript *) s;
+
+  if (!filterx_expr_get_path(self->object, path_out))
+    return FALSE;
+
+  filterx_access_path_append_step(path_out, filterx_literal_key_expr_to_path_step(self->key));
+  return TRUE;
+}
+
 static gboolean
 _set_subscript_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
@@ -179,6 +193,7 @@ filterx_set_subscript_new(FilterXExpr *object, FilterXExpr *key, FilterXExpr *ne
   self->super.eval = _set_subscript_eval;
   self->super.walk_children = _set_subscript_walk;
   self->super.free_fn = _free;
+  self->super.get_path = _set_subscript_get_path;
   self->object = object;
   self->key = key;
   self->new_value = new_value;

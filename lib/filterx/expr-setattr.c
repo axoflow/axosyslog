@@ -155,6 +155,19 @@ _setattr_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
   return TRUE;
 }
 
+/* the location this statement writes: one hop down its object, at the attribute it sets */
+static gboolean
+_setattr_get_path(FilterXExpr *s, FilterXAccessPath *path_out)
+{
+  FilterXSetAttr *self = (FilterXSetAttr *) s;
+
+  if (!filterx_expr_get_path(self->object, path_out))
+    return FALSE;
+
+  filterx_access_path_append_step(path_out, filterx_access_path_intern_key(self->super.name));
+  return TRUE;
+}
+
 #if SYSLOG_NG_ENABLE_JIT
 
 #include "filterx/jit/jit.h"
@@ -217,6 +230,7 @@ filterx_setattr_new(FilterXExpr *object, FilterXObject *attr_name, FilterXExpr *
   self->super.eval = _setattr_eval;
   self->super.walk_children = _setattr_walk;
   self->super.free_fn = _free;
+  self->super.get_path = _setattr_get_path;
 #if SYSLOG_NG_ENABLE_JIT
   self->super.compile = _setattr_compile;
 #endif

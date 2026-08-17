@@ -141,6 +141,19 @@ _getattr_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
   return TRUE;
 }
 
+/* one hop down the operand's location, at this node's own key */
+static gboolean
+_getattr_get_path(FilterXExpr *s, FilterXAccessPath *path_out)
+{
+  FilterXGetAttr *self = (FilterXGetAttr *) s;
+
+  if (!filterx_expr_get_path(self->operand, path_out))
+    return FALSE;
+
+  filterx_access_path_append_step(path_out, filterx_access_path_intern_key(self->super.name));
+  return TRUE;
+}
+
 #if SYSLOG_NG_ENABLE_JIT
 
 #include "filterx/jit/jit.h"
@@ -185,6 +198,7 @@ filterx_getattr_new(FilterXExpr *operand, FilterXObject *attr_name)
   self->super.is_set = _isset;
   self->super.walk_children = _getattr_walk;
   self->super.free_fn = _free;
+  self->super.get_path = _getattr_get_path;
 #if SYSLOG_NG_ENABLE_JIT
   self->super.compile = _getattr_compile;
 #endif

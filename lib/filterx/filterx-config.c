@@ -20,6 +20,7 @@
  *
  */
 #include "filterx-config.h"
+#include "filterx/filterx-expr.h"
 #include "syslog-ng.h"
 #include "messages.h"
 #include "cfg.h"
@@ -105,6 +106,7 @@ filterx_config_deinit(ModuleConfig *s, GlobalConfig *cfg)
   FilterXConfig *self = (FilterXConfig *) s;
 
   filterx_jit_free(self->jit);
+  filterx_access_path_release_keys();
 }
 
 FilterXConfig *

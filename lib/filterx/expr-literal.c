@@ -21,6 +21,7 @@
  */
 #include "filterx/expr-literal.h"
 #include "filterx/filterx-eval.h"
+#include "filterx/object-string.h"
 
 typedef struct _FilterXLiteral
 {
@@ -35,6 +36,25 @@ filterx_literal_get_value(FilterXExpr *s)
   FilterXLiteral *self = (FilterXLiteral *) s;
 
   return filterx_object_ref(self->object);
+}
+
+const gchar *
+filterx_literal_key_expr_to_path_step(FilterXExpr *key_expr)
+{
+  /* the grammar really does hand us a NULL key expression, for the `expr[] = v` append form */
+  if (!key_expr || !filterx_expr_is_literal(key_expr))
+    return NULL;
+
+  FilterXObject *literal = filterx_literal_get_value(key_expr);
+  if (!literal)
+    return NULL;
+
+  const gchar *step = NULL;
+  if (filterx_object_is_type_or_ref(literal, &FILTERX_TYPE_NAME(string)))
+    step = filterx_access_path_intern_key(filterx_string_get_value_ref_and_assert_nul(literal, NULL));
+
+  filterx_object_unref(literal);
+  return step;
 }
 
 static FilterXObject *

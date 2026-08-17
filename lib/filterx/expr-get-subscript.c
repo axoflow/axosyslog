@@ -20,6 +20,7 @@
  *
  */
 #include "filterx/expr-get-subscript.h"
+#include "filterx/expr-literal.h"
 #include "filterx/filterx-eval.h"
 #include "stats/stats-registry.h"
 #include "stats/stats-cluster-single.h"
@@ -156,6 +157,19 @@ _free(FilterXExpr *s)
   filterx_expr_free_method(s);
 }
 
+/* one hop down the operand's location, at the step its key names */
+static gboolean
+_get_subscript_get_path(FilterXExpr *s, FilterXAccessPath *path_out)
+{
+  FilterXGetSubscript *self = (FilterXGetSubscript *) s;
+
+  if (!filterx_expr_get_path(self->operand, path_out))
+    return FALSE;
+
+  filterx_access_path_append_step(path_out, filterx_literal_key_expr_to_path_step(self->key));
+  return TRUE;
+}
+
 static gboolean
 _get_subscript_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
@@ -185,6 +199,7 @@ filterx_get_subscript_new(FilterXExpr *operand, FilterXExpr *key)
   self->super.walk_children = _get_subscript_walk;
   self->super.move = _move;
   self->super.free_fn = _free;
+  self->super.get_path = _get_subscript_get_path;
   self->operand = operand;
   self->key = key;
   return &self->super;
