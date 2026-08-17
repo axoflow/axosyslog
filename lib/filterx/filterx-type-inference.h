@@ -36,6 +36,7 @@ typedef enum
   FILTERX_STATIC_TYPE_STRING  = 3,
   FILTERX_STATIC_TYPE_INTEGER = 4,
   FILTERX_STATIC_TYPE_DOUBLE  = 5,
+  FILTERX_STATIC_TYPE_BOOLEAN = 6,
 } FilterXStaticType;
 
 /* Two kinds agree or they do not; there is no partial agreement to keep. */
