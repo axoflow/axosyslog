@@ -115,6 +115,20 @@ Test(filterx_type_inference, literal_list_is_list)
   filterx_expr_unref(empty_list);
 }
 
+Test(filterx_type_inference, macro_variable_is_always_unknown)
+{
+  /* $FACILITY is a hard macro: read-only and computed straight from the message at eval
+   * time rather than routed through the scope/type-env machinery, so inference can never
+   * devirtualize it -- it hardcodes the read to UNKNOWN regardless of the macro's actual
+   * runtime type (always a string, in this case). */
+  FilterXExpr *read_facility = filterx_msg_variable_expr_new("FACILITY");
+  cr_assert(filterx_variable_expr_is_macro(read_facility));
+
+  read_facility = _run(read_facility);
+  cr_assert_eq(read_facility->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  filterx_expr_unref(read_facility);
+}
+
 static void
 setup(void)
 {
