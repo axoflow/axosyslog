@@ -34,7 +34,7 @@ typedef enum _EHTTPSourceMode
 {
   EHTTP_SINGLE,
   EHTTP_LINE_SEPARATED,
-  EHTTP_JSON_ARRAY
+  EHTTP_JSON
 } EHTTPSourceMode;
 
 struct EHTTPSourceConnection
