@@ -1176,6 +1176,14 @@ _move_of(FilterXExpr *target)
   return move;
 }
 
+Test(filterx_type_inference, unset_is_boolean)
+{
+  FilterXExpr *unset = _unset_of(filterx_floating_variable_expr_new("v"));
+  unset = _optimize_and_infer(unset);
+  cr_assert_eq(unset->static_type, FILTERX_STATIC_TYPE_BOOLEAN);
+  filterx_expr_unref(unset);
+}
+
 Test(filterx_type_inference, unset_of_a_key_invalidates_its_subtree)
 {
   /* v = {}; v.a = {}; v.a.b = 5; v.other = "s";  -> v.a is a DICT and v.a.b an INTEGER

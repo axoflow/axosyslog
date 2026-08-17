@@ -65,6 +65,7 @@ _unset_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
   for (guint i = 0; i < self->exprs->len; i++)
     filterx_type_env_update_on_remove(env, (FilterXExpr *) g_ptr_array_index(self->exprs, i));
 
+  s->static_type = FILTERX_STATIC_TYPE_BOOLEAN;
 }
 #endif
 
