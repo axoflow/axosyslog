@@ -222,10 +222,13 @@ tf_slog_prepare(LogTemplateFunction *self, gpointer s, LogTemplate *parent, gint
 
   if (FALSE == get_path_mac0(state->macpath, pathMac0, PATH_MAX))
     {
-      //-- ERROR, never ever
       msg_error(SLOG_ERROR_PREFIX,
-                evt_tag_str("Reason", "Failed to get path of MAC to create MAC0"),
+                evt_tag_str("Reason", "Failed to get path of MAC to create MAC0. Reverting to clear text logging!"),
                 evt_tag_str("File", state->macpath));
+      state->badKey = TRUE;
+      munlock(state->key, KEY_LENGTH);
+      munlock(state->aggMAC, CMAC_LENGTH);
+      return TRUE;
     }
 
   if (!g_file_test(state->macpath, G_FILE_TEST_IS_REGULAR))
