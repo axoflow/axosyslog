@@ -1642,9 +1642,9 @@ gboolean iterativeFileVerify(
                 }
             }
         }
+      g_ptr_array_set_size(outputBuffer, 0);
+      g_ptr_array_set_size(inputBuffer, 0);
     }
-  g_ptr_array_set_size(outputBuffer, 0);
-  g_ptr_array_set_size(inputBuffer, 0);
 
 
   if ((entriesInFile % chunkLength) > 0)
