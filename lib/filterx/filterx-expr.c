@@ -369,6 +369,14 @@ filterx_expr_infer_types_default(FilterXExpr *self, FilterXTypeEnv *env)
   self->static_type = FILTERX_STATIC_TYPE_UNKNOWN;
 }
 
+/* only for expressions whose own get_path() names the value they return */
+void
+filterx_expr_infer_types_from_path(FilterXExpr *self, FilterXTypeEnv *env)
+{
+  filterx_expr_infer_types_default(self, env);
+  self->static_type = filterx_type_env_get_static_type_of_expr(env, self);
+}
+
 FilterXExpr *
 filterx_expr_optimize(FilterXExpr *self)
 {

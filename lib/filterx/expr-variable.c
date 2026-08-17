@@ -350,6 +350,7 @@ filterx_variable_expr_new(const gchar *name, FilterXVariableType variable_type)
   self->super.eval = _eval_variable;
   self->super.get_path = _variable_get_path;
 #if SYSLOG_NG_ENABLE_JIT
+  self->super.infer_types = filterx_expr_infer_types_from_path;
   self->super.compile = _variable_compile;
 #endif
   self->super._update_repr = _update_repr;
