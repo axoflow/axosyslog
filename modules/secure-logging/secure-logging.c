@@ -405,24 +405,34 @@ tf_slog_call(LogTemplateFunction *self, gpointer s, const LogTemplateInvokeArgs 
 
   // Compute authenticated encryption of input
   guchar outputmacdata[CMAC_LENGTH];
+  memset(outputmacdata, 0, G_N_ELEMENTS(outputmacdata));
+
+  gboolean entry_ok;
 
   // Empty string received? Parsing error?
   if(args->argv[0]->len==0)
     {
       msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "String of length 0 received"));
       GString *errorString = g_string_new(SLOG_ERROR_PREFIX ": String of length 0 received");
-      sLogEntry(state->numberOfLogEntries, errorString, state->key, state->aggMAC, result, outputmacdata,
-                G_N_ELEMENTS(outputmacdata));
+      entry_ok = sLogEntry(state->numberOfLogEntries, errorString, state->key, state->aggMAC, result, outputmacdata,
+                           G_N_ELEMENTS(outputmacdata));
       g_string_free(errorString, TRUE);
     }
   else
     {
-      sLogEntry(state->numberOfLogEntries, args->argv[0], state->key, state->aggMAC, result, outputmacdata,
-                G_N_ELEMENTS(outputmacdata));
+      entry_ok = sLogEntry(state->numberOfLogEntries, args->argv[0], state->key, state->aggMAC, result, outputmacdata,
+                           G_N_ELEMENTS(outputmacdata));
+    }
+
+  // On failure sLogEntry() may have written the plaintext message into result.
+  if (!entry_ok || !evolveKey(state->key))
+    {
+      msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Unable to create secure log entry, dropping message"));
+      g_string_assign(result, SLOG_ERROR_PREFIX ": unable to create secure log entry");
+      return;
     }
 
   memcpy(state->aggMAC, outputmacdata, CMAC_LENGTH);
-  evolveKey(state->key);
   state->numberOfLogEntries++;
 
   int res = writeKey(state->key, state->numberOfLogEntries, state->keypath);
