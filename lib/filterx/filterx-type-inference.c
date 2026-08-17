@@ -27,6 +27,7 @@
 #include "filterx/expr-getattr.h"
 #include "filterx/expr-get-subscript.h"
 #include "filterx/expr-literal.h"
+#include "filterx/expr-literal-container.h"
 #include "filterx/object-string.h"
 #include "filterx/object-primitive.h"
 #include "filterx/object-dict.h"
@@ -444,6 +445,7 @@ typedef struct
   FilterXStaticType expr_type;
   FilterXObject *object;          /* SHAPE_FROM_OBJECT, owned when @object_owned */
   gboolean object_owned;
+  FilterXExpr *container_expr;    /* a literal container: its holes need overlaying */
   FilterXAccessPath src_path;       /* SHAPE_FROM_TRACKED_PATH */
 } _Shape;
 
@@ -462,6 +464,18 @@ _shape_of(FilterXExpr *rhs_expr)
       shape.kind = SHAPE_FROM_OBJECT;
       shape.object = filterx_literal_get_value(rhs_expr);
       shape.object_owned = TRUE;
+      return shape;
+    }
+
+  if (filterx_expr_is_literal_container(rhs_expr))
+    {
+      /* The template is built by early-evaluating every element, and a non-literal key fails
+       * filterx_mapping_normalize_key(), which bails out of the whole early eval.  So a template
+       * at all means every key is a literal string and the key set is complete. */
+      shape.container_expr = rhs_expr;
+      shape.object = filterx_literal_container_get_sparse_container(rhs_expr);
+      if (shape.object)
+        shape.kind = SHAPE_FROM_OBJECT;
       return shape;
     }
 
@@ -494,6 +508,12 @@ _install_shape(FilterXTypeEnv *self, const FilterXAccessPath *path, _Shape *shap
       filterx_type_env_set_at_path(self, path, shape->expr_type, FALSE);
       break;
     }
+
+  /* A partially evaluated container leaves its holes as nulls in the template, and a literal
+   * container that could not be evaluated at all has no template to walk.  A hole at a key
+   * nothing addresses goes unrecorded, which costs the container its `closed`. */
+  if (shape->container_expr && !filterx_literal_container_infer_nonliteral_elements(shape->container_expr, self, path))
+    _mark_not_closed(self, path);
 }
 
 void

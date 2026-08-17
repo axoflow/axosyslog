@@ -206,6 +206,65 @@ _literal_container_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_dat
   return TRUE;
 }
 
+FilterXObject *
+filterx_literal_container_get_sparse_container(FilterXExpr *s)
+{
+  FilterXLiteralContainer *self = (FilterXLiteralContainer *) s;
+  return self->sparse_container;
+}
+
+gboolean
+filterx_literal_container_infer_nonliteral_elements(FilterXExpr *s, FilterXTypeEnv *env, const FilterXAccessPath *base)
+{
+  FilterXLiteralContainer *self = (FilterXLiteralContainer *) s;
+
+  if (!self->sparse_container)
+    return TRUE;
+
+  gboolean all_keys_recorded = TRUE;
+  gsize len = filterx_pointer_list_get_length(&self->nonliteral_elements);
+  for (gsize i = 0; i < len; i++)
+    {
+      FilterXLiteralElement *elem = (FilterXLiteralElement *) filterx_pointer_list_index(&self->nonliteral_elements, i);
+
+      /* _literal_dict_store_elem() leaves the slot unset when a nullv value is null, so the key
+       * may or may not exist at runtime and recording either fact would be a lie */
+      if (elem->nullv)
+        {
+          all_keys_recorded = FALSE;
+          continue;
+        }
+
+      FilterXAccessPath child = *base;
+      if (!filterx_access_path_append_step(&child, filterx_literal_key_expr_to_path_step(elem->key)))
+        {
+          all_keys_recorded = FALSE;
+          continue;
+        }
+
+      filterx_type_env_set_shape_at_path(env, &child, elem->value);
+    }
+
+  return all_keys_recorded;
+}
+
+#if SYSLOG_NG_ENABLE_JIT
+static void
+_literal_dict_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  filterx_expr_infer_types_default(s, env);
+  s->static_type = FILTERX_STATIC_TYPE_DICT;
+}
+
+static void
+_literal_list_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  filterx_expr_infer_types_default(s, env);
+  s->static_type = FILTERX_STATIC_TYPE_LIST;
+}
+
+#endif
+
 static void
 _literal_container_init_instance(FilterXLiteralContainer *self, const gchar *type)
 {
@@ -408,6 +467,9 @@ filterx_literal_dict_new(GList *elements)
 
   _literal_container_init_instance(self, FILTERX_EXPR_TYPE_NAME(literal_dict));
   self->super.eval = _literal_dict_eval;
+#if SYSLOG_NG_ENABLE_JIT
+  self->super.infer_types = _literal_dict_infer_types;
+#endif
   self->eval_early = _literal_dict_eval_early;
   filterx_pointer_list_add_list(&self->elements, elements);
 
@@ -519,6 +581,9 @@ filterx_literal_list_new(GList *elements)
 
   _literal_container_init_instance(self, FILTERX_EXPR_TYPE_NAME(literal_list));
   self->super.eval = _literal_list_eval;
+#if SYSLOG_NG_ENABLE_JIT
+  self->super.infer_types = _literal_list_infer_types;
+#endif
   self->eval_early = _literal_list_eval_early;
   filterx_pointer_list_add_list(&self->elements, elements);
 
