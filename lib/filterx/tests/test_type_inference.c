@@ -2024,6 +2024,34 @@ Test(filterx_type_inference, a_dpath_write_retires_its_root)
   filterx_expr_unref(block);
 }
 
+Test(filterx_type_inference, a_function_call_opens_the_containers_it_was_handed)
+{
+  /* d = {}; d.a = 1; unset_empties(d); d.a  -> unset_empties() evaluates its argument and calls
+   * filterx_object_set_subscript() straight on it, so d.a may be gone by the time it returns.
+   * d itself is still a dict -- the call cannot change what kind of object it was handed. */
+  GError *error = NULL;
+  FilterXExpr *assign_d = filterx_assign_new(filterx_floating_variable_expr_new("d"),
+                                             filterx_literal_dict_new(NULL));
+  FilterXExpr *set_a = filterx_setattr_new(filterx_floating_variable_expr_new("d"),
+                                           filterx_string_new("a", -1),
+                                           filterx_literal_new(filterx_integer_new(1)));
+  GList *args = g_list_append(NULL, filterx_function_arg_new(NULL, filterx_floating_variable_expr_new("d")));
+  FilterXExpr *call = filterx_function_unset_empties_new(filterx_function_args_new(args, &error), &error);
+  cr_assert_null(error);
+  cr_assert_not_null(call);
+
+  FilterXExpr *read_d = filterx_floating_variable_expr_new("d");
+  FilterXExpr *read_a = filterx_getattr_new(filterx_floating_variable_expr_new("d"),
+                                            filterx_string_new("a", -1));
+
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_d, set_a, call, read_d, read_a, NULL);
+  block = _run(block);
+
+  cr_assert_eq(read_d->static_type, FILTERX_STATIC_TYPE_DICT);
+  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  filterx_expr_unref(block);
+}
+
 Test(filterx_type_inference, env_entries_outlive_the_expression_tree_they_came_from)
 {
   /* FilterXExpr::name borrows its characters from the string object the getattr owns and frees
