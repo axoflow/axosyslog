@@ -27,6 +27,7 @@
 #include "filterx/jit/jit.h"
 #include "filterx/jit/ffi.h"
 #include "filterx-object.h"
+#include "filterx/filterx-type-inference.h"
 #include "cfg-lexer.h"
 #include "stats/stats-counter.h"
 
@@ -81,7 +82,14 @@ guint32 ignore_falsy_result:1, suppress_from_trace:1, inited:1, optimized:1, sta
 #if SYSLOG_NG_ENABLE_JIT
   FilterXIRValue (*compile)(FilterXExpr *self, FilterXJIT *jit);
   FilterXIRValue (*compile_assign)(FilterXExpr *self, FilterXJIT *jit, FilterXIRValue new_value);
+  void (*infer_types)(FilterXExpr *self, FilterXTypeEnv *env);
 #endif
+
+  /* Outside the guard on purpose: the hooks above need FilterXIRValue and
+   * FilterXJIT, this does not.  Guarding it would break every unguarded
+   * assignment to it, and the inference pass is a no-op without the JIT
+   * anyway, so the field simply stays UNKNOWN there. */
+  FilterXStaticType static_type;
 
   void (*free_fn)(FilterXExpr *self);
 
@@ -260,6 +268,8 @@ void filterx_expr_deinit_method(FilterXExpr *self, GlobalConfig *cfg);
 
 gboolean filterx_expr_init(FilterXExpr *self, GlobalConfig *cfg);
 void filterx_expr_deinit(FilterXExpr *self, GlobalConfig *cfg);
+
+void filterx_expr_infer_types_default(FilterXExpr *self, FilterXTypeEnv *env);
 
 static inline gboolean
 filterx_expr_visit(FilterXExpr *self, FilterXExpr **expr, FilterXExprWalkFunc f, gpointer user_data)
