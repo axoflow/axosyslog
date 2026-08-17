@@ -272,6 +272,28 @@ Test(filterx_type_inference, if_one_sided_assign_collapses_to_unknown)
   filterx_expr_unref(block);
 }
 
+Test(filterx_type_inference, get_subscript_shifts_operand_spec)
+{
+  /* d = {"a": "x", "b": "y"}; d["a"] -> STRING, by the same path step a getattr would use. */
+  GList *elems = g_list_append(NULL, filterx_literal_element_new(
+                                 filterx_literal_new(filterx_string_new("a", -1)),
+                                 filterx_literal_new(filterx_string_new("x", -1))));
+  elems = g_list_append(elems, filterx_literal_element_new(
+                          filterx_literal_new(filterx_string_new("b", -1)),
+                          filterx_literal_new(filterx_string_new("y", -1))));
+  FilterXExpr *assign = filterx_assign_new(
+                          filterx_floating_variable_expr_new("d"),
+                          filterx_literal_dict_new(elems));
+  FilterXExpr *read = filterx_get_subscript_new(
+                        filterx_floating_variable_expr_new("d"),
+                        filterx_literal_new(filterx_string_new("a", -1)));
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign, read, NULL);
+  block = _run(block);
+
+  cr_assert_eq(read->static_type, FILTERX_STATIC_TYPE_STRING);
+  filterx_expr_unref(block);
+}
+
 Test(filterx_type_inference, getattr_chain_propagates_through_three_levels)
 {
   /* d = {"a": {"b": {"c": "leaf"}}}; d.a.b.c -> STRING, one path lookup per node. */

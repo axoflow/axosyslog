@@ -171,6 +171,19 @@ _get_subscript_get_path(FilterXExpr *s, FilterXTypePath *path_out)
   return TRUE;
 }
 
+#if SYSLOG_NG_ENABLE_JIT
+static void
+_get_subscript_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  filterx_expr_infer_types_default(s, env);
+
+  /* A literal string key is the same path step a getattr produces, so $a["b"] and $a.b answer
+   * identically; anything else leaves a truncated path, which reads as UNKNOWN. */
+  s->static_type = filterx_type_env_get_for_expr(env, s);
+}
+
+#endif
+
 FilterXExpr *
 filterx_get_subscript_get_operand(FilterXExpr *s)
 {
@@ -217,6 +230,9 @@ filterx_get_subscript_new(FilterXExpr *operand, FilterXExpr *key)
   self->super.move = _move;
   self->super.free_fn = _free;
   self->super.get_path = _get_subscript_get_path;
+#if SYSLOG_NG_ENABLE_JIT
+  self->super.infer_types = _get_subscript_infer_types;
+#endif
   self->operand = operand;
   self->key = key;
   return &self->super;
