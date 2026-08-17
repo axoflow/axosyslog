@@ -38,6 +38,21 @@ FILTERX_EXPR_DECLARE_TYPE(literal_container);
 
 gsize filterx_literal_container_len(FilterXExpr *s);
 
+/* The container the optimizer already materialised: every literal element in place, every
+ * non-literal one a null-valued hole.  NULL when the container could not be evaluated early at
+ * all -- a non-literal key fails filterx_mapping_normalize_key() and bails out of the whole early
+ * eval, so a template at all means every key of it is a literal string. */
+FilterXObject *filterx_literal_container_get_template(FilterXExpr *s);
+
+/* Type the holes the template left, at @base in @env.
+ *
+ * Returns FALSE when the container holds a key the caller cannot have recorded, which is a reason
+ * for @base to stop claiming a complete key set.  Two elements do that: one at a key nothing can
+ * name, and a nullv one -- its slot is left unset when its value is null, so an entry would
+ * falsely assert the key exists while the key may turn up all the same. */
+gboolean filterx_literal_container_overlay_hole_types(FilterXExpr *s, FilterXTypeEnv *env,
+                                                      const FilterXTypePath *base);
+
 
 /* Literal Dict */
 

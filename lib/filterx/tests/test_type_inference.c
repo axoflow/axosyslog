@@ -272,6 +272,148 @@ Test(filterx_type_inference, if_one_sided_assign_collapses_to_unknown)
   filterx_expr_unref(block);
 }
 
+Test(filterx_type_inference, folded_literal_dict_records_a_type_per_key)
+{
+  /* d = {"a": "x", "b": "y"} — fully literal, folds to a single FilterXDict literal, whose key
+   * set is exactly known.  Each key gets an entry of its own; there is no one element type the
+   * whole level has to agree on. */
+  GList *elems = NULL;
+  elems = g_list_append(elems, filterx_literal_element_new(
+                          filterx_literal_new(filterx_string_new("a", -1)),
+                          filterx_literal_new(filterx_string_new("x", -1))));
+  elems = g_list_append(elems, filterx_literal_element_new(
+                          filterx_literal_new(filterx_string_new("b", -1)),
+                          filterx_literal_new(filterx_string_new("y", -1))));
+  FilterXExpr *assign = filterx_assign_new(filterx_floating_variable_expr_new("d"),
+                                           filterx_literal_dict_new(elems));
+  FilterXExpr *read_a = filterx_getattr_new(filterx_floating_variable_expr_new("d"),
+                                            filterx_string_new("a", -1));
+  FilterXExpr *read_b = filterx_getattr_new(filterx_floating_variable_expr_new("d"),
+                                            filterx_string_new("b", -1));
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign, read_a, read_b, NULL);
+  block = _run(block);
+
+  cr_assert_eq(assign->static_type, FILTERX_STATIC_TYPE_DICT);
+  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_STRING);
+  cr_assert_eq(read_b->static_type, FILTERX_STATIC_TYPE_STRING);
+  filterx_expr_unref(block);
+}
+
+Test(filterx_type_inference, folded_literal_dict_of_boolean_records_its_keys)
+{
+  /* d = {"a": true, "b": false} — fully literal, folds to a single FilterXDict literal. */
+  GList *elems = NULL;
+  elems = g_list_append(elems, filterx_literal_element_new(
+                          filterx_literal_new(filterx_string_new("a", -1)),
+                          filterx_literal_new(filterx_boolean_new(TRUE))));
+  elems = g_list_append(elems, filterx_literal_element_new(
+                          filterx_literal_new(filterx_string_new("b", -1)),
+                          filterx_literal_new(filterx_boolean_new(FALSE))));
+  FilterXExpr *assign = filterx_assign_new(filterx_floating_variable_expr_new("d"),
+                                           filterx_literal_dict_new(elems));
+  FilterXExpr *read_a = filterx_getattr_new(filterx_floating_variable_expr_new("d"),
+                                            filterx_string_new("a", -1));
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign, read_a, NULL);
+  block = _run(block);
+
+  cr_assert_eq(assign->static_type, FILTERX_STATIC_TYPE_DICT);
+  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_BOOLEAN);
+  filterx_expr_unref(block);
+}
+
+Test(filterx_type_inference, folded_literal_depth3_dict_chain)
+{
+  /* d = {"l1": {"l2": {"l3": "leaf"}}}, fully literal; d.l1.l2.l3 reads back as a STRING. */
+  GList *l3_elems = g_list_append(NULL, filterx_literal_element_new(
+                                    filterx_literal_new(filterx_string_new("l3", -1)),
+                                    filterx_literal_new(filterx_string_new("leaf", -1))));
+  GList *l2_elems = g_list_append(NULL, filterx_literal_element_new(
+                                    filterx_literal_new(filterx_string_new("l2", -1)),
+                                    filterx_literal_dict_new(l3_elems)));
+  GList *l1_elems = g_list_append(NULL, filterx_literal_element_new(
+                                    filterx_literal_new(filterx_string_new("l1", -1)),
+                                    filterx_literal_dict_new(l2_elems)));
+  FilterXExpr *assign = filterx_assign_new(filterx_floating_variable_expr_new("d"),
+                                           filterx_literal_dict_new(l1_elems));
+  FilterXExpr *read_l1 = filterx_getattr_new(filterx_floating_variable_expr_new("d"),
+                                             filterx_string_new("l1", -1));
+  FilterXExpr *read_l2 = filterx_getattr_new(read_l1, filterx_string_new("l2", -1));
+  FilterXExpr *read_l3 = filterx_getattr_new(read_l2, filterx_string_new("l3", -1));
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign, read_l3, NULL);
+  block = _run(block);
+
+  /* Each node answers from its own path, so the nesting is read off the expression tree rather
+   * than walked out of one node's chain. */
+  cr_assert_eq(assign->static_type, FILTERX_STATIC_TYPE_DICT);
+  cr_assert_eq(read_l1->static_type, FILTERX_STATIC_TYPE_DICT);
+  cr_assert_eq(read_l2->static_type, FILTERX_STATIC_TYPE_DICT);
+  cr_assert_eq(read_l3->static_type, FILTERX_STATIC_TYPE_STRING);
+  filterx_expr_unref(block);
+}
+
+Test(filterx_type_inference, mixed_value_types_in_literal_dict_stay_distinct_per_key)
+{
+  /* d = {"a": "x", "b": [1]} — a string and a list value.  Each key keeps its own type; only a
+   * read that cannot name its key has to meet them, and there the two do not agree. */
+  GList *list_elems = g_list_append(NULL, filterx_literal_element_new(
+                                      NULL,
+                                      filterx_literal_new(filterx_integer_new(1))));
+  GList *elems = NULL;
+  elems = g_list_append(elems, filterx_literal_element_new(
+                          filterx_literal_new(filterx_string_new("a", -1)),
+                          filterx_literal_new(filterx_string_new("x", -1))));
+  elems = g_list_append(elems, filterx_literal_element_new(
+                          filterx_literal_new(filterx_string_new("b", -1)),
+                          filterx_literal_list_new(list_elems)));
+  FilterXExpr *assign = filterx_assign_new(filterx_floating_variable_expr_new("d"),
+                                           filterx_literal_dict_new(elems));
+  FilterXExpr *read_a = filterx_getattr_new(filterx_floating_variable_expr_new("d"),
+                                            filterx_string_new("a", -1));
+  FilterXExpr *read_b = filterx_getattr_new(filterx_floating_variable_expr_new("d"),
+                                            filterx_string_new("b", -1));
+  FilterXExpr *read_dynamic = filterx_get_subscript_new(filterx_floating_variable_expr_new("d"),
+                                                        filterx_floating_variable_expr_new("k"));
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign, read_a, read_b, read_dynamic, NULL);
+  block = _run(block);
+
+  cr_assert_eq(assign->static_type, FILTERX_STATIC_TYPE_DICT);
+  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_STRING);
+  cr_assert_eq(read_b->static_type, FILTERX_STATIC_TYPE_LIST);
+  cr_assert_eq(read_dynamic->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  filterx_expr_unref(block);
+}
+
+Test(filterx_type_inference, a_folded_literal_list_is_not_an_empty_one)
+{
+  /* v = {"l": [1, 2, 3]}; v.l.anything  -> UNKNOWN, not "absent because the list is closed and
+   * has no recorded children".  Nothing inside a list can be recorded, so a list installed from
+   * an object in hand must give up `closed` rather than claim an empty key set -- the one place
+   * in this pass where dropping the all-keys bound could have made a claim stronger. */
+  GList *elems = NULL;
+  for (gint i = 1; i <= 3; i++)
+    elems = g_list_append(elems, filterx_literal_element_new(NULL,
+                                                             filterx_literal_new(filterx_integer_new(i))));
+
+  GList *outer = g_list_append(NULL, filterx_literal_element_new(
+                                 filterx_literal_new(filterx_string_new("l", -1)),
+                                 filterx_literal_list_new(elems)));
+  FilterXExpr *assign_v = filterx_assign_new(filterx_floating_variable_expr_new("v"),
+                                             filterx_literal_dict_new(outer));
+  FilterXExpr *read_l = filterx_getattr_new(filterx_floating_variable_expr_new("v"),
+                                            filterx_string_new("l", -1));
+  FilterXExpr *read_elem = filterx_get_subscript_new(
+                             filterx_getattr_new(filterx_floating_variable_expr_new("v"),
+                                                 filterx_string_new("l", -1)),
+                             filterx_literal_new(filterx_integer_new(0)));
+
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_v, read_l, read_elem, NULL);
+  block = _run(block);
+
+  cr_assert_eq(read_l->static_type, FILTERX_STATIC_TYPE_LIST);
+  cr_assert_eq(read_elem->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  filterx_expr_unref(block);
+}
+
 Test(filterx_type_inference, get_subscript_shifts_operand_spec)
 {
   /* d = {"a": "x", "b": "y"}; d["a"] -> STRING, by the same path step a getattr would use. */
@@ -394,6 +536,80 @@ Test(filterx_type_inference, macro_variable_is_always_unknown)
   read_facility = _run(read_facility);
   cr_assert_eq(read_facility->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
   filterx_expr_unref(read_facility);
+}
+
+Test(filterx_type_inference, a_non_literal_key_leaves_the_container_empty)
+{
+  /* d = {$k: 1};  -- a non-literal key fails filterx_mapping_normalize_key(), so the optimizer
+   * builds no template and there is no key to hang the 1 on.  The container's own kind is all
+   * that survives; every key of it reads UNKNOWN, including the one it does hold. */
+  GList *elems = g_list_append(NULL, filterx_literal_element_new(
+                                 filterx_floating_variable_expr_new("k"),
+                                 filterx_literal_new(filterx_integer_new(1))));
+  FilterXExpr *assign_d = filterx_assign_new(filterx_floating_variable_expr_new("d"),
+                                             filterx_literal_dict_new(elems));
+  FilterXExpr *read_named = filterx_getattr_new(filterx_floating_variable_expr_new("d"),
+                                                filterx_string_new("anything", -1));
+  FilterXExpr *read_d = filterx_floating_variable_expr_new("d");
+
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_d, read_named, read_d, NULL);
+  block = _run(block);
+
+  cr_assert_eq(read_named->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  cr_assert_eq(read_d->static_type, FILTERX_STATIC_TYPE_DICT);
+  filterx_expr_unref(block);
+}
+
+Test(filterx_type_inference, a_nullv_element_records_no_key_at_all)
+{
+  /* d = {"a": ??$x};  -- _literal_dict_store_elem() leaves the slot unset when the value is
+   * null, so the key may not exist at runtime.  Recording it would assert that it does; leaving
+   * no entry is what makes a read of d.a answer UNKNOWN rather than $x's type. */
+  GList *elems = g_list_append(NULL, filterx_nullv_literal_element_new(
+                                 filterx_literal_new(filterx_string_new("a", -1)),
+                                 filterx_floating_variable_expr_new("x")));
+  FilterXExpr *assign_x = filterx_assign_new(filterx_floating_variable_expr_new("x"),
+                                             filterx_literal_new(filterx_string_new("s", -1)));
+  FilterXExpr *assign_d = filterx_assign_new(filterx_floating_variable_expr_new("d"),
+                                             filterx_literal_dict_new(elems));
+  FilterXExpr *read_a = filterx_getattr_new(filterx_floating_variable_expr_new("d"),
+                                            filterx_string_new("a", -1));
+
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_x, assign_d, read_a, NULL);
+  block = _run(block);
+
+  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  filterx_expr_unref(block);
+}
+
+Test(filterx_type_inference, a_nullv_element_costs_the_container_its_closed_key_set)
+{
+  /* d = {"a": ??$x}; if (c) { d.a = 1; } d.a  -> UNKNOWN.
+   *
+   * The nullv key is recorded nowhere, but it may well exist at runtime, so d's key set is not
+   * bounded by its recorded children.  Were d left closed, the branch that did not write would
+   * read as proving "a" absent and the join would keep INTEGER -- for a location that holds $x
+   * whenever the condition was false and $x was not null. */
+  GList *elems = g_list_append(NULL, filterx_nullv_literal_element_new(
+                                 filterx_literal_new(filterx_string_new("a", -1)),
+                                 filterx_floating_variable_expr_new("x")));
+  FilterXExpr *assign_x = filterx_assign_new(filterx_floating_variable_expr_new("x"),
+                                             filterx_literal_new(filterx_string_new("s", -1)));
+  FilterXExpr *assign_d = filterx_assign_new(filterx_floating_variable_expr_new("d"),
+                                             filterx_literal_dict_new(elems));
+  FilterXExpr *set_a = filterx_setattr_new(filterx_floating_variable_expr_new("d"),
+                                           filterx_string_new("a", -1),
+                                           filterx_literal_new(filterx_integer_new(1)));
+  FilterXExpr *iff = filterx_conditional_new(filterx_floating_variable_expr_new("c"));
+  filterx_conditional_set_true_branch(iff, set_a);
+
+  FilterXExpr *read_a = filterx_getattr_new(filterx_floating_variable_expr_new("d"),
+                                            filterx_string_new("a", -1));
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_x, assign_d, iff, read_a, NULL);
+  block = _run(block);
+
+  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  filterx_expr_unref(block);
 }
 
 static void
