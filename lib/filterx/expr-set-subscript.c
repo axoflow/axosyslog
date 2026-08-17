@@ -20,6 +20,7 @@
  *
  */
 #include "filterx/expr-set-subscript.h"
+#include "filterx/expr-variable.h"
 #include "filterx/object-primitive.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/object-null.h"
@@ -174,6 +175,25 @@ _set_subscript_get_path(FilterXExpr *s, FilterXTypePath *path_out)
   return TRUE;
 }
 
+#if SYSLOG_NG_ENABLE_JIT
+static void
+_set_subscript_record_write(FilterXSetSubscript *self, FilterXTypeEnv *env)
+{
+  FilterXTypePath path;
+
+  if (filterx_expr_get_path(&self->super, &path))
+    filterx_type_env_set_shape_at_path(env, &path, self->new_value);
+}
+
+static void
+_set_subscript_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  filterx_expr_infer_types_default(s, env);
+  _set_subscript_record_write((FilterXSetSubscript *) s, env);
+}
+
+#endif
+
 static gboolean
 _set_subscript_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
@@ -200,6 +220,9 @@ filterx_set_subscript_new(FilterXExpr *object, FilterXExpr *key, FilterXExpr *ne
   self->super.walk_children = _set_subscript_walk;
   self->super.free_fn = _free;
   self->super.get_path = _set_subscript_get_path;
+#if SYSLOG_NG_ENABLE_JIT
+  self->super.infer_types = _set_subscript_infer_types;
+#endif
   self->object = object;
   self->key = key;
   self->new_value = new_value;
