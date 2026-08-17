@@ -24,6 +24,7 @@
 
 #include "filterx/expr-arithmetic-operators.h"
 #include "filterx/filterx-type-inference.h"
+#include "filterx/filterx-type-inference-private.h"
 #include "filterx/filterx-scope.h"
 #include "filterx/filterx-expr.h"
 #include "filterx/expr-literal.h"
@@ -565,6 +566,126 @@ Test(filterx_type_inference, getattr_chain_propagates_through_three_levels)
   filterx_expr_unref(block);
 }
 
+Test(filterx_type_inference, incremental_dict_build_tracks_nested_element_types)
+{
+  /* d = {}; d.a = {}; d.a.b = {};  -> reads of d, d.a and d.a.b all resolve to DICT: the
+   * incremental build reaches the same state a nested literal would have, one path at a time. */
+  FilterXExpr *assign_d = _assign_empty_dict("d");
+  FilterXExpr *set_a = _write_attr("d", "a", filterx_literal_dict_new(NULL));
+  FilterXExpr *set_ab = filterx_setattr_new(_read_attr("d", "a"), filterx_string_new("b", -1),
+                                            filterx_literal_dict_new(NULL));
+
+  FilterXExpr *read_d = filterx_floating_variable_expr_new("d");
+  FilterXExpr *read_a = _read_attr("d", "a");
+  FilterXExpr *read_ab = _read_attr_of(_read_attr("d", "a"), "b");
+
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_d, set_a, set_ab,
+                                                    read_d, read_a, read_ab, NULL);
+  block = _optimize_and_infer(block);
+
+  cr_assert_eq(read_d->static_type, FILTERX_STATIC_TYPE_DICT);
+  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_DICT);
+  cr_assert_eq(read_ab->static_type, FILTERX_STATIC_TYPE_DICT);
+  filterx_expr_unref(block);
+}
+
+Test(filterx_type_inference, per_key_type_survives_heterogeneous_sibling)
+{
+  /* d = {}; d.a = {}; d.b = "s";  -> the two keys disagree, and nothing forces them to agree:
+   * each write records one location, so d.a stays a DICT and d.b a STRING. */
+  FilterXExpr *assign_d = _assign_empty_dict("d");
+  FilterXExpr *set_a = _write_attr("d", "a", filterx_literal_dict_new(NULL));
+  FilterXExpr *set_b = _write_attr("d", "b", filterx_literal_new(filterx_string_new("s", -1)));
+  FilterXExpr *read_a = _read_attr("d", "a");
+  FilterXExpr *read_b = _read_attr("d", "b");
+
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_d, set_a, set_b, read_a, read_b, NULL);
+  block = _optimize_and_infer(block);
+
+  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_DICT);
+  cr_assert_eq(read_b->static_type, FILTERX_STATIC_TYPE_STRING);
+  filterx_expr_unref(block);
+}
+
+Test(filterx_type_inference, per_key_type_survives_non_container_sibling)
+{
+  /* d = {}; d.x = 5; d.y = {};  -> d.y is a DICT regardless of what the d.x sibling holds. */
+  FilterXExpr *assign_d = _assign_empty_dict("d");
+  FilterXExpr *set_x = _write_attr("d", "x", filterx_literal_new(filterx_integer_new(5)));
+  FilterXExpr *set_y = _write_attr("d", "y", filterx_literal_dict_new(NULL));
+  FilterXExpr *read_y = _read_attr("d", "y");
+
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_d, set_x, set_y, read_y, NULL);
+  block = _optimize_and_infer(block);
+
+  cr_assert_eq(read_y->static_type, FILTERX_STATIC_TYPE_DICT);
+  filterx_expr_unref(block);
+}
+
+Test(filterx_type_inference, one_sided_branch_write_survives_the_join)
+{
+  /* d = {}; if (c) { d.a = {}; } d.a  ->  DICT.
+   *
+   * The branch that did not write has d closed, which proves the key absent there; a read of a
+   * missing key returns C NULL, which static_type says nothing about. */
+  FilterXExpr *assign_d = _assign_empty_dict("d");
+  FilterXExpr *set_a = _write_attr("d", "a", filterx_literal_dict_new(NULL));
+  FilterXExpr *iff = filterx_conditional_new(filterx_floating_variable_expr_new("c"));
+  filterx_conditional_set_true_branch(iff, set_a);
+
+  FilterXExpr *read_a = _read_attr("d", "a");
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_d, iff, read_a, NULL);
+  block = _optimize_and_infer(block);
+
+  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_DICT);
+  filterx_expr_unref(block);
+}
+
+/* Build a fresh getattr chain d.keys[0].keys[1]...keys[n-1]. */
+static FilterXExpr *
+_build_attr_chain(const gchar **keys, gint n)
+{
+  FilterXExpr *expr = filterx_floating_variable_expr_new("d");
+  for (gint i = 0; i < n; i++)
+    expr = filterx_getattr_new(expr, filterx_string_new(keys[i], -1));
+  return expr;
+}
+
+Test(filterx_type_inference, incremental_build_past_depth_cap_is_safe)
+{
+  /* a write past FILTERX_ACCESS_PATH_MAX_DEPTH has no address to land on, so it opens the deepest
+   * ancestor it can name */
+  enum { DEPTH = 20 };
+  cr_assert_gt(DEPTH, FILTERX_ACCESS_PATH_MAX_DEPTH);
+  gchar key_storage[DEPTH][8];
+  const gchar *keys[DEPTH];
+  for (gint i = 0; i < DEPTH; i++)
+    {
+      g_snprintf(key_storage[i], sizeof(key_storage[i]), "k%d", i);
+      keys[i] = key_storage[i];
+    }
+
+  FilterXExpr *block = filterx_compound_expr_new(TRUE);
+  filterx_compound_expr_add_ref(block, _assign_empty_dict("d"));
+  /* d.k0 = {}; d.k0.k1 = {}; ... */
+  for (gint level = 0; level < DEPTH; level++)
+    filterx_compound_expr_add_ref(block, filterx_setattr_new(
+                                    _build_attr_chain(keys, level),
+                                    filterx_string_new(keys[level], -1),
+                                    filterx_literal_dict_new(NULL)));
+
+  FilterXExpr *read_within_cap = _build_attr_chain(keys, 4);
+  filterx_compound_expr_add_ref(block, read_within_cap);
+  FilterXExpr *read_deepest = _build_attr_chain(keys, FILTERX_ACCESS_PATH_MAX_DEPTH);
+  filterx_compound_expr_add_ref(block, read_deepest);
+
+  block = _optimize_and_infer(block);
+
+  cr_assert_eq(read_within_cap->static_type, FILTERX_STATIC_TYPE_DICT);
+  cr_assert_eq(read_deepest->static_type, FILTERX_STATIC_TYPE_DICT);
+  filterx_expr_unref(block);
+}
+
 Test(filterx_type_inference, reassigning_root_invalidates_the_whole_range_under_it)
 {
   /* d = {}; d.a = {};   -> d.a is a DICT
@@ -582,6 +703,95 @@ Test(filterx_type_inference, reassigning_root_invalidates_the_whole_range_under_
   block = _optimize_and_infer(block);
 
   cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  filterx_expr_unref(block);
+}
+
+/* A single-element literal dict {"<key>": "<value>"}, folded to one literal at optimize time. */
+static FilterXExpr *
+_string_valued_dict(const gchar *key, const gchar *value)
+{
+  GList *elements = g_list_append(NULL,
+                                  filterx_literal_element_new(
+                                    filterx_literal_new(filterx_string_new(key, -1)),
+                                    filterx_literal_new(filterx_string_new(value, -1))));
+  return filterx_literal_dict_new(elements);
+}
+
+/* v = {}; v.a = {}; v.a.b = 5;  -> v.a.b is an INTEGER
+ * <replace v.a>;                -> whatever replaces the value at key a
+ * v.a.b                         -> @expected_b, no longer INTEGER
+ * Ownership of @replace_a is taken. */
+static void
+_assert_replacing_a_key_retypes_its_subtree(FilterXExpr *replace_a, FilterXStaticType expected_b)
+{
+  FilterXExpr *assign_v = _assign_empty_dict("v");
+  FilterXExpr *set_a = _write_attr("v", "a", filterx_literal_dict_new(NULL));
+  FilterXExpr *set_a_b = filterx_setattr_new(_read_attr("v", "a"), filterx_string_new("b", -1),
+                                             filterx_literal_new(filterx_integer_new(5)));
+  FilterXExpr *read_a_b = _read_attr_of(_read_attr("v", "a"), "b");
+  FilterXExpr *sum = filterx_operator_plus_new(read_a_b, filterx_literal_new(filterx_integer_new(10)));
+
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_v, set_a, set_a_b, replace_a, sum, NULL);
+  block = _optimize_and_infer(block);
+
+  cr_assert_eq(read_a_b->static_type, expected_b);
+  cr_assert_eq(sum->static_type, FILTERX_STATIC_TYPE_UNKNOWN,
+               "whatever v.a.b became, it is not an integer, so the sum cannot be one either");
+  filterx_expr_unref(block);
+}
+
+Test(filterx_type_inference, setattr_replacing_a_key_installs_the_new_shape)
+{
+  /* v.a = {"b": "hopszika"};  -> the write names its key, so the old subtree is replaced by the
+   * replacement's own: v.a.b is now exactly the string it holds. */
+  _assert_replacing_a_key_retypes_its_subtree(_write_attr("v", "a", _string_valued_dict("b", "hopszika")),
+                                              FILTERX_STATIC_TYPE_STRING);
+}
+
+Test(filterx_type_inference, replacing_a_key_keeps_sibling_per_key_types)
+{
+  /* v = {}; v.a = 1; v.sub = {}; v.sub.x = 2; v.sub = {"x": "s"};  -> replacing v.sub reaches
+   * only its own subtree: the sibling v.a keeps INTEGER, and v.sub itself is still a DICT.
+   * v.subscription pins that steps compare whole: it is not under v.sub. */
+  FilterXExpr *assign_v = _assign_empty_dict("v");
+  FilterXExpr *set_a = _write_attr("v", "a", filterx_literal_new(filterx_integer_new(1)));
+  FilterXExpr *set_subscription = _write_attr("v", "subscription", filterx_literal_new(filterx_string_new("s", -1)));
+  FilterXExpr *set_sub = _write_attr("v", "sub", filterx_literal_dict_new(NULL));
+  FilterXExpr *set_sub_x = filterx_setattr_new(_read_attr("v", "sub"), filterx_string_new("x", -1),
+                                               filterx_literal_new(filterx_integer_new(2)));
+  FilterXExpr *replace_sub = _write_attr("v", "sub", _string_valued_dict("x", "s"));
+  FilterXExpr *read_a = _read_attr("v", "a");
+  FilterXExpr *read_subscription = _read_attr("v", "subscription");
+  FilterXExpr *read_sub = _read_attr("v", "sub");
+
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_v, set_a, set_subscription, set_sub,
+                                                    set_sub_x, replace_sub, read_a, read_subscription,
+                                                    read_sub, NULL);
+  block = _optimize_and_infer(block);
+
+  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_INTEGER);
+  cr_assert_eq(read_subscription->static_type, FILTERX_STATIC_TYPE_STRING);
+  cr_assert_eq(read_sub->static_type, FILTERX_STATIC_TYPE_DICT);
+  filterx_expr_unref(block);
+}
+
+Test(filterx_type_inference, writing_into_a_nested_empty_dict_commits_the_deeper_level)
+{
+  /* v = {}; v.a = {}; v.a = {"b": "x"};  ->  v.a.b reads back as a STRING */
+  FilterXExpr *assign_v = _assign_empty_dict("v");
+  FilterXExpr *set_a = _write_attr("v", "a", filterx_literal_dict_new(NULL));
+  FilterXExpr *replace_a = _write_attr("v", "a", _string_valued_dict("b", "x"));
+  FilterXExpr *read_v = filterx_floating_variable_expr_new("v");
+  FilterXExpr *read_a = _read_attr("v", "a");
+  FilterXExpr *read_a_b = _read_attr_of(read_a, "b");
+
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_v, set_a, replace_a, read_v,
+                                                    read_a_b, NULL);
+  block = _optimize_and_infer(block);
+
+  cr_assert_eq(read_v->static_type, FILTERX_STATIC_TYPE_DICT);
+  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_DICT);
+  cr_assert_eq(read_a_b->static_type, FILTERX_STATIC_TYPE_STRING);
   filterx_expr_unref(block);
 }
 
@@ -625,6 +835,106 @@ Test(filterx_type_inference, macro_variable_is_always_unknown)
   read_facility = _optimize_and_infer(read_facility);
   cr_assert_eq(read_facility->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
   filterx_expr_unref(read_facility);
+}
+
+Test(filterx_type_inference, writing_a_key_twice_overwrites_rather_than_meets)
+{
+  /* a.b = "s"; a.b = 1;  -> INTEGER.  A write names one location, and the value that was there
+   * is simply gone; meeting the two would answer UNKNOWN for a variable whose type is not in
+   * doubt at all. */
+  FilterXExpr *assign_a = _assign_empty_dict("a");
+  FilterXExpr *set_string = _write_attr("a", "b", filterx_literal_new(filterx_string_new("s", -1)));
+  FilterXExpr *set_integer = _write_attr("a", "b", filterx_literal_new(filterx_integer_new(1)));
+  FilterXExpr *read_b = _read_attr("a", "b");
+
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_a, set_string, set_integer,
+                                                    read_b, NULL);
+  block = _optimize_and_infer(block);
+
+  cr_assert_eq(read_b->static_type, FILTERX_STATIC_TYPE_INTEGER);
+  filterx_expr_unref(block);
+}
+
+Test(filterx_type_inference, a_write_below_a_dynamic_subscript_retires_the_container_above_it)
+{
+  /* d = {}; d.a = {}; d.a.x = 1; d[k].b = 2; d.a.x  ->  UNKNOWN: the setattr's object is d[k],
+   * which addresses no location, so the path it hands the env stops truncated at d. */
+  FilterXExpr *assign_d = _assign_empty_dict("d");
+  FilterXExpr *set_a = _write_attr("d", "a", filterx_literal_dict_new(NULL));
+  FilterXExpr *set_a_x = filterx_setattr_new(_read_attr("d", "a"), filterx_string_new("x", -1),
+                                             filterx_literal_new(filterx_integer_new(1)));
+  FilterXExpr *set_dynamic_b = filterx_setattr_new(
+                                 filterx_get_subscript_new(filterx_floating_variable_expr_new("d"),
+                                                           filterx_floating_variable_expr_new("k")),
+                                 filterx_string_new("b", -1),
+                                 filterx_literal_new(filterx_integer_new(2)));
+  FilterXExpr *read_a_x = _read_attr_of(_read_attr("d", "a"), "x");
+  FilterXExpr *read_d = filterx_floating_variable_expr_new("d");
+
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_d, set_a, set_a_x, set_dynamic_b,
+                                                    read_a_x, read_d, NULL);
+  block = _optimize_and_infer(block);
+
+  cr_assert_eq(read_a_x->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  cr_assert_eq(read_d->static_type, FILTERX_STATIC_TYPE_DICT);
+  filterx_expr_unref(block);
+}
+
+Test(filterx_type_inference, a_dynamic_read_has_no_location_to_read)
+{
+  /* a = {}; a.x = 1; a[k]  ->  UNKNOWN even though a is closed over a single INTEGER key: a[k]
+   * addresses no location, so no entry speaks for it.  The named read a.x is unaffected. */
+  FilterXExpr *assign_a = _assign_empty_dict("a");
+  FilterXExpr *set_x = _write_attr("a", "x", filterx_literal_new(filterx_integer_new(1)));
+  FilterXExpr *read_dynamic = filterx_get_subscript_new(filterx_floating_variable_expr_new("a"),
+                                                        filterx_floating_variable_expr_new("k"));
+  FilterXExpr *read_x = _read_attr("a", "x");
+
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_a, set_x, read_dynamic, read_x, NULL);
+  block = _optimize_and_infer(block);
+
+  cr_assert_eq(read_dynamic->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  cr_assert_eq(read_x->static_type, FILTERX_STATIC_TYPE_INTEGER);
+  filterx_expr_unref(block);
+}
+
+Test(filterx_type_inference, copying_a_container_into_its_own_subtree_terminates)
+{
+  /* d.sub = d;  -- the range being read is the range being written.  _emit_setattr_call() forks
+   * the RHS first for exactly this statement, and the source has to be snapshotted before the
+   * destination is dropped for the same reason. */
+  FilterXExpr *assign_d = _assign_empty_dict("d");
+  FilterXExpr *set_a = _write_attr("d", "a", filterx_literal_new(filterx_integer_new(1)));
+  FilterXExpr *self_copy = _write_attr("d", "sub", filterx_floating_variable_expr_new("d"));
+  FilterXExpr *read_sub = _read_attr("d", "sub");
+  FilterXExpr *read_sub_a = _read_attr_of(_read_attr("d", "sub"), "a");
+
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_d, set_a, self_copy,
+                                                    read_sub, read_sub_a, NULL);
+  block = _optimize_and_infer(block);
+
+  cr_assert_eq(read_sub->static_type, FILTERX_STATIC_TYPE_DICT);
+  cr_assert_eq(read_sub_a->static_type, FILTERX_STATIC_TYPE_INTEGER);
+  filterx_expr_unref(block);
+}
+
+Test(filterx_type_inference, hoisting_a_subtree_over_its_own_root_terminates)
+{
+  /* d = d.sub;  -- the mirror hazard: without snapshotting first, the copy destroys its source
+   * before it has read it. */
+  FilterXExpr *assign_d = _assign_empty_dict("d");
+  FilterXExpr *set_sub = _write_attr("d", "sub", filterx_literal_dict_new(NULL));
+  FilterXExpr *set_sub_a = filterx_setattr_new(_read_attr("d", "sub"), filterx_string_new("a", -1),
+                                               filterx_literal_new(filterx_string_new("s", -1)));
+  FilterXExpr *hoist = filterx_assign_new(filterx_floating_variable_expr_new("d"), _read_attr("d", "sub"));
+  FilterXExpr *read_a = _read_attr("d", "a");
+
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_d, set_sub, set_sub_a, hoist,
+                                                    read_a, NULL);
+  block = _optimize_and_infer(block);
+
+  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_STRING);
+  filterx_expr_unref(block);
 }
 
 Test(filterx_type_inference, a_non_literal_key_leaves_the_container_empty)
@@ -692,6 +1002,31 @@ Test(filterx_type_inference, a_nullv_element_costs_the_container_its_closed_key_
 
   cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
   filterx_expr_unref(block);
+}
+
+Test(filterx_type_inference, env_entries_outlive_the_expression_tree_they_came_from)
+{
+  /* FilterXExpr::name borrows its characters from the string object the getattr owns, so an env
+   * that did not intern its keys would dangle once the tree is freed: here the tree goes first. */
+  FilterXExpr *variable = filterx_floating_variable_expr_new("v");
+  FilterXVariableHandle handle = filterx_variable_expr_get_handle(variable);
+  FilterXExpr *assign_v = filterx_assign_new(variable, filterx_literal_dict_new(NULL));
+  FilterXExpr *set_key = _write_attr("v", "a_borrowed_key_name", filterx_literal_new(filterx_string_new("s", -1)));
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_v, set_key, NULL);
+
+  FilterXTypeEnv *env = filterx_type_env_new();
+  block = filterx_expr_optimize(block);
+  filterx_expr_infer_types(block, env);
+
+  filterx_expr_unref(block);
+
+  FilterXAccessPath path;
+  memset(&path, 0, sizeof(path));
+  path.root = handle;
+  filterx_access_path_append_step(&path, filterx_access_path_intern_key("a_borrowed_key_name"));
+
+  cr_assert_eq(filterx_type_env_get_static_type_at_path(env, &path), FILTERX_STATIC_TYPE_STRING);
+  filterx_type_env_free(env);
 }
 
 static void

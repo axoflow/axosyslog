@@ -187,6 +187,25 @@ fx_jit_do_nullv_setattr(FilterXExpr *s, FilterXObject *lhs, FilterXObject *clone
   return _do_nullv_setattr((FilterXSetAttr *) s, lhs, cloned);
 }
 
+/* The written location is exactly one path, so the write overwrites it rather than meeting into
+ * it: `$a.b = "s"; $a.b = 1;` leaves INTEGER.  Sibling keys and the enclosing level are untouched,
+ * and a closed container stays closed, the new key now being a recorded child of its own. */
+static void
+_setattr_record_write(FilterXSetAttr *self, FilterXTypeEnv *env)
+{
+  FilterXAccessPath path;
+
+  if (filterx_expr_get_path(&self->super, &path))
+    filterx_type_env_set_shape_at_path(env, &path, self->new_value);
+}
+
+static void
+_setattr_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  filterx_expr_infer_types_default(s, env);
+  _setattr_record_write((FilterXSetAttr *) s, env);
+}
+
 static inline FilterXIRValue
 _emit_setattr_call(FilterXSetAttr *self, FilterXJIT *jit, const gchar *fn_name)
 {
@@ -232,6 +251,7 @@ filterx_setattr_new(FilterXExpr *object, FilterXObject *attr_name, FilterXExpr *
   self->super.free_fn = _free;
   self->super.get_path = _setattr_get_path;
 #if SYSLOG_NG_ENABLE_JIT
+  self->super.infer_types = _setattr_infer_types;
   self->super.compile = _setattr_compile;
 #endif
   self->object = object;
