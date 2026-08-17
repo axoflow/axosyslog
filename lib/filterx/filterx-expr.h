@@ -57,7 +57,7 @@ struct _FilterXExpr
 
   /* not thread-safe */
   guint32 ref_cnt;
-guint32 ignore_falsy_result:1, suppress_from_trace:1, inited:1, optimized:1, statement:1, effects:
+guint32 ignore_falsy_result:1, suppress_from_trace:1, inited:1, optimized:1, statement:1, types_inferred:1, effects:
   FXE_EFFECT_BITFIELD_SIZE;
 
   /* not to be used except for FilterXMessageRef, replace any cached values
@@ -304,6 +304,8 @@ filterx_expr_compile(FilterXExpr *self, FilterXJIT *jit)
 {
 #if SYSLOG_NG_ENABLE_JIT
   g_assert(self && self->compile);
+  g_assert(self->types_inferred);   /* an un-inferred node reads as UNKNOWN and never devirtualizes */
+
   FilterXIRValue result = self->compile(self, jit);
 
   return fx_jit_emit_expr_propagate_to_error_if_null(jit, self, result);
@@ -328,6 +330,8 @@ filterx_expr_compile_assign(FilterXExpr *self, FilterXJIT *jit, FilterXIRValue n
 {
 #if SYSLOG_NG_ENABLE_JIT
   g_assert(self && self->compile_assign);
+  g_assert(self->types_inferred);   /* an un-inferred node reads as UNKNOWN and never devirtualizes */
+
   return self->compile_assign(self, jit, new_value);
 #else
   g_assert_not_reached();
@@ -339,6 +343,8 @@ filterx_expr_compile_typed(FilterXExpr *self, FilterXJIT *jit)
 {
 #if SYSLOG_NG_ENABLE_JIT
   g_assert(self && self->compile);
+  g_assert(self->types_inferred);   /* an un-inferred node reads as UNKNOWN and never devirtualizes */
+
   FilterXIRValue result = self->compile(self, jit);
 
   return fx_jit_emit_expr_make_typed_object(jit, self, result);

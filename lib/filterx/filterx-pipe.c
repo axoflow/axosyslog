@@ -23,6 +23,7 @@
 #include "filterx/filterx-pipe.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/filterx-config.h"
+#include "filterx/filterx-type-inference.h"
 #include "filterx/filterx-scope-var-layout.h"
 #include "filterx/jit/jit.h"
 #include "stats/stats-registry.h"
@@ -63,6 +64,16 @@ _compile_block(LogFilterXPipe *self, GlobalConfig *cfg)
   filterx_jit_ir_finish_current_block(jit, result);
 }
 
+static void
+_infer_block_types(LogFilterXPipe *self)
+{
+#if SYSLOG_NG_ENABLE_JIT
+  FilterXTypeEnv *env = filterx_type_env_new();
+  filterx_expr_infer_types(self->block, env);
+  filterx_type_env_free(env);
+#endif
+}
+
 static gboolean
 _initialize_block(LogFilterXPipe *self, FilterXEvalContext *compile_context)
 {
@@ -71,6 +82,8 @@ _initialize_block(LogFilterXPipe *self, FilterXEvalContext *compile_context)
 
   if (!filterx_expr_init(self->block, cfg))
     return FALSE;
+
+  _infer_block_types(self);
   self->scope_var_layout = filterx_scope_variable_layout_new(self->block);
   _compile_block(self, cfg);
   return TRUE;
