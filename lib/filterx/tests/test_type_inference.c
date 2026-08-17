@@ -296,6 +296,42 @@ Test(filterx_type_inference, empty_block_is_boolean)
   filterx_expr_unref(block);
 }
 
+Test(filterx_type_inference, if_without_an_else_meets_the_implicit_true)
+{
+  /* if (c) { true }  ->  BOOLEAN, as the absent else arm evaluates to TRUE */
+  FilterXExpr *iff = filterx_conditional_new(filterx_floating_variable_expr_new("c"));
+  filterx_conditional_set_true_branch(iff, filterx_literal_new(filterx_boolean_new(TRUE)));
+
+  iff = _optimize_and_infer(iff);
+  cr_assert_eq(iff->static_type, FILTERX_STATIC_TYPE_BOOLEAN);
+  filterx_expr_unref(iff);
+}
+
+Test(filterx_type_inference, if_without_an_else_still_collapses_on_a_non_boolean_branch)
+{
+  /* if (c) { "a" }  ->  UNKNOWN, as the implicit TRUE disagrees with it */
+  FilterXExpr *iff = filterx_conditional_new(filterx_floating_variable_expr_new("c"));
+  filterx_conditional_set_true_branch(iff, filterx_literal_new(filterx_string_new("a", -1)));
+
+  iff = _optimize_and_infer(iff);
+  cr_assert_eq(iff->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  filterx_expr_unref(iff);
+}
+
+Test(filterx_type_inference, if_without_a_true_branch_takes_the_condition_type)
+{
+  /* with no then-branch a truthy condition yields the condition's own value */
+  FilterXExpr *iff = filterx_conditional_new(
+                       filterx_comparison_new(filterx_floating_variable_expr_new("a"),
+                                              filterx_literal_new(filterx_integer_new(1)),
+                                              FCMPX_EQ | FCMPX_TYPE_AWARE));
+  filterx_conditional_set_false_branch(iff, filterx_literal_new(filterx_boolean_new(FALSE)));
+
+  iff = _optimize_and_infer(iff);
+  cr_assert_eq(iff->static_type, FILTERX_STATIC_TYPE_BOOLEAN);
+  filterx_expr_unref(iff);
+}
+
 Test(filterx_type_inference, literal_dict_is_dict)
 {
   FilterXExpr *empty_dict = filterx_literal_dict_new(NULL);

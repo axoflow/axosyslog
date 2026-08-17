@@ -258,6 +258,22 @@ _compile_conditional(FilterXExpr *s, FilterXJIT *jit)
   return LLVMBuildLoad2(ir, ffi->ptr_ty, result_slot, "result");
 }
 
+/* a missing branch is not an absent value, see _eval_conditional() */
+static FilterXStaticType
+_true_branch_static_type(FilterXConditional *self)
+{
+  if (self->true_branch)
+    return self->true_branch->static_type;
+
+  return self->condition ? self->condition->static_type : FILTERX_STATIC_TYPE_UNKNOWN;
+}
+
+static FilterXStaticType
+_false_branch_static_type(FilterXConditional *self)
+{
+  return self->false_branch ? self->false_branch->static_type : FILTERX_STATIC_TYPE_BOOLEAN;
+}
+
 static void
 _conditional_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
 {
@@ -273,9 +289,7 @@ _conditional_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
   filterx_type_env_meet_into(env, false_env);
   filterx_type_env_free(false_env);
 
-  FilterXStaticType t_t = self->true_branch ? self->true_branch->static_type : FILTERX_STATIC_TYPE_UNKNOWN;
-  FilterXStaticType f_t = self->false_branch ? self->false_branch->static_type : FILTERX_STATIC_TYPE_UNKNOWN;
-  s->static_type = filterx_static_type_meet(t_t, f_t);
+  s->static_type = filterx_static_type_meet(_true_branch_static_type(self), _false_branch_static_type(self));
 }
 
 #endif
