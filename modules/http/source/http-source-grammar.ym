@@ -52,6 +52,7 @@
 
 %token KW_EHTTP
 %token KW_MODE
+%token KW_AUTH_TOKEN
 
 %%
 
@@ -79,6 +80,11 @@ source_http_option
 	: KW_MODE '(' string ')'
     {
       CHECK_ERROR(ehttp_sd_set_mode(last_driver, $3), @3, "invalid mode() value");
+      free($3);
+    }
+	| KW_AUTH_TOKEN '(' string ')'
+    {
+      ehttp_sd_set_auth_token(last_driver, $3);
       free($3);
     }
 	| http_source_option

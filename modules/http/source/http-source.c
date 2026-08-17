@@ -161,9 +161,49 @@ static EHTTPExtractMessageFunc ehttp_extract_modes[] =
   _extract_messages_json_array
 };
 
+static gboolean
+_authenticate(EHTTPSourceDriver *self, HTTPRequest *http_request)
+{
+  if (!self->auth_token || self->auth_token[0] == '\0')
+    return TRUE;
+
+  GString *authorization = http_message_get_header(&http_request->super, "Authorization");
+  if (!authorization)
+    {
+      msg_debug("Auth failed, missing Authorization header");
+      return FALSE;
+    }
+
+  gboolean result = strcmp(authorization->str, self->auth_token) == 0;
+
+  g_string_free(authorization, TRUE);
+  return result;
+}
+
+static GQueue *
+_extract_log_messages(HTTPRequest *http_request, HTTPSourceConnection *connection)
+{
+  EHTTPSourceDriver *self = (EHTTPSourceDriver *) connection->owner;
+
+  if (!_authenticate(self, http_request))
+    return NULL;
+
+  return ehttp_extract_modes[self->mode](http_request, connection);
+}
+
 HTTPResponse *
 _create_response(HTTPRequest *http_request, HTTPSourceConnection *connection)
 {
+  EHTTPSourceDriver *self = (EHTTPSourceDriver *) connection->owner;
+
+  if (!_authenticate(self, http_request))
+    {
+      HTTPResponse *response = http_response_new_empty();
+      http_message_set_http_version(&response->super, 1, 1);
+      http_response_set_status_code(response, HTTP_FORBIDDEN);
+      return response;
+    }
+
   HTTPResponse *http_response = http_response_new_empty();
   http_message_set_http_version(&http_response->super, 1, 1);
   http_response_set_status_code(http_response, HTTP_OK);
@@ -194,14 +234,32 @@ ehttp_sd_set_mode(LogDriver *d, const gchar *mode)
   return TRUE;
 }
 
+void
+ehttp_sd_set_auth_token(LogDriver *d, const gchar *auth_token)
+{
+  EHTTPSourceDriver *self = (EHTTPSourceDriver *) d;
+
+  g_free(self->auth_token);
+  self->auth_token = g_strdup(auth_token);
+}
+
 gboolean
 ehttp_sd_init(LogPipe *s)
 {
   EHTTPSourceDriver *self = (EHTTPSourceDriver *) s;
 
-  self->super.extract_log_messages = ehttp_extract_modes[self->mode];
+  self->super.extract_log_messages = _extract_log_messages;
 
   return http_sd_init_method(s);
+}
+
+static void
+ehttp_sd_free(LogPipe *s)
+{
+  EHTTPSourceDriver *self = (EHTTPSourceDriver *) s;
+
+  g_free(self->auth_token);
+  http_sd_free_method(s);
 }
 
 EHTTPSourceDriver *
@@ -214,6 +272,7 @@ ehttp_sd_new(GlobalConfig *cfg)
 
   self->super.create_response = _create_response;
   self->super.super.super.super.super.init = ehttp_sd_init;
+  self->super.super.super.super.super.free_fn = ehttp_sd_free;
 
   return self;
 }

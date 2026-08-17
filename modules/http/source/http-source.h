@@ -39,9 +39,11 @@ struct EHTTPSourceDriver
 {
   HTTPSourceDriver super;
   EHTTPSourceMode mode;
+  gchar *auth_token;
 };
 
 EHTTPSourceDriver *ehttp_sd_new(GlobalConfig *cfg);
 gboolean ehttp_sd_set_mode(LogDriver *d, const gchar *mode);
+void ehttp_sd_set_auth_token(LogDriver *d, const gchar *auth_token);
 
 #endif

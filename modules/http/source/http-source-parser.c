@@ -34,6 +34,7 @@ static CfgLexerKeyword http_source_keywords[] =
 {
   { "ehttp", KW_EHTTP },
   { "mode", KW_MODE },
+  { "auth_token", KW_AUTH_TOKEN },
   HTTP_SOURCE_KEYWORDS,
   { NULL }
 };
