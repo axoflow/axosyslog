@@ -209,6 +209,21 @@ _setattr_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
   _setattr_record_write((FilterXSetAttr *) s, env);
 }
 
+static void
+_nullv_setattr_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  filterx_expr_infer_types_default(s, env);
+
+  /* ??= leaves the target alone when the value is null, so what holds afterwards is the meet of
+   * having written and of not having written. */
+  FilterXTypeEnv *assigned_env = filterx_type_env_clone(env);
+
+  _setattr_record_write((FilterXSetAttr *) s, assigned_env);
+
+  filterx_type_env_meet_into(env, assigned_env);
+  filterx_type_env_free(assigned_env);
+}
+
 static inline FilterXIRValue
 _emit_setattr_call(FilterXSetAttr *self, FilterXJIT *jit, const gchar *fn_name)
 {
@@ -278,6 +293,7 @@ filterx_nullv_setattr_new(FilterXExpr *object, FilterXObject *attr_name, FilterX
   self->type = "nullv_setattr";
   self->eval = _nullv_setattr_eval;
 #if SYSLOG_NG_ENABLE_JIT
+  self->infer_types = _nullv_setattr_infer_types;
   self->compile = _nullv_setattr_compile;
 #endif
 

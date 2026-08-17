@@ -1927,6 +1927,74 @@ Test(filterx_type_inference, a_nullv_element_costs_the_container_its_closed_key_
   filterx_expr_unref(block);
 }
 
+Test(filterx_type_inference, nullv_setattr_meets_the_write_with_not_having_written)
+{
+  /* d = {}; d.a = 1; d.a ??= "s";  -> the ??= writes only when its value is not null, so what
+   * holds afterwards is the meet of INTEGER and STRING.  Inferring it as an unconditional write
+   * would report STRING for a location that is an integer whenever the value was null. */
+  FilterXExpr *assign_d = filterx_assign_new(filterx_floating_variable_expr_new("d"),
+                                             filterx_literal_dict_new(NULL));
+  FilterXExpr *set_a = filterx_setattr_new(filterx_floating_variable_expr_new("d"),
+                                           filterx_string_new("a", -1),
+                                           filterx_literal_new(filterx_integer_new(1)));
+  FilterXExpr *nullv_set = filterx_nullv_setattr_new(filterx_floating_variable_expr_new("d"),
+                                                     filterx_string_new("a", -1),
+                                                     filterx_floating_variable_expr_new("s"));
+  FilterXExpr *read_a = filterx_getattr_new(filterx_floating_variable_expr_new("d"),
+                                            filterx_string_new("a", -1));
+
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_d, set_a, nullv_set, read_a, NULL);
+  block = _run(block);
+
+  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  filterx_expr_unref(block);
+}
+
+Test(filterx_type_inference, nullv_setattr_keeps_a_type_both_outcomes_agree_on)
+{
+  /* d = {}; d.a = 1; d.a ??= 2;  -> INTEGER either way, so the meet keeps it. */
+  FilterXExpr *assign_d = filterx_assign_new(filterx_floating_variable_expr_new("d"),
+                                             filterx_literal_dict_new(NULL));
+  FilterXExpr *set_a = filterx_setattr_new(filterx_floating_variable_expr_new("d"),
+                                           filterx_string_new("a", -1),
+                                           filterx_literal_new(filterx_integer_new(1)));
+  FilterXExpr *nullv_set = filterx_nullv_setattr_new(filterx_floating_variable_expr_new("d"),
+                                                     filterx_string_new("a", -1),
+                                                     filterx_literal_new(filterx_integer_new(2)));
+  FilterXExpr *read_a = filterx_getattr_new(filterx_floating_variable_expr_new("d"),
+                                            filterx_string_new("a", -1));
+
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_d, set_a, nullv_set, read_a, NULL);
+  block = _run(block);
+
+  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_INTEGER);
+  filterx_expr_unref(block);
+}
+
+Test(filterx_type_inference, nullv_set_subscript_meets_the_write_with_not_having_written)
+{
+  /* d = {}; d["a"] = 1; d["a"] ??= $s;  -> the subscript form of ??= has to be inferred the same
+   * way the attribute form is.  Both reused the plain setattr/set_subscript hook, which reads as
+   * an unconditional write. */
+  FilterXExpr *assign_d = filterx_assign_new(filterx_floating_variable_expr_new("d"),
+                                             filterx_literal_dict_new(NULL));
+  FilterXExpr *set_a = filterx_set_subscript_new(filterx_floating_variable_expr_new("d"),
+                                                 filterx_literal_new(filterx_string_new("a", -1)),
+                                                 filterx_literal_new(filterx_integer_new(1)));
+  FilterXExpr *nullv_set = filterx_nullv_set_subscript_new(
+                             filterx_floating_variable_expr_new("d"),
+                             filterx_literal_new(filterx_string_new("a", -1)),
+                             filterx_literal_new(filterx_string_new("s", -1)));
+  FilterXExpr *read_a = filterx_getattr_new(filterx_floating_variable_expr_new("d"),
+                                            filterx_string_new("a", -1));
+
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_d, set_a, nullv_set, read_a, NULL);
+  block = _run(block);
+
+  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  filterx_expr_unref(block);
+}
+
 Test(filterx_type_inference, env_entries_outlive_the_expression_tree_they_came_from)
 {
   /* FilterXExpr::name borrows its characters from the string object the getattr owns and frees
