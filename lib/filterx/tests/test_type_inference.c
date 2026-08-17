@@ -298,6 +298,39 @@ Test(filterx_type_inference, reassigning_root_invalidates_the_whole_range_under_
   filterx_expr_unref(block);
 }
 
+Test(filterx_type_inference, switch_meet_keeps_agreement_with_preswitch_state)
+{
+  /* z = "seed"; switch (c) { case "x": z = "a"; case "y": z = "b"; default: z = "c"; } z
+   * -> STRING. Switch inference walks the whole (fallthrough-flattened) body once and
+   * then meets that end-state against the pre-switch state, to stay safe for the case
+   * where no branch matches at runtime -- even though a default is present here, that
+   * coverage isn't modeled statically (v1). Agreement survives because every reachable
+   * path (body-ran or body-skipped) leaves z as STRING. */
+  FilterXExpr *seed_z = filterx_assign_new(
+                          filterx_floating_variable_expr_new("z"),
+                          filterx_literal_new(filterx_string_new("seed", -1)));
+
+  FilterXExpr *selector = filterx_floating_variable_expr_new("c");
+  GList *body = NULL;
+  body = g_list_append(body, filterx_switch_case_new(filterx_literal_new(filterx_string_new("x", -1))));
+  body = g_list_append(body, filterx_assign_new(filterx_floating_variable_expr_new("z"),
+                                                filterx_literal_new(filterx_string_new("a", -1))));
+  body = g_list_append(body, filterx_switch_case_new(filterx_literal_new(filterx_string_new("y", -1))));
+  body = g_list_append(body, filterx_assign_new(filterx_floating_variable_expr_new("z"),
+                                                filterx_literal_new(filterx_string_new("b", -1))));
+  body = g_list_append(body, filterx_switch_case_new(NULL)); /* default */
+  body = g_list_append(body, filterx_assign_new(filterx_floating_variable_expr_new("z"),
+                                                filterx_literal_new(filterx_string_new("c", -1))));
+  FilterXExpr *sw = filterx_switch_new(selector, body);
+
+  FilterXExpr *read_z = filterx_floating_variable_expr_new("z");
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, seed_z, sw, read_z, NULL);
+  block = _run(block);
+
+  cr_assert_eq(read_z->static_type, FILTERX_STATIC_TYPE_STRING);
+  filterx_expr_unref(block);
+}
+
 Test(filterx_type_inference, macro_variable_is_always_unknown)
 {
   /* $FACILITY is a hard macro: read-only and computed straight from the message at eval

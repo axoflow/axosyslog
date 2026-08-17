@@ -435,6 +435,30 @@ _switch_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
   return TRUE;
 }
 
+#if SYSLOG_NG_ENABLE_JIT
+static void
+_switch_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  FilterXSwitch *self = (FilterXSwitch *) s;
+
+  filterx_expr_infer_types(self->selector, env);
+
+  for (gsize i = 0; i < self->cases->len; i++)
+    {
+      FilterXExpr *case_expr = (FilterXExpr *) g_ptr_array_index(self->cases, i);
+      filterx_expr_infer_types(case_expr, env);
+    }
+
+  FilterXTypeEnv *before = filterx_type_env_clone(env);
+  filterx_expr_infer_types(self->body, env);
+  filterx_type_env_meet_into(env, before);
+  filterx_type_env_free(before);
+
+  s->static_type = FILTERX_STATIC_TYPE_UNKNOWN;
+}
+
+#endif
+
 FilterXExpr *
 filterx_switch_new(FilterXExpr *selector, GList *body)
 {
@@ -446,6 +470,9 @@ filterx_switch_new(FilterXExpr *selector, GList *body)
   self->super.eval = _eval_switch;
   self->super.walk_children = _switch_walk;
   self->super.free_fn = _free;
+#if SYSLOG_NG_ENABLE_JIT
+  self->super.infer_types = _switch_infer_types;
+#endif
   self->cases = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_expr_unref);
   self->literal_cache = g_hash_table_new_full((GHashFunc) filterx_object_hash, (GEqualFunc) filterx_object_equal,
                                               (GDestroyNotify) filterx_object_unref, (GDestroyNotify) filterx_expr_unref);
