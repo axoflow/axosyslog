@@ -273,8 +273,13 @@ _conditional_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
   filterx_type_env_meet_into(env, false_env);
   filterx_type_env_free(false_env);
 
-  FilterXStaticType t_t = self->true_branch ? self->true_branch->static_type : FILTERX_STATIC_TYPE_UNKNOWN;
-  FilterXStaticType f_t = self->false_branch ? self->false_branch->static_type : FILTERX_STATIC_TYPE_UNKNOWN;
+  /* a missing branch is not an absent value, see _eval_conditional() */
+  FilterXStaticType t_t = self->true_branch
+                          ? self->true_branch->static_type
+                          : (self->condition ? self->condition->static_type : FILTERX_STATIC_TYPE_UNKNOWN);
+  FilterXStaticType f_t = self->false_branch
+                          ? self->false_branch->static_type
+                          : FILTERX_STATIC_TYPE_BOOLEAN;
   s->static_type = filterx_static_type_meet(t_t, f_t);
 }
 
