@@ -22,6 +22,8 @@
 #include "filterx/expr-getattr.h"
 #include "filterx/object-string.h"
 #include "filterx/filterx-eval.h"
+#include "filterx/expr-variable.h"
+#include "filterx/filterx-type-inference.h"
 #include "stats/stats-registry.h"
 #include "stats/stats-cluster-single.h"
 
@@ -174,6 +176,16 @@ fx_jit_do_getattr(FilterXObject *variable, FilterXObject *attr, FilterXExpr *exp
   return _do_getattr(variable, attr, expr);
 }
 
+static void
+_getattr_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  filterx_expr_infer_types_default(s, env);
+
+  /* One lookup on this node's own path.  There is no second map to prefer over, so no way to
+   * answer with something coarser than the env already holds. */
+  s->static_type = filterx_type_env_get_for_expr(env, s);
+}
+
 static FilterXIRValue
 _getattr_compile(FilterXExpr *s, FilterXJIT *jit)
 {
@@ -208,6 +220,7 @@ filterx_getattr_new(FilterXExpr *operand, FilterXObject *attr_name)
   self->super.free_fn = _free;
   self->super.get_path = _getattr_get_path;
 #if SYSLOG_NG_ENABLE_JIT
+  self->super.infer_types = _getattr_infer_types;
   self->super.compile = _getattr_compile;
 #endif
   self->operand = operand;
