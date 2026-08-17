@@ -47,6 +47,7 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/filterx-env.h \
 	lib/filterx/filterx-stashed-object.h \
 	lib/filterx/filterx-type-inference.h \
+	lib/filterx/filterx-type-inference-private.h \
 	lib/filterx/filterx-parser.h \
 	lib/filterx/filterx-pipe.h \
 	lib/filterx/filterx-private.h \
