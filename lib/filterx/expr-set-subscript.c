@@ -154,6 +154,26 @@ _free(FilterXExpr *s)
   filterx_expr_free_method(s);
 }
 
+/* The location this statement writes: one hop down its object, at the key it sets.  A literal
+ * string key names the very step a getattr would, so `$a["b"] = 1` and `$a.b = 1` leave identical
+ * state.  Every other key -- a computed one, a list index, and the `$a[] = 1` append form whose
+ * key expression really is NULL -- names no step, so the path stops truncated at the object and
+ * the write retires the object's whole interior.
+ *
+ * Naming itself is safe for the same reason a setattr may: the grammar reaches an assignment only
+ * from stmt_expr, so this node is always a statement and never the operand of a read. */
+static gboolean
+_set_subscript_get_path(FilterXExpr *s, FilterXTypePath *path_out)
+{
+  FilterXSetSubscript *self = (FilterXSetSubscript *) s;
+
+  if (!filterx_expr_get_path(self->object, path_out))
+    return FALSE;
+
+  filterx_type_path_append_step(path_out, filterx_type_path_step_from_key_expr(self->key));
+  return TRUE;
+}
+
 static gboolean
 _set_subscript_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
@@ -179,6 +199,7 @@ filterx_set_subscript_new(FilterXExpr *object, FilterXExpr *key, FilterXExpr *ne
   self->super.eval = _set_subscript_eval;
   self->super.walk_children = _set_subscript_walk;
   self->super.free_fn = _free;
+  self->super.get_path = _set_subscript_get_path;
   self->object = object;
   self->key = key;
   self->new_value = new_value;

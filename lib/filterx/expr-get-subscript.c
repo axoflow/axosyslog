@@ -156,6 +156,37 @@ _free(FilterXExpr *s)
   filterx_expr_free_method(s);
 }
 
+/* One hop down the operand's location.  A literal string key names the very step a getattr would;
+ * everything else -- a computed key, every list index -- names nothing, and appending it leaves
+ * the path truncated at the operand. */
+static gboolean
+_get_subscript_get_path(FilterXExpr *s, FilterXTypePath *path_out)
+{
+  FilterXGetSubscript *self = (FilterXGetSubscript *) s;
+
+  if (!filterx_expr_get_path(self->operand, path_out))
+    return FALSE;
+
+  filterx_type_path_append_step(path_out, filterx_type_path_step_from_key_expr(self->key));
+  return TRUE;
+}
+
+FilterXExpr *
+filterx_get_subscript_get_operand(FilterXExpr *s)
+{
+  if (!filterx_expr_is_get_subscript(s))
+    return NULL;
+  return ((FilterXGetSubscript *) s)->operand;
+}
+
+FilterXExpr *
+filterx_get_subscript_get_key(FilterXExpr *s)
+{
+  if (!filterx_expr_is_get_subscript(s))
+    return NULL;
+  return ((FilterXGetSubscript *) s)->key;
+}
+
 static gboolean
 _get_subscript_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
@@ -185,6 +216,7 @@ filterx_get_subscript_new(FilterXExpr *operand, FilterXExpr *key)
   self->super.walk_children = _get_subscript_walk;
   self->super.move = _move;
   self->super.free_fn = _free;
+  self->super.get_path = _get_subscript_get_path;
   self->operand = operand;
   self->key = key;
   return &self->super;

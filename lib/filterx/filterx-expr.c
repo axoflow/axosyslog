@@ -31,6 +31,78 @@
 #include "scratch-buffers.h"
 #include "perf/perf.h"
 
+#include <string.h>
+
+/* --- paths ---------------------------------------------------------------------------------- */
+
+/* Permanent, process-wide, and never emptied: an env entry may outlive the expression tree its
+ * keys were peeled from, and config reloads build fresh trees whose keys mostly repeat.  Locked
+ * because config init is not guaranteed to be single threaded. */
+static GMutex key_pool_lock;
+static GHashTable *key_pool;
+
+const gchar *
+filterx_type_path_intern_key(const gchar *key)
+{
+  if (!key)
+    return NULL;
+
+  g_mutex_lock(&key_pool_lock);
+
+  if (!key_pool)
+    key_pool = g_hash_table_new(g_str_hash, g_str_equal);
+
+  const gchar *interned = g_hash_table_lookup(key_pool, key);
+  if (!interned)
+    {
+      interned = g_strdup(key);
+      g_hash_table_insert(key_pool, (gpointer) interned, (gpointer) interned);
+    }
+
+  g_mutex_unlock(&key_pool_lock);
+  return interned;
+}
+
+static inline gint
+_step_compare(const gchar *a, const gchar *b)
+{
+  if (a == b)
+    return 0;                             /* interned, so pointer identity settles equality */
+  return strcmp(a, b);
+}
+
+gint
+filterx_type_path_compare(gconstpointer a, gconstpointer b, gpointer user_data)
+{
+  const FilterXTypePath *pa = (const FilterXTypePath *) a;
+  const FilterXTypePath *pb = (const FilterXTypePath *) b;
+
+  if (pa->root != pb->root)
+    return pa->root < pb->root ? -1 : 1;
+
+  guint common = MIN(pa->n_steps, pb->n_steps);
+  for (guint i = 0; i < common; i++)
+    {
+      gint c = _step_compare(pa->steps[i], pb->steps[i]);
+      if (c != 0)
+        return c;
+    }
+
+  if (pa->n_steps != pb->n_steps)
+    return pa->n_steps < pb->n_steps ? -1 : 1;
+  return 0;
+}
+
+FilterXTypePath *
+filterx_type_path_dup(const FilterXTypePath *self)
+{
+  FilterXTypePath *copy = g_new(FilterXTypePath, 1);
+  *copy = *self;
+  return copy;
+}
+
+/* -------------------------------------------------------------------------------------------- */
+
 void
 filterx_expr_set_location_with_text(FilterXExpr *self, CFG_LTYPE *lloc, const gchar *text)
 {
