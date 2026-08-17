@@ -104,6 +104,9 @@ _kind_from_filterx_object(FilterXObject *obj)
   if (filterx_object_is_type_or_ref(obj, &FILTERX_TYPE_NAME(double)))
     return FILTERX_STATIC_TYPE_DOUBLE;
 
+  if (filterx_object_is_type_or_ref(obj, &FILTERX_TYPE_NAME(boolean)))
+    return FILTERX_STATIC_TYPE_BOOLEAN;
+
   if (filterx_object_is_type_or_ref(obj, &FILTERX_TYPE_NAME(dict)))
     return FILTERX_STATIC_TYPE_DICT;
 
