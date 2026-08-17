@@ -323,6 +323,19 @@ _function_free(FilterXExpr *s)
   filterx_function_free_method(self);
 }
 
+#if SYSLOG_NG_ENABLE_JIT
+/* Unconditional: FXE_WRITE means "writes to a variable", not "does not mutate an argument".
+ * Infer before opening, so an argument keeps the static type it had at the call.
+ * A subclass installing its own infer_types replaces this hook and must then open what it
+ * mutates itself. */
+static void
+_function_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  filterx_expr_infer_types_default(s, env);
+  filterx_type_env_open_arguments(env, s);
+}
+#endif
+
 void
 filterx_function_init_instance(FilterXFunction *s, const gchar *function_name, FilterXEffect effects)
 {
@@ -333,6 +346,9 @@ filterx_function_init_instance(FilterXFunction *s, const gchar *function_name, F
   s->super.deinit = _function_deinit;
   s->super.name = s->function_name;
   s->super.free_fn = _function_free;
+#if SYSLOG_NG_ENABLE_JIT
+  s->super.infer_types = _function_infer_types;
+#endif
 }
 
 /* Takes reference of value */
