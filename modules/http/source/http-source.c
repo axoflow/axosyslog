@@ -108,6 +108,41 @@ _extract_from_json_array(struct json_object *messages_obj, MsgFormatOptions *par
     }
 }
 
+static GQueue *
+_extract_json_stream(struct json_tokener *tok, struct json_object *first, const gchar *data, gsize remaining,
+                     MsgFormatOptions *parse_options)
+{
+  GQueue *messages = g_queue_new();
+
+  if (json_object_is_type(first, json_type_array))
+    {
+      _extract_from_json_array(first, parse_options, messages);
+      json_object_put(first);
+      return messages;
+    }
+
+  struct json_object *obj = first;
+  while (obj)
+    {
+      _json_object_to_message(obj, parse_options, messages);
+      json_object_put(obj);
+
+      gsize consumed = json_tokener_get_parse_end(tok);
+      data += consumed;
+      remaining -= consumed;
+      json_tokener_reset(tok);
+
+      if (remaining == 0)
+        break;
+
+      obj = json_tokener_parse_ex(tok, data, remaining);
+      if (!obj && json_tokener_get_error(tok) != json_tokener_continue)
+        msg_warning("Error parsing JSON messages");
+    }
+
+  return messages;
+}
+
 GQueue *
 _extract_messages_json(HTTPRequest *http_request, HTTPSourceConnection *connection)
 {
@@ -118,40 +153,53 @@ _extract_messages_json(HTTPRequest *http_request, HTTPSourceConnection *connecti
   if (!body || !body->data)
     return NULL;
 
-  GQueue *messages = g_queue_new();
   struct json_tokener *tok = json_tokener_new();
+
+  struct json_object *obj = json_tokener_parse_ex(tok, (const gchar *) body->data, body->len);
+  if (!obj)
+    {
+      if (json_tokener_get_error(tok) != json_tokener_continue)
+        msg_warning("Error parsing JSON messages");
+      json_tokener_free(tok);
+      return NULL;
+    }
+
+  GQueue *messages = _extract_json_stream(tok, obj, (const gchar *) body->data, body->len, parse_options);
+  json_tokener_free(tok);
+
+  return messages;
+}
+
+GQueue *
+_extract_messages_auto(HTTPRequest *http_request, HTTPSourceConnection *connection)
+{
+  EHTTPSourceDriver *self = (EHTTPSourceDriver *) connection->owner;
+  MsgFormatOptions *parse_options = &self->super.super.reader_options.parse_options;
+
+  const GByteArray *body = http_message_get_body(&http_request->super);
+  if (!body || !body->data)
+    return NULL;
 
   const gchar *data = (const gchar *) body->data;
   gsize remaining = body->len;
-  gboolean first = TRUE;
 
-  while (remaining > 0)
+  gsize i = 0;
+  while (i < remaining && g_ascii_isspace(data[i]))
+    i++;
+
+  if (i == remaining || (data[i] != '{' && data[i] != '['))
+    return _extract_messages_line_separated(http_request, connection);
+
+  struct json_tokener *tok = json_tokener_new();
+
+  struct json_object *obj = json_tokener_parse_ex(tok, data, remaining);
+  if (!obj)
     {
-      struct json_object *obj = json_tokener_parse_ex(tok, data, remaining);
-      if (!obj)
-        {
-          if (json_tokener_get_error(tok) != json_tokener_continue)
-            msg_warning("Error parsing JSON messages");
-          break;
-        }
-
-      if (first && json_object_is_type(obj, json_type_array))
-        {
-          _extract_from_json_array(obj, parse_options, messages);
-          json_object_put(obj);
-          break;
-        }
-      first = FALSE;
-
-      _json_object_to_message(obj, parse_options, messages);
-      json_object_put(obj);
-
-      gsize consumed = json_tokener_get_parse_end(tok);
-      data += consumed;
-      remaining -= consumed;
-      json_tokener_reset(tok);
+      json_tokener_free(tok);
+      return _extract_messages_line_separated(http_request, connection);
     }
 
+  GQueue *messages = _extract_json_stream(tok, obj, data, remaining, parse_options);
   json_tokener_free(tok);
 
   return messages;
@@ -162,7 +210,8 @@ static EHTTPExtractMessageFunc ehttp_extract_modes[] =
 {
   _extract_single_message,
   _extract_messages_line_separated,
-  _extract_messages_json
+  _extract_messages_json,
+  _extract_messages_auto
 };
 
 static gboolean
@@ -255,6 +304,8 @@ ehttp_sd_set_mode(LogDriver *d, const gchar *mode)
     self->mode = EHTTP_LINE_SEPARATED;
   else if (strcasecmp(mode, "json") == 0)
     self->mode = EHTTP_JSON;
+  else if (strcasecmp(mode, "auto") == 0)
+    self->mode = EHTTP_AUTO;
   else
     return FALSE;
 
@@ -326,7 +377,7 @@ ehttp_sd_new(GlobalConfig *cfg)
   EHTTPSourceDriver *self = g_new0(EHTTPSourceDriver, 1);
   http_sd_init_instance(&self->super, socket_options_inet_new(), http_transport_mapper_new(), cfg);
 
-  self->mode = EHTTP_SINGLE;
+  self->mode = EHTTP_AUTO;
 
   self->super.create_response = _create_response;
   self->super.super.construct_connection = ehttp_sd_construct_connection;
