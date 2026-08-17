@@ -188,7 +188,13 @@ _extract_log_messages(HTTPRequest *http_request, HTTPSourceConnection *connectio
   if (!_authenticate(self, http_request))
     return NULL;
 
-  return ehttp_extract_modes[self->mode](http_request, connection);
+  GQueue *messages = ehttp_extract_modes[self->mode](http_request, connection);
+
+  LogMessage *first_message = messages ? g_queue_peek_head(messages) : NULL;
+  if (self->response_body && first_message)
+    ((EHTTPSourceConnection *) connection)->first_message = log_msg_ref(first_message);
+
+  return messages;
 }
 
 HTTPResponse *
@@ -209,8 +215,25 @@ _create_response(HTTPRequest *http_request, HTTPSourceConnection *connection)
   http_response_set_status_code(http_response, HTTP_OK);
 
   GByteArray* body = g_byte_array_sized_new(32);
-  const gchar *status_line = http_response_status_code_to_status_line(HTTP_OK);
-  g_byte_array_append(body, (const guint8 *) status_line, strlen(status_line));
+
+  if (self->response_body)
+    {
+      EHTTPSourceConnection *ehttp_connection = (EHTTPSourceConnection *) connection;
+
+      GString *formatted = g_string_sized_new(64);
+      LogMessage *msg = ehttp_connection->first_message ? ehttp_connection->first_message : log_msg_new_empty();
+      ehttp_connection->first_message = NULL;
+      log_template_format(self->response_body, msg, &DEFAULT_TEMPLATE_EVAL_OPTIONS, formatted);
+      log_msg_unref(msg);
+
+      g_byte_array_append(body, (const guint8 *) formatted->str, formatted->len);
+      g_string_free(formatted, TRUE);
+    }
+  else
+    {
+      const gchar *status_line = http_response_status_code_to_status_line(HTTP_OK);
+      g_byte_array_append(body, (const guint8 *) status_line, strlen(status_line));
+    }
 
   http_message_take_body(&http_response->super, body);
 
@@ -243,6 +266,36 @@ ehttp_sd_set_auth_token(LogDriver *d, const gchar *auth_token)
   self->auth_token = g_strdup(auth_token);
 }
 
+void
+ehttp_sd_set_response_body(LogDriver *d, LogTemplate *response_body)
+{
+  EHTTPSourceDriver *self = (EHTTPSourceDriver *) d;
+
+  log_template_unref(self->response_body);
+  self->response_body = log_template_ref(response_body);
+}
+
+static void
+ehttp_sc_free(LogPipe *s)
+{
+  EHTTPSourceConnection *self = (EHTTPSourceConnection *) s;
+
+  if (self->first_message)
+    log_msg_unref(self->first_message);
+  afsocket_sc_free_method(s);
+}
+
+static AFSocketSourceConnection *
+ehttp_sd_construct_connection(AFSocketSourceDriver *s, GSockAddr *peer_addr, GSockAddr *local_addr, gint fd)
+{
+  EHTTPSourceConnection *self = g_new0(EHTTPSourceConnection, 1);
+
+  afsocket_sc_init_instance(&self->super, peer_addr, local_addr, fd, s->super.super.super.cfg);
+  self->super.super.free_fn = ehttp_sc_free;
+
+  return &self->super;
+}
+
 gboolean
 ehttp_sd_init(LogPipe *s)
 {
@@ -259,6 +312,7 @@ ehttp_sd_free(LogPipe *s)
   EHTTPSourceDriver *self = (EHTTPSourceDriver *) s;
 
   g_free(self->auth_token);
+  log_template_unref(self->response_body);
   http_sd_free_method(s);
 }
 
@@ -271,6 +325,7 @@ ehttp_sd_new(GlobalConfig *cfg)
   self->mode = EHTTP_SINGLE;
 
   self->super.create_response = _create_response;
+  self->super.super.construct_connection = ehttp_sd_construct_connection;
   self->super.super.super.super.super.init = ehttp_sd_init;
   self->super.super.super.super.super.free_fn = ehttp_sd_free;
 
