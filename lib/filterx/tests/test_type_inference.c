@@ -102,12 +102,58 @@ Test(filterx_type_inference, assign_propagates_double_type_to_subsequent_reads)
   filterx_expr_unref(block);
 }
 
+Test(filterx_type_inference, integer_and_double_are_distinct_kinds)
+{
+  /* if (c) { n = 1; } else { n = 2.5; } n  ->  UNKNOWN. DOUBLE is its own kind, so it does
+   * not silently unify with INTEGER: a value that may be either is not statically an
+   * integer, which is exactly what keeps an integer-only fast path from claiming it. */
+  FilterXExpr *then_assign = filterx_assign_new(
+                               filterx_floating_variable_expr_new("n"),
+                               filterx_literal_new(filterx_integer_new(1)));
+  FilterXExpr *else_assign = filterx_assign_new(
+                               filterx_floating_variable_expr_new("n"),
+                               filterx_literal_new(filterx_double_new(2.5)));
+
+  FilterXExpr *iff = filterx_conditional_new(filterx_floating_variable_expr_new("c"));
+  filterx_conditional_set_true_branch(iff, then_assign);
+  filterx_conditional_set_false_branch(iff, else_assign);
+
+  FilterXExpr *read_n = filterx_floating_variable_expr_new("n");
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, iff, read_n, NULL);
+  block = _run(block);
+
+  cr_assert_eq(read_n->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  filterx_expr_unref(block);
+}
+
 Test(filterx_type_inference, literal_boolean_is_boolean)
 {
   FilterXExpr *lit = filterx_literal_new(filterx_boolean_new(TRUE));
   lit = _run(lit);
   cr_assert_eq(lit->static_type, FILTERX_STATIC_TYPE_BOOLEAN);
   filterx_expr_unref(lit);
+}
+
+Test(filterx_type_inference, boolean_and_integer_are_distinct_kinds)
+{
+  /* if (c) { n = true; } else { n = 1; } n  ->  UNKNOWN */
+  FilterXExpr *then_assign = filterx_assign_new(
+                               filterx_floating_variable_expr_new("n"),
+                               filterx_literal_new(filterx_boolean_new(TRUE)));
+  FilterXExpr *else_assign = filterx_assign_new(
+                               filterx_floating_variable_expr_new("n"),
+                               filterx_literal_new(filterx_integer_new(1)));
+
+  FilterXExpr *iff = filterx_conditional_new(filterx_floating_variable_expr_new("c"));
+  filterx_conditional_set_true_branch(iff, then_assign);
+  filterx_conditional_set_false_branch(iff, else_assign);
+
+  FilterXExpr *read_n = filterx_floating_variable_expr_new("n");
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, iff, read_n, NULL);
+  block = _run(block);
+
+  cr_assert_eq(read_n->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  filterx_expr_unref(block);
 }
 
 Test(filterx_type_inference, literal_dict_is_dict)
@@ -157,6 +203,72 @@ Test(filterx_type_inference, reassignment_with_different_type_collapses_later_re
   block = _run(block);
 
   cr_assert_eq(read_y->static_type, FILTERX_STATIC_TYPE_STRING);
+  filterx_expr_unref(block);
+}
+
+Test(filterx_type_inference, if_branch_meet_keeps_agreement)
+{
+  /* if (cond) { $z = "a"; } else { $z = "b"; } $z   ->  $z is STRING after the if. */
+  FilterXExpr *cond = filterx_floating_variable_expr_new("c");
+  FilterXExpr *then_assign = filterx_assign_new(
+                               filterx_floating_variable_expr_new("z"),
+                               filterx_literal_new(filterx_string_new("a", -1)));
+  FilterXExpr *else_assign = filterx_assign_new(
+                               filterx_floating_variable_expr_new("z"),
+                               filterx_literal_new(filterx_string_new("b", -1)));
+
+  FilterXExpr *iff = filterx_conditional_new(cond);
+  filterx_conditional_set_true_branch(iff, then_assign);
+  filterx_conditional_set_false_branch(iff, else_assign);
+
+  FilterXExpr *read_z = filterx_floating_variable_expr_new("z");
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, iff, read_z, NULL);
+  block = _run(block);
+
+  cr_assert_eq(read_z->static_type, FILTERX_STATIC_TYPE_STRING);
+  filterx_expr_unref(block);
+}
+
+Test(filterx_type_inference, if_branch_meet_drops_on_disagreement)
+{
+  /* if (cond) { $w = "a"; } else { $w = []; } $w   ->  $w is UNKNOWN after the if. */
+  FilterXExpr *cond = filterx_floating_variable_expr_new("c");
+  FilterXExpr *then_assign = filterx_assign_new(
+                               filterx_floating_variable_expr_new("w"),
+                               filterx_literal_new(filterx_string_new("a", -1)));
+  FilterXExpr *else_assign = filterx_assign_new(
+                               filterx_floating_variable_expr_new("w"),
+                               filterx_literal_list_new(NULL));
+
+  FilterXExpr *iff = filterx_conditional_new(cond);
+  filterx_conditional_set_true_branch(iff, then_assign);
+  filterx_conditional_set_false_branch(iff, else_assign);
+
+  FilterXExpr *read_w = filterx_floating_variable_expr_new("w");
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, iff, read_w, NULL);
+  block = _run(block);
+
+  cr_assert_eq(read_w->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  filterx_expr_unref(block);
+}
+
+Test(filterx_type_inference, if_one_sided_assign_collapses_to_unknown)
+{
+  /* $u was unknown before; one branch sets STRING, other does nothing.
+   * Meet of STRING with UNKNOWN -> UNKNOWN. */
+  FilterXExpr *cond = filterx_floating_variable_expr_new("c");
+  FilterXExpr *then_assign = filterx_assign_new(
+                               filterx_floating_variable_expr_new("u"),
+                               filterx_literal_new(filterx_string_new("a", -1)));
+
+  FilterXExpr *iff = filterx_conditional_new(cond);
+  filterx_conditional_set_true_branch(iff, then_assign);
+
+  FilterXExpr *read_u = filterx_floating_variable_expr_new("u");
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, iff, read_u, NULL);
+  block = _run(block);
+
+  cr_assert_eq(read_u->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
   filterx_expr_unref(block);
 }
 
