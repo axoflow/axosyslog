@@ -263,6 +263,21 @@ Test(filterx_type_inference, boolean_is_not_numeric_for_the_plus_operator)
   filterx_expr_unref(sum);
 }
 
+Test(filterx_type_inference, control_flow_exprs_are_boolean)
+{
+  FilterXExpr *brk = filterx_expr_break();
+  FilterXExpr *drop = filterx_expr_drop_msg();
+  FilterXExpr *done = filterx_expr_done();
+
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, brk, drop, done, NULL);
+  block = _optimize_and_infer(block);
+
+  cr_assert_eq(brk->static_type, FILTERX_STATIC_TYPE_BOOLEAN);
+  cr_assert_eq(drop->static_type, FILTERX_STATIC_TYPE_BOOLEAN);
+  cr_assert_eq(done->static_type, FILTERX_STATIC_TYPE_BOOLEAN);
+  filterx_expr_unref(block);
+}
+
 Test(filterx_type_inference, literal_dict_is_dict)
 {
   FilterXExpr *empty_dict = filterx_literal_dict_new(NULL);

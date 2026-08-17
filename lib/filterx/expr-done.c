@@ -48,6 +48,9 @@ filterx_expr_done(void)
   filterx_expr_init_instance(self, "done", FXE_CONTROL);
   self->walk_children = _done_walk;
   self->eval = _eval_done;
+#if SYSLOG_NG_ENABLE_JIT
+  self->infer_types = filterx_expr_infer_types_boolean_result;
+#endif
 
   return self;
 }
