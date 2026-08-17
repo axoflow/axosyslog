@@ -88,6 +88,14 @@ Test(filterx_type_inference, literal_double_is_double)
   filterx_expr_unref(lit);
 }
 
+Test(filterx_type_inference, literal_boolean_is_boolean)
+{
+  FilterXExpr *lit = filterx_literal_new(filterx_boolean_new(TRUE));
+  lit = _optimize_and_infer(lit);
+  cr_assert_eq(lit->static_type, FILTERX_STATIC_TYPE_BOOLEAN);
+  filterx_expr_unref(lit);
+}
+
 Test(filterx_type_inference, literal_dict_is_dict)
 {
   FilterXExpr *empty_dict = filterx_literal_dict_new(NULL);
