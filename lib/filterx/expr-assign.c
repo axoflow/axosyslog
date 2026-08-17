@@ -20,6 +20,7 @@
  *
  */
 #include "filterx/expr-assign.h"
+#include "filterx/expr-variable.h"
 #include "filterx/object-primitive.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/object-null.h"
@@ -208,6 +209,49 @@ _nullv_assign_compile(FilterXExpr *s, FilterXJIT *jit)
   return _compile_nullv_assign_to_lhs(self, jit);
 }
 
+static void
+_assign_record_write(FilterXAssign *self, FilterXTypeEnv *env)
+{
+  FilterXExpr *lhs = self->super.lhs;
+  FilterXTypePath path;
+
+  if (filterx_expr_get_path(lhs, &path))
+    filterx_type_env_set_shape_at_path(env, &path, self->super.rhs);
+}
+
+static void
+_assign_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  FilterXAssign *self = (FilterXAssign *) s;
+
+  filterx_expr_infer_types(self->super.rhs, env);
+  filterx_expr_infer_types(self->super.lhs, env);
+
+  _assign_record_write(self, env);
+
+  s->static_type = self->super.rhs ? self->super.rhs->static_type : FILTERX_STATIC_TYPE_UNKNOWN;
+}
+
+static void
+_nullv_assign_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  FilterXAssign *self = (FilterXAssign *) s;
+
+  filterx_expr_infer_types(self->super.rhs, env);
+  filterx_expr_infer_types(self->super.lhs, env);
+
+  /* ??= leaves the target alone when the value is null, so what holds afterwards is the meet of
+   * having written and of not having written. */
+  FilterXTypeEnv *assigned_env = filterx_type_env_clone(env);
+
+  _assign_record_write(self, assigned_env);
+
+  filterx_type_env_meet_into(env, assigned_env);
+  filterx_type_env_free(assigned_env);
+
+  s->static_type = FILTERX_STATIC_TYPE_UNKNOWN;
+}
+
 #endif
 
 static void
@@ -227,6 +271,7 @@ filterx_assign_new(FilterXExpr *lhs, FilterXExpr *rhs)
   filterx_assign_init_instance(self, "assign", lhs, rhs);
   self->super.super.eval = _assign_eval;
 #if SYSLOG_NG_ENABLE_JIT
+  self->super.super.infer_types = _assign_infer_types;
   self->super.super.compile = _assign_compile;
 #endif
   return &self->super.super;
@@ -240,6 +285,7 @@ filterx_nullv_assign_new(FilterXExpr *lhs, FilterXExpr *rhs)
   filterx_assign_init_instance(self, "nullv-assign", lhs, rhs);
   self->super.super.eval = _nullv_assign_eval;
 #if SYSLOG_NG_ENABLE_JIT
+  self->super.super.infer_types = _nullv_assign_infer_types;
   self->super.super.compile = _nullv_assign_compile;
 #endif
   return &self->super.super;
