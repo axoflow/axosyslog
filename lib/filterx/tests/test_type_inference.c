@@ -1035,6 +1035,138 @@ Test(filterx_type_inference, replacing_a_key_keeps_sibling_per_key_types)
   filterx_expr_unref(block);
 }
 
+/* unset(@target) / move(@target) as a standalone expression; ownership of @target is taken. */
+static FilterXExpr *
+_unset_of(FilterXExpr *target)
+{
+  GError *err = NULL;
+  GList *args = g_list_append(NULL, filterx_function_arg_new(NULL, target));
+  FilterXExpr *unset = filterx_function_unset_new(filterx_function_args_new(args, &err), &err);
+  cr_assert_null(err);
+  cr_assert_not_null(unset);
+  return unset;
+}
+
+static FilterXExpr *
+_move_of(FilterXExpr *target)
+{
+  GError *err = NULL;
+  GList *args = g_list_append(NULL, filterx_function_arg_new(NULL, target));
+  FilterXExpr *move = filterx_function_move_new(filterx_function_args_new(args, &err), &err);
+  cr_assert_null(err);
+  cr_assert_not_null(move);
+  return move;
+}
+
+Test(filterx_type_inference, unset_of_a_key_invalidates_its_subtree)
+{
+  /* v = {}; v.a = {}; v.a.b = 5; v.other = "s";  -> v.a is a DICT and v.a.b an INTEGER
+   * unset(v.a); v.a, v.a.b                       -> key a is gone, so both must go quiet.
+   *
+   * unset() on a named key *proves* it gone, so this is the one drop that owes the container
+   * nothing: v stays closed, over a smaller key set. */
+  FilterXExpr *assign_v = filterx_assign_new(filterx_floating_variable_expr_new("v"),
+                                             filterx_literal_dict_new(NULL));
+  FilterXExpr *set_a = filterx_setattr_new(filterx_floating_variable_expr_new("v"),
+                                           filterx_string_new("a", -1),
+                                           filterx_literal_dict_new(NULL));
+  FilterXExpr *set_a_b = filterx_setattr_new(
+                           filterx_getattr_new(filterx_floating_variable_expr_new("v"),
+                                               filterx_string_new("a", -1)),
+                           filterx_string_new("b", -1),
+                           filterx_literal_new(filterx_integer_new(5)));
+  FilterXExpr *set_other = filterx_setattr_new(filterx_floating_variable_expr_new("v"),
+                                               filterx_string_new("other", -1),
+                                               filterx_literal_new(filterx_string_new("s", -1)));
+  FilterXExpr *unset_a = _unset_of(filterx_getattr_new(filterx_floating_variable_expr_new("v"),
+                                                       filterx_string_new("a", -1)));
+  FilterXExpr *read_a = filterx_getattr_new(filterx_floating_variable_expr_new("v"),
+                                            filterx_string_new("a", -1));
+  FilterXExpr *read_a_b = filterx_getattr_new(read_a, filterx_string_new("b", -1));
+
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_v, set_a, set_a_b, set_other,
+                                                    unset_a, read_a_b, NULL);
+  block = _run(block);
+
+  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  cr_assert_eq(read_a_b->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  filterx_expr_unref(block);
+}
+
+Test(filterx_type_inference, unset_of_a_variable_retires_everything_under_it)
+{
+  /* v = {}; v.a = 1; unset(v); v.a  -> the variable is the zero-step path, so retiring it is
+   * the same range drop every other key gets; nothing under it survives. */
+  FilterXExpr *assign_v = filterx_assign_new(filterx_floating_variable_expr_new("v"),
+                                             filterx_literal_dict_new(NULL));
+  FilterXExpr *set_a = filterx_setattr_new(filterx_floating_variable_expr_new("v"),
+                                           filterx_string_new("a", -1),
+                                           filterx_literal_new(filterx_integer_new(1)));
+  FilterXExpr *unset_v = _unset_of(filterx_floating_variable_expr_new("v"));
+  FilterXExpr *read_v = filterx_floating_variable_expr_new("v");
+  FilterXExpr *read_a = filterx_getattr_new(filterx_floating_variable_expr_new("v"),
+                                            filterx_string_new("a", -1));
+
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_v, set_a, unset_v, read_v, read_a, NULL);
+  block = _run(block);
+
+  cr_assert_eq(read_v->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  filterx_expr_unref(block);
+}
+
+Test(filterx_type_inference, unset_of_a_key_keeps_sibling_per_key_types)
+{
+  /* v = {}; v.a = 1; v.sub = {}; unset(v.sub); v.a  -> only the unset key's range goes. */
+  FilterXExpr *assign_v = filterx_assign_new(filterx_floating_variable_expr_new("v"),
+                                             filterx_literal_dict_new(NULL));
+  FilterXExpr *set_a = filterx_setattr_new(filterx_floating_variable_expr_new("v"),
+                                           filterx_string_new("a", -1),
+                                           filterx_literal_new(filterx_integer_new(1)));
+  FilterXExpr *set_sub = filterx_setattr_new(filterx_floating_variable_expr_new("v"),
+                                             filterx_string_new("sub", -1),
+                                             filterx_literal_dict_new(NULL));
+  FilterXExpr *unset_sub = _unset_of(filterx_getattr_new(filterx_floating_variable_expr_new("v"),
+                                                         filterx_string_new("sub", -1)));
+  FilterXExpr *read_a = filterx_getattr_new(filterx_floating_variable_expr_new("v"),
+                                            filterx_string_new("a", -1));
+
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_v, set_a, set_sub, unset_sub,
+                                                    read_a, NULL);
+  block = _run(block);
+
+  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_INTEGER);
+  filterx_expr_unref(block);
+}
+
+Test(filterx_type_inference, move_returns_the_source_type_and_invalidates_it)
+{
+  /* v = {}; v.a = 1; v.other = {}; x = move(v.a);  -> x is an INTEGER (move hands back what it
+   * took), while v.a stops being one, the key being gone. */
+  FilterXExpr *assign_v = filterx_assign_new(filterx_floating_variable_expr_new("v"),
+                                             filterx_literal_dict_new(NULL));
+  FilterXExpr *set_a = filterx_setattr_new(filterx_floating_variable_expr_new("v"),
+                                           filterx_string_new("a", -1),
+                                           filterx_literal_new(filterx_integer_new(1)));
+  FilterXExpr *set_other = filterx_setattr_new(filterx_floating_variable_expr_new("v"),
+                                               filterx_string_new("other", -1),
+                                               filterx_literal_dict_new(NULL));
+  FilterXExpr *move_a = _move_of(filterx_getattr_new(filterx_floating_variable_expr_new("v"),
+                                                     filterx_string_new("a", -1)));
+  FilterXExpr *assign_x = filterx_assign_new(filterx_floating_variable_expr_new("x"), move_a);
+  FilterXExpr *read_x = filterx_floating_variable_expr_new("x");
+  FilterXExpr *read_a = filterx_getattr_new(filterx_floating_variable_expr_new("v"),
+                                            filterx_string_new("a", -1));
+
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_v, set_a, set_other, assign_x,
+                                                    read_x, read_a, NULL);
+  block = _run(block);
+
+  cr_assert_eq(read_x->static_type, FILTERX_STATIC_TYPE_INTEGER);
+  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  filterx_expr_unref(block);
+}
+
 Test(filterx_type_inference, writing_into_a_nested_empty_dict_commits_the_deeper_level)
 {
   /* v = {}; v.a = {}; v.a = {"b": "x"};  -> v.a.b reads back as a STRING.
