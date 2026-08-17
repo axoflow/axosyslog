@@ -1108,7 +1108,7 @@ gboolean readKey(guchar *destKey, guint64 *destCounter, gchar *keypath)
       if (0!=memcmp(testOutput, &keydata[KEY_LENGTH], CMAC_LENGTH))
         {
           msg_warning(SLOG_WARNING_PREFIX, evt_tag_str("Reason", "Host key corrupted. CMAC in key file not matching"));
-          result = FALSE;
+          cmacOk = FALSE;
         }
     }
 
