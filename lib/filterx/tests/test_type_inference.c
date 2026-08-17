@@ -72,6 +72,25 @@ _optimize_and_infer(FilterXExpr *root)
   return root;
 }
 
+static FilterXExpr *
+_assign_empty_dict(const gchar *var)
+{
+  return filterx_assign_new(filterx_floating_variable_expr_new(var), filterx_literal_dict_new(NULL));
+}
+
+static FilterXExpr *
+_read_attr(const gchar *var, const gchar *key)
+{
+  return filterx_getattr_new(filterx_floating_variable_expr_new(var), filterx_string_new(key, -1));
+}
+
+/* ownership of @value is taken */
+static FilterXExpr *
+_write_attr(const gchar *var, const gchar *key, FilterXExpr *value)
+{
+  return filterx_setattr_new(filterx_floating_variable_expr_new(var), filterx_string_new(key, -1), value);
+}
+
 Test(filterx_type_inference, literal_string_is_string)
 {
   FilterXExpr *lit = filterx_literal_new(filterx_string_new("hi", -1));
@@ -86,6 +105,20 @@ Test(filterx_type_inference, literal_double_is_double)
   lit = _optimize_and_infer(lit);
   cr_assert_eq(lit->static_type, FILTERX_STATIC_TYPE_DOUBLE);
   filterx_expr_unref(lit);
+}
+
+Test(filterx_type_inference, assign_propagates_double_type_to_subsequent_reads)
+{
+  FilterXExpr *assign_d = filterx_assign_new(
+                            filterx_floating_variable_expr_new("d"),
+                            filterx_literal_new(filterx_double_new(2.5)));
+  FilterXExpr *read_d = filterx_floating_variable_expr_new("d");
+
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_d, read_d, NULL);
+  block = _optimize_and_infer(block);
+
+  cr_assert_eq(read_d->static_type, FILTERX_STATIC_TYPE_DOUBLE);
+  filterx_expr_unref(block);
 }
 
 Test(filterx_type_inference, literal_boolean_is_boolean)
@@ -110,6 +143,55 @@ Test(filterx_type_inference, literal_list_is_list)
   empty_list = _optimize_and_infer(empty_list);
   cr_assert_eq(empty_list->static_type, FILTERX_STATIC_TYPE_LIST);
   filterx_expr_unref(empty_list);
+}
+
+Test(filterx_type_inference, assign_propagates_rhs_type_to_subsequent_reads)
+{
+  FilterXExpr *assign_x = filterx_assign_new(
+                            filterx_floating_variable_expr_new("x"),
+                            filterx_literal_new(filterx_string_new("v", -1)));
+  FilterXExpr *read_x = filterx_floating_variable_expr_new("x");
+
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_x, read_x, NULL);
+  block = _optimize_and_infer(block);
+
+  cr_assert_eq(read_x->static_type, FILTERX_STATIC_TYPE_STRING);
+  filterx_expr_unref(block);
+}
+
+Test(filterx_type_inference, reassignment_with_different_type_collapses_later_reads)
+{
+  FilterXExpr *assign_dict = _assign_empty_dict("y");
+  FilterXExpr *assign_str = filterx_assign_new(
+                              filterx_floating_variable_expr_new("y"),
+                              filterx_literal_new(filterx_string_new("v", -1)));
+  FilterXExpr *read_y = filterx_floating_variable_expr_new("y");
+
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_dict, assign_str, read_y, NULL);
+  block = _optimize_and_infer(block);
+
+  cr_assert_eq(read_y->static_type, FILTERX_STATIC_TYPE_STRING);
+  filterx_expr_unref(block);
+}
+
+Test(filterx_type_inference, reassigning_root_invalidates_the_whole_range_under_it)
+{
+  /* d = {}; d.a = {};   -> d.a is a DICT
+   * d = "s";            -> the variable is overwritten; d is now a STRING
+   * d.a                 -> must NOT still resolve to DICT.  Writing the zero-step path drops
+   *                        the range below it, so the entry describing the old value is gone. */
+  FilterXExpr *assign_dict = _assign_empty_dict("d");
+  FilterXExpr *set_a = _write_attr("d", "a", filterx_literal_dict_new(NULL));
+  FilterXExpr *reassign_str = filterx_assign_new(
+                                filterx_floating_variable_expr_new("d"),
+                                filterx_literal_new(filterx_string_new("s", -1)));
+  FilterXExpr *read_a = _read_attr("d", "a");
+
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_dict, set_a, reassign_str, read_a, NULL);
+  block = _optimize_and_infer(block);
+
+  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  filterx_expr_unref(block);
 }
 
 Test(filterx_type_inference, macro_variable_is_always_unknown)
