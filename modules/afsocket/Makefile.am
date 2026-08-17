@@ -16,6 +16,8 @@ modules_afsocket_libafsocket_la_SOURCES	=	\
 	modules/afsocket/afinet-source.h		\
 	modules/afsocket/afinet-dest.c			\
 	modules/afsocket/afinet-dest.h			\
+	modules/afsocket/logproto-spoof-source-client.c	\
+	modules/afsocket/logproto-spoof-source-client.h	\
 	modules/afsocket/afinet-dest-failover.c		\
 	modules/afsocket/afinet-dest-failover.h		\
 	modules/afsocket/socket-options-inet.c		\
