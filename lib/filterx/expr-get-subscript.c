@@ -200,6 +200,9 @@ filterx_get_subscript_new(FilterXExpr *operand, FilterXExpr *key)
   self->super.move = _move;
   self->super.free_fn = _free;
   self->super.get_path = _get_subscript_get_path;
+#if SYSLOG_NG_ENABLE_JIT
+  self->super.infer_types = filterx_expr_infer_types_from_path;
+#endif
   self->operand = operand;
   self->key = key;
   return &self->super;
