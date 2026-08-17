@@ -34,8 +34,17 @@ FilterXDPathElement *filterx_dpath_elem_expr_new(FilterXExpr *expr);
 
 /* lvalue setter */
 FilterXExpr *filterx_dpath_lvalue_new(FilterXExpr *variable, GList *dpath_elements, GError **error);
+FilterXExpr *filterx_dpath_lvalue_get_variable(FilterXExpr *s);
 
 /* rvalue getter */
 FilterXExpr *filterx_dpath_fn_new(FilterXFunctionArgs *args, GError **error);
+
+FILTERX_EXPR_DECLARE_TYPE(dpath_lvalue);
+
+static inline gboolean
+filterx_expr_is_dpath_lvalue(FilterXExpr *s)
+{
+  return s && s->type == FILTERX_EXPR_TYPE_NAME(dpath_lvalue);
+}
 
 #endif

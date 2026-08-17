@@ -21,6 +21,7 @@
  */
 #include "filterx/expr-assign.h"
 #include "filterx/expr-variable.h"
+#include "filterx/filterx-dpath.h"
 #include "filterx/object-primitive.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/object-null.h"
@@ -216,7 +217,18 @@ _assign_record_write(FilterXAssign *self, FilterXTypeEnv *env)
   FilterXAccessPath path;
 
   if (filterx_expr_get_path(lhs, &path))
-    filterx_type_env_set_shape_at_path(env, &path, self->super.rhs);
+    {
+      filterx_type_env_set_shape_at_path(env, &path, self->super.rhs);
+      return;
+    }
+
+  /* `dpath(d, "a") = v` writes somewhere under its root variable at a position this pass cannot
+   * name -- the path elements are a runtime list, not a chain of getattr hops -- so everything
+   * known below that root has to go.  The root itself keeps its kind: the write reaches into the
+   * container, it does not replace it.  Without this the assignment records nothing at all. */
+  FilterXExpr *dpath_root = filterx_dpath_lvalue_get_variable(lhs);
+  if (dpath_root && filterx_expr_get_path(dpath_root, &path))
+    filterx_type_env_open_at_path(env, &path);
 }
 
 static void

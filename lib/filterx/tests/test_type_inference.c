@@ -1710,6 +1710,31 @@ Test(filterx_type_inference, nullv_set_subscript_meets_the_written_type_with_the
   filterx_expr_unref(block);
 }
 
+Test(filterx_type_inference, a_dpath_write_retires_its_root)
+{
+  /* d = {}; d.a = 1; dpath(d, "a") = "s"; d.a  -> the path elements are a runtime list rather
+   * than a chain of getattr hops, so nothing here can name the written location.  Recording
+   * nothing at all -- which is what a missing else branch amounts to -- would leave d.a claiming
+   * INTEGER for a string. */
+  GError *error = NULL;
+  FilterXExpr *assign_d = _assign_empty_dict("d");
+  FilterXExpr *set_a = _write_attr("d", "a", filterx_literal_new(filterx_integer_new(1)));
+  GList *elements = g_list_append(NULL, filterx_dpath_elem_object_new(filterx_string_new("a", -1)));
+  FilterXExpr *dpath = filterx_dpath_lvalue_new(filterx_floating_variable_expr_new("d"),
+                                                elements, &error);
+  cr_assert_null(error);
+  cr_assert_not_null(dpath);
+
+  FilterXExpr *write = filterx_assign_new(dpath, filterx_literal_new(filterx_string_new("s", -1)));
+  FilterXExpr *read_a = _read_attr("d", "a");
+
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_d, set_a, write, read_a, NULL);
+  block = _optimize_and_infer(block);
+
+  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  filterx_expr_unref(block);
+}
+
 Test(filterx_type_inference, env_entries_outlive_the_expression_tree_they_came_from)
 {
   /* FilterXExpr::name borrows its characters from the string object the getattr owns, so an env
