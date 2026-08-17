@@ -46,7 +46,8 @@ lib_filterx_tests_TESTS		 =              \
 		lib/filterx/tests/test_expr_arithmetic_operators \
 		lib/filterx/tests/test_func_set_pri \
 		lib/filterx/tests/test_json_repr \
-		lib/filterx/tests/test_access_path
+		lib/filterx/tests/test_access_path \
+		lib/filterx/tests/test_type_inference
 
 EXTRA_DIST += lib/filterx/tests/CMakeLists.txt
 
@@ -78,6 +79,9 @@ lib_filterx_tests_test_filterx_expr_LDADD   = $(TEST_LDADD) $(PREOPEN_SYSLOGFORM
 
 lib_filterx_tests_test_access_path_CFLAGS  = $(TEST_CFLAGS)
 lib_filterx_tests_test_access_path_LDADD   = $(TEST_LDADD) $(PREOPEN_SYSLOGFORMAT) $(JSON_LIBS)
+
+lib_filterx_tests_test_type_inference_CFLAGS  = $(TEST_CFLAGS)
+lib_filterx_tests_test_type_inference_LDADD   = $(TEST_LDADD) $(PREOPEN_SYSLOGFORMAT) $(JSON_LIBS)
 
 lib_filterx_tests_test_filterx_plist_CFLAGS  = $(TEST_CFLAGS)
 lib_filterx_tests_test_filterx_plist_LDADD   = $(TEST_LDADD) $(PREOPEN_SYSLOGFORMAT) $(JSON_LIBS)
