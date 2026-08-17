@@ -369,6 +369,14 @@ filterx_expr_infer_types_default(FilterXExpr *self, FilterXTypeEnv *env)
   self->static_type = FILTERX_STATIC_TYPE_UNKNOWN;
 }
 
+/* only for expressions that build every value they return with filterx_boolean_new() */
+void
+filterx_expr_infer_types_boolean_result(FilterXExpr *self, FilterXTypeEnv *env)
+{
+  filterx_expr_infer_types_default(self, env);
+  self->static_type = FILTERX_STATIC_TYPE_BOOLEAN;
+}
+
 /* only for expressions whose own get_path() names the value they return */
 void
 filterx_expr_infer_types_from_path(FilterXExpr *self, FilterXTypeEnv *env)

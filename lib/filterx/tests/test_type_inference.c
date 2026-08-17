@@ -158,6 +158,78 @@ Test(filterx_type_inference, literal_boolean_is_boolean)
   filterx_expr_unref(lit);
 }
 
+Test(filterx_type_inference, comparison_is_boolean)
+{
+  /* not both literal, or it would fold to a literal before inference runs */
+  FilterXExpr *cmp = filterx_comparison_new(filterx_floating_variable_expr_new("a"),
+                                            filterx_literal_new(filterx_integer_new(1)),
+                                            FCMPX_EQ | FCMPX_TYPE_AWARE);
+  cmp = _optimize_and_infer(cmp);
+  cr_assert_eq(cmp->static_type, FILTERX_STATIC_TYPE_BOOLEAN);
+  filterx_expr_unref(cmp);
+}
+
+Test(filterx_type_inference, logical_operators_are_boolean)
+{
+  FilterXExpr *not_expr = filterx_unary_not_new(filterx_floating_variable_expr_new("a"));
+  FilterXExpr *and_expr = filterx_binary_and_new(filterx_floating_variable_expr_new("a"),
+                                                 filterx_floating_variable_expr_new("b"));
+  FilterXExpr *or_expr = filterx_binary_or_new(filterx_floating_variable_expr_new("a"),
+                                               filterx_floating_variable_expr_new("b"));
+
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, not_expr, and_expr, or_expr, NULL);
+  block = _optimize_and_infer(block);
+
+  cr_assert_eq(not_expr->static_type, FILTERX_STATIC_TYPE_BOOLEAN);
+  cr_assert_eq(and_expr->static_type, FILTERX_STATIC_TYPE_BOOLEAN);
+  cr_assert_eq(or_expr->static_type, FILTERX_STATIC_TYPE_BOOLEAN);
+  filterx_expr_unref(block);
+}
+
+Test(filterx_type_inference, isset_is_boolean)
+{
+  FilterXExpr *isset = filterx_isset_new(filterx_floating_variable_expr_new("a"));
+  isset = _optimize_and_infer(isset);
+  cr_assert_eq(isset->static_type, FILTERX_STATIC_TYPE_BOOLEAN);
+  filterx_expr_unref(isset);
+}
+
+Test(filterx_type_inference, regexp_match_is_boolean)
+{
+  FilterXExpr *match = filterx_expr_regexp_match_new(filterx_floating_variable_expr_new("a"), "^foo");
+  cr_assert_not_null(match);
+  match = _optimize_and_infer(match);
+  cr_assert_eq(match->static_type, FILTERX_STATIC_TYPE_BOOLEAN);
+  filterx_expr_unref(match);
+}
+
+Test(filterx_type_inference, membership_is_not_claimed_boolean)
+{
+  /* is_member_of() is a vtable slot an out-of-tree type may fill with anything, and a scalar
+   * static type is asserted rather than guarded */
+  FilterXExpr *in_expr = filterx_membership_in_new(filterx_floating_variable_expr_new("a"),
+                                                   filterx_floating_variable_expr_new("c"));
+  in_expr = _optimize_and_infer(in_expr);
+  cr_assert_eq(in_expr->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  filterx_expr_unref(in_expr);
+}
+
+Test(filterx_type_inference, assign_propagates_boolean_type_to_subsequent_reads)
+{
+  FilterXExpr *assign_b = filterx_assign_new(
+                            filterx_floating_variable_expr_new("b"),
+                            filterx_comparison_new(filterx_floating_variable_expr_new("a"),
+                                                   filterx_literal_new(filterx_integer_new(1)),
+                                                   FCMPX_EQ | FCMPX_TYPE_AWARE));
+  FilterXExpr *read_b = filterx_floating_variable_expr_new("b");
+
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_b, read_b, NULL);
+  block = _optimize_and_infer(block);
+
+  cr_assert_eq(read_b->static_type, FILTERX_STATIC_TYPE_BOOLEAN);
+  filterx_expr_unref(block);
+}
+
 Test(filterx_type_inference, boolean_and_integer_are_distinct_static_types)
 {
   /* if (c) { n = true; } else { n = 1; } n  ->  UNKNOWN */
@@ -431,6 +503,33 @@ Test(filterx_type_inference, folded_literal_dict_of_boolean_records_its_keys)
 
   cr_assert_eq(assign->static_type, FILTERX_STATIC_TYPE_DICT);
   cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_BOOLEAN);
+  filterx_expr_unref(block);
+}
+
+Test(filterx_type_inference, partially_evaluated_literal_dict_types_its_holes)
+{
+  /* d = {"a": true, "b": a == 1} — both keys are literal strings, so the optimizer materialises
+   * a template with "b" left as a null-valued hole.  The template supplies "a" and the hole is
+   * overlaid with what its own expression produces. */
+  GList *elems = NULL;
+  elems = g_list_append(elems, filterx_literal_element_new(
+                          filterx_literal_new(filterx_string_new("a", -1)),
+                          filterx_literal_new(filterx_boolean_new(TRUE))));
+  elems = g_list_append(elems, filterx_literal_element_new(
+                          filterx_literal_new(filterx_string_new("b", -1)),
+                          filterx_comparison_new(filterx_floating_variable_expr_new("a"),
+                                                 filterx_literal_new(filterx_integer_new(1)),
+                                                 FCMPX_EQ | FCMPX_TYPE_AWARE)));
+  FilterXExpr *assign = filterx_assign_new(filterx_floating_variable_expr_new("d"),
+                                           filterx_literal_dict_new(elems));
+  FilterXExpr *read_a = _read_attr("d", "a");
+  FilterXExpr *read_b = _read_attr("d", "b");
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign, read_a, read_b, NULL);
+  block = _optimize_and_infer(block);
+
+  cr_assert_eq(assign->static_type, FILTERX_STATIC_TYPE_DICT);
+  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_BOOLEAN);
+  cr_assert_eq(read_b->static_type, FILTERX_STATIC_TYPE_BOOLEAN);
   filterx_expr_unref(block);
 }
 
