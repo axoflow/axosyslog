@@ -54,6 +54,20 @@ _free(FilterXExpr *s)
   filterx_function_free_method(&self->super);
 }
 
+#if SYSLOG_NG_ENABLE_JIT
+static void
+_unset_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  FilterXExprUnset *self = (FilterXExprUnset *) s;
+
+  filterx_expr_infer_types_default(s, env);
+
+  for (guint i = 0; i < self->exprs->len; i++)
+    filterx_type_env_update_on_remove(env, (FilterXExpr *) g_ptr_array_index(self->exprs, i));
+
+}
+#endif
+
 gboolean
 _unset_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
@@ -78,6 +92,9 @@ filterx_function_unset_new(FilterXFunctionArgs *args, GError **error)
   self->super.super.eval = _eval_unset;
   self->super.super.walk_children = _unset_walk;
   self->super.super.free_fn = _free;
+#if SYSLOG_NG_ENABLE_JIT
+  self->super.super.infer_types = _unset_infer_types;
+#endif
 
   self->exprs = g_ptr_array_new_full(filterx_function_args_len(args), (GDestroyNotify) filterx_expr_unref);
   for (guint64 i = 0; i < filterx_function_args_len(args); i++)
