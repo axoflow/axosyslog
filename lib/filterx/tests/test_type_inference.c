@@ -255,6 +255,24 @@ Test(filterx_type_inference, control_flow_exprs_are_boolean)
   filterx_expr_unref(block);
 }
 
+Test(filterx_type_inference, block_discarding_its_last_value_is_boolean)
+{
+  FilterXExpr *block = filterx_compound_expr_new_va(FALSE,
+                                                    filterx_literal_new(filterx_string_new("v", -1)),
+                                                    NULL);
+  block = _run(block);
+  cr_assert_eq(block->static_type, FILTERX_STATIC_TYPE_BOOLEAN);
+  filterx_expr_unref(block);
+}
+
+Test(filterx_type_inference, empty_block_is_boolean)
+{
+  FilterXExpr *block = filterx_compound_expr_new(TRUE);
+  block = _run(block);
+  cr_assert_eq(block->static_type, FILTERX_STATIC_TYPE_BOOLEAN);
+  filterx_expr_unref(block);
+}
+
 Test(filterx_type_inference, literal_dict_is_dict)
 {
   FilterXExpr *empty_dict = filterx_literal_dict_new(NULL);

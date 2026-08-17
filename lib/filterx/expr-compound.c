@@ -314,7 +314,13 @@ _compound_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
       last = child ? child->static_type : FILTERX_STATIC_TYPE_UNKNOWN;
     }
 
-  s->static_type = self->return_value_of_last_expr ? last : FILTERX_STATIC_TYPE_UNKNOWN;
+  /* The last-value claim only holds when the block runs to its end: a break/done/drop
+   * short-circuit, and evaluation started past the last expression, both yield the implicit
+   * TRUE instead.  A consumer must not lean on it where a control modifier may fire. */
+  if (self->return_value_of_last_expr && n > 0)
+    s->static_type = last;
+  else
+    s->static_type = FILTERX_STATIC_TYPE_BOOLEAN;
 }
 
 static inline FilterXIRValue
