@@ -827,6 +827,113 @@ _string_valued_dict(const gchar *key, const gchar *value)
   return filterx_literal_dict_new(elements);
 }
 
+Test(filterx_type_inference, merging_into_root_invalidates_stale_per_key_type)
+{
+  /* v = {}; v.a = 1;          -> v.a is an INTEGER
+   * v += {"a": "boom"};       -> filterx_mapping_merge() is a shallow per-key overwrite, so key
+   *                              a is now exactly the string the right-hand side carried
+   * v.a + 10                  -> v.a must NOT still resolve to INTEGER: at runtime it is the
+   *                              string "boom", and an integer claim on a string is asserted,
+   *                              not guarded, by the devirtualizing consumers.  The sum stays
+   *                              UNKNOWN either way, which is the claim that has to hold. */
+  FilterXExpr *assign_v = filterx_assign_new(
+                            filterx_floating_variable_expr_new("v"),
+                            filterx_literal_dict_new(NULL));
+  FilterXExpr *set_a = filterx_setattr_new(
+                         filterx_floating_variable_expr_new("v"),
+                         filterx_string_new("a", -1),
+                         filterx_literal_new(filterx_integer_new(1)));
+  FilterXExpr *merge = filterx_operator_plus_assign_new(
+                         filterx_floating_variable_expr_new("v"),
+                         _string_valued_dict("a", "boom"));
+  FilterXExpr *read_a = filterx_getattr_new(filterx_floating_variable_expr_new("v"),
+                                            filterx_string_new("a", -1));
+  FilterXExpr *sum = filterx_operator_plus_new(read_a, filterx_literal_new(filterx_integer_new(10)));
+
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_v, set_a, merge, sum, NULL);
+  block = _run(block);
+
+  /* dict += dict keeps the outer kind, and the right-hand side's keys win. */
+  cr_assert_eq(merge->static_type, FILTERX_STATIC_TYPE_DICT);
+  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_STRING);
+  cr_assert_eq(sum->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  filterx_expr_unref(block);
+}
+
+Test(filterx_type_inference, merging_into_nested_dict_invalidates_stale_per_key_type)
+{
+  /* d = {}; d.sub = {}; d.sub.a = 1;   -> d.sub.a is an INTEGER
+   * d.sub += {"a": "boom"};            -> the merge target is a chain, not a bare variable
+   * d.sub.a                            -> STRING: the merge overwrote key a, and the entry that
+   *                                       claimed INTEGER must not survive it. */
+  FilterXExpr *assign_d = filterx_assign_new(
+                            filterx_floating_variable_expr_new("d"),
+                            filterx_literal_dict_new(NULL));
+  FilterXExpr *set_sub = filterx_setattr_new(
+                           filterx_floating_variable_expr_new("d"),
+                           filterx_string_new("sub", -1),
+                           filterx_literal_dict_new(NULL));
+  FilterXExpr *set_sub_a = filterx_setattr_new(
+                             filterx_getattr_new(filterx_floating_variable_expr_new("d"),
+                                                 filterx_string_new("sub", -1)),
+                             filterx_string_new("a", -1),
+                             filterx_literal_new(filterx_integer_new(1)));
+  FilterXExpr *merge = filterx_operator_plus_assign_new(
+                         filterx_getattr_new(filterx_floating_variable_expr_new("d"),
+                                             filterx_string_new("sub", -1)),
+                         _string_valued_dict("a", "boom"));
+  FilterXExpr *read_sub_a = filterx_getattr_new(
+                              filterx_getattr_new(filterx_floating_variable_expr_new("d"),
+                                                  filterx_string_new("sub", -1)),
+                              filterx_string_new("a", -1));
+
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_d, set_sub, set_sub_a, merge,
+                                                    read_sub_a, NULL);
+  block = _run(block);
+
+  cr_assert_eq(merge->static_type, FILTERX_STATIC_TYPE_DICT);
+  cr_assert_eq(read_sub_a->static_type, FILTERX_STATIC_TYPE_STRING);
+  filterx_expr_unref(block);
+}
+
+Test(filterx_type_inference, merging_into_a_key_keeps_sibling_per_key_types)
+{
+  /* d = {}; d.a = 1; d.sub = {}; d.sub += {"x": "s"};  -> the merge reaches only into its own
+   * target, so the sibling d.a keeps its INTEGER type.  d.subscription pins that a shared
+   * character prefix is not a shared path prefix: steps compare whole, not by strncmp(). */
+  FilterXExpr *assign_d = filterx_assign_new(
+                            filterx_floating_variable_expr_new("d"),
+                            filterx_literal_dict_new(NULL));
+  FilterXExpr *set_a = filterx_setattr_new(
+                         filterx_floating_variable_expr_new("d"),
+                         filterx_string_new("a", -1),
+                         filterx_literal_new(filterx_integer_new(1)));
+  FilterXExpr *set_subscription = filterx_setattr_new(
+                                    filterx_floating_variable_expr_new("d"),
+                                    filterx_string_new("subscription", -1),
+                                    filterx_literal_new(filterx_string_new("s", -1)));
+  FilterXExpr *set_sub = filterx_setattr_new(
+                           filterx_floating_variable_expr_new("d"),
+                           filterx_string_new("sub", -1),
+                           filterx_literal_dict_new(NULL));
+  FilterXExpr *merge = filterx_operator_plus_assign_new(
+                         filterx_getattr_new(filterx_floating_variable_expr_new("d"),
+                                             filterx_string_new("sub", -1)),
+                         _string_valued_dict("x", "s"));
+  FilterXExpr *read_a = filterx_getattr_new(filterx_floating_variable_expr_new("d"),
+                                            filterx_string_new("a", -1));
+  FilterXExpr *read_subscription = filterx_getattr_new(filterx_floating_variable_expr_new("d"),
+                                                       filterx_string_new("subscription", -1));
+
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_d, set_a, set_subscription, set_sub,
+                                                    merge, read_a, read_subscription, NULL);
+  block = _run(block);
+
+  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_INTEGER);
+  cr_assert_eq(read_subscription->static_type, FILTERX_STATIC_TYPE_STRING);
+  filterx_expr_unref(block);
+}
+
 /* v = {}; v.a = {}; v.a.b = 5;  -> v.a.b is an INTEGER
  * <replace v.a>;                -> whatever replaces the value at key a
  * v.a.b                         -> must no longer report INTEGER, since what it described was
@@ -1164,6 +1271,124 @@ Test(filterx_type_inference, move_returns_the_source_type_and_invalidates_it)
 
   cr_assert_eq(read_x->static_type, FILTERX_STATIC_TYPE_INTEGER);
   cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  filterx_expr_unref(block);
+}
+
+/* n = @seed; n += @addend; n  -> the kind the variable ends up with. */
+static FilterXStaticType
+_kind_after_plus_assign(FilterXObject *seed, FilterXObject *addend)
+{
+  FilterXExpr *assign_n = filterx_assign_new(filterx_floating_variable_expr_new("n"),
+                                             filterx_literal_new(seed));
+  FilterXExpr *add = filterx_operator_plus_assign_new(filterx_floating_variable_expr_new("n"),
+                                                      filterx_literal_new(addend));
+  FilterXExpr *read_n = filterx_floating_variable_expr_new("n");
+
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_n, add, read_n, NULL);
+  block = _run(block);
+
+  FilterXStaticType kind = read_n->static_type;
+  cr_assert_eq(kind, add->static_type,
+               "the += expression's own type must match what the variable ends up with");
+  filterx_expr_unref(block);
+  return kind;
+}
+
+Test(filterx_type_inference, plus_assign_promotes_a_numeric_pair)
+{
+  /* += widens the same way + does: adding a double to an integer leaves a double behind, which
+   * a plain meet of the two kinds would have discarded as UNKNOWN. */
+  cr_assert_eq(_kind_after_plus_assign(filterx_integer_new(1), filterx_integer_new(2)),
+               FILTERX_STATIC_TYPE_INTEGER);
+  cr_assert_eq(_kind_after_plus_assign(filterx_integer_new(1), filterx_double_new(2.5)),
+               FILTERX_STATIC_TYPE_DOUBLE);
+  cr_assert_eq(_kind_after_plus_assign(filterx_double_new(2.5), filterx_integer_new(1)),
+               FILTERX_STATIC_TYPE_DOUBLE);
+  cr_assert_eq(_kind_after_plus_assign(filterx_double_new(2.5), filterx_double_new(1.5)),
+               FILTERX_STATIC_TYPE_DOUBLE);
+}
+
+Test(filterx_type_inference, plus_assign_promotes_only_numeric_pairs)
+{
+  /* A non-numeric side has no numeric domain to promote in: string += string stays a STRING via
+   * the meet, and a mixed pair collapses (`1 += "x"` is a runtime error). */
+  cr_assert_eq(_kind_after_plus_assign(filterx_string_new("a", -1), filterx_string_new("b", -1)),
+               FILTERX_STATIC_TYPE_STRING);
+  cr_assert_eq(_kind_after_plus_assign(filterx_integer_new(1), filterx_string_new("x", -1)),
+               FILTERX_STATIC_TYPE_UNKNOWN);
+}
+
+Test(filterx_type_inference, merging_into_an_empty_dict_commits_its_element_type)
+{
+  /* v = {}; v += {"a": "x"};  -> v.a is the STRING the merge brought in.  An empty dict is a
+   * closed container with no keys, which is what the FRESH sentinel used to encode -- except
+   * that `closed` also describes a container that does have keys, so nothing has to be lifted. */
+  FilterXExpr *assign_v = filterx_assign_new(filterx_floating_variable_expr_new("v"),
+                                             filterx_literal_dict_new(NULL));
+  FilterXExpr *merge = filterx_operator_plus_assign_new(filterx_floating_variable_expr_new("v"),
+                                                        _string_valued_dict("a", "x"));
+  FilterXExpr *read_v = filterx_floating_variable_expr_new("v");
+  FilterXExpr *read_a = filterx_getattr_new(filterx_floating_variable_expr_new("v"),
+                                            filterx_string_new("a", -1));
+
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_v, merge, read_v, read_a, NULL);
+  block = _run(block);
+
+  cr_assert_eq(read_v->static_type, FILTERX_STATIC_TYPE_DICT);
+  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_STRING);
+  filterx_expr_unref(block);
+}
+
+Test(filterx_type_inference, merging_an_empty_dict_keeps_the_target_keys)
+{
+  /* v = {"a": "x"}; v += {};  -> a merge overwrites only the keys the right-hand side has, and
+   * an empty one has none, so v.a is untouched. */
+  FilterXExpr *assign_v = filterx_assign_new(filterx_floating_variable_expr_new("v"),
+                                             _string_valued_dict("a", "x"));
+  FilterXExpr *merge = filterx_operator_plus_assign_new(filterx_floating_variable_expr_new("v"),
+                                                        filterx_literal_dict_new(NULL));
+  FilterXExpr *read_v = filterx_floating_variable_expr_new("v");
+  FilterXExpr *read_a = filterx_getattr_new(filterx_floating_variable_expr_new("v"),
+                                            filterx_string_new("a", -1));
+
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_v, merge, read_v, read_a, NULL);
+  block = _run(block);
+
+  cr_assert_eq(read_v->static_type, FILTERX_STATIC_TYPE_DICT);
+  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_STRING);
+  filterx_expr_unref(block);
+}
+
+Test(filterx_type_inference, merging_an_opened_dict_retires_the_target_keys)
+{
+  /* r = {}; r[$k] = "s"; v = {}; v.a = 1; v += r;  -> v.a is UNKNOWN.
+   *
+   * r is a dict whose key set this pass cannot enumerate, so the merge may overwrite v.a with a
+   * value nothing here has seen.  Only a closed right-hand side has keys that can be copied over
+   * one by one and leave the rest of the target standing. */
+  FilterXExpr *assign_r = filterx_assign_new(filterx_floating_variable_expr_new("r"),
+                                             filterx_literal_dict_new(NULL));
+  FilterXExpr *open_r = filterx_set_subscript_new(
+                          filterx_floating_variable_expr_new("r"),
+                          filterx_floating_variable_expr_new("k"),
+                          filterx_literal_new(filterx_string_new("s", -1)));
+  FilterXExpr *assign_v = filterx_assign_new(filterx_floating_variable_expr_new("v"),
+                                             filterx_literal_dict_new(NULL));
+  FilterXExpr *set_a = filterx_setattr_new(filterx_floating_variable_expr_new("v"),
+                                           filterx_string_new("a", -1),
+                                           filterx_literal_new(filterx_integer_new(1)));
+  FilterXExpr *merge = filterx_operator_plus_assign_new(filterx_floating_variable_expr_new("v"),
+                                                        filterx_floating_variable_expr_new("r"));
+  FilterXExpr *read_a = filterx_getattr_new(filterx_floating_variable_expr_new("v"),
+                                            filterx_string_new("a", -1));
+  FilterXExpr *read_v = filterx_floating_variable_expr_new("v");
+
+  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_r, open_r, assign_v, set_a, merge,
+                                                    read_a, read_v, NULL);
+  block = _run(block);
+
+  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  cr_assert_eq(read_v->static_type, FILTERX_STATIC_TYPE_DICT);
   filterx_expr_unref(block);
 }
 
