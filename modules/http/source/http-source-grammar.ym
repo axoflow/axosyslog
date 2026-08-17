@@ -53,6 +53,7 @@
 %token KW_EHTTP
 %token KW_MODE
 %token KW_AUTH_TOKEN
+%token KW_RESPONSE_BODY
 
 %%
 
@@ -86,6 +87,11 @@ source_http_option
     {
       ehttp_sd_set_auth_token(last_driver, $3);
       free($3);
+    }
+	| KW_RESPONSE_BODY '(' template_name_or_content ')'
+    {
+      ehttp_sd_set_response_body(last_driver, $3);
+      log_template_unref($3);
     }
 	| http_source_option
   ;

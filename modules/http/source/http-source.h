@@ -26,8 +26,10 @@
 
 #include "syslog-ng.h"
 #include "http/source/http-source.h"
+#include "template/templates.h"
 
 typedef struct EHTTPSourceDriver EHTTPSourceDriver;
+typedef struct EHTTPSourceConnection EHTTPSourceConnection;
 typedef enum _EHTTPSourceMode
 {
   EHTTP_SINGLE,
@@ -35,15 +37,23 @@ typedef enum _EHTTPSourceMode
   EHTTP_JSON_ARRAY
 } EHTTPSourceMode;
 
+struct EHTTPSourceConnection
+{
+  HTTPSourceConnection super;
+  LogMessage *first_message;
+};
+
 struct EHTTPSourceDriver
 {
   HTTPSourceDriver super;
   EHTTPSourceMode mode;
   gchar *auth_token;
+  LogTemplate *response_body;
 };
 
 EHTTPSourceDriver *ehttp_sd_new(GlobalConfig *cfg);
 gboolean ehttp_sd_set_mode(LogDriver *d, const gchar *mode);
 void ehttp_sd_set_auth_token(LogDriver *d, const gchar *auth_token);
+void ehttp_sd_set_response_body(LogDriver *d, LogTemplate *response_body);
 
 #endif
