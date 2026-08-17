@@ -367,6 +367,7 @@ gboolean filterx_expr_init(FilterXExpr *self, GlobalConfig *cfg);
 void filterx_expr_deinit(FilterXExpr *self, GlobalConfig *cfg);
 
 void filterx_expr_infer_types_default(FilterXExpr *self, FilterXTypeEnv *env);
+void filterx_expr_infer_types_boolean_result(FilterXExpr *self, FilterXTypeEnv *env);
 
 static inline gboolean
 filterx_expr_visit(FilterXExpr *self, FilterXExpr **expr, FilterXExprWalkFunc f, gpointer user_data)

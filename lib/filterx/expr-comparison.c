@@ -301,6 +301,9 @@ filterx_comparison_new(FilterXExpr *lhs, FilterXExpr *rhs, gint operator)
   self->super.super.optimize = _optimize;
   self->super.super.eval = _eval_comparison;
   self->super.super.free_fn = _filterx_comparison_free;
+#if SYSLOG_NG_ENABLE_JIT
+  self->super.super.infer_types = filterx_expr_infer_types_boolean_result;
+#endif
   self->operator = operator;
 
   return &self->super.super;
