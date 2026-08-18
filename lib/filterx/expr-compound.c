@@ -304,21 +304,24 @@ static void
 _compound_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
 {
   FilterXCompoundExpr *self = (FilterXCompoundExpr *) s;
-  gsize n = filterx_expr_list_get_length(&self->exprs);
+  gsize exprs_len = filterx_expr_list_get_length(&self->exprs);
 
-  FilterXStaticType last = FILTERX_STATIC_TYPE_UNKNOWN;
-  for (gsize i = 0; i < n; i++)
+  FilterXStaticType last_expr_type = FILTERX_STATIC_TYPE_UNKNOWN;
+  for (gsize i = 0; i < exprs_len; i++)
     {
       FilterXExpr *child = filterx_expr_list_index(&self->exprs, i);
+      const gchar *trace_label = child && child->expr_text ? child->expr_text : "(statement)";
+
+      filterx_type_inference_trace_banner("===== statement %" G_GSIZE_FORMAT ": %s", i, trace_label);
       filterx_expr_infer_types(child, env);
-      last = child ? child->static_type : FILTERX_STATIC_TYPE_UNKNOWN;
+      filterx_type_env_trace_dump(env, trace_label);
+      last_expr_type = child ? child->static_type : FILTERX_STATIC_TYPE_UNKNOWN;
     }
 
-  /* The last-value claim only holds when the block runs to its end: a break/done/drop
-   * short-circuit, and evaluation started past the last expression, both yield the implicit
-   * TRUE instead.  A consumer must not lean on it where a control modifier may fire. */
-  if (self->return_value_of_last_expr && n > 0)
-    s->static_type = last;
+  /* a break/done/drop short-circuit yields the implicit TRUE instead, see
+   * _process_compound_result() */
+  if (self->return_value_of_last_expr && exprs_len > 0)
+    s->static_type = last_expr_type;
   else
     s->static_type = FILTERX_STATIC_TYPE_BOOLEAN;
 }

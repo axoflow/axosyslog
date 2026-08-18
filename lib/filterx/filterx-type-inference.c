@@ -23,30 +23,29 @@
 #include "filterx/filterx-type-inference.h"
 #include "filterx/filterx-type-inference-private.h"
 #include "filterx/filterx-expr.h"
-#include "filterx/expr-variable.h"
-#include "filterx/expr-getattr.h"
-#include "filterx/expr-get-subscript.h"
 #include "filterx/expr-literal.h"
 #include "filterx/expr-literal-container.h"
+#include "filterx/filterx-dpath.h"
 #include "filterx/object-string.h"
-#include "filterx/object-primitive.h"
 #include "filterx/object-dict.h"
 #include "filterx/object-list.h"
+#include "logmsg/logmsg.h"
 
 #include <string.h>
+#include <stdio.h>
+#include <stdarg.h>
 
-/* The fact is packed into the value pointer, so there is nothing to allocate or free on the value
- * side.  PRESENT keeps a valid fact from ever packing to NULL, which g_tree_lookup() already
- * spends on "no entry" -- {UNKNOWN, not closed} would otherwise be indistinguishable from a miss,
- * and a closed container holding one key of an unknown type must not read as empty. */
+/* A fact is packed into the GTree value pointer, so there is nothing to own on the value side.
+ * PRESENT keeps {UNKNOWN, not closed} from packing to NULL, which g_tree_lookup() already spends
+ * on "no entry". */
 #define FX_FACT_STATIC_TYPE_MASK 0x0fu
-#define FX_FACT_CLOSED    0x10u
-#define FX_FACT_PRESENT   0x20u
+#define FX_FACT_CLOSED           0x10u
+#define FX_FACT_PRESENT          0x20u
 
 static inline gpointer
-_fact_pack(FilterXStaticType kind, gboolean closed)
+_fact_pack(FilterXStaticType static_type, gboolean closed)
 {
-  guint packed = FX_FACT_PRESENT | ((guint) kind & FX_FACT_STATIC_TYPE_MASK) | (closed ? FX_FACT_CLOSED : 0);
+  guint packed = FX_FACT_PRESENT | ((guint) static_type & FX_FACT_STATIC_TYPE_MASK) | (closed ? FX_FACT_CLOSED : 0);
   return GUINT_TO_POINTER(packed);
 }
 
@@ -66,6 +65,129 @@ struct _FilterXTypeEnv
 {
   GTree *facts;   /* FilterXAccessPath * (owned) -> a packed fact */
 };
+
+/* --- the trace ------------------------------------------------------------------------------ */
+
+/* the pass runs once per block on the config-reading thread, so this needs no locking */
+static gint _trace_depth = 0;
+
+gboolean
+filterx_type_inference_trace_enabled(void)
+{
+  static gint enabled = -1;
+
+  if (enabled < 0)
+    enabled = g_getenv("SYSLOG_NG_FILTERX_TRACE_TYPES") ? 1 : 0;
+  return enabled == 1;
+}
+
+static void G_GNUC_PRINTF(1, 2)
+_trace_printf(const gchar *format, ...)
+{
+  va_list ap;
+
+  fprintf(stderr, "%*s", _trace_depth * 2, "");
+  va_start(ap, format);
+  vfprintf(stderr, format, ap);
+  va_end(ap);
+  fputc('\n', stderr);
+}
+
+/* a macro so that a disabled trace also skips formatting the arguments */
+#define _trace(...) \
+  do { \
+    if (filterx_type_inference_trace_enabled()) \
+      _trace_printf(__VA_ARGS__); \
+  } while (0)
+
+static const gchar *
+_static_type_name(FilterXStaticType static_type)
+{
+  switch (static_type)
+    {
+    case FILTERX_STATIC_TYPE_DICT:
+      return "DICT";
+    case FILTERX_STATIC_TYPE_LIST:
+      return "LIST";
+    case FILTERX_STATIC_TYPE_STRING:
+      return "STRING";
+    case FILTERX_STATIC_TYPE_INTEGER:
+      return "INTEGER";
+    case FILTERX_STATIC_TYPE_DOUBLE:
+      return "DOUBLE";
+    case FILTERX_STATIC_TYPE_BOOLEAN:
+      return "BOOLEAN";
+    case FILTERX_STATIC_TYPE_UNKNOWN:
+    default:
+      return "UNKNOWN";
+    }
+}
+
+/* rotating buffers, so that one _trace() can name two paths */
+static const gchar *
+_format_path(const FilterXAccessPath *path)
+{
+  static gchar buffers[4][512];
+  static guint next = 0;
+
+  gchar *buf = buffers[next++ % G_N_ELEMENTS(buffers)];
+  gsize offset = 0;
+
+  /* no real variable maps onto handle 0, which is where the dict merge roots its scratch env */
+  if (path->root == 0)
+    offset += g_snprintf(buf + offset, sizeof(buffers[0]) - offset, "<rhs>");
+  else
+    {
+      const gchar *name = log_msg_get_handle_name(filterx_variable_handle_to_nv_handle(path->root), NULL);
+      gboolean message_tied = (path->root & FILTERX_HANDLE_FLOATING_BIT) == 0;
+      offset += g_snprintf(buf + offset, sizeof(buffers[0]) - offset, "%s%s", message_tied ? "$" : "", name ? : "?");
+    }
+
+  for (guint i = 0; i < path->n_steps; i++)
+    offset += g_snprintf(buf + offset, sizeof(buffers[0]) - offset, ".%s", path->steps[i]);
+
+  if (path->truncated)
+    g_snprintf(buf + offset, sizeof(buffers[0]) - offset, "...");
+
+  return buf;
+}
+
+void
+filterx_type_inference_trace_banner(const gchar *format, ...)
+{
+  if (!filterx_type_inference_trace_enabled())
+    return;
+
+  va_list ap;
+
+  fputc('\n', stderr);
+  va_start(ap, format);
+  vfprintf(stderr, format, ap);
+  va_end(ap);
+  fputc('\n', stderr);
+}
+
+static gboolean
+_trace_dump_entry(gpointer key, gpointer value, gpointer user_data)
+{
+  const FilterXAccessPath *path = (const FilterXAccessPath *) key;
+
+  fprintf(stderr, "      %-28s %-8s%s\n", _format_path(path), _static_type_name(_fact_static_type(value)),
+          _fact_is_closed(value) ? " closed" : "");
+  return FALSE;
+}
+
+void
+filterx_type_env_trace_dump(const FilterXTypeEnv *self, const gchar *label)
+{
+  if (!filterx_type_inference_trace_enabled())
+    return;
+
+  fprintf(stderr, "  ---- env after: %s\n", label ? : "");
+  if (g_tree_nnodes(self->facts) == 0)
+    fprintf(stderr, "      (empty)\n");
+  g_tree_foreach(self->facts, _trace_dump_entry, NULL);
+}
 
 /* --- the lattice ---------------------------------------------------------------------------- */
 
@@ -241,6 +363,8 @@ _drop_range(FilterXTypeEnv *self, const FilterXAccessPath *root, gboolean includ
       const FilterXAccessPath *path = _snapshot_path(&snap, i);
       if (!include_root && filterx_access_path_compare(path, root, NULL) == 0)
         continue;
+      _trace("|   drop %s (was %s)", _format_path(path),
+             _static_type_name(_fact_static_type(_snapshot_fact(&snap, i))));
       g_tree_remove(self->facts, path);
     }
   _snapshot_clear(&snap);
@@ -272,25 +396,31 @@ filterx_type_env_get_static_type_of_expr(const FilterXTypeEnv *self, FilterXExpr
   FilterXAccessPath path;
 
   if (!filterx_expr_get_path(expr, &path))
-    return FILTERX_STATIC_TYPE_UNKNOWN;
+    {
+      _trace("| read %s: no addressable path -> UNKNOWN", expr ? expr->type : "(none)");
+      return FILTERX_STATIC_TYPE_UNKNOWN;
+    }
 
-  return filterx_type_env_get_static_type_at_path(self, &path);
+  FilterXStaticType static_type = filterx_type_env_get_static_type_at_path(self, &path);
+
+  _trace("| read %s -> %s", _format_path(&path), _static_type_name(static_type));
+  return static_type;
 }
 
 /* --- writing -------------------------------------------------------------------------------- */
 
 void
 filterx_type_env_set_at_path(FilterXTypeEnv *self, const FilterXAccessPath *path,
-                             FilterXStaticType kind, gboolean closed)
+                             FilterXStaticType static_type, gboolean closed)
 {
   if (path->truncated)
     return;
 
-  /* Ancestors are untouched: adding a child leaves a closed parent closed, because the new key is
-   * itself a recorded child now.  Nothing below survives, and nothing below can pick up a stale
-   * claim either -- with the range gone, every read under @path answers UNKNOWN. */
+  _trace("| set %s <- %s%s", _format_path(path), _static_type_name(static_type), closed ? " closed" : "");
+
+  /* a closed parent stays closed: the new key is a recorded child of its own now */
   _drop_range(self, path, TRUE);
-  _insert(self, path, _fact_pack(kind, closed));
+  _insert(self, path, _fact_pack(static_type, closed));
 }
 
 void
@@ -298,6 +428,8 @@ filterx_type_env_open_at_path(FilterXTypeEnv *self, const FilterXAccessPath *pat
 {
   if (path->truncated)
     return;
+
+  _trace("| open %s", _format_path(path));
 
   gpointer fact = _lookup(self, path);
   _drop_range(self, path, FALSE);
@@ -368,6 +500,9 @@ _install_shape_from_object(FilterXTypeEnv *env, const FilterXAccessPath *base, F
 {
   FilterXStaticType kind = _kind_from_object(obj);
 
+  _trace("| shape of %s from %s -> %s", _format_path(base),
+         obj ? filterx_object_get_type_name(obj) : "(null)", _static_type_name(kind));
+
   if (kind != FILTERX_STATIC_TYPE_DICT && kind != FILTERX_STATIC_TYPE_LIST)
     {
       filterx_type_env_set_at_path(env, base, kind, FALSE);
@@ -398,6 +533,8 @@ _install_shape_from_tracked_path(FilterXTypeEnv *dst_env, const FilterXAccessPat
 {
   _Snapshot snap;
 
+  _trace("| copy %s <- %s", _format_path(dst), _format_path(src));
+
   _snapshot_range(src_env, src, &snap);
   _drop_range(dst_env, dst, TRUE);
 
@@ -424,6 +561,8 @@ _install_shape_from_tracked_path(FilterXTypeEnv *dst_env, const FilterXAccessPat
           continue;
         }
 
+      _trace("|   %s <- %s%s", _format_path(&rerooted), _static_type_name(_fact_static_type(fact)),
+             _fact_is_closed(fact) ? " closed" : "");
       _insert(dst_env, &rerooted, fact);
     }
 
@@ -533,8 +672,14 @@ filterx_type_env_set_shape_at_path(FilterXTypeEnv *self, const FilterXAccessPath
 
   _Shape shape = _shape_of(rhs_expr);
 
+  _trace("| write %s <- %s (%s, %s)", _format_path(path), rhs_expr ? rhs_expr->type : "(none)",
+         shape.kind == SHAPE_FROM_OBJECT ? "observable" : (shape.kind == SHAPE_FROM_TRACKED_PATH ? "observed" : "opaque"),
+         _static_type_name(shape.expr_type));
+  _trace_depth++;
+
   _install_shape(self, path, &shape);
 
+  _trace_depth--;
   _clear_shape(&shape);
 }
 
@@ -551,6 +696,8 @@ filterx_type_env_clear_at_path(FilterXTypeEnv *self, const FilterXAccessPath *pa
       filterx_type_env_open_at_path(self, &prefix);
       return;
     }
+
+  _trace("| clear %s", _format_path(path));
 
   /* unset() on a named key proves the key gone, so the parent's `closed` survives with a smaller
    * key set and there is no obligation to discharge. */
@@ -599,6 +746,9 @@ filterx_type_env_update_on_plus_assign(FilterXTypeEnv *self, FilterXExpr *target
        target == FILTERX_STATIC_TYPE_LIST ||
        target == FILTERX_STATIC_TYPE_STRING))
     merged = target;
+
+  _trace("| merge %s: %s += %s -> %s", _format_path(&path), _static_type_name(target), _static_type_name(rhs),
+         _static_type_name(merged));
 
   if (merged != FILTERX_STATIC_TYPE_DICT)
     {
@@ -675,6 +825,7 @@ filterx_type_env_update_on_plus_assign(FilterXTypeEnv *self, FilterXExpr *target
 
   /* The RHS is closed, so its keys are all accounted for above and only the target's own key set
    * decides whether the result is still bounded. */
+  _trace("| set %s <- DICT%s", _format_path(&path), target_closed ? " closed" : "");
   _insert(self, &path, _fact_pack(FILTERX_STATIC_TYPE_DICT, target_closed));
 
   filterx_type_env_free(scratch);
@@ -869,10 +1020,16 @@ filterx_expr_infer_types(FilterXExpr *self, FilterXTypeEnv *env)
   if (!self)
     return;
 
+  _trace("+ %s%s%s", self->type ? : "?", self->name ? " " : "", self->name ? : "");
+  _trace_depth++;
+
   if (self->infer_types)
     self->infer_types(self, env);
   else
     filterx_expr_infer_types_default(self, env);
+
+  _trace_depth--;
+  _trace("= %s -> %s", self->type ? : "?", _static_type_name(self->static_type));
 
   self->types_inferred = TRUE;
 #endif
