@@ -310,7 +310,11 @@ _compound_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
   for (gsize i = 0; i < n; i++)
     {
       FilterXExpr *child = filterx_expr_list_index(&self->exprs, i);
+      const gchar *text = child && child->expr_text ? child->expr_text : "(statement)";
+
+      filterx_type_inference_trace_banner("===== statement %" G_GSIZE_FORMAT ": %s", i, text);
       filterx_expr_infer_types(child, env);
+      filterx_type_env_trace_dump(env, text);
       last = child ? child->static_type : FILTERX_STATIC_TYPE_UNKNOWN;
     }
 

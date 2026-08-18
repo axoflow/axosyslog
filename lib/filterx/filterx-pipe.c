@@ -74,6 +74,7 @@ _infer_block_types(LogFilterXPipe *self, GlobalConfig *cfg G_GNUC_UNUSED)
 #if SYSLOG_NG_ENABLE_JIT
   FilterXTypeEnv *env = filterx_type_env_new();
   filterx_expr_infer_types(self->block, env);
+  filterx_type_env_trace_dump(env, "end of block");
   filterx_type_env_free(env);
 #endif
   self->types_inferred = TRUE;

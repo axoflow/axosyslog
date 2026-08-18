@@ -123,4 +123,15 @@ void filterx_type_env_meet_into(FilterXTypeEnv *dst, const FilterXTypeEnv *src);
 
 void filterx_expr_infer_types(struct _FilterXExpr *self, FilterXTypeEnv *env);
 
+/* SYSLOG_NG_FILTERX_TRACE_TYPES in the environment dumps the pass to stderr as it runs: the
+ * traversal as an indented tree, every fact the env gains or loses, and the whole env after each
+ * statement of a block.  Both calls below are no-ops without it.
+ *
+ * A compiler pass reads as a whole or not at all, which is why this is stderr rather than
+ * msg_trace(): an indented tree does not survive evt_tag formatting, and the same reasoning gave
+ * the JIT its own IR dump channel. */
+gboolean filterx_type_inference_trace_enabled(void);
+void filterx_type_inference_trace_banner(const gchar *format, ...) G_GNUC_PRINTF(1, 2);
+void filterx_type_env_trace_dump(const FilterXTypeEnv *self, const gchar *label);
+
 #endif
