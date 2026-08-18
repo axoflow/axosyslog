@@ -46,6 +46,12 @@
 
 static QueueType log_queue_disk_type = "DISK";
 
+static gboolean
+_flush_on_shutdown(LogQueue *s G_GNUC_UNUSED)
+{
+  return FALSE;
+}
+
 gboolean
 log_queue_disk_stop(LogQueue *s, gboolean *persistent)
 {
@@ -425,6 +431,7 @@ log_queue_disk_init_instance(LogQueueDisk *self, DiskQueueOptions *options, cons
 
   log_queue_init_instance(&self->super, persist_name, stats_level, driver_sck_builder, queue_sck_builder);
   self->super.type = log_queue_disk_type;
+  self->super.flush_on_shutdown = _flush_on_shutdown;
 
   self->compaction = options->compaction;
 
