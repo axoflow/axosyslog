@@ -67,6 +67,7 @@ EXTRA_DIST += \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/destinations/__init__.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/destinations/network_destination.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/destinations/snmp_destination.py \
+	tests/light/src/axosyslog_light/syslog_ng_config/statements/destinations/sql_destination.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/destinations/unix_dgram_destination.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/destinations/unix_stream_destination.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/filters/filter.py \
