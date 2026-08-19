@@ -27,6 +27,8 @@ EXTRA_DIST += \
 	tests/light/src/axosyslog_light/driver_io/network/network_io.py \
 	tests/light/src/axosyslog_light/driver_io/opentelemetry/opentelemetry_io.py \
 	tests/light/src/axosyslog_light/driver_io/unix_dgram/unix_dgram_io.py \
+	tests/light/src/axosyslog_light/driver_io/unix_stream/__init__.py \
+	tests/light/src/axosyslog_light/driver_io/unix_stream/unix_stream_io.py \
 	tests/light/src/axosyslog_light/driver_io/http/__init__.py \
 	tests/light/src/axosyslog_light/driver_io/http/http_io.py \
 	tests/light/src/axosyslog_light/executors/command_executor.py \
@@ -85,6 +87,7 @@ EXTRA_DIST += \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/sources/source_driver.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/sources/syslog_source.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/sources/unix_dgram_source.py \
+	tests/light/src/axosyslog_light/syslog_ng_config/statements/sources/unix_stream_source.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/sources/webhook_source.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/template/__init__.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/template/template.py \
