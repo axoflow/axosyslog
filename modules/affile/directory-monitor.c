@@ -216,12 +216,12 @@ directory_monitor_start(DirectoryMonitor *self)
       g_error_free(error);
       return;
     }
-  _collect_all_files(self, directory);
-  g_dir_close(directory);
   if (self->start_watches)
     {
       self->start_watches(self);
     }
+  _collect_all_files(self, directory);
+  g_dir_close(directory);
   self->watches_running = TRUE;
   return;
 }
