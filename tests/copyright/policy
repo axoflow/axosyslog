@@ -64,6 +64,7 @@ tests/light/.pre-commit-config.yaml
 tests/light/reports
 tests/light/shared_files/.*syslog-ng\.conf$
 .github/workflows/.*$
+\.claude
 lib/logmsg/tests/messages/syslog-ng-(pe-)?[.0-9]*-msg.h$
 lib/logmsg/tests/messages/axosyslog-[.0-9]*-msg.h$
 modules/python-modules/requirements\.lock
