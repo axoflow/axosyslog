@@ -24,6 +24,7 @@
 #include "filterx/filterx-eval.h"
 #include "filterx/filterx-config.h"
 #include "filterx/filterx-scope-var-layout.h"
+#include "filterx/filterx-type-inference.h"
 #include "filterx/jit/jit.h"
 #include "stats/stats-registry.h"
 
@@ -34,6 +35,8 @@ typedef struct _LogFilterXPipe
   FilterXExpr *block;
   FilterXScopeVariableLayout *scope_var_layout;
   FilterXJITExecFunc jit_exec;
+  /* set by _infer_block_types(), asserted by _compile_block() */
+  gboolean types_inferred;
 } LogFilterXPipe;
 
 static inline const gchar *
@@ -51,6 +54,11 @@ _compile_block(LogFilterXPipe *self, GlobalConfig *cfg)
   if (!jit)
     return;
 
+  /* Codegen reads FilterXExpr::static_type to choose between a devirtualized helper and the
+   * generic fallback; an un-inferred tree reads as UNKNOWN everywhere and compiles to a correct
+   * but fully generic block.  Keep the ordering an invariant rather than a comment. */
+  g_assert(self->types_inferred);
+
   if (!filterx_expr_can_compile(self->block))
     return;
 
@@ -63,6 +71,30 @@ _compile_block(LogFilterXPipe *self, GlobalConfig *cfg)
   filterx_jit_ir_finish_current_block(jit, result);
 }
 
+/* Give every expression in the tree its static type.  The placement is load bearing:
+ *
+ *  - after filterx_expr_optimize(), which hands back replacement nodes (constant folding returns
+ *    fresh literal exprs), so a type written before folding would sit on a discarded node.  This
+ *    is the order lib/filterx/tests/test_type_inference.c codifies;
+ *  - before _compile_block(), because every compile() hook picks its devirtualized helper from
+ *    FilterXExpr::static_type.  On an un-inferred tree every node still holds
+ *    INITIAL_FILTERX_STATIC_TYPE_SPEC, so the whole block compiles to the generic fallbacks:
+ *    correct code, silently unoptimized.  Inference is codegen's precondition, not a pass that
+ *    happens to run nearby.
+ *
+ * Deliberately not gated on filterx_expr_can_compile() nor on ->jit: a block that is never
+ * compiled must still contribute its writes to persistent_type_env, otherwise a later block keeps
+ * believing a type this one invalidated.  Only the JIT reads static types and the per-expression
+ * infer_types hooks are compiled out without it, so a non-JIT build must not pay for the walk. */
+static void
+_infer_block_types(LogFilterXPipe *self, GlobalConfig *cfg G_GNUC_UNUSED)
+{
+#if SYSLOG_NG_ENABLE_JIT
+  filterx_expr_infer_types_root_persistent(self->block, filterx_config_get(cfg)->persistent_type_env);
+#endif
+  self->types_inferred = TRUE;
+}
+
 static gboolean
 _initialize_block(LogFilterXPipe *self, FilterXEvalContext *compile_context)
 {
@@ -71,6 +103,8 @@ _initialize_block(LogFilterXPipe *self, FilterXEvalContext *compile_context)
 
   if (!filterx_expr_init(self->block, cfg))
     return FALSE;
+
+  _infer_block_types(self, cfg);
   self->scope_var_layout = filterx_scope_variable_layout_new(self->block);
   _compile_block(self, cfg);
   return TRUE;
@@ -93,6 +127,7 @@ log_filterx_pipe_init(LogPipe *s)
     filterx_eval_dump_errors("FILTERX ERROR");
 
   filterx_eval_end_compile(&compile_context);
+
   return success;
 }
 

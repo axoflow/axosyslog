@@ -22,6 +22,7 @@
 #include "expr-arithmetic-operators.h"
 #include "filterx/object-primitive.h"
 #include "filterx/expr-literal.h"
+#include "filterx/expr-string-operators.h"
 #include "filterx/object-extractor.h"
 #include "filterx/filterx-eval.h"
 
@@ -383,6 +384,45 @@ _optimize_plus(FilterXExpr *s)
   return NULL;
 }
 
+#if SYSLOG_NG_ENABLE_JIT
+static inline gboolean
+_is_numeric_static_type(FilterXStaticType kind)
+{
+  return kind == FILTERX_STATIC_TYPE_INTEGER || kind == FILTERX_STATIC_TYPE_DOUBLE;
+}
+
+static void
+_infer_types_plus(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  filterx_expr_infer_types_default(s, env);
+  FilterXArithmeticOperator *self = (FilterXArithmeticOperator *) s;
+  FilterXStaticTypeSpec lhs_spec = self->super.lhs ? self->super.lhs->static_type : INITIAL_FILTERX_STATIC_TYPE_SPEC;
+  FilterXStaticTypeSpec rhs_spec = self->super.rhs ? self->super.rhs->static_type : INITIAL_FILTERX_STATIC_TYPE_SPEC;
+  FilterXStaticType lhs_kind = filterx_static_type_kind(lhs_spec);
+  FilterXStaticType rhs_kind = filterx_static_type_kind(rhs_spec);
+
+  /* Numeric promotion: filterx_object_add() keeps int+int in the integer domain but widens
+   * to double as soon as either side is one, so a mixed pair is statically DOUBLE — a
+   * result a plain meet would throw away as UNKNOWN.
+   *
+   * Both kinds must be known numerics for this to hold. An UNKNOWN operand is not a
+   * "probably integer": it may be a double at runtime, which would widen the result, so the
+   * pair stays UNKNOWN. Claiming INTEGER on a merely-unknown operand would let an
+   * integer-speculating consumer treat a double as an int64. */
+  if (_is_numeric_static_type(lhs_kind) && _is_numeric_static_type(rhs_kind))
+    {
+      FilterXStaticType result = (lhs_kind == FILTERX_STATIC_TYPE_DOUBLE || rhs_kind == FILTERX_STATIC_TYPE_DOUBLE)
+                                 ? FILTERX_STATIC_TYPE_DOUBLE
+                                 : FILTERX_STATIC_TYPE_INTEGER;
+      s->static_type = filterx_static_type_kind_only(result);
+      return;
+    }
+
+  s->static_type = filterx_static_type_spec_meet(lhs_spec, rhs_spec);
+}
+
+#endif
+
 static FilterXObject *
 _do_uminus(FilterXObject *operand_obj, FilterXExpr *expr)
 {
@@ -472,6 +512,123 @@ fx_jit_arithmetic_plus(FilterXObject *lhs, FilterXObject *rhs, FilterXExpr *expr
   return _do_plus(lhs, rhs, expr);
 }
 
+/* Devirtualized fast path for `integer + anything`. lhs is guaranteed to be a FilterXInteger
+ * (eval_typed of an INTEGER-static_type operand).  If rhs is also integer, performs direct
+ * integer arithmetic; otherwise falls back to the generic vtable-dispatching path.
+ * The fallback means the function is always correct even when rhs is non-integer. */
+__attribute__((used))
+FilterXObject *
+fx_jit_int_plus(FilterXObject *lhs, FilterXObject *rhs, FilterXExpr *expr)
+{
+  FilterXObject *result = NULL;
+  if (!lhs)
+    {
+      filterx_eval_push_error_static_info("Failed to add values", "Failed to evaluate left hand side");
+      goto exit;
+    }
+  if (!rhs)
+    {
+      filterx_eval_push_error_static_info("Failed to add values", "Failed to evaluate right hand side");
+      goto exit;
+    }
+
+  gint64 rhs_val;
+  if (G_LIKELY(filterx_integer_unwrap(rhs, &rhs_val)))
+    {
+      gint64 lhs_val;
+      gboolean ok G_GNUC_UNUSED = filterx_integer_unwrap(lhs, &lhs_val);
+      g_assert(ok);
+      filterx_object_unref(lhs);
+      filterx_object_unref(rhs);
+
+      gint64 sum;
+      if (__builtin_add_overflow(lhs_val, rhs_val, &sum))
+        {
+          /* filterx_object_add() rejects the same sums, see _integer_add() */
+          filterx_eval_push_error_static_info("Failed to add values", "integer overflow");
+          return NULL;
+        }
+
+      return filterx_integer_new(sum);
+    }
+
+  result = filterx_object_add(lhs, rhs);
+  if (!result)
+    filterx_eval_push_error_static_info("Failed to add values", "add() method failed");
+
+exit:
+  filterx_object_unref(lhs);
+  filterx_object_unref(rhs);
+  return result;
+}
+
+/* Unwraps a primitive number into a double, promoting an integer the way filterx_object_add()
+ * does for a mixed pair. Returns FALSE for anything that is not a primitive number (a message
+ * value for instance), leaving the caller to dispatch through the add() method instead. */
+static inline gboolean
+_unwrap_number_as_double(FilterXObject *obj, gdouble *value)
+{
+  if (filterx_double_unwrap(obj, value))
+    return TRUE;
+
+  gint64 int_value;
+  if (filterx_integer_unwrap(obj, &int_value))
+    {
+      *value = (gdouble) int_value;
+      return TRUE;
+    }
+
+  return FALSE;
+}
+
+/* Devirtualized fast path for a `+` inferred as DOUBLE, which _infer_types_plus() claims for
+ * a statically numeric operand pair with at least one double. Which side holds the double is
+ * not known at compile time, so both operands are unwrapped as numbers; either one that does
+ * not unwrap directly falls back to the generic vtable-dispatching path, which means the
+ * function stays correct regardless. */
+__attribute__((used))
+FilterXObject *
+fx_jit_double_plus(FilterXObject *lhs, FilterXObject *rhs, FilterXExpr *expr)
+{
+  FilterXObject *result = NULL;
+  if (!lhs)
+    {
+      filterx_eval_push_error_static_info("Failed to add values", "Failed to evaluate left hand side");
+      goto exit;
+    }
+  if (!rhs)
+    {
+      filterx_eval_push_error_static_info("Failed to add values", "Failed to evaluate right hand side");
+      goto exit;
+    }
+
+  gdouble lhs_val, rhs_val;
+  if (G_LIKELY(_unwrap_number_as_double(lhs, &lhs_val) && _unwrap_number_as_double(rhs, &rhs_val)))
+    {
+      filterx_object_unref(lhs);
+      filterx_object_unref(rhs);
+
+      gdouble sum = lhs_val + rhs_val;
+      if (!isfinite(sum))
+        {
+          /* filterx_object_add() rejects the same sums, see _double_add_result() */
+          filterx_eval_push_error_static_info("Failed to add values", "double overflow");
+          return NULL;
+        }
+
+      return filterx_double_new(sum);
+    }
+
+  result = filterx_object_add(lhs, rhs);
+  if (!result)
+    filterx_eval_push_error_static_info("Failed to add values", "add() method failed");
+
+exit:
+  filterx_object_unref(lhs);
+  filterx_object_unref(rhs);
+  return result;
+}
+
 __attribute__((used))
 FilterXObject *
 fx_jit_arithmetic_uminus(FilterXObject *operand, FilterXExpr *expr)
@@ -537,10 +694,44 @@ _compile_binary_arithmetic(FilterXExpr *s, FilterXJIT *jit, const gchar *fn_name
   return LLVMBuildLoad2(ir, ffi->ptr_ty, result_slot, "result");
 }
 
+/* Emits both operands, taking a ref on a literal instead of evaluating it. Mirrors
+ * _eval_lhs()/_eval_rhs(): only the lhs is evaluated typed, which is what lets a
+ * devirtualized fast path rely on its static type. */
+static void
+_compile_operands(FilterXArithmeticOperator *self, FilterXJIT *jit, FilterXIRValue *lhs, FilterXIRValue *rhs)
+{
+  *lhs = self->literal_lhs
+         ? fx_jit_emit_object_ref(jit, fx_jit_emit_const_ptr(jit, self->literal_lhs))
+         : filterx_expr_compile_or_eval_typed(self->super.lhs, jit);
+  *rhs = self->literal_rhs
+         ? fx_jit_emit_object_ref(jit, fx_jit_emit_const_ptr(jit, self->literal_rhs))
+         : filterx_expr_compile_or_eval(self->super.rhs, jit);
+}
+
 static FilterXIRValue
 _compile_plus(FilterXExpr *s, FilterXJIT *jit)
 {
-  return _compile_binary_arithmetic(s, jit, "fx_jit_arithmetic_plus");
+  FilterXArithmeticOperator *self = (FilterXArithmeticOperator *) s;
+  FilterXStaticType kind = filterx_static_type_kind(s->static_type);
+
+  if (kind != FILTERX_STATIC_TYPE_STRING && !_is_numeric_static_type(kind))
+    return _compile_binary_arithmetic(s, jit, "fx_jit_arithmetic_plus");
+
+  FilterXIRValue lhs, rhs;
+  _compile_operands(self, jit, &lhs, &rhs);
+
+  if (kind == FILTERX_STATIC_TYPE_STRING)
+    return filterx_string_concat_compile(jit, lhs, rhs, s);
+
+  /* _infer_types_plus() claims a numeric kind only for a statically numeric operand pair:
+   * INTEGER for int + int, DOUBLE as soon as either side is a double. Both domains have a
+   * helper that adds without dispatching through the add() method. */
+  const gchar *fn_name = kind == FILTERX_STATIC_TYPE_INTEGER ? "fx_jit_int_plus" : "fx_jit_double_plus";
+  FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
+
+  FilterXIRValue args[] = { lhs, rhs, fx_jit_emit_const_ptr(jit, self) };
+  FilterXIRType param_tys[] = { ffi->ptr_ty, ffi->ptr_ty, ffi->ptr_ty };
+  return fx_jit_emit_extern_call(jit, fn_name, ffi->ptr_ty, param_tys, args, 3);
 }
 
 static FilterXIRValue
@@ -651,6 +842,7 @@ filterx_operator_plus_new(FilterXExpr *lhs, FilterXExpr *rhs)
   self->super.super.free_fn = _free_arithmetic_common;
 #if SYSLOG_NG_ENABLE_JIT
   self->super.super.compile = _compile_plus;
+  self->super.super.infer_types = _infer_types_plus;
 #endif
 
   return &self->super.super;

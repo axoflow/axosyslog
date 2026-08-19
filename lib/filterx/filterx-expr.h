@@ -27,6 +27,7 @@
 #include "filterx/jit/jit.h"
 #include "filterx/jit/ffi.h"
 #include "filterx-object.h"
+#include "filterx/filterx-type-inference.h"
 #include "cfg-lexer.h"
 #include "stats/stats-counter.h"
 
@@ -56,7 +57,7 @@ struct _FilterXExpr
 
   /* not thread-safe */
   guint32 ref_cnt;
-guint32 ignore_falsy_result:1, suppress_from_trace:1, inited:1, optimized:1, statement:1, effects:
+guint32 ignore_falsy_result:1, suppress_from_trace:1, inited:1, optimized:1, statement:1, types_inferred:1, effects:
   FXE_EFFECT_BITFIELD_SIZE;
 
   /* not to be used except for FilterXMessageRef, replace any cached values
@@ -81,11 +82,14 @@ guint32 ignore_falsy_result:1, suppress_from_trace:1, inited:1, optimized:1, sta
 #if SYSLOG_NG_ENABLE_JIT
   FilterXIRValue (*compile)(FilterXExpr *self, FilterXJIT *jit);
   FilterXIRValue (*compile_assign)(FilterXExpr *self, FilterXJIT *jit, FilterXIRValue new_value);
+  void (*infer_types)(FilterXExpr *self, FilterXTypeEnv *env);
 #endif
 
   void (*free_fn)(FilterXExpr *self);
 
   gboolean (*walk_children)(FilterXExpr *self, FilterXExprWalkFunc f, gpointer user_data);
+
+  FilterXStaticTypeSpec static_type;
 
   /* type of the expr, is not freed, assumed to be managed by something else
    * */
@@ -261,6 +265,11 @@ void filterx_expr_deinit_method(FilterXExpr *self, GlobalConfig *cfg);
 gboolean filterx_expr_init(FilterXExpr *self, GlobalConfig *cfg);
 void filterx_expr_deinit(FilterXExpr *self, GlobalConfig *cfg);
 
+/* Default infer_types implementation: walks children with the current env and leaves
+ * self->static_type at UNKNOWN. Provided as a callable so per-expr overrides can chain
+ * to it when they only need to add a post-step (e.g. to set their own static_type). */
+void filterx_expr_infer_types_default(FilterXExpr *self, FilterXTypeEnv *env);
+
 static inline gboolean
 filterx_expr_visit(FilterXExpr *self, FilterXExpr **expr, FilterXExprWalkFunc f, gpointer user_data)
 {
@@ -294,6 +303,11 @@ filterx_expr_compile(FilterXExpr *self, FilterXJIT *jit)
 {
 #if SYSLOG_NG_ENABLE_JIT
   g_assert(self && self->compile);
+#if SYSLOG_NG_ENABLE_DEBUG
+  /* static_type is only meaningful after inference; compiling an un-inferred node devirtualizes
+   * on UNKNOWN, i.e. silently emits the generic path. */
+  g_assert(self->types_inferred);
+#endif
   FilterXIRValue result = self->compile(self, jit);
 
   return fx_jit_emit_expr_propagate_to_error_if_null(jit, self, result);
@@ -318,6 +332,11 @@ filterx_expr_compile_assign(FilterXExpr *self, FilterXJIT *jit, FilterXIRValue n
 {
 #if SYSLOG_NG_ENABLE_JIT
   g_assert(self && self->compile_assign);
+#if SYSLOG_NG_ENABLE_DEBUG
+  /* static_type is only meaningful after inference; compiling an un-inferred node devirtualizes
+   * on UNKNOWN, i.e. silently emits the generic path. */
+  g_assert(self->types_inferred);
+#endif
   return self->compile_assign(self, jit, new_value);
 #else
   g_assert_not_reached();
@@ -329,6 +348,11 @@ filterx_expr_compile_typed(FilterXExpr *self, FilterXJIT *jit)
 {
 #if SYSLOG_NG_ENABLE_JIT
   g_assert(self && self->compile);
+#if SYSLOG_NG_ENABLE_DEBUG
+  /* static_type is only meaningful after inference; compiling an un-inferred node devirtualizes
+   * on UNKNOWN, i.e. silently emits the generic path. */
+  g_assert(self->types_inferred);
+#endif
   FilterXIRValue result = self->compile(self, jit);
 
   return fx_jit_emit_expr_make_typed_object(jit, self, result);

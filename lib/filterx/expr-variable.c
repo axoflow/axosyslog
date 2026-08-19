@@ -244,6 +244,18 @@ fx_jit_assign_variable_in_scope(FilterXEvalContext *context, FilterXExpr *s, Fil
   return new_value;
 }
 
+static void
+_variable_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  FilterXVariableExpr *self = (FilterXVariableExpr *) s;
+  if (self->handle_is_macro)
+    s->static_type = INITIAL_FILTERX_STATIC_TYPE_SPEC;
+  else
+    /* The env may carry the FRESH lift-tracking sentinel at inner levels; strip it before
+     * exposing the type on the expression (used by getattr/set codegen). */
+    s->static_type = filterx_static_type_sanitize(filterx_type_spec_get(env, self->handle));
+}
+
 static FilterXIRValue
 _variable_compile(FilterXExpr *s, FilterXJIT *jit)
 {
@@ -337,6 +349,7 @@ filterx_variable_expr_new(const gchar *name, FilterXVariableType variable_type)
   self->super.free_fn = _free;
   self->super.eval = _eval_variable;
 #if SYSLOG_NG_ENABLE_JIT
+  self->super.infer_types = _variable_infer_types;
   self->super.compile = _variable_compile;
 #endif
   self->super._update_repr = _update_repr;
@@ -374,12 +387,16 @@ filterx_floating_variable_expr_new(const gchar *name)
   return filterx_variable_expr_new(name, FX_VAR_FLOATING);
 }
 
-FilterXVariableHandle
-filterx_variable_expr_get_handle(FilterXExpr *s)
+gboolean
+filterx_variable_expr_get_handle(FilterXExpr *s, FilterXVariableHandle *handle_out)
 {
+  if (!filterx_expr_is_variable(s))
+    return FALSE;
   FilterXVariableExpr *self = (FilterXVariableExpr *) s;
-
-  return self->handle;
+  if (self->handle_is_macro)
+    return FALSE;
+  *handle_out = self->handle;
+  return TRUE;
 }
 
 gboolean
