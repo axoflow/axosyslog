@@ -31,8 +31,14 @@
 #include "otel-servicecall.hpp"
 #include "otel-source.hpp"
 #include "otel-protobuf-parser.hpp"
+#include "otel-logmsg-handles.hpp"
+
+#include "compat/cpp-start.h"
+#include "transport/tls-session.h"
+#include "compat/cpp-end.h"
 
 #include <grpcpp/grpcpp.h>
+#include <grpc/grpc_security_constants.h>
 
 namespace syslogng {
 namespace grpc {
@@ -77,6 +83,29 @@ private:
   CallStatus status;
 };
 
+static void
+_extract_peer_info(const ::grpc::ServerContext &ctx, TLSPeerInfo *peer_info)
+{
+  std::vector<::grpc::string_ref> pem_cert =
+    ctx.auth_context()->FindPropertyValues(GRPC_X509_PEM_CERT_PROPERTY_NAME);
+
+  if (pem_cert.empty())
+    return;
+
+  tls_peer_info_extract_from_pem(peer_info, pem_cert.front().data(), pem_cert.front().length());
+}
+
+static void
+_store_peer_info(LogMessage *msg, const TLSPeerInfo &peer_info)
+{
+  if (!peer_info.found)
+    return;
+
+  log_msg_set_value(msg, logmsg_handle::TLS_X509_CN, peer_info.cn, -1);
+  log_msg_set_value(msg, logmsg_handle::TLS_X509_O, peer_info.o, -1);
+  log_msg_set_value(msg, logmsg_handle::TLS_X509_OU, peer_info.ou, -1);
+}
+
 }
 }
 }
@@ -92,6 +121,9 @@ syslogng::grpc::otel::TraceServiceCall::Proceed(bool ok)
     }
 
   ::grpc::Status response_status = ::grpc::Status::OK;
+
+  TLSPeerInfo peer_info = { 0 };
+  _extract_peer_info(ctx, &peer_info);
 
   int msgs_in_fetch_round = 0;
 
@@ -119,6 +151,7 @@ syslogng::grpc::otel::TraceServiceCall::Proceed(bool ok)
               ProtobufParser::store_raw_metadata(msg, ctx.peer(), resource, resource_spans_schema_url, scope,
                                                  scope_spans_schema_url);
               ProtobufParser::store_raw(msg, span);
+              _store_peer_info(msg, peer_info);
               worker.blocking_post(msg);
 
               msgs_in_fetch_round++;
@@ -149,6 +182,9 @@ syslogng::grpc::otel::LogsServiceCall::Proceed(bool ok)
     }
 
   ::grpc::Status response_status = ::grpc::Status::OK;
+
+  TLSPeerInfo peer_info = { 0 };
+  _extract_peer_info(ctx, &peer_info);
 
   int msgs_in_fetch_round = 0;
 
@@ -184,6 +220,7 @@ syslogng::grpc::otel::LogsServiceCall::Proceed(bool ok)
                                                      scope_logs_schema_url);
                   ProtobufParser::store_raw(msg, log_record);
                 }
+              _store_peer_info(msg, peer_info);
               worker.blocking_post(msg);
 
               msgs_in_fetch_round++;
@@ -215,6 +252,9 @@ syslogng::grpc::otel::MetricsServiceCall::Proceed(bool ok)
 
   ::grpc::Status response_status = ::grpc::Status::OK;
 
+  TLSPeerInfo peer_info = { 0 };
+  _extract_peer_info(ctx, &peer_info);
+
   int msgs_in_fetch_round = 0;
 
   for (const ResourceMetrics &resource_metrics : request.resource_metrics())
@@ -241,6 +281,7 @@ syslogng::grpc::otel::MetricsServiceCall::Proceed(bool ok)
               ProtobufParser::store_raw_metadata(msg, ctx.peer(), resource, resource_metrics_schema_url, scope,
                                                  scope_metrics_schema_url);
               ProtobufParser::store_raw(msg, metric);
+              _store_peer_info(msg, peer_info);
               worker.blocking_post(msg);
 
               msgs_in_fetch_round++;
