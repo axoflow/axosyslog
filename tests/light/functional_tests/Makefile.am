@@ -23,6 +23,7 @@ EXTRA_DIST += \
 	tests/light/functional_tests/destination_drivers/unix_stream_destination/test_unix_stream_destination.py \
 	tests/light/functional_tests/filters/rate-limit/test_rate_limit_filter_acceptance.py \
 	tests/light/functional_tests/filters/test_filter_reference.py \
+	tests/light/functional_tests/filters/test_facility_and_level_filters.py \
 	tests/light/functional_tests/filters/test_multiple_filters.py \
 	tests/light/functional_tests/filterx/test_filterx_cache_json_file.py \
 	tests/light/functional_tests/filterx/test_filterx_control.py \
