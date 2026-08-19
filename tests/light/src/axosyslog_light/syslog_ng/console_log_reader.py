@@ -117,7 +117,7 @@ class ConsoleLogReader(object):
         console_logs = ""
         for log_type, log_path in self.console_log_files.items():
             if not log_path["path"].exists():
-                logger.warning("Console log file {} does not exist".format(log_path))
+                logger.warning("Console log file {} does not exist".format(log_path["path"]))
                 continue
             console_log_file = File(log_path["path"])
             console_log_file.open("r")
