@@ -24,8 +24,11 @@
 import typing
 from dataclasses import dataclass
 from dataclasses import field
+from pathlib import Path
 
 from grpc import insecure_channel
+from grpc import secure_channel
+from grpc import ssl_channel_credentials
 from opentelemetry.proto.collector.logs.v1.logs_service_pb2 import ExportLogsServiceRequest
 from opentelemetry.proto.collector.logs.v1.logs_service_pb2_grpc import LogsServiceStub
 from opentelemetry.proto.common.v1.common_pb2 import AnyValue
@@ -203,6 +206,25 @@ class OTelResourceScopeLog:
 class OpenTelemetryIO():
     def __init__(self, port: int) -> None:
         self.__port = port
+        self.__credentials = None
+
+    def set_tls(
+        self,
+        ca_cert: Path,
+        client_cert: typing.Optional[Path] = None,
+        client_key: typing.Optional[Path] = None,
+    ) -> None:
+        self.__credentials = ssl_channel_credentials(
+            root_certificates=ca_cert.read_bytes(),
+            private_key=client_key.read_bytes() if client_key else None,
+            certificate_chain=client_cert.read_bytes() if client_cert else None,
+        )
+
+    def __create_channel(self):
+        target = f"localhost:{self.__port}"
+        if self.__credentials:
+            return secure_channel(target, self.__credentials)
+        return insecure_channel(target)
 
     def __create_request(self, resource_scope_logs: typing.List[OTelResourceScopeLog]) -> ExportLogsServiceRequest:
         request = ExportLogsServiceRequest()
@@ -240,6 +262,6 @@ class OpenTelemetryIO():
 
     def send_logs(self, resource_scope_logs: typing.List[OTelResourceScopeLog]) -> None:
         request = self.__create_request(resource_scope_logs)
-        with insecure_channel(f"localhost:{self.__port}") as channel:
+        with self.__create_channel() as channel:
             stub = LogsServiceStub(channel)
             stub.Export(request)

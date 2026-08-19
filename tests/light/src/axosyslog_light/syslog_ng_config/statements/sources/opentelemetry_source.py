@@ -22,6 +22,7 @@
 #
 #############################################################################
 import typing
+from pathlib import Path
 
 from axosyslog_light.driver_io.opentelemetry.opentelemetry_io import OpenTelemetryIO
 from axosyslog_light.driver_io.opentelemetry.opentelemetry_io import OTelLog
@@ -44,6 +45,14 @@ class OpenTelemetrySource(SourceDriver):
 
         self.driver_name = "opentelemetry"
         super(OpenTelemetrySource, self).__init__(stats_handler, prometheus_stats_handler, options=options)
+
+    def set_tls(
+        self,
+        ca_cert: Path,
+        client_cert: typing.Optional[Path] = None,
+        client_key: typing.Optional[Path] = None,
+    ) -> None:
+        self.io.set_tls(ca_cert, client_cert, client_key)
 
     def write_log(
         self,
