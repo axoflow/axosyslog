@@ -60,6 +60,7 @@ EXTRA_DIST += \
 	tests/light/functional_tests/parsers/db_parser/test_db_parser.py \
 	tests/light/functional_tests/parsers/group-lines-parser/test_group_lines_parser.py \
 	tests/light/functional_tests/parsers/mariadb-parser/test_mariadb_audit_parser.py \
+	tests/light/functional_tests/parsers/map_value_pairs/test_map_value_pairs.py \
 	tests/light/functional_tests/parsers/metrics-probe/test_metrics_probe.py \
 	tests/light/functional_tests/parsers/panos/test_panos_parser.py \
 	tests/light/functional_tests/parsers/postgresql-csvlog-parser/test_postgresql_csvlog_parser.py \
