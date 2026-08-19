@@ -36,6 +36,7 @@ from axosyslog_light.syslog_ng_config.statements.destinations.example_destinatio
 from axosyslog_light.syslog_ng_config.statements.destinations.file_destination import FileDestination
 from axosyslog_light.syslog_ng_config.statements.destinations.http_destination import HttpDestination
 from axosyslog_light.syslog_ng_config.statements.destinations.network_destination import NetworkDestination
+from axosyslog_light.syslog_ng_config.statements.destinations.python_destination import PythonDestination
 from axosyslog_light.syslog_ng_config.statements.destinations.snmp_destination import SnmpDestination
 from axosyslog_light.syslog_ng_config.statements.destinations.sql_destination import SqlDestination
 from axosyslog_light.syslog_ng_config.statements.destinations.unix_dgram_destination import UnixDgramDestination
@@ -274,6 +275,9 @@ class SyslogNgConfig(object):
 
     def create_snmp_destination(self, **options):
         return SnmpDestination(self._stats_handler, self._prometheus_stats_handler, **options)
+
+    def create_python_destination(self, **options):
+        return PythonDestination(self._stats_handler, self._prometheus_stats_handler, **options)
 
     def create_sql_destination(self, **options):
         return SqlDestination(self._stats_handler, self._prometheus_stats_handler, **options)
