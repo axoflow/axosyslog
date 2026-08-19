@@ -96,6 +96,8 @@ FilterXIRValue filterx_jit_ir_get_eval_context(FilterXJIT *self);
 FilterXIRValue filterx_jit_ir_get_variable(FilterXJIT *self, gint scope_var_idx);
 FilterXIRValue filterx_jit_ir_is_variable_uninitialized(FilterXJIT *self, FilterXIRValue variable);
 void filterx_jit_ir_clear_variables(FilterXJIT *self);
+/* Reset a single slot to the uninitialized sentinel, so the next read refills it. */
+void filterx_jit_ir_invalidate_variable(FilterXJIT *self, gint scope_var_idx);
 
 void filterx_jit_ir_set_source_location(FilterXJIT *self, const gchar *file, gint line, gint column);
 

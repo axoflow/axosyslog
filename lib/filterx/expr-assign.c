@@ -20,6 +20,7 @@
  *
  */
 #include "filterx/expr-assign.h"
+#include "filterx/expr-variable.h"
 #include "filterx/object-primitive.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/object-null.h"
@@ -101,6 +102,21 @@ fx_jit_nullv_assign_suppress_error(void)
   return _suppress_error();
 }
 
+__attribute__((used))
+FilterXObject *
+fx_jit_do_nullv_assign(FilterXExpr *s, FilterXObject *value)
+{
+  return _do_nullv_assign((FilterXAssign *) s, value);
+}
+
+__attribute__((used)) __attribute__((noinline))
+gint32
+fx_jit_do_nullv_assign_stmt(FilterXExpr *s, FilterXObject *value,
+                            FilterXEvalContext *context, FilterXObject **last_result)
+{
+  return fx_jit_process_expr_result(fx_jit_do_nullv_assign(s, value), s, context, last_result);
+}
+
 static FilterXIRValue
 _compile_assign_to_lhs(FilterXAssign *self, FilterXJIT *jit)
 {
@@ -148,6 +164,9 @@ _assign_compile(FilterXExpr *s, FilterXJIT *jit)
   return _compile_assign_to_lhs(self, jit);
 }
 
+/* nullv-assign has no compile_assign() counterpart yet, so the store itself still goes
+ * through a helper.  The RHS is compiled nevertheless, which is what makes the
+ * devirtualized operand codegen reachable from `??=` too. */
 static FilterXIRValue
 _compile_nullv_assign_to_lhs(FilterXAssign *self, FilterXJIT *jit)
 {
@@ -208,6 +227,58 @@ _nullv_assign_compile(FilterXExpr *s, FilterXJIT *jit)
   return _compile_nullv_assign_to_lhs(self, jit);
 }
 
+static void
+_assign_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  FilterXAssign *self = (FilterXAssign *) s;
+
+  filterx_expr_infer_types(self->super.rhs, env);
+  /* LHS may be e.g. setattr / set-subscript; visit it so deep variable reads in the LHS
+   * see the env. We do not derive the assign's result type from the LHS's static_type. */
+  filterx_expr_infer_types(self->super.lhs, env);
+
+  FilterXStaticTypeSpec rhs_spec = self->super.rhs ? self->super.rhs->static_type : INITIAL_FILTERX_STATIC_TYPE_SPEC;
+
+  FilterXVariableHandle handle;
+  if (filterx_variable_expr_get_handle(self->super.lhs, &handle))
+    {
+      /* Whole-variable overwrite: any per-key type recorded under the old value is stale. */
+      filterx_type_env_invalidate_attr_chains(env, handle);
+      filterx_type_spec_set(env, handle, rhs_spec);
+    }
+
+  s->static_type = rhs_spec;
+}
+
+static void
+_nullv_assign_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  FilterXAssign *self = (FilterXAssign *) s;
+
+  filterx_expr_infer_types(self->super.rhs, env);
+  filterx_expr_infer_types(self->super.lhs, env);
+
+  FilterXStaticTypeSpec rhs_spec = self->super.rhs ? self->super.rhs->static_type : INITIAL_FILTERX_STATIC_TYPE_SPEC;
+
+  /* nullv-assign is a runtime branch: if RHS is null, LHS keeps its prior value untouched
+   * (any per-key info recorded for it is still valid); otherwise LHS is wholly replaced by
+   * RHS (the old per-key info is now stale). Model both branches on their own env clone,
+   * same as if/else, and meet them back together — this both computes meet(prior, rhs) for
+   * the handle itself and drops any attr_to_spec entries that don't survive in both branches. */
+  FilterXVariableHandle handle;
+  if (filterx_variable_expr_get_handle(self->super.lhs, &handle))
+    {
+      FilterXTypeEnv *assigned_env = filterx_type_env_clone(env);
+      filterx_type_env_invalidate_attr_chains(assigned_env, handle);
+      filterx_type_spec_set(assigned_env, handle, rhs_spec);
+
+      filterx_type_env_meet_into(env, assigned_env);
+      filterx_type_env_free(assigned_env);
+    }
+
+  s->static_type = INITIAL_FILTERX_STATIC_TYPE_SPEC;
+}
+
 #endif
 
 static void
@@ -227,6 +298,7 @@ filterx_assign_new(FilterXExpr *lhs, FilterXExpr *rhs)
   filterx_assign_init_instance(self, "assign", lhs, rhs);
   self->super.super.eval = _assign_eval;
 #if SYSLOG_NG_ENABLE_JIT
+  self->super.super.infer_types = _assign_infer_types;
   self->super.super.compile = _assign_compile;
 #endif
   return &self->super.super;
@@ -240,6 +312,7 @@ filterx_nullv_assign_new(FilterXExpr *lhs, FilterXExpr *rhs)
   filterx_assign_init_instance(self, "nullv-assign", lhs, rhs);
   self->super.super.eval = _nullv_assign_eval;
 #if SYSLOG_NG_ENABLE_JIT
+  self->super.super.infer_types = _nullv_assign_infer_types;
   self->super.super.compile = _nullv_assign_compile;
 #endif
   return &self->super.super;

@@ -50,6 +50,7 @@ typedef struct _FilterXJITFFI
   FilterXJITFFICall expr_make_typed_object;
 
   FilterXJITFFICall object_ref;
+  FilterXJITFFICall object_ref_typed;
   FilterXJITFFICall object_unref;
   FilterXJITFFICall object_cow_fork2;
   FilterXJITFFICall object_truthy;
@@ -71,6 +72,8 @@ FilterXIRValue fx_jit_emit_expr_make_typed_object(FilterXJIT *jit, FilterXExpr *
 FilterXIRValue fx_jit_emit_expr_propagate_to_error_if_null(FilterXJIT *jit, FilterXExpr *expr, FilterXIRValue result);
 
 FilterXIRValue fx_jit_emit_object_ref(FilterXJIT *jit, FilterXIRValue obj);
+/* Like fx_jit_emit_object_ref(), but also marks @obj as already unmarshalled. */
+FilterXIRValue fx_jit_emit_object_ref_typed(FilterXJIT *jit, FilterXIRValue obj);
 void fx_jit_emit_object_unref(FilterXJIT *jit, FilterXIRValue obj);
 FilterXIRValue fx_jit_emit_object_cow_fork2(FilterXJIT *jit, FilterXIRValue obj);
 FilterXIRValue fx_jit_emit_object_truthy(FilterXJIT *jit, FilterXIRValue obj);
@@ -87,6 +90,29 @@ G_GNUC_PRINTF(3, 4);
 
 FilterXIRValue fx_jit_emit_extern_call(FilterXJIT *jit, const gchar *name, FilterXIRType return_ty,
                                        FilterXIRType *param_tys, FilterXIRValue *args, unsigned param_count);
+
+/* If @value is a call to a helper that has a make-typed twin (or whose result
+ * is inherently typed), retarget the call in place so a separate
+ * make_typed_object() call does not have to be emitted.  Returns TRUE if the
+ * value is guaranteed to be typed. */
+gboolean fx_jit_try_make_call_result_typed(FilterXJIT *jit, FilterXIRValue value);
+
+/* Side-effect free variant: TRUE if @value is a call whose result is inherently typed.
+ * Unlike the above it never retargets the call, so it is safe to use as a predicate. */
+gboolean fx_jit_call_result_is_typed(FilterXJIT *jit, FilterXIRValue value);
+
+/* Statement postlude shared by compound statements and the "<name>_stmt"
+ * combined helpers, implemented in expr-compound.c. */
+struct _FilterXEvalContext;
+gint32 fx_jit_process_expr_result(FilterXObject *current_result, FilterXExpr *child,
+                                  struct _FilterXEvalContext *context, FilterXObject **last_result);
+
+/* If @result is a call to a statement helper that has a "<name>_stmt" twin
+ * (helper combined with fx_jit_process_expr_result()), replace the call with
+ * one to the twin and return the emitted step-action value.  Returns NULL if
+ * @result is not foldable; the caller must emit the postlude itself. */
+FilterXIRValue fx_jit_try_emit_stmt_action(FilterXJIT *jit, FilterXIRValue result,
+                                           FilterXIRValue eval_ctx, FilterXIRValue result_slot);
 
 /* private */
 void filterx_jit_ffi_init(FilterXJIT *jit);

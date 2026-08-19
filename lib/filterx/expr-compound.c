@@ -300,6 +300,23 @@ fx_jit_process_compound_result(FilterXCompoundExpr *self, gint32 success, Filter
   return _process_compound_result(self, success, result);
 }
 
+static void
+_compound_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  FilterXCompoundExpr *self = (FilterXCompoundExpr *) s;
+  gsize n = filterx_expr_list_get_length(&self->exprs);
+
+  FilterXStaticTypeSpec last = INITIAL_FILTERX_STATIC_TYPE_SPEC;
+  for (gsize i = 0; i < n; i++)
+    {
+      FilterXExpr *child = filterx_expr_list_index(&self->exprs, i);
+      filterx_expr_infer_types(child, env);
+      last = child ? child->static_type : INITIAL_FILTERX_STATIC_TYPE_SPEC;
+    }
+
+  s->static_type = self->return_value_of_last_expr ? last : INITIAL_FILTERX_STATIC_TYPE_SPEC;
+}
+
 static inline FilterXIRValue
 _emit_process_compound_result(FilterXJIT *jit, FilterXCompoundExpr *self, FilterXIRValue success, FilterXIRValue result)
 {
@@ -362,7 +379,11 @@ _compound_compile(FilterXExpr *s, FilterXJIT *jit)
                                            child->lloc->first_line, child->lloc->first_column);
 
       FilterXIRValue result = filterx_expr_compile_or_eval(child, jit);
-      FilterXIRValue action = _emit_process_expr_result(jit, result, child, eval_ctx, result_slot);
+
+      /* fold the helper call and the postlude into a single "<helper>_stmt" call where possible */
+      FilterXIRValue action = fx_jit_try_emit_stmt_action(jit, result, eval_ctx, result_slot);
+      if (!action)
+        action = _emit_process_expr_result(jit, result, child, eval_ctx, result_slot);
 
       prev_switch = LLVMBuildSwitch(ir, action, mark_failure, 2);
       LLVMAddCase(prev_switch, LLVMConstInt(ffi->i32_ty, FXC_STEP_STOP_TRUE, FALSE), finish);
@@ -397,6 +418,7 @@ filterx_compound_expr_new(gboolean return_value_of_last_expr)
   self->super.walk_children = _compound_walk;
   self->super.free_fn = _free;
 #if SYSLOG_NG_ENABLE_JIT
+  self->super.infer_types = _compound_infer_types;
   self->super.compile = _compound_compile;
 #endif
   self->return_value_of_last_expr = return_value_of_last_expr;

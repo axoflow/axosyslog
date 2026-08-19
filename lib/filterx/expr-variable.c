@@ -229,11 +229,46 @@ fx_jit_eval_variable(FilterXExpr *s)
   return _eval_variable(s);
 }
 
+__attribute__((used)) __attribute__((noinline))
+FilterXObject *
+fx_jit_eval_variable_typed(FilterXExpr *s)
+{
+  return filterx_expr_make_typed_object(s, _eval_variable(s));
+}
+
 __attribute__((used))
 FilterXObject *
 fx_jit_borrow_variable_value(FilterXEvalContext *context, FilterXExpr *s)
 {
   return _borrow_variable_value((FilterXVariableExpr *) s, context);
+}
+
+/* Like fx_jit_borrow_variable_value(), but leaves the variable holding its typed
+ * representation.  This is what establishes the JIT variable cache invariant: a slot that
+ * is not the uninitialized sentinel always holds a typed object, so reads of it need no
+ * further make_typed_object().  Returns a borrowed pointer. */
+__attribute__((used))
+FilterXObject *
+fx_jit_borrow_variable_value_typed(FilterXEvalContext *context, FilterXExpr *s)
+{
+  FilterXVariableExpr *self = (FilterXVariableExpr *) s;
+  FilterXObject *value = _borrow_variable_value(self, context);
+
+  if (!value)
+    return NULL;
+
+  /* make_typed_object() consumes a reference, so give it one of ours */
+  FilterXObject *typed = filterx_expr_make_typed_object(s, filterx_object_ref(value));
+  if (!typed)
+    return NULL;
+
+  /* When unmarshalling happened, _update_repr() has stored the typed value into the
+   * scope -- but cow_store() grounds and re-wraps it, so the scope's pointer is not
+   * necessarily @typed.  Re-borrow to hand out exactly what the scope now holds. */
+  FilterXObject *borrowed = _borrow_variable_value(self, context);
+  filterx_object_unref(typed);
+
+  return borrowed;
 }
 
 __attribute__((used))
@@ -242,6 +277,18 @@ fx_jit_assign_variable_in_scope(FilterXEvalContext *context, FilterXExpr *s, Fil
 {
   _assign_variable_in_scope((FilterXVariableExpr *) s, context, &new_value);
   return new_value;
+}
+
+static void
+_variable_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  FilterXVariableExpr *self = (FilterXVariableExpr *) s;
+  if (self->handle_is_macro)
+    s->static_type = INITIAL_FILTERX_STATIC_TYPE_SPEC;
+  else
+    /* The env may carry the FRESH lift-tracking sentinel at inner levels; strip it before
+     * exposing the type on the expression (used by getattr/set codegen). */
+    s->static_type = filterx_static_type_sanitize(filterx_type_spec_get(env, self->handle));
 }
 
 static FilterXIRValue
@@ -275,7 +322,7 @@ _variable_compile(FilterXExpr *s, FilterXJIT *jit)
   filterx_jit_ir_set_insert_point_to_sequence_tail(jit, fill);
   FilterXIRValue args[] = { filterx_jit_ir_get_eval_context(jit), fx_jit_emit_const_ptr(jit, self) };
   FilterXIRType param_tys[] = { ffi->ptr_ty, ffi->ptr_ty };
-  FilterXIRValue filled = fx_jit_emit_extern_call(jit, "fx_jit_borrow_variable_value",
+  FilterXIRValue filled = fx_jit_emit_extern_call(jit, "fx_jit_borrow_variable_value_typed",
                                                   ffi->ptr_ty, param_tys, args, 2);
   LLVMBuildStore(ir, filled, local);
   LLVMBuildBr(ir, merge);
@@ -287,7 +334,9 @@ _variable_compile(FilterXExpr *s, FilterXJIT *jit)
   FilterXIRSequence incoming_blocks[] = { cached_seq, fill };
   LLVMAddIncoming(value, incoming_values, incoming_blocks, 2);
 
-  return fx_jit_emit_object_ref(jit, value);
+  /* every writer of the slot keeps it typed, so the cached value needs no unmarshalling:
+   * take the reference through the marker twin to tell compile_typed() to skip it */
+  return fx_jit_emit_object_ref_typed(jit, value);
 }
 
 static FilterXIRValue
@@ -308,7 +357,15 @@ _variable_compile_assign(FilterXExpr *s, FilterXJIT *jit, FilterXIRValue new_val
   FilterXIRValue stored = fx_jit_emit_extern_call(jit, "fx_jit_assign_variable_in_scope",
                                                   ffi->ptr_ty, param_tys, args, 3);
 
-  LLVMBuildStore(ir, stored, local);
+  /* Only cache the assigned value when it is known to be typed, otherwise the slot would
+   * break the "a cached value is always typed" invariant that lets reads skip
+   * make_typed_object().  A marshalled value (e.g. `x = $MSG`) is dropped from the cache
+   * instead, so the next read refills it through the typed borrow. */
+  if (fx_jit_call_result_is_typed(jit, new_value))
+    LLVMBuildStore(ir, stored, local);
+  else
+    filterx_jit_ir_invalidate_variable(jit, self->scope_var_idx);
+
   return stored;
 }
 
@@ -337,6 +394,7 @@ filterx_variable_expr_new(const gchar *name, FilterXVariableType variable_type)
   self->super.free_fn = _free;
   self->super.eval = _eval_variable;
 #if SYSLOG_NG_ENABLE_JIT
+  self->super.infer_types = _variable_infer_types;
   self->super.compile = _variable_compile;
 #endif
   self->super._update_repr = _update_repr;
@@ -374,12 +432,16 @@ filterx_floating_variable_expr_new(const gchar *name)
   return filterx_variable_expr_new(name, FX_VAR_FLOATING);
 }
 
-FilterXVariableHandle
-filterx_variable_expr_get_handle(FilterXExpr *s)
+gboolean
+filterx_variable_expr_get_handle(FilterXExpr *s, FilterXVariableHandle *handle_out)
 {
+  if (!filterx_expr_is_variable(s))
+    return FALSE;
   FilterXVariableExpr *self = (FilterXVariableExpr *) s;
-
-  return self->handle;
+  if (self->handle_is_macro)
+    return FALSE;
+  *handle_out = self->handle;
+  return TRUE;
 }
 
 gboolean

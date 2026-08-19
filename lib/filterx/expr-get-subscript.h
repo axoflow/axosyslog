@@ -25,6 +25,7 @@
 #include "filterx/filterx-expr.h"
 
 FilterXExpr *filterx_get_subscript_new(FilterXExpr *lhs, FilterXExpr *key);
+FilterXExpr *filterx_get_subscript_get_operand(FilterXExpr *s);
 
 FILTERX_EXPR_DECLARE_TYPE(get_subscript);
 
