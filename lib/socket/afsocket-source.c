@@ -241,8 +241,8 @@ afsocket_sc_set_owner(AFSocketSourceConnection *self, AFSocketSourceDriver *owne
   This should be called by log_reader_free -> log_pipe_unref
   because this is the control pipe of the reader
 */
-static void
-afsocket_sc_free(LogPipe *s)
+void
+afsocket_sc_free_method(LogPipe *s)
 {
   AFSocketSourceConnection *self = (AFSocketSourceConnection *) s;
   g_sockaddr_unref(self->peer_addr);
@@ -250,19 +250,26 @@ afsocket_sc_free(LogPipe *s)
   log_pipe_free_method(s);
 }
 
+void
+afsocket_sc_init_instance(AFSocketSourceConnection *self, GSockAddr *peer_addr, GSockAddr *local_addr,
+                          gint fd, GlobalConfig *cfg)
+{
+  log_pipe_init_instance(&self->super, cfg);
+  self->super.init = afsocket_sc_init;
+  self->super.deinit = afsocket_sc_deinit;
+  self->super.notify = afsocket_sc_notify;
+  self->super.free_fn = afsocket_sc_free_method;
+  self->peer_addr = g_sockaddr_ref(peer_addr);
+  self->local_addr = g_sockaddr_ref(local_addr);
+  self->sock = fd;
+}
+
 AFSocketSourceConnection *
 afsocket_sc_new(GSockAddr *peer_addr, GSockAddr *local_addr, int fd, GlobalConfig *cfg)
 {
   AFSocketSourceConnection *self = g_new0(AFSocketSourceConnection, 1);
 
-  log_pipe_init_instance(&self->super, cfg);
-  self->super.init = afsocket_sc_init;
-  self->super.deinit = afsocket_sc_deinit;
-  self->super.notify = afsocket_sc_notify;
-  self->super.free_fn = afsocket_sc_free;
-  self->peer_addr = g_sockaddr_ref(peer_addr);
-  self->local_addr = g_sockaddr_ref(local_addr);
-  self->sock = fd;
+  afsocket_sc_init_instance(self, peer_addr, local_addr, fd, cfg);
   return self;
 }
 
@@ -458,7 +465,10 @@ afsocket_sd_process_connection(AFSocketSourceDriver *self, GSockAddr *client_add
     {
       AFSocketSourceConnection *conn;
 
-      conn = afsocket_sc_new(client_addr, local_addr, fd, self->super.super.super.cfg);
+      if (self->construct_connection)
+        conn = self->construct_connection(self, client_addr, local_addr, fd);
+      else
+        conn = afsocket_sc_new(client_addr, local_addr, fd, self->super.super.super.cfg);
       afsocket_sc_set_owner(conn, self);
       if (log_pipe_init(&conn->super))
         {
