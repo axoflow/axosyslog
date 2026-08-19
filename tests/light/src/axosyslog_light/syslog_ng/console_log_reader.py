@@ -22,8 +22,10 @@
 #############################################################################
 import logging
 import re
+from collections import deque
 
 from axosyslog_light.common.file import File
+from axosyslog_light.common.file import open_file
 
 logger = logging.getLogger(__name__)
 
@@ -73,16 +75,14 @@ class ConsoleLogReader(object):
         return stderr_file.wait_for_lines(expected_messages)
 
     def is_message_in_console_log(self, expected_message):
-        console_logs = self.__get_all_console_logs()
-        for console_log_message in console_logs.split("\n"):
+        for console_log_message in self.__iterate_all_console_logs():
             if expected_message in console_log_message:
                 return True
         return False
 
     def count_message_in_console_log(self, expected_message):
-        console_logs = self.__get_all_console_logs()
         count = 0
-        for console_log_message in console_logs.split("\n"):
+        for console_log_message in self.__iterate_all_console_logs():
             if expected_message in console_log_message:
                 count += 1
         return count
@@ -92,9 +92,8 @@ class ConsoleLogReader(object):
         if unexpected_messages is not None:
             unexpected_patterns.extend(unexpected_messages)
 
-        console_logs = self.__get_all_console_logs()
         for unexpected_pattern in unexpected_patterns:
-            for console_log_message in console_logs.split("\n"):
+            for console_log_message in self.__iterate_all_console_logs():
                 if re.search(unexpected_pattern, console_log_message) is not None:
                     logger.error("Found unexpected message in console log: {}".format(console_log_message))
                     raise Exception("Unexpected error log in console", console_log_message)
@@ -103,27 +102,24 @@ class ConsoleLogReader(object):
         stderr_path = self.console_log_files["stderr"]["path"]
         if not stderr_path.exists():
             return []
-        lines = stderr_path.read_text().splitlines()
-        for i, line in enumerate(lines):
-            if re.search(r"ERROR: (LeakSanitizer|AddressSanitizer)", line):
-                return lines[i:]
+        with open_file(stderr_path, "r") as stderr_file:
+            for line in stderr_file:
+                if re.search(r"ERROR: (LeakSanitizer|AddressSanitizer)", line):
+                    return [line.rstrip("\n")] + [remaining.rstrip("\n") for remaining in stderr_file]
         return []
 
     def dump_stderr(self, last_n_lines=10):
-        stderr = self.__get_all_console_logs()
-        logger.error("\n".join(stderr.split("\n")[-last_n_lines:]))
+        last_lines = deque(self.__iterate_all_console_logs(), maxlen=last_n_lines)
+        logger.error("\n".join(last_lines))
 
-    def __get_all_console_logs(self):
-        console_logs = ""
-        for log_type, log_path in self.console_log_files.items():
-            if not log_path["path"].exists():
-                logger.warning("Console log file {} does not exist".format(log_path["path"]))
+    def __iterate_all_console_logs(self):
+        for log_info in self.console_log_files.values():
+            if not log_info["path"].exists():
+                logger.warning("Console log file {} does not exist".format(log_info["path"]))
                 continue
-            console_log_file = File(log_path["path"])
-            console_log_file.open("r")
-            console_logs += console_log_file.read()
-            console_log_file.close()
-        return console_logs
+            with open_file(log_info["path"], "r") as console_log_file:
+                for line in console_log_file:
+                    yield line.rstrip("\n")
 
     @staticmethod
     def handle_valgrind_log(valgrind_log_path):
