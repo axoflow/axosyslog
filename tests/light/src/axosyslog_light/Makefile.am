@@ -92,6 +92,7 @@ EXTRA_DIST += \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/sources/unix_dgram_source.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/sources/unix_stream_source.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/sources/webhook_source.py \
+	tests/light/src/axosyslog_light/syslog_ng_config/statements/sources/wildcard_file_source.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/template/__init__.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/template/template.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/syslog_ng_config.py \
