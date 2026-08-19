@@ -63,6 +63,7 @@ from axosyslog_light.syslog_ng_config.statements.sources.syslog_source import Sy
 from axosyslog_light.syslog_ng_config.statements.sources.unix_dgram_source import UnixDgramSource
 from axosyslog_light.syslog_ng_config.statements.sources.webhook_source import WebhookJsonSource
 from axosyslog_light.syslog_ng_config.statements.sources.webhook_source import WebhookSource
+from axosyslog_light.syslog_ng_config.statements.sources.wildcard_file_source import WildcardFileSource
 from axosyslog_light.syslog_ng_config.statements.template.template import Template
 from axosyslog_light.syslog_ng_config.statements.template.template import TemplateFunction
 from axosyslog_light.syslog_ng_ctl.legacy_stats_handler import LegacyStatsHandler
@@ -153,6 +154,11 @@ class SyslogNgConfig(object):
         file_source = FileSource(self._stats_handler, self._prometheus_stats_handler, **options)
         self.teardown.register(file_source.close_file)
         return file_source
+
+    def create_wildcard_file_source(self, **options):
+        wildcard_file_source = WildcardFileSource(self._stats_handler, self._prometheus_stats_handler, **options)
+        self.teardown.register(wildcard_file_source.close_files)
+        return wildcard_file_source
 
     def create_unix_dgram_source(self, **options):
         unix_dgram_source = UnixDgramSource(self._stats_handler, self._prometheus_stats_handler, **options)
