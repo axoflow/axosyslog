@@ -65,7 +65,13 @@ def _sign(builder, issuer_key):
     return builder.sign(private_key=issuer_key, algorithm=hashes.SHA256())
 
 
-def generate_tls_certificates(directory, hostnames=None, ip_addresses=None) -> TLSCertificates:
+def generate_tls_certificates(
+    directory,
+    hostnames=None,
+    ip_addresses=None,
+    client_organization=None,
+    client_organizational_unit=None,
+) -> TLSCertificates:
     """Generate a CA and a CA-signed server and client certificate.
 
     The server certificate carries the given hostnames and IP addresses as
@@ -118,17 +124,23 @@ def generate_tls_certificates(directory, hostnames=None, ip_addresses=None) -> T
     )
 
     client_key = _new_key()
-    client_cert = _sign(
+    client_subject = [x509.NameAttribute(NameOID.COMMON_NAME, "axosyslog-light-client")]
+    if client_organization is not None:
+        client_subject.append(x509.NameAttribute(NameOID.ORGANIZATION_NAME, client_organization))
+    if client_organizational_unit is not None:
+        client_subject.append(x509.NameAttribute(NameOID.ORGANIZATIONAL_UNIT_NAME, client_organizational_unit))
+
+    client_builder = (
         x509.CertificateBuilder()
-        .subject_name(x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "axosyslog-light-client")]))
+        .subject_name(x509.Name(client_subject))
         .issuer_name(ca_name)
         .public_key(client_key.public_key())
         .serial_number(x509.random_serial_number())
         .not_valid_before(not_before)
         .not_valid_after(not_after)
-        .add_extension(x509.ExtendedKeyUsage([ExtendedKeyUsageOID.CLIENT_AUTH]), critical=False),
-        ca_key,
+        .add_extension(x509.ExtendedKeyUsage([ExtendedKeyUsageOID.CLIENT_AUTH]), critical=False)
     )
+    client_cert = _sign(client_builder, ca_key)
 
     certs = TLSCertificates(
         ca_cert=directory / "ca.crt",
