@@ -4,5 +4,6 @@ leak:^g_process_set_argv_space
 leak:^python_evaluate_global_code
 leak:libpython*.so
 leak:^netsnmp_parse_args
+leak:^sqlite3_exec
 leak:^CRYPTO_malloc
 leak:^CRYPTO_realloc
