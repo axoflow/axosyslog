@@ -20,6 +20,7 @@
 # COPYING for details.
 #
 #############################################################################
+import json
 import logging
 import typing
 from copy import copy
@@ -126,6 +127,28 @@ class SyslogNg(object):
     def restart(self, config: SyslogNgConfig) -> None:
         self.stop()
         self.start(config)
+
+    def print_ast(self, config: SyslogNgConfig) -> dict:
+        config.write_config(self.instance_paths.get_config_path())
+
+        stdout_path = self.instance_paths.get_stdout_path_with_postfix("print_ast")
+        stderr_path = self.instance_paths.get_stderr_path_with_postfix("print_ast")
+
+        start_params = copy(self.start_params)
+        start_params.print_ast = True
+
+        process = self._syslog_ng_executor.run_process(
+            start_params=start_params,
+            stderr_path=stderr_path,
+            stdout_path=stdout_path,
+        )
+        returncode = process.wait()
+        if returncode == 1:
+            raise Exception(f"syslog-ng --print-ast failed. See {stderr_path.absolute()} for details")
+        if returncode != 0:
+            self.__validate_crash_returncode(returncode)
+
+        return json.loads(stdout_path.read_text())
 
     def _get_version_info(self, keyword: str) -> str:
         stdout_path = Path(f"syslog_ng_{self.instance_paths.get_instance_name()}_version_stdout")

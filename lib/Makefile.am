@@ -118,6 +118,7 @@ pkginclude_HEADERS			+= \
 	lib/cfg-source.h		\
 	lib/cfg-tree.h			\
 	lib/cfg-graph.h		\
+	lib/cfg-ast.h			\
 	lib/cfg-persist.h		\
 	lib/children.h			\
 	lib/crypto.h			\
@@ -216,6 +217,7 @@ lib_libsyslog_ng_la_SOURCES		= \
 	lib/cfg-source.c		\
 	lib/cfg-tree.c			\
 	lib/cfg-graph.c		\
+	lib/cfg-ast.c			\
 	lib/cfg-persist.c		\
 	lib/children.c			\
 	lib/dnscache.c			\

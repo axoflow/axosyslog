@@ -41,6 +41,7 @@ class SyslogNgStartParams:
     startup_debug: bool = True
     no_caps: bool = True
     syntax_only: bool = False
+    print_ast: bool = False
     version: bool = False
     config_path: typing.Optional[Path] = None
     persist_path: typing.Optional[Path] = None
@@ -68,6 +69,8 @@ class SyslogNgStartParams:
             params += ["--no-caps"]
         if self.syntax_only:
             params += ["--syntax-only"]
+        if self.print_ast:
+            params += ["--print-ast"]
         if self.version:
             params += ["--version"]
         if self.config_path is not None:

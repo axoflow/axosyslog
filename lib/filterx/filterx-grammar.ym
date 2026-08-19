@@ -128,6 +128,9 @@ _assign_location(FilterXExpr *expr, CfgLexer *lexer, CFG_LTYPE *lloc)
 %token KW_DEFAULT
 %token KW_DPATH
 
+/* only used/injected by filterx_compile_script() */
+%token LL_FILTERX_VIRTUAL_TOPLEVEL
+
 %type <ptr> block
 %type <ptr> stmts
 %type <node> stmt
@@ -187,6 +190,14 @@ _assign_location(FilterXExpr *expr, CfgLexer *lexer, CFG_LTYPE *lloc)
 
 start
         : block					{ *result = $1; if (yychar != FILTERX_EMPTY) { cfg_lexer_unput_token(lexer, &yylval); } YYACCEPT; }
+	| LL_FILTERX_VIRTUAL_TOPLEVEL stmts		{
+						  /* used when entire file is filterx code.
+						   * NOTE: no YYACCEPT here -> expecting end-of-input to ensure complete statements */
+						  FilterXExpr *block = filterx_compound_expr_new(FALSE);
+						  filterx_compound_expr_add_list_ref(block, $2);
+						  filterx_expr_set_location_with_text(block, &@$, "<toplevel>");
+						  *result = block;
+						}
 	;
 
 block
