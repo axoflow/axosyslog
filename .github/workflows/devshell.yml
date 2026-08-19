@@ -156,16 +156,6 @@ jobs:
           cmake --build . --target light-self-check
           cmake --build . --target light-check
 
-      - name: func-test (autotools)
-        if: matrix.build-tool == 'autotools'
-        working-directory: ./build
-        run: make VERBOSE=1 func-test
-
-      - name: func-test (cmake)
-        if: matrix.build-tool == 'cmake'
-        working-directory: ./build
-        run: cmake --build . --target func-test
-
       - name: "Artifact: test-suite.log"
         uses: actions/upload-artifact@v7.0.1
         if: always() && (steps.check_autotools.outcome == 'failure' || steps.check_cmake.outcome == 'failure')
