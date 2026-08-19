@@ -245,6 +245,9 @@ class SyslogNgConfig(object):
     def create_metrics_probe(self, **options):
         return Parser("metrics_probe", self._stats_handler, self._prometheus_stats_handler, **options)
 
+    def create_python_parser(self, **options):
+        return Parser("python", self._stats_handler, self._prometheus_stats_handler, **options)
+
     def create_syslog_parser(self, **options):
         return Parser("syslog-parser", self._stats_handler, self._prometheus_stats_handler, **options)
 

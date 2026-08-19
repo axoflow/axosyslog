@@ -63,6 +63,7 @@ EXTRA_DIST += \
 	tests/light/functional_tests/parsers/metrics-probe/test_metrics_probe.py \
 	tests/light/functional_tests/parsers/panos/test_panos_parser.py \
 	tests/light/functional_tests/parsers/postgresql-csvlog-parser/test_postgresql_csvlog_parser.py \
+	tests/light/functional_tests/parsers/python_parser/test_python_parser.py \
 	tests/light/functional_tests/parsers/regexp-parser/test_regexp_parser.py \
 	tests/light/functional_tests/parsers/sdata-parser/test_sdata_parser.py \
 	tests/light/functional_tests/rewrites/cc-mask/test_cc_mask_and_cc_hash.py \
