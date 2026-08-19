@@ -5,8 +5,8 @@
 # always a correct build path.
 #
 # cmake and autotools work in any checkout -- a plain clone, a branch, or a git
-# worktree -- and build out-of-tree in build/; dbld and alpine need a plain
-# checkout.
+# worktree -- and build out-of-tree in build/ (or --build-dir=NAME); dbld and
+# alpine need a plain checkout.
 #
 # Usage:  axosyslog-build [mode] [flavors] [actions]
 #
@@ -35,6 +35,13 @@
 #            --no-jit              disable the filterx LLVM JIT (default: on)
 #            --no-lld              link with the default linker instead of lld
 #                                  (cmake only; lld is on by default)
+#            --build-dir=NAME      build in NAME/ instead of build/ (cmake/autotools
+#                                  only; a single dir name at the checkout root, so
+#                                  a JIT and a --no-jit tree can live side by side).
+#                                  Each dir installs to NAME/install and carries its
+#                                  own mode marker. Only the default build/ owns the
+#                                  .clangd pointer. Never run two dirs concurrently:
+#                                  they share the lib/ivykis source tree.
 #
 #   actions: --check               run the unit tests after the build (alpine:
 #                                  they already ran inside the image build)
@@ -59,6 +66,7 @@ DO_INSTALL=1
 DO_CLANGD=0
 NO_JIT=0
 NO_LLD=0
+BUILD_SUBDIR=""
 DO_CHECK=0
 DO_LIGHT=0
 EXTRA_ARGS=()
@@ -122,6 +130,8 @@ while [ $# -gt 0 ]; do
     --clangd)       DO_CLANGD=1 ;;
     --no-jit)       NO_JIT=1 ;;
     --no-lld)       NO_LLD=1 ;;
+    --build-dir=*)  BUILD_SUBDIR="${1#*=}"; [ -n "$BUILD_SUBDIR" ] || fail "--build-dir= needs a value" ;;
+    --build-dir)    shift; [ $# -gt 0 ] || fail "--build-dir needs a value"; BUILD_SUBDIR="$1" ;;
     --check)        DO_CHECK=1 ;;
     --light)        DO_LIGHT=1 ;;
     --)             shift; EXTRA_ARGS=("$@"); break ;;
@@ -169,6 +179,18 @@ if [ "$NO_LLD" -eq 1 ] && [ "$MODE" != cmake ]; then
   fail "--no-lld is cmake-only; only the cmake build links with lld"
 fi
 
+# --build-dir is a plain name at the checkout root: the autotools branch configures
+# with ../configure, and it keeps the --clean `rm -rf` off a stray path.
+if [ -n "$BUILD_SUBDIR" ]; then
+  case "$MODE" in
+    cmake|autotools) ;;
+    *) fail "--build-dir is cmake/autotools only ($MODE builds in its own container/image dir)" ;;
+  esac
+  case "$BUILD_SUBDIR" in
+    */*|.|..|-*) fail "invalid --build-dir '$BUILD_SUBDIR'  (want a single dir name at the checkout root, e.g. build-nojit)" ;;
+  esac
+fi
+
 if [ "$DO_CLANGD" -eq 1 ] && [ "$MODE" != autotools ]; then
   fail "--clangd is autotools-only; the cmake build always exports the compile DB"
 fi
@@ -208,6 +230,9 @@ ROOT="$(git -C "$(pwd)" rev-parse --show-toplevel 2>/dev/null)" || fail "not ins
 # guard the destructive steps (--clean rm -rf) against an unrelated current repo
 [ -f "$ROOT/configure.ac" ] || fail "not an AxoSyslog checkout: $ROOT"
 
+# every build-dir path goes through $BUILD; --build-dir moves it off the default
+BUILD="$ROOT/${BUILD_SUBDIR:-build}"
+
 # dbld/alpine bind-mount the checkout into a container. dbld/rules mounts the git
 # common-dir, but a linked worktree's submodule gitdirs (lib/ivykis) are recorded
 # against the main checkout and still don't resolve there -- so plain checkout only.
@@ -223,8 +248,8 @@ fi
 detect_mode() {
   # first match wins: after a sanctioned switch (cmake --clean in a dbld tree) both
   # a native and a dbld marker exist, since a host build never deletes dbld/build/
-  if   [ -f "$ROOT/build/CMakeCache.txt" ];      then echo cmake
-  elif [ -f "$ROOT/build/config.status" ];       then echo autotools
+  if   [ -f "$BUILD/CMakeCache.txt" ];      then echo cmake
+  elif [ -f "$BUILD/config.status" ];       then echo autotools
   elif [ -f "$ROOT/dbld/build/config.status" ];  then echo dbld
   else echo none
   fi
@@ -298,6 +323,18 @@ fi
 
 require_tools
 
+# clangd finds the pointer file by walking up from the source file, so it sits at
+# the checkout root -- and it names one build dir. The default build/ owns it; a
+# --build-dir tree leaves the editor pointed at build/ rather than hijacking it.
+write_clangd_pointer() {
+  if [ -n "$BUILD_SUBDIR" ] && [ "$BUILD_SUBDIR" != build ]; then
+    warn "leaving .clangd pointed at build/ (--build-dir=$BUILD_SUBDIR does not own the compile DB)"
+    return 0
+  fi
+  # CompilationDatabase is a directory, not a file path
+  printf 'CompileFlags:\n  CompilationDatabase: build\n' > "$ROOT/.clangd"
+}
+
 ivykis_recover() {
   say "recovering lib/ivykis (clean -fdx)"
   # best-effort: on a fresh clone lib/ivykis isn't a repo yet; --clean must still bootstrap
@@ -307,15 +344,15 @@ ivykis_recover() {
 BIN=""
 
 build_autotools() {
-  local prefix="$ROOT/build/install"
+  local prefix="$BUILD/install"
   local extra=()
   [ "$SANITIZER" != none ] && extra+=(--with-sanitizer="$SANITIZER")
   [ "$MONOLITHIC" -eq 1 ] && extra+=(--with-linking-mode=monolithic)
   [ "$NO_JIT" -eq 1 ] && extra+=(--disable-jit)
 
   if [ "$CLEAN" -eq 1 ]; then
-    say "clean: wiping build/"
-    rm -rf "$ROOT/build"
+    say "clean: wiping ${BUILD#"$ROOT"/}/"
+    rm -rf "$BUILD"
     ivykis_recover
   fi
 
@@ -324,11 +361,11 @@ build_autotools() {
     ( cd "$ROOT" && ./autogen.sh )
   fi
 
-  mkdir -p "$ROOT/build"
-  if [ ! -f "$ROOT/build/config.status" ]; then
+  mkdir -p "$BUILD"
+  if [ ! -f "$BUILD/config.status" ]; then
     say "configure (autotools, sanitizer=$SANITIZER)"
     # config.status --recheck replays only argument-passed vars, so CC/CXX ride as args
-    ( cd "$ROOT/build" && ../configure \
+    ( cd "$BUILD" && ../configure \
         CC="$CC" CXX="$CXX" \
         "${extra[@]}" \
         --enable-debug --enable-extra-warnings --enable-all-modules \
@@ -340,22 +377,21 @@ build_autotools() {
 
   if [ "$DO_CLANGD" -eq 1 ]; then
     say "make + compile DB (bear)"
-    bear --output "$ROOT/build/compile_commands.json" -- make -C "$ROOT/build" -j"$JOBS"
-    # CompilationDatabase is a directory, not a file path
-    printf 'CompileFlags:\n  CompilationDatabase: build\n' > "$ROOT/.clangd"
+    bear --output "$BUILD/compile_commands.json" -- make -C "$BUILD" -j"$JOBS"
+    write_clangd_pointer
   else
     say "make -j$JOBS"
-    make -C "$ROOT/build" -j"$JOBS"
+    make -C "$BUILD" -j"$JOBS"
   fi
   if [ "$DO_INSTALL" -eq 1 ]; then
     say "make install"
-    make -C "$ROOT/build" install
+    make -C "$BUILD" install
   fi
   BIN="$prefix/sbin/syslog-ng"
 }
 
 build_cmake() {
-  local prefix="$ROOT/build/install"
+  local prefix="$BUILD/install"
   # the wrapper's "none" is cmake's cache value OFF
   local san="$SANITIZER"
   [ "$san" = none ] && san=OFF
@@ -370,14 +406,14 @@ build_cmake() {
   fi
 
   if [ "$CLEAN" -eq 1 ]; then
-    say "clean: wiping build/"
-    rm -rf "$ROOT/build"
+    say "clean: wiping ${BUILD#"$ROOT"/}/"
+    rm -rf "$BUILD"
     ivykis_recover
   fi
 
-  if [ ! -f "$ROOT/build/CMakeCache.txt" ]; then
+  if [ ! -f "$BUILD/CMakeCache.txt" ]; then
     say "cmake configure (sanitizer=$SANITIZER)"
-    cmake -G Ninja -B "$ROOT/build" -S "$ROOT" \
+    cmake -G Ninja -B "$BUILD" -S "$ROOT" \
       -DCMAKE_C_COMPILER="$CC" -DCMAKE_CXX_COMPILER="$CXX" \
       -DSANITIZER="$san" \
       "${jitflag[@]}" \
@@ -391,15 +427,14 @@ build_cmake() {
   fi
 
   say "cmake --build -j$JOBS"
-  cmake --build "$ROOT/build" -j"$JOBS"
+  cmake --build "$BUILD" -j"$JOBS"
   if [ "$DO_INSTALL" -eq 1 ]; then
     say "cmake --install"
-    cmake --install "$ROOT/build"
+    cmake --install "$BUILD"
   fi
 
-  # cmake emits compile_commands.json for free. clangd finds the pointer file
-  # by walking up from the source file, so it must sit at the checkout root.
-  printf 'CompileFlags:\n  CompilationDatabase: build\n' > "$ROOT/.clangd"
+  # cmake emits compile_commands.json for free.
+  write_clangd_pointer
   BIN="$prefix/sbin/syslog-ng"
 }
 
@@ -415,7 +450,7 @@ build_dbld() {
     ( cd "$ROOT" && ./dbld/rules clean ) || true
     # drop the native build/ marker too, or detect_mode keeps refusing the
     # switched tree
-    rm -rf "$ROOT/build"
+    rm -rf "$BUILD"
     ivykis_recover
   fi
 
@@ -433,14 +468,14 @@ run_check() {
   case "$MODE" in
     autotools)
       say "unit tests: make -j$JOBS check${EXTRA_ARGS[*]:+  ${EXTRA_ARGS[*]}}"
-      make -C "$ROOT/build" -j"$JOBS" check "${EXTRA_ARGS[@]}" ;;
+      make -C "$BUILD" -j"$JOBS" check "${EXTRA_ARGS[@]}" ;;
     cmake)
       say "unit tests: ctest -j$JOBS${EXTRA_ARGS[*]:+  ${EXTRA_ARGS[*]}}"
       # the cmake layout links systemd-journal both shared and static, so the
       # duplicated used_namespaces trips ASan's ODR check; autotools links it
       # static only
       ASAN_OPTIONS="detect_odr_violation=0" \
-      ctest --test-dir "$ROOT/build" --parallel "$JOBS" --output-on-failure "${EXTRA_ARGS[@]}" ;;
+      ctest --test-dir "$BUILD" --parallel "$JOBS" --output-on-failure "${EXTRA_ARGS[@]}" ;;
     dbld)
       say "unit tests: dbld make-check${EXTRA_ARGS[*]:+  MAKE_ARGS=${EXTRA_ARGS[*]}}"
       ( cd "$ROOT" && ./dbld/rules make-check MAKE_ARGS="${EXTRA_ARGS[*]}" ) ;;
@@ -451,11 +486,11 @@ run_light() {
   case "$MODE" in
     autotools)
       say "light/e2e: make light-check${EXTRA_ARGS[*]:+  PYTEST_OPTS=${EXTRA_ARGS[*]}}"
-      make -C "$ROOT/build" light-check PYTEST_OPTS="${EXTRA_ARGS[*]}" ;;
+      make -C "$BUILD" light-check PYTEST_OPTS="${EXTRA_ARGS[*]}" ;;
     cmake)
       say "light/e2e: cmake light-check${EXTRA_ARGS[*]:+  EXTRA_ARGS=${EXTRA_ARGS[*]}}"
       EXTRA_ARGS="${EXTRA_ARGS[*]}" \
-      cmake --build "$ROOT/build" --target light-check ;;
+      cmake --build "$BUILD" --target light-check ;;
     dbld)
       say "light/e2e: dbld make-light-check${EXTRA_ARGS[*]:+  PYTEST_OPTS=${EXTRA_ARGS[*]}}"
       ( cd "$ROOT" && PYTEST_OPTS="${EXTRA_ARGS[*]}" ./dbld/rules make-light-check ) ;;
