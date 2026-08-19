@@ -98,8 +98,14 @@ struct _AFSocketSourceDriver
   /* optionally acquire a socket from the runtime environment (e.g. systemd) */
   gboolean (*acquire_socket)(AFSocketSourceDriver *s, gint *fd);
 
+  AFSocketSourceConnection *(*construct_connection)(AFSocketSourceDriver *s, GSockAddr *peer_addr,
+                                                    GSockAddr *local_addr, gint fd);
   LogProtoServer *(*construct_proto)(AFSocketSourceConnection *sc, StatsClusterKeyBuilder *kb);
 };
+
+void afsocket_sc_init_instance(AFSocketSourceConnection *self, GSockAddr *peer_addr, GSockAddr *local_addr,
+                               gint fd, GlobalConfig *cfg);
+void afsocket_sc_free_method(LogPipe *s);
 
 void afsocket_sd_set_keep_alive(LogDriver *self, gint enable);
 void afsocket_sd_set_max_connections(LogDriver *self, gint max_connections);
