@@ -27,8 +27,94 @@
 #include "filterx/jit/jit.h"
 #include "filterx/jit/ffi.h"
 #include "filterx-object.h"
+#include "filterx/filterx-variable.h"
+#include "filterx/filterx-type-inference.h"
 #include "cfg-lexer.h"
 #include "stats/stats-counter.h"
+
+#include <string.h>
+
+/* A location inside a variable: the root variable's handle plus the key steps that lead to it.
+ * The zero-step path addresses the variable itself.  Every step is a key this pass can name, so a
+ * path either addresses one location exactly or does not address it at all.
+ *
+ * Steps are interned into a permanent pool, so a path outlives the expression it was peeled
+ * from -- FilterXExpr::name borrows its characters from an object the expression owns and frees.
+ * Interning is also what makes comparing two steps a pointer comparison.
+ */
+
+#define FILTERX_PATH_MAX_DEPTH 8
+
+typedef struct _FilterXTypePath
+{
+  FilterXVariableHandle root;
+  guint n_steps;
+  /* TRUE when the location has no exact address and steps[] holds the representable prefix of it.
+   * Two things do that: nesting deeper than FILTERX_PATH_MAX_DEPTH, and a step no key can name --
+   * a computed subscript, a list index, the `expr[] = v` append.  Both leave the same obligation
+   * on a write, which is why they are the same bit: nothing under the prefix survives. */
+  gboolean truncated;
+  const gchar *steps[FILTERX_PATH_MAX_DEPTH];
+} FilterXTypePath;
+
+const gchar *filterx_type_path_intern_key(const gchar *key);
+
+/* Orders paths so that a path is immediately followed by exactly its own descendants, which makes
+ * every subtree a contiguous range.  Roots compare numerically, then step by step, then the
+ * shorter path first. */
+gint filterx_type_path_compare(gconstpointer a, gconstpointer b, gpointer user_data);
+
+static inline gboolean
+filterx_type_path_is_prefix_of(const FilterXTypePath *prefix, const FilterXTypePath *path)
+{
+  if (prefix->root != path->root || prefix->n_steps > path->n_steps)
+    return FALSE;
+  for (guint i = 0; i < prefix->n_steps; i++)
+    {
+      if (prefix->steps[i] != path->steps[i])
+        return FALSE;
+    }
+  return TRUE;
+}
+
+static inline void
+filterx_type_path_parent(const FilterXTypePath *self, FilterXTypePath *parent_out)
+{
+  *parent_out = *self;
+  if (parent_out->n_steps > 0)
+    parent_out->n_steps--;
+}
+
+/* Appending to a path that already lost its exact address keeps it lost: `d[$k].a` must not read
+ * as `d.a`, because the write may have landed under any key of d rather than under that one. */
+static inline gboolean
+filterx_type_path_append_step(FilterXTypePath *self, const gchar *step)
+{
+  if (self->truncated)
+    return FALSE;
+
+  if (!step || self->n_steps >= FILTERX_PATH_MAX_DEPTH)
+    {
+      self->truncated = TRUE;
+      return FALSE;
+    }
+  self->steps[self->n_steps++] = step;
+  return TRUE;
+}
+
+FilterXTypePath *filterx_type_path_dup(const FilterXTypePath *self);
+
+/* The step a subscript key expression names: the interned literal string, or NULL when it names
+ * no step at all.
+ *
+ * A getattr and a subscript with a literal string key produce the same step, so $a.b and $a["b"]
+ * address the same location.  Every other key -- a computed one, every list index, the NULL key
+ * expression the `expr[] = v` append form hands us -- names nothing, and appending it truncates
+ * the path.
+ *
+ * Defined in expr-literal.c: it inspects a literal, and filterx-expr.c -- the base class -- has
+ * no business including a concrete expression's header. */
+const gchar *filterx_type_path_step_from_key_expr(FilterXExpr *key_expr);
 
 #define FXE_EFFECT_BITFIELD_SIZE 3
 typedef enum
@@ -56,7 +142,7 @@ struct _FilterXExpr
 
   /* not thread-safe */
   guint32 ref_cnt;
-guint32 ignore_falsy_result:1, suppress_from_trace:1, inited:1, optimized:1, statement:1, effects:
+guint32 ignore_falsy_result:1, suppress_from_trace:1, inited:1, optimized:1, statement:1, types_inferred:1, effects:
   FXE_EFFECT_BITFIELD_SIZE;
 
   /* not to be used except for FilterXMessageRef, replace any cached values
@@ -81,7 +167,26 @@ guint32 ignore_falsy_result:1, suppress_from_trace:1, inited:1, optimized:1, sta
 #if SYSLOG_NG_ENABLE_JIT
   FilterXIRValue (*compile)(FilterXExpr *self, FilterXJIT *jit);
   FilterXIRValue (*compile_assign)(FilterXExpr *self, FilterXJIT *jit, FilterXIRValue new_value);
+  void (*infer_types)(FilterXExpr *self, FilterXTypeEnv *env);
 #endif
+
+  /* Outside the guard on purpose: the hooks above need FilterXIRValue and
+   * FilterXJIT, this does not.  Guarding it would break every unguarded
+   * assignment to it, and the inference pass is a no-op without the JIT
+   * anyway, so the field simply stays UNKNOWN there. */
+  FilterXStaticType static_type;
+
+  /* Fill in the location this expression names: recurse into the container it reaches through,
+   * then append the key step it takes.  A root fills in its variable handle and no steps.  FALSE
+   * means the value has no address -- a macro, a function result, a literal -- and, since every
+   * assignment forks its RHS, nothing can alias it either, so a mutator may ignore it.
+   *
+   * Only ever reached through filterx_expr_get_path(), which is what zeroes @path_out; a node
+   * must not call another node's hook directly.
+   *
+   * Outside the JIT guard for the same reason as static_type, plus one of its own: paths are
+   * JIT-independent and test_type_path.c exercises them in the --disable-jit build. */
+  gboolean (*get_path)(FilterXExpr *self, FilterXTypePath *path_out);
 
   void (*free_fn)(FilterXExpr *self);
 
@@ -261,6 +366,9 @@ void filterx_expr_deinit_method(FilterXExpr *self, GlobalConfig *cfg);
 gboolean filterx_expr_init(FilterXExpr *self, GlobalConfig *cfg);
 void filterx_expr_deinit(FilterXExpr *self, GlobalConfig *cfg);
 
+void filterx_expr_infer_types_default(FilterXExpr *self, FilterXTypeEnv *env);
+void filterx_expr_infer_types_boolean_result(FilterXExpr *self, FilterXTypeEnv *env);
+
 static inline gboolean
 filterx_expr_visit(FilterXExpr *self, FilterXExpr **expr, FilterXExprWalkFunc f, gpointer user_data)
 {
@@ -276,6 +384,19 @@ filterx_expr_walk_children(FilterXExpr *self, FilterXExprWalkFunc f, gpointer us
   g_assert(self->walk_children);
 
   return self->walk_children(self, f, user_data);
+}
+
+/* Peel @self down to the location it names.  Unlike walk_children() a missing hook is not an
+ * assert but the answer itself: most expressions are not addressable. */
+static inline gboolean
+filterx_expr_get_path(FilterXExpr *self, FilterXTypePath *path_out)
+{
+  memset(path_out, 0, sizeof(*path_out));
+
+  if (!self || !self->get_path)
+    return FALSE;
+
+  return self->get_path(self, path_out);
 }
 
 /* TODO partialJIT: remove once all expressions implement compile() */
@@ -294,6 +415,8 @@ filterx_expr_compile(FilterXExpr *self, FilterXJIT *jit)
 {
 #if SYSLOG_NG_ENABLE_JIT
   g_assert(self && self->compile);
+  g_assert(self->types_inferred);   /* an un-inferred node reads as UNKNOWN and never devirtualizes */
+
   FilterXIRValue result = self->compile(self, jit);
 
   return fx_jit_emit_expr_propagate_to_error_if_null(jit, self, result);
@@ -318,6 +441,8 @@ filterx_expr_compile_assign(FilterXExpr *self, FilterXJIT *jit, FilterXIRValue n
 {
 #if SYSLOG_NG_ENABLE_JIT
   g_assert(self && self->compile_assign);
+  g_assert(self->types_inferred);   /* an un-inferred node reads as UNKNOWN and never devirtualizes */
+
   return self->compile_assign(self, jit, new_value);
 #else
   g_assert_not_reached();
@@ -329,6 +454,8 @@ filterx_expr_compile_typed(FilterXExpr *self, FilterXJIT *jit)
 {
 #if SYSLOG_NG_ENABLE_JIT
   g_assert(self && self->compile);
+  g_assert(self->types_inferred);   /* an un-inferred node reads as UNKNOWN and never devirtualizes */
+
   FilterXIRValue result = self->compile(self, jit);
 
   return fx_jit_emit_expr_make_typed_object(jit, self, result);

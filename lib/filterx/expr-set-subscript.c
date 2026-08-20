@@ -20,6 +20,7 @@
  *
  */
 #include "filterx/expr-set-subscript.h"
+#include "filterx/expr-variable.h"
 #include "filterx/object-primitive.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/object-null.h"
@@ -154,6 +155,60 @@ _free(FilterXExpr *s)
   filterx_expr_free_method(s);
 }
 
+/* The location this statement writes: one hop down its object, at the key it sets.  A literal
+ * string key names the very step a getattr would, so `$a["b"] = 1` and `$a.b = 1` leave identical
+ * state.  Every other key -- a computed one, a list index, and the `$a[] = 1` append form whose
+ * key expression really is NULL -- names no step, so the path stops truncated at the object and
+ * the write retires the object's whole interior.
+ *
+ * Naming itself is safe for the same reason a setattr may: the grammar reaches an assignment only
+ * from stmt_expr, so this node is always a statement and never the operand of a read. */
+static gboolean
+_set_subscript_get_path(FilterXExpr *s, FilterXTypePath *path_out)
+{
+  FilterXSetSubscript *self = (FilterXSetSubscript *) s;
+
+  if (!filterx_expr_get_path(self->object, path_out))
+    return FALSE;
+
+  filterx_type_path_append_step(path_out, filterx_type_path_step_from_key_expr(self->key));
+  return TRUE;
+}
+
+#if SYSLOG_NG_ENABLE_JIT
+static void
+_set_subscript_record_write(FilterXSetSubscript *self, FilterXTypeEnv *env)
+{
+  FilterXTypePath path;
+
+  if (filterx_expr_get_path(&self->super, &path))
+    filterx_type_env_set_shape_at_path(env, &path, self->new_value);
+}
+
+static void
+_set_subscript_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  filterx_expr_infer_types_default(s, env);
+  _set_subscript_record_write((FilterXSetSubscript *) s, env);
+}
+
+static void
+_nullv_set_subscript_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  filterx_expr_infer_types_default(s, env);
+
+  /* ??= leaves the target alone when the value is null, so what holds afterwards is the meet of
+   * having written and of not having written. */
+  FilterXTypeEnv *assigned_env = filterx_type_env_clone(env);
+
+  _set_subscript_record_write((FilterXSetSubscript *) s, assigned_env);
+
+  filterx_type_env_meet_into(env, assigned_env);
+  filterx_type_env_free(assigned_env);
+}
+
+#endif
+
 static gboolean
 _set_subscript_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
@@ -179,6 +234,10 @@ filterx_set_subscript_new(FilterXExpr *object, FilterXExpr *key, FilterXExpr *ne
   self->super.eval = _set_subscript_eval;
   self->super.walk_children = _set_subscript_walk;
   self->super.free_fn = _free;
+  self->super.get_path = _set_subscript_get_path;
+#if SYSLOG_NG_ENABLE_JIT
+  self->super.infer_types = _set_subscript_infer_types;
+#endif
   self->object = object;
   self->key = key;
   self->new_value = new_value;
@@ -193,5 +252,8 @@ filterx_nullv_set_subscript_new(FilterXExpr *object, FilterXExpr *key, FilterXEx
 
   self->type = "nullv_set_subscript";
   self->eval = _nullv_set_subscript_eval;
+#if SYSLOG_NG_ENABLE_JIT
+  self->infer_types = _nullv_set_subscript_infer_types;
+#endif
   return self;
 }

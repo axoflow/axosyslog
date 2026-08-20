@@ -21,6 +21,10 @@
  */
 #include "filterx/expr-literal.h"
 #include "filterx/filterx-eval.h"
+#include "filterx/object-dict.h"
+#include "filterx/object-list.h"
+#include "filterx/object-string.h"
+#include "filterx/object-primitive.h"
 
 typedef struct _FilterXLiteral
 {
@@ -35,6 +39,26 @@ filterx_literal_get_value(FilterXExpr *s)
   FilterXLiteral *self = (FilterXLiteral *) s;
 
   return filterx_object_ref(self->object);
+}
+
+const gchar *
+filterx_type_path_step_from_key_expr(FilterXExpr *key_expr)
+{
+  /* `expr[] = value` appends at a position nothing can name, and the grammar really does hand us
+   * a NULL key expression for it. */
+  if (!key_expr || !filterx_expr_is_literal(key_expr))
+    return NULL;
+
+  FilterXObject *literal = filterx_literal_get_value(key_expr);
+  if (!literal)
+    return NULL;
+
+  const gchar *step = NULL;
+  if (filterx_object_is_type_or_ref(literal, &FILTERX_TYPE_NAME(string)))
+    step = filterx_type_path_intern_key(filterx_string_get_value_ref_and_assert_nul(literal, NULL));
+
+  filterx_object_unref(literal);
+  return step;
 }
 
 static FilterXObject *
@@ -63,6 +87,42 @@ _literal_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 #include "filterx/jit/jit.h"
 #include "filterx/jit/ffi.h"
 
+/* Only this node's own kind; whatever nesting the object has is installed into the env by the
+ * write that stores it somewhere, which is the only place a path exists to install it at. */
+static FilterXStaticType
+_kind_from_filterx_object(FilterXObject *obj)
+{
+  if (!obj)
+    return FILTERX_STATIC_TYPE_UNKNOWN;
+
+  if (filterx_object_is_type_or_ref(obj, &FILTERX_TYPE_NAME(string)))
+    return FILTERX_STATIC_TYPE_STRING;
+
+  if (filterx_object_is_type_or_ref(obj, &FILTERX_TYPE_NAME(integer)))
+    return FILTERX_STATIC_TYPE_INTEGER;
+
+  if (filterx_object_is_type_or_ref(obj, &FILTERX_TYPE_NAME(double)))
+    return FILTERX_STATIC_TYPE_DOUBLE;
+
+  if (filterx_object_is_type_or_ref(obj, &FILTERX_TYPE_NAME(boolean)))
+    return FILTERX_STATIC_TYPE_BOOLEAN;
+
+  if (filterx_object_is_type_or_ref(obj, &FILTERX_TYPE_NAME(dict)))
+    return FILTERX_STATIC_TYPE_DICT;
+
+  if (filterx_object_is_type_or_ref(obj, &FILTERX_TYPE_NAME(list)))
+    return FILTERX_STATIC_TYPE_LIST;
+
+  return FILTERX_STATIC_TYPE_UNKNOWN;
+}
+
+static void
+_literal_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  FilterXLiteral *self = (FilterXLiteral *) s;
+  s->static_type = _kind_from_filterx_object(self->object);
+}
+
 static FilterXIRValue
 _literal_compile(FilterXExpr *s, FilterXJIT *jit)
 {
@@ -84,6 +144,7 @@ filterx_literal_init_instance(FilterXLiteral *s, FilterXObject *object)
   self->super.walk_children = _literal_walk;
   self->super.free_fn = _free;
 #if SYSLOG_NG_ENABLE_JIT
+  self->super.infer_types = _literal_infer_types;
   self->super.compile = _literal_compile;
 #endif
   self->object = object;

@@ -258,6 +258,31 @@ _compile_conditional(FilterXExpr *s, FilterXJIT *jit)
   return LLVMBuildLoad2(ir, ffi->ptr_ty, result_slot, "result");
 }
 
+static void
+_conditional_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  FilterXConditional *self = (FilterXConditional *) s;
+
+  filterx_expr_infer_types(self->condition, env);
+
+  FilterXTypeEnv *false_env = filterx_type_env_clone(env);
+
+  filterx_expr_infer_types(self->true_branch, env);
+  filterx_expr_infer_types(self->false_branch, false_env);
+
+  filterx_type_env_meet_into(env, false_env);
+  filterx_type_env_free(false_env);
+
+  /* a missing branch is not an absent value, see _eval_conditional() */
+  FilterXStaticType t_t = self->true_branch
+                          ? self->true_branch->static_type
+                          : (self->condition ? self->condition->static_type : FILTERX_STATIC_TYPE_UNKNOWN);
+  FilterXStaticType f_t = self->false_branch
+                          ? self->false_branch->static_type
+                          : FILTERX_STATIC_TYPE_BOOLEAN;
+  s->static_type = filterx_static_type_meet(t_t, f_t);
+}
+
 #endif
 
 FilterXExpr *
@@ -270,6 +295,7 @@ filterx_conditional_new(FilterXExpr *condition)
   self->super.walk_children = _conditional_walk;
   self->super.free_fn = _free;
 #if SYSLOG_NG_ENABLE_JIT
+  self->super.infer_types = _conditional_infer_types;
   self->super.compile = _compile_conditional;
 #endif
   self->super.suppress_from_trace = TRUE;

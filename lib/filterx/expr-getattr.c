@@ -22,6 +22,8 @@
 #include "filterx/expr-getattr.h"
 #include "filterx/object-string.h"
 #include "filterx/filterx-eval.h"
+#include "filterx/expr-variable.h"
+#include "filterx/filterx-type-inference.h"
 #include "stats/stats-registry.h"
 #include "stats/stats-cluster-single.h"
 
@@ -141,6 +143,27 @@ _getattr_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
   return TRUE;
 }
 
+FilterXExpr *
+filterx_getattr_get_operand(FilterXExpr *s)
+{
+  if (!filterx_expr_is_getattr(s))
+    return NULL;
+  return ((FilterXGetAttr *) s)->operand;
+}
+
+/* One hop down the operand's location, at this node's own key. */
+static gboolean
+_getattr_get_path(FilterXExpr *s, FilterXTypePath *path_out)
+{
+  FilterXGetAttr *self = (FilterXGetAttr *) s;
+
+  if (!filterx_expr_get_path(self->operand, path_out))
+    return FALSE;
+
+  filterx_type_path_append_step(path_out, filterx_type_path_intern_key(self->super.name));
+  return TRUE;
+}
+
 #if SYSLOG_NG_ENABLE_JIT
 
 #include "filterx/jit/jit.h"
@@ -151,6 +174,16 @@ FilterXObject *
 fx_jit_do_getattr(FilterXObject *variable, FilterXObject *attr, FilterXExpr *expr)
 {
   return _do_getattr(variable, attr, expr);
+}
+
+static void
+_getattr_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  filterx_expr_infer_types_default(s, env);
+
+  /* One lookup on this node's own path.  There is no second map to prefer over, so no way to
+   * answer with something coarser than the env already holds. */
+  s->static_type = filterx_type_env_get_for_expr(env, s);
 }
 
 static FilterXIRValue
@@ -185,7 +218,9 @@ filterx_getattr_new(FilterXExpr *operand, FilterXObject *attr_name)
   self->super.is_set = _isset;
   self->super.walk_children = _getattr_walk;
   self->super.free_fn = _free;
+  self->super.get_path = _getattr_get_path;
 #if SYSLOG_NG_ENABLE_JIT
+  self->super.infer_types = _getattr_infer_types;
   self->super.compile = _getattr_compile;
 #endif
   self->operand = operand;

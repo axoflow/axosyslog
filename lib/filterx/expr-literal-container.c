@@ -206,6 +206,81 @@ _literal_container_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_dat
   return TRUE;
 }
 
+FilterXObject *
+filterx_literal_container_get_template(FilterXExpr *s)
+{
+  FilterXLiteralContainer *self = (FilterXLiteralContainer *) s;
+  return self->sparse_container;
+}
+
+/* The step an element occupies: its literal key for a dict, and nothing nameable for a list,
+ * whose indices shift under unset() and append. */
+static const gchar *
+_literal_element_path_step(FilterXLiteralElement *elem)
+{
+  if (!elem->key)
+    return NULL;
+  return filterx_type_path_step_from_key_expr(elem->key);
+}
+
+gboolean
+filterx_literal_container_overlay_hole_types(FilterXExpr *s, FilterXTypeEnv *env, const FilterXTypePath *base)
+{
+  FilterXLiteralContainer *self = (FilterXLiteralContainer *) s;
+
+  /* Nothing was evaluated early, so there is no template to have left holes in.  The caller
+   * recorded the container's kind and nothing below it, which is all there is to say. */
+  if (!self->sparse_container)
+    return TRUE;
+
+  gboolean complete = TRUE;
+  gsize len = filterx_pointer_list_get_length(&self->nonliteral_elements);
+  for (gsize i = 0; i < len; i++)
+    {
+      FilterXLiteralElement *elem = (FilterXLiteralElement *) filterx_pointer_list_index(&self->nonliteral_elements, i);
+
+      /* _literal_dict_store_elem() leaves the slot unset when a nullv element's value is null, so
+       * the key may simply not exist and an entry would falsely assert that it does.  It may also
+       * exist, though, which is a key of the container that is not among the recorded ones -- so
+       * the same silence that keeps the entry out costs @base its `closed`. */
+      if (elem->nullv)
+        {
+          complete = FALSE;
+          continue;
+        }
+
+      FilterXTypePath child = *base;
+      if (!filterx_type_path_append_step(&child, _literal_element_path_step(elem)))
+        {
+          /* The element sits at a key nothing addresses, so its value goes unrecorded and the
+           * container holds a key the caller has not seen. */
+          complete = FALSE;
+          continue;
+        }
+
+      filterx_type_env_set_shape_at_path(env, &child, elem->value);
+    }
+
+  return complete;
+}
+
+#if SYSLOG_NG_ENABLE_JIT
+static void
+_literal_dict_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  filterx_expr_infer_types_default(s, env);
+  s->static_type = FILTERX_STATIC_TYPE_DICT;
+}
+
+static void
+_literal_list_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  filterx_expr_infer_types_default(s, env);
+  s->static_type = FILTERX_STATIC_TYPE_LIST;
+}
+
+#endif
+
 static void
 _literal_container_init_instance(FilterXLiteralContainer *self, const gchar *type)
 {
@@ -408,6 +483,9 @@ filterx_literal_dict_new(GList *elements)
 
   _literal_container_init_instance(self, FILTERX_EXPR_TYPE_NAME(literal_dict));
   self->super.eval = _literal_dict_eval;
+#if SYSLOG_NG_ENABLE_JIT
+  self->super.infer_types = _literal_dict_infer_types;
+#endif
   self->eval_early = _literal_dict_eval_early;
   filterx_pointer_list_add_list(&self->elements, elements);
 
@@ -519,6 +597,9 @@ filterx_literal_list_new(GList *elements)
 
   _literal_container_init_instance(self, FILTERX_EXPR_TYPE_NAME(literal_list));
   self->super.eval = _literal_list_eval;
+#if SYSLOG_NG_ENABLE_JIT
+  self->super.infer_types = _literal_list_infer_types;
+#endif
   self->eval_early = _literal_list_eval_early;
   filterx_pointer_list_add_list(&self->elements, elements);
 

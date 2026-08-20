@@ -323,6 +323,29 @@ _function_free(FilterXExpr *s)
   filterx_function_free_method(self);
 }
 
+#if SYSLOG_NG_ENABLE_JIT
+/* A function is free to mutate the containers it was handed -- unset_empties() evaluates its dict
+ * argument and calls filterx_object_set_subscript() straight on it -- so every argument that
+ * names a tracked location has to lose what is recorded below it.
+ *
+ * Unconditional on purpose.  Gating on FXE_WRITE is tempting, but the header defines that as
+ * "writes to a variable", not "does not mutate an argument": four FXE_READ functions in this tree
+ * already call mutating APIs and are safe only because the objects they mutate are locally
+ * constructed, which nothing enforces and no out-of-tree module can be audited for.
+ *
+ * NOTE: a subclass assigning infer_types after this returns silently replaces this hook.  That is
+ * what unset() and move() want, and a trap for anything that overrides it without also retiring
+ * whatever it mutates. */
+static void
+_function_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  /* Infer first, invalidate after: an argument's own type has to be the one that held when the
+   * call was made, not one an earlier argument's invalidation already coarsened. */
+  filterx_expr_infer_types_default(s, env);
+  filterx_type_env_invalidate_arguments(env, s);
+}
+#endif
+
 void
 filterx_function_init_instance(FilterXFunction *s, const gchar *function_name, FilterXEffect effects)
 {
@@ -333,6 +356,9 @@ filterx_function_init_instance(FilterXFunction *s, const gchar *function_name, F
   s->super.deinit = _function_deinit;
   s->super.name = s->function_name;
   s->super.free_fn = _function_free;
+#if SYSLOG_NG_ENABLE_JIT
+  s->super.infer_types = _function_infer_types;
+#endif
 }
 
 /* Takes reference of value */

@@ -300,6 +300,33 @@ fx_jit_process_compound_result(FilterXCompoundExpr *self, gint32 success, Filter
   return _process_compound_result(self, success, result);
 }
 
+static void
+_compound_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  FilterXCompoundExpr *self = (FilterXCompoundExpr *) s;
+  gsize n = filterx_expr_list_get_length(&self->exprs);
+
+  FilterXStaticType last = FILTERX_STATIC_TYPE_UNKNOWN;
+  for (gsize i = 0; i < n; i++)
+    {
+      FilterXExpr *child = filterx_expr_list_index(&self->exprs, i);
+      const gchar *text = child && child->expr_text ? child->expr_text : "(statement)";
+
+      filterx_type_inference_trace_banner("===== statement %" G_GSIZE_FORMAT ": %s", i, text);
+      filterx_expr_infer_types(child, env);
+      filterx_type_env_trace_dump(env, text);
+      last = child ? child->static_type : FILTERX_STATIC_TYPE_UNKNOWN;
+    }
+
+  /* The last-value claim only holds when the block runs to its end: a break/done/drop
+   * short-circuit, and evaluation started past the last expression, both yield the implicit
+   * TRUE instead.  A consumer must not lean on it where a control modifier may fire. */
+  if (self->return_value_of_last_expr && n > 0)
+    s->static_type = last;
+  else
+    s->static_type = FILTERX_STATIC_TYPE_BOOLEAN;
+}
+
 static inline FilterXIRValue
 _emit_process_compound_result(FilterXJIT *jit, FilterXCompoundExpr *self, FilterXIRValue success, FilterXIRValue result)
 {
@@ -397,6 +424,7 @@ filterx_compound_expr_new(gboolean return_value_of_last_expr)
   self->super.walk_children = _compound_walk;
   self->super.free_fn = _free;
 #if SYSLOG_NG_ENABLE_JIT
+  self->super.infer_types = _compound_infer_types;
   self->super.compile = _compound_compile;
 #endif
   self->return_value_of_last_expr = return_value_of_last_expr;

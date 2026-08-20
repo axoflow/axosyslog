@@ -41,6 +41,19 @@ _eval_move(FilterXExpr *s)
   return filterx_expr_move(self->expr);
 }
 
+#if SYSLOG_NG_ENABLE_JIT
+static void
+_move_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  FilterXExprMove *self = (FilterXExprMove *) s;
+
+  filterx_expr_infer_types_default(s, env);
+
+  s->static_type = self->expr ? self->expr->static_type : FILTERX_STATIC_TYPE_UNKNOWN;
+  filterx_type_env_update_on_remove(env, self->expr);
+}
+#endif
+
 static gboolean
 _walk_children(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
@@ -67,6 +80,9 @@ filterx_function_move_new(FilterXFunctionArgs *args, GError **error)
   self->super.super.eval = _eval_move;
   self->super.super.walk_children = _walk_children;
   self->super.super.free_fn = _free;
+#if SYSLOG_NG_ENABLE_JIT
+  self->super.super.infer_types = _move_infer_types;
+#endif
 
   if (filterx_function_args_len(args) == 1)
     {

@@ -75,6 +75,9 @@ filterx_unary_not_new(FilterXExpr *operand)
   filterx_unary_op_init_instance(self, "not", FXE_READ, operand);
   self->super.optimize = _optimize_not;
   self->super.eval = _eval_not;
+#if SYSLOG_NG_ENABLE_JIT
+  self->super.infer_types = filterx_expr_infer_types_boolean_result;
+#endif
   return &self->super;
 }
 
@@ -149,6 +152,9 @@ filterx_binary_and_new(FilterXExpr *lhs, FilterXExpr *rhs)
 
   self->super.optimize = _optimize_and;
   self->super.eval = _eval_and;
+#if SYSLOG_NG_ENABLE_JIT
+  self->super.infer_types = filterx_expr_infer_types_boolean_result;
+#endif
   return &self->super;
 
 }
@@ -225,5 +231,8 @@ filterx_binary_or_new(FilterXExpr *lhs, FilterXExpr *rhs)
 
   self->super.optimize = _optimize_or;
   self->super.eval = _eval_or;
+#if SYSLOG_NG_ENABLE_JIT
+  self->super.infer_types = filterx_expr_infer_types_boolean_result;
+#endif
   return &self->super;
 }

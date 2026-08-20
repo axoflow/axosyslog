@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Attila Szakacs
+ * Copyright (c) 2026 Axoflow
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
@@ -19,26 +19,18 @@
  * COPYING for details.
  *
  */
+#ifndef FILTERX_TYPE_INFERENCE_PRIVATE_H_INCLUDED
+#define FILTERX_TYPE_INFERENCE_PRIVATE_H_INCLUDED
 
-#include "filterx/expr-isset.h"
-#include "filterx/object-primitive.h"
+#include "filterx/filterx-type-inference.h"
+#include "filterx/filterx-expr.h"
 
-static FilterXObject *
-_eval_isset(FilterXExpr *s)
-{
-  FilterXUnaryOp *self = (FilterXUnaryOp *) s;
+/* Not part of the public interface: every compiler-facing caller goes through
+ * filterx_type_env_get_for_expr() instead.  Exposed here so the path/env test suites can exercise
+ * path-keyed reads directly. */
 
-  return filterx_boolean_new(filterx_expr_is_set(self->operand));
-}
+/* The kind at @path: its own entry, or UNKNOWN when there is none.  Nothing is inherited from an
+ * ancestor -- an entry is the only thing that speaks for a location. */
+FilterXStaticType filterx_type_env_get_at_path(const FilterXTypeEnv *self, const FilterXTypePath *path);
 
-FilterXExpr *
-filterx_isset_new(FilterXExpr *expr)
-{
-  FilterXUnaryOp *self = g_new0(FilterXUnaryOp, 1);
-  filterx_unary_op_init_instance(self, "isset", FXE_READ, expr);
-  self->super.eval = _eval_isset;
-#if SYSLOG_NG_ENABLE_JIT
-  self->super.infer_types = filterx_expr_infer_types_boolean_result;
 #endif
-  return &self->super;
-}

@@ -339,7 +339,7 @@ filterx_dpath_lvalue_new(FilterXExpr *variable, GList *dpath_elements, GError **
     }
 
   FilterXDPathLValue *self = g_new0(FilterXDPathLValue, 1);
-  filterx_expr_init_instance(&self->super, "dpath_lvalue", FXE_READ);
+  filterx_expr_init_instance(&self->super, FILTERX_EXPR_TYPE_NAME(dpath_lvalue), FXE_READ);
 
   self->super.eval = _prohibit_eval;
   self->super.assign = filterx_dpath_lvalue_assign;
@@ -355,3 +355,13 @@ filterx_dpath_lvalue_new(FilterXExpr *variable, GList *dpath_elements, GError **
 
   return &self->super;
 }
+
+FilterXExpr *
+filterx_dpath_lvalue_get_variable(FilterXExpr *s)
+{
+  if (!filterx_expr_is_dpath_lvalue(s))
+    return NULL;
+  return ((FilterXDPathLValue *) s)->variable;
+}
+
+FILTERX_EXPR_DEFINE_TYPE(dpath_lvalue);

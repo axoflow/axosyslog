@@ -23,6 +23,7 @@
 #include "filterx/filterx-pipe.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/filterx-config.h"
+#include "filterx/filterx-type-inference.h"
 #include "filterx/filterx-scope-var-layout.h"
 #include "filterx/jit/jit.h"
 #include "stats/stats-registry.h"
@@ -34,6 +35,8 @@ typedef struct _LogFilterXPipe
   FilterXExpr *block;
   FilterXScopeVariableLayout *scope_var_layout;
   FilterXJITExecFunc jit_exec;
+  /* set by _infer_block_types(), asserted by _compile_block() */
+  gboolean types_inferred;
 } LogFilterXPipe;
 
 static inline const gchar *
@@ -51,6 +54,8 @@ _compile_block(LogFilterXPipe *self, GlobalConfig *cfg)
   if (!jit)
     return;
 
+  g_assert(self->types_inferred);
+
   if (!filterx_expr_can_compile(self->block))
     return;
 
@@ -63,6 +68,18 @@ _compile_block(LogFilterXPipe *self, GlobalConfig *cfg)
   filterx_jit_ir_finish_current_block(jit, result);
 }
 
+static void
+_infer_block_types(LogFilterXPipe *self, GlobalConfig *cfg G_GNUC_UNUSED)
+{
+#if SYSLOG_NG_ENABLE_JIT
+  FilterXTypeEnv *env = filterx_type_env_new();
+  filterx_expr_infer_types(self->block, env);
+  filterx_type_env_trace_dump(env, "end of block");
+  filterx_type_env_free(env);
+#endif
+  self->types_inferred = TRUE;
+}
+
 static gboolean
 _initialize_block(LogFilterXPipe *self, FilterXEvalContext *compile_context)
 {
@@ -71,6 +88,8 @@ _initialize_block(LogFilterXPipe *self, FilterXEvalContext *compile_context)
 
   if (!filterx_expr_init(self->block, cfg))
     return FALSE;
+
+  _infer_block_types(self, cfg);
   self->scope_var_layout = filterx_scope_variable_layout_new(self->block);
   _compile_block(self, cfg);
   return TRUE;
@@ -93,6 +112,7 @@ log_filterx_pipe_init(LogPipe *s)
     filterx_eval_dump_errors("FILTERX ERROR");
 
   filterx_eval_end_compile(&compile_context);
+
   return success;
 }
 
