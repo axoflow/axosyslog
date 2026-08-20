@@ -198,6 +198,29 @@ Test(filterx_func_format_kv, test_invalid_quote_char)
   args = NULL;
 }
 
+Test(filterx_func_format_kv, test_always_quote)
+{
+  FilterXExpr *kvs = filterx_literal_new(
+                       filterx_object_from_json("{\"foo\":\"bar\",\"baz\":42}", -1, NULL));
+  GList *args = NULL;
+
+  /* neither value holds a space, so nothing here would be quoted otherwise */
+  args = g_list_append(args, filterx_function_arg_new(NULL, kvs));
+  args = g_list_append(args, filterx_function_arg_new("always_quote", filterx_literal_new(filterx_boolean_new(TRUE))));
+  _assert_format_kv(args, "foo=\"bar\", baz=\"42\"");
+}
+
+Test(filterx_func_format_kv, test_invalid_always_quote)
+{
+  GList *args = NULL;
+
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_literal_new(filterx_test_dict_new())));
+  args = g_list_append(args, filterx_function_arg_new("always_quote",
+                                                      filterx_object_expr_new(filterx_boolean_new(TRUE))));
+  _assert_format_kv_init_fail(args);
+  args = NULL;
+}
+
 static void
 setup(void)
 {
