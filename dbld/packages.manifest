@@ -113,6 +113,7 @@ libmongoc-dev               [debian]
 # added as comments.
 #############################################################################
 
+libdbd-sqlite3                  [devshell]
 
 #############################################################################
 # Development tools in our devshell.
