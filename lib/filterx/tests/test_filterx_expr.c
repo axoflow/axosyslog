@@ -55,6 +55,12 @@ _assert_int_value_and_unref(FilterXObject *object, gint64 expected_value)
   filterx_object_unref(object);
 }
 
+static FilterXExpr *
+_int_literal(gint64 value)
+{
+  return filterx_literal_new(filterx_integer_new(value));
+}
+
 Test(filterx_expr, test_filterx_expr_construction_and_free)
 {
   FilterXExpr *fexpr = filterx_expr_new();
@@ -154,28 +160,19 @@ Test(filterx_expr, test_filterx_literal_list_with_embedded_list)
 
 Test(filterx_expr, test_filterx_dict_immutable_values)
 {
-  FilterXExpr *dict_expr = NULL;
   FilterXObject *result = NULL;
-  GList *values = NULL;
   guint64 len;
 
   FilterXObject *foo = filterx_string_new("foo", -1);
   FilterXObject *bar = filterx_string_new("bar", -1);
   FilterXObject *baz = filterx_string_new("baz", -1);
 
-
-  values = g_list_append(values,
-                         filterx_literal_element_new(filterx_literal_new(filterx_object_ref(foo)),
-                                                     filterx_literal_new(filterx_integer_new(42))));
-  values = g_list_append(values,
-                         filterx_literal_element_new(filterx_literal_new(filterx_object_ref(bar)),
-                                                     filterx_literal_new(filterx_integer_new(43))));
-  values = g_list_append(values,
-                         filterx_literal_element_new(filterx_literal_new(filterx_object_ref(baz)),
-                                                     filterx_literal_new(filterx_integer_new(44))));
-  dict_expr = filterx_literal_dict_new(values);
-
   // result = {"foo": 42, "bar": 43, "baz": 44};
+  FilterXExpr *dict_expr = filterx_literal_dict_of(filterx_literal_new(filterx_object_ref(foo)), _int_literal(42),
+                                                   filterx_literal_new(filterx_object_ref(bar)), _int_literal(43),
+                                                   filterx_literal_new(filterx_object_ref(baz)), _int_literal(44),
+                                                   NULL);
+
   result = init_and_eval_expr(dict_expr);
   cr_assert(result);
   cr_assert(filterx_object_truthy(result));
@@ -193,31 +190,22 @@ Test(filterx_expr, test_filterx_dict_immutable_values)
 
 Test(filterx_expr, test_filterx_dict_with_embedded_dict)
 {
-  FilterXExpr *dict_expr = NULL;
   FilterXObject *result = NULL;
-  GList *values = NULL, *inner_values = NULL;
   guint64 len;
 
   FilterXObject *foo = filterx_string_new("foo", -1);
   FilterXObject *bar = filterx_string_new("bar", -1);
   FilterXObject *baz = filterx_string_new("baz", -1);
 
-  // {"foo": 1};
-  inner_values = g_list_append(inner_values,
-                               filterx_literal_element_new(filterx_literal_new(filterx_object_ref(foo)),
-                                                           filterx_literal_new(filterx_integer_new(1))));
-  // result = {"foo": 420, "bar": 1337", "baz": {"foo":1}};
-  values = g_list_append(values,
-                         filterx_literal_element_new(filterx_literal_new(filterx_object_ref(foo)),
-                                                     filterx_literal_new(filterx_integer_new(420))));
-  values = g_list_append(values,
-                         filterx_literal_element_new(filterx_literal_new(filterx_object_ref(bar)),
-                                                     filterx_literal_new(filterx_integer_new(1337))));
-  values = g_list_append(values,
-                         filterx_literal_element_new(filterx_literal_new(filterx_object_ref(baz)),
-                                                     filterx_literal_dict_new(inner_values)));
+  // inner = {"foo": 1};
+  FilterXExpr *inner_dict_expr = filterx_literal_dict_of(filterx_literal_new(filterx_object_ref(foo)), _int_literal(1),
+                                                         NULL);
 
-  dict_expr = filterx_literal_dict_new(values);
+  // result = {"foo": 420, "bar": 1337", "baz": inner};
+  FilterXExpr *dict_expr = filterx_literal_dict_of(filterx_literal_new(filterx_object_ref(foo)), _int_literal(420),
+                                                   filterx_literal_new(filterx_object_ref(bar)), _int_literal(1337),
+                                                   filterx_literal_new(filterx_object_ref(baz)), inner_dict_expr,
+                                                   NULL);
 
   result = init_and_eval_expr(dict_expr);
   cr_assert(result);
