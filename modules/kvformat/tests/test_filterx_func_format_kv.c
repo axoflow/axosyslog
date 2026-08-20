@@ -169,6 +169,35 @@ Test(filterx_func_format_kv, test_space_gets_double_quoted)
   _assert_format_kv(args, "foo=bar, bar=\"almafa korte\\\"fa\"");
 }
 
+Test(filterx_func_format_kv, test_apostrophe_quote_char)
+{
+  FilterXExpr *kvs = filterx_literal_new(
+                       filterx_object_from_json("{\"foo\":\"bar\",\"bar\": \"almafa korte\'fa\"}", -1, NULL));
+  GList *args = NULL;
+
+  args = g_list_append(args, filterx_function_arg_new(NULL, kvs));
+  args = g_list_append(args, filterx_function_arg_new("quote_char", filterx_literal_new(filterx_string_new("\'", -1))));
+  _assert_format_kv(args, "foo=bar, bar=\'almafa korte\\\'fa\'");
+}
+
+Test(filterx_func_format_kv, test_invalid_quote_char)
+{
+  GList *args = NULL;
+
+  /* a quote the escaper has no rule for */
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_literal_new(filterx_test_dict_new())));
+  args = g_list_append(args, filterx_function_arg_new("quote_char", filterx_literal_new(filterx_string_new("|", -1))));
+  _assert_format_kv_init_fail(args);
+  args = NULL;
+
+  /* more than one character */
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_literal_new(filterx_test_dict_new())));
+  args = g_list_append(args, filterx_function_arg_new("quote_char", filterx_literal_new(filterx_string_new("\"\"",
+                                                      -1))));
+  _assert_format_kv_init_fail(args);
+  args = NULL;
+}
+
 static void
 setup(void)
 {
