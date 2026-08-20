@@ -31,7 +31,8 @@
 #include "scratch-buffers.h"
 #include "utf8utils.h"
 
-#define FILTERX_FUNC_FORMAT_KV_USAGE "Usage: format_kv(kvs_dict, value_separator=\"=\", pair_separator=\", \")"
+#define FILTERX_FUNC_FORMAT_KV_USAGE "Usage: format_kv(kvs_dict, value_separator=\"=\", pair_separator=\", \", " \
+  "quote_char=\"\\\"\", always_quote=false)"
 
 typedef struct FilterXFunctionFormatKV_
 {
@@ -39,6 +40,8 @@ typedef struct FilterXFunctionFormatKV_
   FilterXExpr *kvs;
   gchar value_separator;
   gchar *pair_separator;
+  gchar quote_char;
+  gboolean always_quote;
 } FilterXFunctionFormatKV;
 
 static gboolean
@@ -77,16 +80,18 @@ _append_kv_to_buffer(FilterXObject *key, FilterXObject *value, gpointer user_dat
     }
 
   /* TODO: make the characters here configurable. */
-  if (memchr(buffer->str + len_before_value, ' ', buffer->len - len_before_value) != NULL)
+  if (self->always_quote ||
+      memchr(buffer->str + len_before_value, ' ', buffer->len - len_before_value) != NULL)
     {
       ScratchBuffersMarker marker;
       GString *value_buffer = scratch_buffers_alloc_and_mark(&marker);
 
       g_string_assign(value_buffer, buffer->str + len_before_value);
       g_string_truncate(buffer, len_before_value);
-      g_string_append_c(buffer, '"');
-      append_unsafe_utf8_as_escaped_binary(buffer, value_buffer->str, value_buffer->len, AUTF8_UNSAFE_QUOTE);
-      g_string_append_c(buffer, '"');
+      g_string_append_c(buffer, self->quote_char);
+      append_unsafe_utf8_as_escaped_binary(buffer, value_buffer->str, value_buffer->len,
+                                           self->quote_char == '\'' ? AUTF8_UNSAFE_APOSTROPHE : AUTF8_UNSAFE_QUOTE);
+      g_string_append_c(buffer, self->quote_char);
 
       scratch_buffers_reclaim_marked(marker);
     }
@@ -191,6 +196,53 @@ _extract_pair_separator_arg(FilterXFunctionFormatKV *self, FilterXFunctionArgs *
 }
 
 static gboolean
+_extract_quote_char_arg(FilterXFunctionFormatKV *self, FilterXFunctionArgs *args, GError **error)
+{
+  gboolean exists;
+  gsize quote_char_len;
+  const gchar *quote_char = filterx_function_args_get_named_literal_string(args, "quote_char", &quote_char_len,
+                            &exists);
+  if (!exists)
+    return TRUE;
+
+  if (!quote_char)
+    {
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "quote_char must be a string literal. " FILTERX_FUNC_FORMAT_KV_USAGE);
+      return FALSE;
+    }
+
+  if (quote_char_len != 1 || (quote_char[0] != '"' && quote_char[0] != '\''))
+    {
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "quote_char must be a single \" or ' character. " FILTERX_FUNC_FORMAT_KV_USAGE);
+      return FALSE;
+    }
+
+  self->quote_char = quote_char[0];
+  return TRUE;
+}
+
+static gboolean
+_extract_always_quote_arg(FilterXFunctionFormatKV *self, FilterXFunctionArgs *args, GError **error)
+{
+  gboolean exists, eval_error;
+  gboolean always_quote = filterx_function_args_get_named_literal_boolean(args, "always_quote", &exists, &eval_error);
+  if (!exists)
+    return TRUE;
+
+  if (eval_error)
+    {
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "always_quote must be a boolean literal. " FILTERX_FUNC_FORMAT_KV_USAGE);
+      return FALSE;
+    }
+
+  self->always_quote = always_quote;
+  return TRUE;
+}
+
+static gboolean
 _extract_arguments(FilterXFunctionFormatKV *self, FilterXFunctionArgs *args, GError **error)
 {
   gsize args_len = filterx_function_args_len(args);
@@ -213,6 +265,12 @@ _extract_arguments(FilterXFunctionFormatKV *self, FilterXFunctionArgs *args, GEr
     return FALSE;
 
   if (!_extract_pair_separator_arg(self, args, error))
+    return FALSE;
+
+  if (!_extract_quote_char_arg(self, args, error))
+    return FALSE;
+
+  if (!_extract_always_quote_arg(self, args, error))
     return FALSE;
 
   return TRUE;
@@ -245,6 +303,7 @@ filterx_function_format_kv_new(FilterXFunctionArgs *args, GError **error)
   self->super.super.free_fn = _free;
   self->value_separator = '=';
   self->pair_separator = g_strdup(", ");
+  self->quote_char = '"';
 
   if (!_extract_arguments(self, args, error) ||
       !filterx_function_args_check(args, error))
