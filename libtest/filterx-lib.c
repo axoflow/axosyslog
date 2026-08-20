@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <stdarg.h>
 #include "filterx-lib.h"
 #include "cr_template.h"
 #include "filterx/json-repr.h"
@@ -29,6 +30,7 @@
 #include "filterx/object-string.h"
 #include "filterx/expr-compound.h"
 #include "filterx/expr-literal.h"
+#include "filterx/expr-literal-container.h"
 #include "filterx/filterx-eval.h"
 
 void
@@ -364,6 +366,76 @@ deinit_libtest_filterx(void)
   filterx_eval_clear_errors();
   filterx_eval_end_context(&filterx_world.context);
   filterx_env_clear(&filterx_world.test_env);
+}
+
+static FilterXExpr *
+_literal_container_of_va(FilterXExpr *(*ctor)(GList *elements), FilterXExpr *first, va_list args)
+{
+  GList *elements = NULL;
+  for (FilterXExpr *elem = first; elem != NULL; elem = va_arg(args, FilterXExpr *))
+    elements = g_list_append(elements, filterx_literal_element_new(NULL, elem));
+  return ctor(elements);
+}
+
+FilterXExpr *
+filterx_literal_container_of(FilterXExpr *(*ctor)(GList *elements), FilterXExpr *first, ...)
+{
+  va_list args;
+  va_start(args, first);
+  FilterXExpr *result = _literal_container_of_va(ctor, first, args);
+  va_end(args);
+  return result;
+}
+
+FilterXExpr *
+filterx_literal_tuple_of(FilterXExpr *first, ...)
+{
+  va_list args;
+  va_start(args, first);
+  FilterXExpr *result = _literal_container_of_va(filterx_literal_tuple_new, first, args);
+  va_end(args);
+  return result;
+}
+
+FilterXExpr *
+filterx_literal_list_of(FilterXExpr *first, ...)
+{
+  va_list args;
+  va_start(args, first);
+  FilterXExpr *result = _literal_container_of_va(filterx_literal_list_new, first, args);
+  va_end(args);
+  return result;
+}
+
+FilterXExpr *
+filterx_literal_list_of_objects(FilterXObject *first, ...)
+{
+  GList *elements = NULL;
+  va_list args;
+  va_start(args, first);
+  for (FilterXObject *obj = first; obj != NULL; obj = va_arg(args, FilterXObject *))
+    elements = g_list_append(elements, filterx_literal_element_new(NULL, filterx_literal_new(obj)));
+  va_end(args);
+  return filterx_literal_list_new(elements);
+}
+
+FilterXExpr *
+filterx_literal_dict_of(FilterXExpr *first_key, FilterXExpr *first_value, ...)
+{
+  GList *elements = NULL;
+  va_list args;
+  va_start(args, first_value);
+  FilterXExpr *key = first_key;
+  FilterXExpr *value = first_value;
+  while (key != NULL)
+    {
+      elements = g_list_append(elements, filterx_literal_element_new(key, value));
+      key = va_arg(args, FilterXExpr *);
+      if (key != NULL)
+        value = va_arg(args, FilterXExpr *);
+    }
+  va_end(args);
+  return filterx_literal_dict_new(elements);
 }
 
 FILTERX_DEFINE_TYPE(test_dict, FILTERX_TYPE_NAME(object), .is_abstract = TRUE);
