@@ -96,6 +96,8 @@ transport_mapper_inet_set_tls_verifier(TransportMapperInet *self, TLSVerifier *t
 }
 
 void transport_mapper_inet_init_instance(TransportMapperInet *self, const gchar *transport);
+TransportMapperInet *transport_mapper_inet_new_instance(const gchar *transport);
+gboolean transport_mapper_inet_validate_tls_options(TransportMapperInet *self);
 TransportMapper *transport_mapper_tcp_new(void);
 TransportMapper *transport_mapper_tcp6_new(void);
 TransportMapper *transport_mapper_udp_new(void);

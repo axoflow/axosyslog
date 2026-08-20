@@ -8,3 +8,6 @@
 [submodule "modules/cloud-auth/jwt-cpp"]
 	path = modules/cloud-auth/jwt-cpp
 	url = https://github.com/Thalhammer/jwt-cpp.git
+[submodule "lib/http/llhttp"]
+	path = lib/http/llhttp
+	url = https://github.com/nodejs/llhttp.git

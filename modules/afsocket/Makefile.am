@@ -1,17 +1,8 @@
 modules_afsocket_libafsocket_la_SOURCES	=	\
 	modules/afsocket/afsocket.c			\
 	modules/afsocket/afsocket.h			\
-	modules/afsocket/afsocket-source.c		\
-	modules/afsocket/afsocket-source.h		\
 	modules/afsocket/afsocket-dest.c		\
 	modules/afsocket/afsocket-dest.h		\
-	modules/afsocket/afsocket-signals.h		\
-	modules/afsocket/socket-options.c        	\
-	modules/afsocket/socket-options.h		\
-	modules/afsocket/transport-mapper.c		\
-	modules/afsocket/transport-mapper.h		\
-	modules/afsocket/afinet.c			\
-	modules/afsocket/afinet.h			\
 	modules/afsocket/afinet-source.c		\
 	modules/afsocket/afinet-source.h		\
 	modules/afsocket/afinet-dest.c			\
@@ -20,12 +11,8 @@ modules_afsocket_libafsocket_la_SOURCES	=	\
 	modules/afsocket/logproto-spoof-source-client.h	\
 	modules/afsocket/afinet-dest-failover.c		\
 	modules/afsocket/afinet-dest-failover.h		\
-	modules/afsocket/socket-options-inet.c		\
-	modules/afsocket/socket-options-inet.h   	\
 	modules/afsocket/socket-options-unix.c		\
 	modules/afsocket/socket-options-unix.h   	\
-	modules/afsocket/transport-mapper-inet.c 	\
-	modules/afsocket/transport-mapper-inet.h 	\
 	modules/afsocket/afunix-source.c		\
 	modules/afsocket/afunix-source.h		\
 	modules/afsocket/afunix-dest.c			\
@@ -55,7 +42,7 @@ modules_afsocket_libafsocket_la_CFLAGS	=	\
 modules_afsocket_libafsocket_la_LIBADD	=	\
 	$(MODULE_DEPS_LIBS) $(OPENSSL_LIBS)	\
 	$(ZLIB_LIBS) $(LIBNET_LIBS)	\
-	$(LIBWRAP_LIBS) $(libsystemd_LIBS)
+	$(libsystemd_LIBS)
 EXTRA_modules_afsocket_libafsocket_la_DEPENDENCIES= 	\
 	$(MODULE_DEPS_LIBS)
 modules_afsocket_libafsocket_la_LDFLAGS	= 	\

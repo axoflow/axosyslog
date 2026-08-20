@@ -24,7 +24,7 @@
 #ifndef AFSOCKET_SOURCE_H_INCLUDED
 #define AFSOCKET_SOURCE_H_INCLUDED
 
-#include "afsocket.h"
+#include "syslog-ng.h"
 #include "socket-options.h"
 #include "transport-mapper.h"
 #include "driver.h"
@@ -32,10 +32,21 @@
 #include "dynamic-window-pool.h"
 #include "atomic-gssize.h"
 #include "stats/stats-counter.h"
+#include "stats/stats-cluster-key-builder.h"
 
 #include <iv.h>
 
 typedef struct _AFSocketSourceDriver AFSocketSourceDriver;
+
+typedef struct _AFSocketSourceConnection
+{
+  LogPipe super;
+  struct _AFSocketSourceDriver *owner;
+  LogReader *reader;
+  int sock;
+  GSockAddr *peer_addr;
+  GSockAddr *local_addr;
+} AFSocketSourceConnection;
 
 struct _AFSocketSourceDriver
 {
@@ -86,6 +97,8 @@ struct _AFSocketSourceDriver
 
   /* optionally acquire a socket from the runtime environment (e.g. systemd) */
   gboolean (*acquire_socket)(AFSocketSourceDriver *s, gint *fd);
+
+  LogProtoServer *(*construct_proto)(AFSocketSourceConnection *sc, StatsClusterKeyBuilder *kb);
 };
 
 void afsocket_sd_set_keep_alive(LogDriver *self, gint enable);

@@ -21,7 +21,7 @@
  */
 
 #include "tls-test-validation.h"
-#include "modules/afsocket/afsocket-signals.h"
+#include "socket/afsocket-signals.h"
 #include "transport/tls-context.h"
 #include "compat/openssl_support.h"
 
