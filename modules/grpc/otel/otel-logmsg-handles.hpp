@@ -39,6 +39,10 @@ namespace logmsg_handle {
 extern NVHandle RAW_TYPE;
 extern NVHandle TYPE;
 
+extern NVHandle TLS_X509_CN;
+extern NVHandle TLS_X509_O;
+extern NVHandle TLS_X509_OU;
+
 extern NVHandle RAW_RESOURCE;
 extern NVHandle RAW_RESOURCE_SCHEMA_URL;
 extern NVHandle RESOURCE_DROPPED_ATTRIBUTES_COUNT;

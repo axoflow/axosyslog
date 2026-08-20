@@ -26,6 +26,9 @@ using namespace syslogng::grpc::otel::logmsg_handle;
 
 NVHandle syslogng::grpc::otel::logmsg_handle::RAW_TYPE;
 NVHandle syslogng::grpc::otel::logmsg_handle::TYPE;
+NVHandle syslogng::grpc::otel::logmsg_handle::TLS_X509_CN;
+NVHandle syslogng::grpc::otel::logmsg_handle::TLS_X509_O;
+NVHandle syslogng::grpc::otel::logmsg_handle::TLS_X509_OU;
 NVHandle syslogng::grpc::otel::logmsg_handle::RAW_RESOURCE;
 NVHandle syslogng::grpc::otel::logmsg_handle::RAW_RESOURCE_SCHEMA_URL;
 NVHandle syslogng::grpc::otel::logmsg_handle::RESOURCE_DROPPED_ATTRIBUTES_COUNT;
@@ -75,6 +78,9 @@ otel_logmsg_handles_global_init()
 {
   RAW_TYPE = log_msg_get_value_handle(".otel_raw.type");
   TYPE = log_msg_get_value_handle(".otel.type");
+  TLS_X509_CN = log_msg_get_value_handle(".tls.x509_cn");
+  TLS_X509_O = log_msg_get_value_handle(".tls.x509_o");
+  TLS_X509_OU = log_msg_get_value_handle(".tls.x509_ou");
   RAW_RESOURCE = log_msg_get_value_handle(".otel_raw.resource");
   RAW_RESOURCE_SCHEMA_URL = log_msg_get_value_handle(".otel_raw.resource_schema_url");
   RESOURCE_DROPPED_ATTRIBUTES_COUNT = log_msg_get_value_handle(".otel.resource.dropped_attributes_count");

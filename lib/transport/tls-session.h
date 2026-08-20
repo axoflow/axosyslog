@@ -29,20 +29,25 @@
 #define X509_MAX_OU_LEN 32
 #define X509_MAX_FP_LEN 256
 
+typedef struct _TLSPeerInfo
+{
+  int found;
+  gchar o[X509_MAX_O_LEN];
+  gchar ou[X509_MAX_OU_LEN];
+  gchar cn[X509_MAX_CN_LEN];
+  gchar fingerprint[X509_MAX_FP_LEN];
+} TLSPeerInfo;
+
+void tls_peer_info_extract_from_x509(TLSPeerInfo *self, X509 *cert);
+gboolean tls_peer_info_extract_from_pem(TLSPeerInfo *self, const gchar *pem, gsize pem_len);
+
 typedef struct _TLSContext TLSContext;
 typedef struct _TLSSession
 {
   SSL *ssl;
   TLSContext *ctx;
   TLSVerifier *verifier;
-  struct
-  {
-    int found;
-    gchar o[X509_MAX_O_LEN];
-    gchar ou[X509_MAX_OU_LEN];
-    gchar cn[X509_MAX_CN_LEN];
-    gchar fingerprint[X509_MAX_FP_LEN];
-  } peer_info;
+  TLSPeerInfo peer_info;
   gboolean cert_trusted_by_fingerprint;
 } TLSSession;
 

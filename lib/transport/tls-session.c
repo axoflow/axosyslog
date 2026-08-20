@@ -30,6 +30,7 @@
 #include <openssl/rand.h>
 #include <openssl/pkcs12.h>
 #include <openssl/ocsp.h>
+#include <openssl/pem.h>
 #include <ctype.h>
 
 /* TLSSession */
@@ -602,6 +603,36 @@ tls_session_set_verifier(TLSSession *self, TLSVerifier *verifier)
 }
 
 void
+tls_peer_info_extract_from_x509(TLSPeerInfo *self, X509 *cert)
+{
+  X509_NAME *name = X509_get_subject_name(cert);
+
+  self->found = 1;
+  X509_NAME_get_text_by_NID(name, NID_commonName, self->cn, X509_MAX_CN_LEN);
+  X509_NAME_get_text_by_NID(name, NID_organizationName, self->o, X509_MAX_O_LEN);
+  X509_NAME_get_text_by_NID(name, NID_organizationalUnitName, self->ou, X509_MAX_OU_LEN);
+}
+
+gboolean
+tls_peer_info_extract_from_pem(TLSPeerInfo *self, const gchar *pem, gsize pem_len)
+{
+  BIO *bio = BIO_new_mem_buf(pem, (int) pem_len);
+  if (!bio)
+    return FALSE;
+
+  X509 *cert = PEM_read_bio_X509(bio, NULL, NULL, NULL);
+  BIO_free(bio);
+
+  if (!cert)
+    return FALSE;
+
+  tls_peer_info_extract_from_x509(self, cert);
+  X509_free(cert);
+
+  return TRUE;
+}
+
+void
 tls_session_info_callback(const SSL *ssl, int where, int ret)
 {
   TLSSession *self = (TLSSession *)SSL_get_app_data(ssl);
@@ -611,13 +642,7 @@ tls_session_info_callback(const SSL *ssl, int where, int ret)
 
       if(cert)
         {
-          self->peer_info.found = 1; /* mark this found so we don't keep checking on every callback */
-          X509_NAME *name = X509_get_subject_name(cert);
-
-          X509_NAME_get_text_by_NID(name, NID_commonName, self->peer_info.cn, X509_MAX_CN_LEN);
-          X509_NAME_get_text_by_NID(name, NID_organizationName, self->peer_info.o, X509_MAX_O_LEN);
-          X509_NAME_get_text_by_NID(name, NID_organizationalUnitName, self->peer_info.ou, X509_MAX_OU_LEN);
-
+          tls_peer_info_extract_from_x509(&self->peer_info, cert);
           X509_free(cert);
         }
     }
