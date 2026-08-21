@@ -383,6 +383,45 @@ _optimize_plus(FilterXExpr *s)
   return NULL;
 }
 
+#if SYSLOG_NG_ENABLE_JIT
+static inline gboolean
+_is_numeric_static_type(FilterXStaticType kind)
+{
+  return kind == FILTERX_STATIC_TYPE_INTEGER || kind == FILTERX_STATIC_TYPE_DOUBLE;
+}
+
+static void
+_infer_types_plus(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  filterx_expr_infer_types_default(s, env);
+  FilterXArithmeticOperator *self = (FilterXArithmeticOperator *) s;
+  FilterXStaticTypeSpec lhs_spec = self->super.lhs ? self->super.lhs->static_type : INITIAL_FILTERX_STATIC_TYPE_SPEC;
+  FilterXStaticTypeSpec rhs_spec = self->super.rhs ? self->super.rhs->static_type : INITIAL_FILTERX_STATIC_TYPE_SPEC;
+  FilterXStaticType lhs_kind = filterx_static_type_kind(lhs_spec);
+  FilterXStaticType rhs_kind = filterx_static_type_kind(rhs_spec);
+
+  /* Numeric promotion: filterx_object_add() keeps int+int in the integer domain but widens
+   * to double as soon as either side is one, so a mixed pair is statically DOUBLE — a
+   * result a plain meet would throw away as UNKNOWN.
+   *
+   * Both kinds must be known numerics for this to hold. An UNKNOWN operand is not a
+   * "probably integer": it may be a double at runtime, which would widen the result, so the
+   * pair stays UNKNOWN. Claiming INTEGER on a merely-unknown operand would let an
+   * integer-speculating consumer treat a double as an int64. */
+  if (_is_numeric_static_type(lhs_kind) && _is_numeric_static_type(rhs_kind))
+    {
+      FilterXStaticType result = (lhs_kind == FILTERX_STATIC_TYPE_DOUBLE || rhs_kind == FILTERX_STATIC_TYPE_DOUBLE)
+                                 ? FILTERX_STATIC_TYPE_DOUBLE
+                                 : FILTERX_STATIC_TYPE_INTEGER;
+      s->static_type = filterx_static_type_kind_only(result);
+      return;
+    }
+
+  s->static_type = filterx_static_type_spec_meet(lhs_spec, rhs_spec);
+}
+
+#endif
+
 static FilterXObject *
 _do_uminus(FilterXObject *operand_obj, FilterXExpr *expr)
 {
@@ -651,6 +690,7 @@ filterx_operator_plus_new(FilterXExpr *lhs, FilterXExpr *rhs)
   self->super.super.free_fn = _free_arithmetic_common;
 #if SYSLOG_NG_ENABLE_JIT
   self->super.super.compile = _compile_plus;
+  self->super.super.infer_types = _infer_types_plus;
 #endif
 
   return &self->super.super;

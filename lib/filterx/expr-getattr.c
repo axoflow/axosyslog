@@ -22,6 +22,8 @@
 #include "filterx/expr-getattr.h"
 #include "filterx/object-string.h"
 #include "filterx/filterx-eval.h"
+#include "filterx/expr-variable.h"
+#include "filterx/filterx-type-inference.h"
 #include "stats/stats-registry.h"
 #include "stats/stats-cluster-single.h"
 
@@ -141,6 +143,14 @@ _getattr_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
   return TRUE;
 }
 
+FilterXExpr *
+filterx_getattr_get_operand(FilterXExpr *s)
+{
+  if (!filterx_expr_is_getattr(s))
+    return NULL;
+  return ((FilterXGetAttr *) s)->operand;
+}
+
 #if SYSLOG_NG_ENABLE_JIT
 
 #include "filterx/jit/jit.h"
@@ -151,6 +161,31 @@ FilterXObject *
 fx_jit_do_getattr(FilterXObject *variable, FilterXObject *attr, FilterXExpr *expr)
 {
   return _do_getattr(variable, attr, expr);
+}
+
+static void
+_getattr_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  filterx_expr_infer_types_default(s, env);
+  FilterXGetAttr *self = (FilterXGetAttr *) s;
+
+  const gchar *key = filterx_string_get_value_ref_and_assert_nul(self->attr, NULL);
+
+  /* Per-key lookup: variable.k0.k1...key.  Covers single-hop accesses (variable.key) as a
+   * zero-prefix chain as well as deeper chains where each level was seeded by a setattr in
+   * an earlier block. */
+  if (self->operand)
+    {
+      FilterXStaticTypeSpec keyed = filterx_type_spec_get_attr_for_chain(env, self->operand, key);
+      if (filterx_static_type_kind(keyed) != FILTERX_STATIC_TYPE_UNKNOWN)
+        {
+          s->static_type = keyed;
+          return;
+        }
+    }
+
+  s->static_type = filterx_static_type_element(self->operand ? self->operand->static_type :
+                                               INITIAL_FILTERX_STATIC_TYPE_SPEC);
 }
 
 static FilterXIRValue
@@ -186,6 +221,7 @@ filterx_getattr_new(FilterXExpr *operand, FilterXObject *attr_name)
   self->super.walk_children = _getattr_walk;
   self->super.free_fn = _free;
 #if SYSLOG_NG_ENABLE_JIT
+  self->super.infer_types = _getattr_infer_types;
   self->super.compile = _getattr_compile;
 #endif
   self->operand = operand;
