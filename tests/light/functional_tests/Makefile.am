@@ -11,6 +11,7 @@ EXTRA_DIST += \
 	tests/light/functional_tests/destination_drivers/example_destination/test_example_destination.py \
 	tests/light/functional_tests/destination_drivers/network_destination/test_kept_alive_tls_connection_doing_handshake_after_reload.py \
 	tests/light/functional_tests/destination_drivers/network_destination/test_network_destination_transport.py \
+	tests/light/functional_tests/destination_drivers/python_destination/test_python_destination.py \
 	tests/light/functional_tests/destination_drivers/snmp_destination/general/test_snmp_destination_acceptance.py \
 	tests/light/functional_tests/destination_drivers/snmp_destination/general/test_snmp_destination_missing_snmp_obj.py \
 	tests/light/functional_tests/destination_drivers/snmp_destination/general/test_snmp_destination_missing_trap_obj.py \
@@ -19,10 +20,12 @@ EXTRA_DIST += \
 	tests/light/functional_tests/destination_drivers/snmp_destination/v2c/test_snmp_destination_v2c_cisco_ios_traps.py \
 	tests/light/functional_tests/destination_drivers/snmp_destination/v2c/test_snmp_destination_v2c_custom_community.py \
 	tests/light/functional_tests/destination_drivers/snmp_destination/v2c/test_snmp_destination_v2c_using_macro_snmp_obj.py \
+	tests/light/functional_tests/destination_drivers/sql_destination/test_sql_destination.py \
 	tests/light/functional_tests/destination_drivers/unix_dgram_destination/test_unix_dgram_destination.py \
 	tests/light/functional_tests/destination_drivers/unix_stream_destination/test_unix_stream_destination.py \
 	tests/light/functional_tests/filters/rate-limit/test_rate_limit_filter_acceptance.py \
 	tests/light/functional_tests/filters/test_filter_reference.py \
+	tests/light/functional_tests/filters/test_facility_and_level_filters.py \
 	tests/light/functional_tests/filters/test_multiple_filters.py \
 	tests/light/functional_tests/filterx/test_filterx_cache_json_file.py \
 	tests/light/functional_tests/filterx/test_filterx_control.py \
@@ -58,9 +61,11 @@ EXTRA_DIST += \
 	tests/light/functional_tests/parsers/db_parser/test_db_parser.py \
 	tests/light/functional_tests/parsers/group-lines-parser/test_group_lines_parser.py \
 	tests/light/functional_tests/parsers/mariadb-parser/test_mariadb_audit_parser.py \
+	tests/light/functional_tests/parsers/map_value_pairs/test_map_value_pairs.py \
 	tests/light/functional_tests/parsers/metrics-probe/test_metrics_probe.py \
 	tests/light/functional_tests/parsers/panos/test_panos_parser.py \
 	tests/light/functional_tests/parsers/postgresql-csvlog-parser/test_postgresql_csvlog_parser.py \
+	tests/light/functional_tests/parsers/python_parser/test_python_parser.py \
 	tests/light/functional_tests/parsers/regexp-parser/test_regexp_parser.py \
 	tests/light/functional_tests/parsers/sdata-parser/test_sdata_parser.py \
 	tests/light/functional_tests/rewrites/cc-mask/test_cc_mask_and_cc_hash.py \
@@ -88,6 +93,7 @@ EXTRA_DIST += \
 	tests/light/functional_tests/source_drivers/test_input_transports.py \
 	tests/light/functional_tests/source_drivers/unix_dgram_source/test_unix_dgram_source_acceptance.py \
 	tests/light/functional_tests/source_drivers/webhook_source/test_webhook_source_acceptance.py \
+	tests/light/functional_tests/source_drivers/wildcard_file_source/test_wildcard_file_source.py \
 	tests/light/functional_tests/source_options/test_use_syslogng_pid.py \
 	tests/light/functional_tests/template_functions/graphite-output/test_graphite_output.py \
 	tests/light/functional_tests/template_functions/slog/test_secure_logging.py \
