@@ -59,8 +59,10 @@ from axosyslog_light.syslog_ng_config.statements.sources.inner_source import Inn
 from axosyslog_light.syslog_ng_config.statements.sources.internal_source import InternalSource
 from axosyslog_light.syslog_ng_config.statements.sources.network_source import NetworkSource
 from axosyslog_light.syslog_ng_config.statements.sources.opentelemetry_source import OpenTelemetrySource
+from axosyslog_light.syslog_ng_config.statements.sources.pipe_source import PipeSource
 from axosyslog_light.syslog_ng_config.statements.sources.syslog_source import SyslogSource
 from axosyslog_light.syslog_ng_config.statements.sources.unix_dgram_source import UnixDgramSource
+from axosyslog_light.syslog_ng_config.statements.sources.unix_stream_source import UnixStreamSource
 from axosyslog_light.syslog_ng_config.statements.sources.webhook_source import WebhookJsonSource
 from axosyslog_light.syslog_ng_config.statements.sources.webhook_source import WebhookSource
 from axosyslog_light.syslog_ng_config.statements.template.template import Template
@@ -158,6 +160,16 @@ class SyslogNgConfig(object):
         unix_dgram_source = UnixDgramSource(self._stats_handler, self._prometheus_stats_handler, **options)
         self.teardown.register(unix_dgram_source.close_socket)
         return unix_dgram_source
+
+    def create_unix_stream_source(self, **options):
+        unix_stream_source = UnixStreamSource(self._stats_handler, self._prometheus_stats_handler, **options)
+        self.teardown.register(unix_stream_source.close_socket)
+        return unix_stream_source
+
+    def create_pipe_source(self, **options):
+        pipe_source = PipeSource(self._stats_handler, self._prometheus_stats_handler, **options)
+        self.teardown.register(pipe_source.close_file)
+        return pipe_source
 
     def create_example_msg_generator_source(self, **options):
         return ExampleMsgGeneratorSource(self._stats_handler, self._prometheus_stats_handler, **options)
