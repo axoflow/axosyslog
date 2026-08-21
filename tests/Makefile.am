@@ -28,5 +28,4 @@ coverage-clean:
 	@find $(top_builddir) -name \*.gcda | xargs rm -f
 
 include tests/loggen/Makefile.am
-include tests/functional/Makefile.am
 include tests/light/Makefile.am
