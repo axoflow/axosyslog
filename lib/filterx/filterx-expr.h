@@ -86,6 +86,7 @@ guint32 ignore_falsy_result:1, suppress_from_trace:1, inited:1, optimized:1, sta
   void (*free_fn)(FilterXExpr *self);
 
   gboolean (*walk_children)(FilterXExpr *self, FilterXExprWalkFunc f, gpointer user_data);
+  gboolean (*init_child)(FilterXExpr *self, FilterXExpr *child, GlobalConfig *cfg);
 
   /* type of the expr, is not freed, assumed to be managed by something else
    * */
@@ -265,6 +266,14 @@ static inline gboolean
 filterx_expr_visit(FilterXExpr *self, FilterXExpr **expr, FilterXExprWalkFunc f, gpointer user_data)
 {
   return f(self, expr, user_data);
+}
+
+static inline gboolean
+filterx_expr_init_child(FilterXExpr *self, FilterXExpr *child, GlobalConfig *cfg)
+{
+  if (self->init_child)
+    return self->init_child(self, child, cfg);
+  return filterx_expr_init(child, cfg);
 }
 
 static inline gboolean

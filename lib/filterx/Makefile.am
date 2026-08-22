@@ -58,6 +58,7 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/filterx-sequence.h \
 	lib/filterx/filterx-mapping.h \
 	lib/filterx/json-repr.h \
+	lib/filterx/func-aggregate.h \
 	lib/filterx/func-flags.h \
 	lib/filterx/func-flatten.h \
 	lib/filterx/func-cache-json-file.h \
@@ -154,6 +155,7 @@ lib_filterx_libfilterx_la_SOURCES = \
 	lib/filterx/filterx-stashed-object.c \
 	lib/filterx/filterx-variable.c \
 	lib/filterx/filterx-weakrefs.c \
+	lib/filterx/func-aggregate.c \
 	lib/filterx/func-cache-json-file.c \
 	lib/filterx/func-dict-to-pairs.c \
 	lib/filterx/func-digest.c \

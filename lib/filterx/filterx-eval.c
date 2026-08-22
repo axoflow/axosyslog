@@ -23,6 +23,7 @@
 #include "filterx/filterx-error.h"
 #include "filterx/filterx-expr.h"
 #include "filterx/filterx-config.h"
+#include "filterx/expr-compound.h"
 #include "logpipe.h"
 #include "scratch-buffers.h"
 #include "tls-support.h"
@@ -284,7 +285,7 @@ _fill_failure_info(FilterXEvalContext *context, FilterXExpr *block, FilterXObjec
   for (gint i = 0; i < context->error_count; i++)
     {
       filterx_error_copy(&context->errors[i], &failure_info->errors[i]);
-      filterx_eval_retain_object(&failure_info->errors[i].object);
+      filterx_eval_retain_object(&failure_info->errors[i].object, FX_RETAIN_UNTIL_FINAL_DELIVERY);
     }
   failure_info->error_count = context->error_count;
 }
@@ -357,6 +358,49 @@ exit:
   return result;
 }
 
+FilterXEvalResult
+filterx_eval_resume_continuation(FilterXEvalContext *context, FilterXEvalContinuation *continuation,
+                                 FilterXObject *resume_value, LogMessage **pmsg)
+{
+
+  FilterXEvalResult result = FXE_FAILURE;
+  *pmsg = NULL;
+
+  context->resume_value = filterx_object_ref(resume_value);
+
+  FilterXObject *res = continuation->parent_compound
+                        ? filterx_compound_expr_eval_ext(continuation->parent_compound, continuation->statement_index)
+                        : filterx_expr_eval(continuation->statement_expr);
+
+  /* whoever the continuation resumed into was supposed to consume this via
+   * filterx_eval_take_resume_value(); if it's still here, nothing did */
+  filterx_object_unref(context->resume_value);
+  context->resume_value = NULL;
+
+  if (res)
+    {
+      if (context->eval_control_modifier == FXC_DROP)
+        result = FXE_DROP;
+      else if (filterx_object_truthy(res))
+        result = FXE_SUCCESS;
+    }
+  else
+    {
+      filterx_eval_dump_errors("FILTERX ERROR (continuation resume)");
+    }
+  filterx_object_unref(res);
+  filterx_scope_set_dirty(context->scope);
+
+  if (result == FXE_SUCCESS)
+    {
+      *pmsg = log_msg_ref(context->msg);
+      LogPathOptions sync_path_options = LOG_PATH_OPTIONS_INIT_NOACK;
+      filterx_eval_sync_message(context, pmsg, &sync_path_options);
+    }
+
+  return result;
+}
+
 void
 filterx_eval_begin_context(FilterXEvalContext *context,
                            FilterXEvalContext *previous_context,
@@ -367,7 +411,6 @@ filterx_eval_begin_context(FilterXEvalContext *context,
 
   memset(context, 0, sizeof(*context));
   context->msg = msg;
-  context->template_eval_options = DEFAULT_TEMPLATE_EVAL_OPTIONS;
   context->scope = scope;
 
   if (previous_context)
@@ -431,7 +474,6 @@ void
 filterx_eval_begin_restricted_context(FilterXEvalContext *context, FilterXEnvironment *env)
 {
   memset(context, 0, sizeof(*context));
-  context->template_eval_options = DEFAULT_TEMPLATE_EVAL_OPTIONS;
   context->weak_refs = env->weak_refs;
   context->eval_control_modifier = FXC_UNSET;
   context->previous_context = filterx_eval_get_context();
@@ -472,17 +514,119 @@ filterx_eval_set_control_modifier(FilterXEvalContext *context, FilterXEvalContro
   context->eval_control_modifier = modifier;
 }
 
+static FilterXObject *
+_dup_retain_value(FilterXObject *value, gpointer user_data)
+{
+  if (!value)
+    return NULL;
+
+  /* Decouples the value from the thread specific allocator (always, via
+   * the allocator_used check inside filterx_eval_retain_dup_needed()) and
+   * from the current configuration, guaranteeing an independent,
+   * heap-allocated, refcounted object that remains valid regardless of
+   * which thread ends up using this duplicated context. */
+  return filterx_eval_retain_dup(value, FX_RETAIN_DECOUPLE_CONFIG);
+}
+
+FilterXEvalContext *
+filterx_eval_context_dup(FilterXEvalContext *context)
+{
+  g_assert(context == filterx_eval_get_context());
+
+  FilterXEvalContext *new_context = g_new0(FilterXEvalContext, 1);
+
+  /* standalone context: not linked to where it was taken from, and always
+   * allocates via g_malloc(), which is safe on any thread */
+  new_context->weak_refs = g_ptr_array_new_full(32, (GDestroyNotify) filterx_object_unref);
+  new_context->previous_context = NULL;
+  new_context->allocator = NULL;
+  new_context->env = context->env;
+  new_context->eval_control_modifier = FXC_UNSET;
+  new_context->allocations_shared = FALSE;
+
+  /*
+   * Cloning a recursive, mutable structure (e.g.  a dict containing a
+   * dict) re-establishes a parent_container weakref on every nested
+   * FilterXRef as it goes (see _table_clone_index() et al.), and each of
+   * those calls filterx_eval_store_weak_ref() to keep the (freshly cloned)
+   * parent alive -- because ownership between a container and its element
+   * only flows top-down, a nested container that isn't *also* reachable
+   * through some other strong reference would otherwise be freed right
+   * away, leaving that parent_container weakref dangling.
+   *
+   * filterx_eval_store_weak_ref() always targets whatever
+   * filterx_eval_get_context() currently returns.  So the entire retain
+   * pass below has to run with @new_context (not @context) set as the
+   * active context, or those protections would land in @context->weak_refs
+   * instead -- which stops existing the moment @context ends, silently
+   * turning every such parent_container in the "independent" copy into a
+   * dangling pointer (a use-after-free waiting to happen the next time
+   * something mutates through it and CoW walks back up via
+   * parent_container).
+   */
+  filterx_eval_set_context(new_context);
+
+  new_context->scope = filterx_scope_dup(context->scope, _dup_retain_value, NULL);
+  /* the scope owns the only reference to the message, context->msg is
+   * just a borrowed convenience pointer, mirroring filterx_eval_begin_context() */
+  new_context->msg = new_context->scope->msg;
+  new_context->current_frame_meta = _dup_retain_value(context->current_frame_meta, NULL);
+
+  filterx_eval_set_context(context);
+
+  return new_context;
+}
+
+void
+filterx_eval_context_free_dup(FilterXEvalContext *context)
+{
+  if (!context)
+    return;
+
+  /* filterx_scope_dup() may have produced a pair of scopes (see its
+   * comment): the "own" scope returned as context->scope, optionally
+   * parented onto a frozen, flattened ancestor scope. Each owns its own
+   * layout and must be freed individually -- filterx_scope_free() does
+   * not recurse into parent_scope, since that pointer is a live,
+   * externally owned link in the normal (non-dup'd) case. */
+  FilterXScope *scope = context->scope;
+  FilterXScope *ancestor_scope = scope->parent_scope;
+
+  FilterXScopeVariableLayout *layout = scope->layout;
+  /* also unrefs the retained message and all variable values */
+  filterx_scope_free(scope);
+  filterx_scope_variable_layout_free(layout);
+
+  if (ancestor_scope)
+    {
+      FilterXScopeVariableLayout *ancestor_layout = ancestor_scope->layout;
+      filterx_scope_free(ancestor_scope);
+      filterx_scope_variable_layout_free(ancestor_layout);
+    }
+
+  filterx_object_unref(context->current_frame_meta);
+  g_ptr_array_free(context->weak_refs, TRUE);
+  _clear_errors(context);
+  if (context->failure_info)
+    {
+      _clear_failure_info(context->failure_info);
+      g_array_free(context->failure_info, TRUE);
+    }
+  g_free(context);
+}
+
 void
 filterx_eval_freeze_object(FilterXObject **object)
 {
   FilterXEvalContext *context = filterx_eval_get_context();
 
-  if (context && context->env)
-    {
-      g_assert(!(*object)->allocator_used);
-      /* only compile contexts have an env. We can only freeze objects during compile time. */
-      filterx_env_freeze_object(context->env, object);
-    }
+  /* only compile contexts have an env, so this can only be called during
+   * compile time. Without env, the object is silently never frozen (nor
+   * tracked anywhere else), which just leaks it -- so this is a hard
+   * requirement, not a soft/optional one. */
+  g_assert(context && context->env);
+  g_assert(!(*object)->allocator_used);
+  filterx_env_freeze_object(context->env, object);
 }
 
 void

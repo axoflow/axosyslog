@@ -45,7 +45,8 @@ lib_filterx_tests_TESTS		 =              \
 		lib/filterx/tests/test_object_ip \
 		lib/filterx/tests/test_expr_arithmetic_operators \
 		lib/filterx/tests/test_func_set_pri \
-		lib/filterx/tests/test_json_repr
+		lib/filterx/tests/test_json_repr \
+		lib/filterx/tests/test_func_aggregate
 
 EXTRA_DIST += lib/filterx/tests/CMakeLists.txt
 
@@ -185,3 +186,6 @@ lib_filterx_tests_test_func_set_pri_LDADD   = $(TEST_LDADD) $(JSON_LIBS)
 
 lib_filterx_tests_test_json_repr_CFLAGS  = $(TEST_CFLAGS)
 lib_filterx_tests_test_json_repr_LDADD   = $(TEST_LDADD) $(JSON_LIBS)
+
+lib_filterx_tests_test_func_aggregate_CFLAGS  = $(TEST_CFLAGS)
+lib_filterx_tests_test_func_aggregate_LDADD   = $(TEST_LDADD) $(JSON_LIBS)

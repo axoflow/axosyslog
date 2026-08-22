@@ -31,7 +31,10 @@
 #include "filterx/filterx-eval.h"
 #include "filterx/expr-literal.h"
 #include "filterx/expr-compound.h"
+#include "filterx/expr-variable.h"
 #include "filterx/object-primitive.h"
+#include "filterx/object-string.h"
+#include "filterx/json-repr.h"
 #include "libtest/filterx-lib.h"
 #include "libtest/grab-logging.h"
 
@@ -120,6 +123,107 @@ Test(filterx_eval, test_filterx_eval_error_stack_overflow)
   FILTERX_EVAL_END_CONTEXT(eval_context);
 
   log_msg_unref(msg);
+}
+
+Test(filterx_eval, test_filterx_eval_context_dup_creates_independent_snapshot)
+{
+  FilterXVariableHandle handles[] = { filterx_map_varname_to_handle("floatvar", FX_VAR_DECLARED_FLOATING) };
+  FilterXScopeVariableLayout *layout = filterx_scope_variable_layout_new_from_handles(handles, G_N_ELEMENTS(handles));
+
+  LogMessage *msg = log_msg_new_empty();
+  FilterXEvalContext eval_context, *prev_eval_context = NULL;
+  FilterXEvalContext *dup_context = NULL;
+
+  FILTERX_EVAL_BEGIN_CONTEXT(eval_context, prev_eval_context, msg, layout)
+  {
+    FilterXVariable *v = filterx_scope_register_variable(eval_context.scope, FX_VAR_DECLARED_FLOATING, handles[0], 0);
+    FilterXObject *o = filterx_boolean_new(TRUE);
+    filterx_scope_set_variable(eval_context.scope, v, &o, TRUE);
+    filterx_object_unref(o);
+
+    dup_context = filterx_eval_context_dup(&eval_context);
+  }
+  FILTERX_EVAL_END_CONTEXT(eval_context);
+
+  /* the context/scope/message used to take the snapshot are all gone by now */
+  log_msg_unref(msg);
+  filterx_scope_variable_layout_free(layout);
+
+  cr_assert_not_null(dup_context);
+  cr_assert_null(dup_context->previous_context);
+  cr_assert_null(dup_context->allocator);
+
+  FilterXVariable *dup_var = filterx_scope_lookup_variable(dup_context->scope, handles[0], 0);
+  cr_assert_not_null(dup_var);
+  cr_assert(filterx_boolean_get_value(dup_var->value));
+
+  filterx_eval_context_free_dup(dup_context);
+}
+
+/*
+ * A dict-in-a-dict's inner FilterXRef only points *down* to its value via
+ * a real (owning) reference; the *up* link back to its enclosing container
+ * (parent_container) is a weakref, kept alive only via
+ * filterx_eval_store_weak_ref().  If the outer dict is not otherwise
+ * reachable (e.g.  only its innermost child ended up in a variable), that
+ * weak_refs entry is the *only* thing keeping it alive.
+ *
+ * filterx_eval_context_dup() must make sure such orphaned ancestors -- newly
+ * created while cloning the value into the snapshot -- get their protecting
+ * weak_refs entry in the *new* context, not in the one being torn down.
+ */
+Test(filterx_eval, test_filterx_eval_context_dup_keeps_cloned_parent_containers_alive)
+{
+  FilterXVariableHandle handles[] = { filterx_map_varname_to_handle("nested", FX_VAR_DECLARED_FLOATING) };
+  FilterXScopeVariableLayout *layout = filterx_scope_variable_layout_new_from_handles(handles, G_N_ELEMENTS(handles));
+
+  LogMessage *msg = log_msg_new_empty();
+  FilterXEvalContext eval_context, *prev_eval_context = NULL;
+  FilterXEvalContext *dup_context = NULL;
+
+  FILTERX_EVAL_BEGIN_CONTEXT(eval_context, prev_eval_context, msg, layout)
+  {
+    FilterXObject *r = filterx_object_from_json("{\"c\":{\"cc\":{\"ccc\":\"orig\"}}}", -1, NULL);
+    cr_assert(filterx_object_is_ref(r));
+
+    FilterXObject *c = filterx_object_getattr_string(r, "c");
+    FilterXObject *cc = filterx_object_getattr_string(c, "cc");
+    cr_assert(filterx_object_is_ref(cc));
+
+    /* r and c are not stored anywhere themselves: from here on, their only
+     * protection against being freed is whatever filterx_eval_store_weak_ref()
+     * did for them when their parent_container linkage was established */
+    filterx_object_unref(r);
+    filterx_object_unref(c);
+
+    FilterXVariable *v = filterx_scope_register_variable(eval_context.scope, FX_VAR_DECLARED_FLOATING, handles[0], 0);
+    filterx_scope_set_variable(eval_context.scope, v, &cc, TRUE);
+    filterx_object_unref(cc);
+
+    dup_context = filterx_eval_context_dup(&eval_context);
+  }
+  FILTERX_EVAL_END_CONTEXT(eval_context);
+
+  /* the original context -- and whatever it was protecting via weak_refs --
+   * is now completely gone */
+  log_msg_unref(msg);
+  filterx_scope_variable_layout_free(layout);
+
+  FilterXVariable *dup_var = filterx_scope_lookup_variable(dup_context->scope, handles[0], 0);
+  cr_assert_not_null(dup_var);
+  FilterXObject *cc_dup = filterx_variable_get_value(dup_var);
+  cr_assert(filterx_object_is_ref(cc_dup));
+
+  /* mutating the deepest clone walks up through its (also cloned) ancestors
+   * via parent_container; if those ancestors weren't kept alive
+   * independently of the original (now-gone) context, this reads freed
+   * memory */
+  FilterXObject *new_value = filterx_string_new("changed", -1);
+  cr_assert(filterx_object_setattr_string(cc_dup, "ccc", &new_value));
+  filterx_object_unref(new_value);
+
+  filterx_object_unref(cc_dup);
+  filterx_eval_context_free_dup(dup_context);
 }
 
 static void

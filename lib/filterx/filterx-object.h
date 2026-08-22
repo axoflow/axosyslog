@@ -309,6 +309,24 @@ filterx_object_is_preserved(FilterXObject *self)
   return self->ref_cnt >= FILTERX_OBJECT_REFCOUNT_PRESERVED;
 }
 
+static inline gboolean
+filterx_object_is_hibernated(FilterXObject *self)
+{
+  return self->ref_cnt == FILTERX_OBJECT_REFCOUNT_HIBERNATED;
+}
+
+static inline gboolean
+filterx_object_is_frozen(FilterXObject *self)
+{
+  return self->ref_cnt == FILTERX_OBJECT_REFCOUNT_FROZEN;
+}
+
+static inline gboolean
+filterx_object_is_refcounted(FilterXObject *self)
+{
+  return self->ref_cnt < FILTERX_OBJECT_REFCOUNT_BARRIER;
+}
+
 /* NOTE: these two macros actually require the inclusion of filterx-eval.h
  * which works in an implementation file, but not here */
 
