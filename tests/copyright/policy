@@ -11,6 +11,7 @@ scl/syslogconf/convert-syslogconf.awk$
 .*/[^/]+-grammar\.[ch]$
 (.*/)?(README|\.gitignore|\.trivyignore|pylintrc)$
 lib/ivykis
+lib/http/llhttp
 lib/eventlog
 modules/java/org_syslog_ng_[^./_-]+\.h$
 modules/(afmongodb|afamqp)/dummy\.c$
@@ -137,7 +138,6 @@ lib/transport/transport-adapter\.[ch]
 lib/transport/transport-globals\.[ch]
 syslog-ng-ctl/commands/log-level.[ch]
 syslog-ng-ctl/commands/attach.[ch]
-modules/afsocket/afsocket-signals.h
 syslog-ng-ctl/commands/healthcheck.[ch]
 modules/python-modules/syslogng/confgen\.py
 modules/python-modules/syslogng/dest\.py
@@ -168,7 +168,7 @@ autogen\.sh$
 autotools/sub-configure\.sh$
 configure\.ac$
 Makefile\.am$
-lib/(compat|str-repr|timeutils|control|debugger|filter|logproto|multi-line|parser|rewrite|stats|template|tests|transport|logmsg|value-pairs|secret-storage|logthrdest|logthrsource|ack-tracker|signal-slot-connector|[^/]*$)
+lib/(compat|str-repr|timeutils|control|debugger|filter|logproto|multi-line|parser|rewrite|stats|template|tests|transport|logmsg|value-pairs|secret-storage|logthrdest|logthrsource|ack-tracker|signal-slot-connector|socket|http|[^/]*$)
 lib/scanner/(csv-scanner|list-scanner|kv-scanner|xml-scanner|[^/]*$)
 libtest
 syslog-ng(-ctl)?
@@ -190,6 +190,7 @@ modules/python/python-global.(c|h)$
 modules/diskq/tests/test_diskq_counters\.c
 modules/http/http-plugin\.[ch]
 modules/http/http-parser.h
+modules/http/source
 modules/timestamp/rewrite-.*$
 modules/timestamp/tf-format-date.*$
 modules/timestamp/tests/test_format_date.*$

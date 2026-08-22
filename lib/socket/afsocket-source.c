@@ -54,16 +54,6 @@ int deny_severity = 0;
 static const glong DYNAMIC_WINDOW_TIMER_MSECS = 1000;
 static const gsize DYNAMIC_WINDOW_REALLOC_TICKS = 5;
 
-typedef struct _AFSocketSourceConnection
-{
-  LogPipe super;
-  struct _AFSocketSourceDriver *owner;
-  LogReader *reader;
-  int sock;
-  GSockAddr *peer_addr;
-  GSockAddr *local_addr;
-} AFSocketSourceConnection;
-
 static void afsocket_sd_close_connection(AFSocketSourceDriver *self, AFSocketSourceConnection *sc);
 
 static void
@@ -148,8 +138,11 @@ afsocket_sc_init(LogPipe *s)
   gboolean restored_kept_alive_source = !!self->reader;
   if (!restored_kept_alive_source)
     {
-      proto = log_proto_server_factory_construct(self->owner->proto_factory, NULL,
-                                                 &self->owner->reader_options.proto_options.super, kb);
+      if (self->owner->construct_proto)
+        proto = self->owner->construct_proto(self, kb);
+      else
+        proto = log_proto_server_factory_construct(self->owner->proto_factory, NULL,
+                                                   &self->owner->reader_options.proto_options.super, kb);
       if (!proto)
         {
           stats_cluster_key_builder_free(kb);
@@ -248,8 +241,8 @@ afsocket_sc_set_owner(AFSocketSourceConnection *self, AFSocketSourceDriver *owne
   This should be called by log_reader_free -> log_pipe_unref
   because this is the control pipe of the reader
 */
-static void
-afsocket_sc_free(LogPipe *s)
+void
+afsocket_sc_free_method(LogPipe *s)
 {
   AFSocketSourceConnection *self = (AFSocketSourceConnection *) s;
   g_sockaddr_unref(self->peer_addr);
@@ -257,19 +250,26 @@ afsocket_sc_free(LogPipe *s)
   log_pipe_free_method(s);
 }
 
+void
+afsocket_sc_init_instance(AFSocketSourceConnection *self, GSockAddr *peer_addr, GSockAddr *local_addr,
+                          gint fd, GlobalConfig *cfg)
+{
+  log_pipe_init_instance(&self->super, cfg);
+  self->super.init = afsocket_sc_init;
+  self->super.deinit = afsocket_sc_deinit;
+  self->super.notify = afsocket_sc_notify;
+  self->super.free_fn = afsocket_sc_free_method;
+  self->peer_addr = g_sockaddr_ref(peer_addr);
+  self->local_addr = g_sockaddr_ref(local_addr);
+  self->sock = fd;
+}
+
 AFSocketSourceConnection *
 afsocket_sc_new(GSockAddr *peer_addr, GSockAddr *local_addr, int fd, GlobalConfig *cfg)
 {
   AFSocketSourceConnection *self = g_new0(AFSocketSourceConnection, 1);
 
-  log_pipe_init_instance(&self->super, cfg);
-  self->super.init = afsocket_sc_init;
-  self->super.deinit = afsocket_sc_deinit;
-  self->super.notify = afsocket_sc_notify;
-  self->super.free_fn = afsocket_sc_free;
-  self->peer_addr = g_sockaddr_ref(peer_addr);
-  self->local_addr = g_sockaddr_ref(local_addr);
-  self->sock = fd;
+  afsocket_sc_init_instance(self, peer_addr, local_addr, fd, cfg);
   return self;
 }
 
@@ -465,7 +465,10 @@ afsocket_sd_process_connection(AFSocketSourceDriver *self, GSockAddr *client_add
     {
       AFSocketSourceConnection *conn;
 
-      conn = afsocket_sc_new(client_addr, local_addr, fd, self->super.super.super.cfg);
+      if (self->construct_connection)
+        conn = self->construct_connection(self, client_addr, local_addr, fd);
+      else
+        conn = afsocket_sc_new(client_addr, local_addr, fd, self->super.super.super.cfg);
       afsocket_sc_set_owner(conn, self);
       if (log_pipe_init(&conn->super))
         {
@@ -938,14 +941,17 @@ afsocket_sd_setup_transport(AFSocketSourceDriver *self)
   if (!transport_mapper_apply_transport(self->transport_mapper, cfg))
     return FALSE;
 
-  if (!self->proto_factory)
-    self->proto_factory = log_proto_server_get_factory(&cfg->plugin_context, self->transport_mapper->logproto);
-
-  if (!self->proto_factory)
+  if (!self->construct_proto)
     {
-      msg_error("Unknown value specified in the transport() option, no such LogProto plugin found",
-                evt_tag_str("transport", self->transport_mapper->logproto));
-      return FALSE;
+      if (!self->proto_factory)
+        self->proto_factory = log_proto_server_get_factory(&cfg->plugin_context, self->transport_mapper->logproto);
+
+      if (!self->proto_factory)
+        {
+          msg_error("Unknown value specified in the transport() option, no such LogProto plugin found",
+                    evt_tag_str("transport", self->transport_mapper->logproto));
+          return FALSE;
+        }
     }
 
   afsocket_sd_setup_reader_options(self);

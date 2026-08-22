@@ -22,12 +22,12 @@
  */
 
 #include "afinet-dest.h"
-#include "transport-mapper-inet.h"
-#include "socket-options-inet.h"
+#include "socket/transport-mapper-inet.h"
+#include "socket/socket-options-inet.h"
 #include "messages.h"
 #include "gprocess.h"
 #include "compat/openssl_support.h"
-#include "afsocket-signals.h"
+#include "socket/afsocket-signals.h"
 #include "transport/transport-tls.h"
 #include "transport/transport-stack.h"
 #if SYSLOG_NG_ENABLE_SPOOF_SOURCE

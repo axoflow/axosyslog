@@ -38,6 +38,8 @@ add_subdirectory(secret-storage)
 add_subdirectory(logthrsource)
 add_subdirectory(logthrdest)
 add_subdirectory(signal-slot-connector)
+add_subdirectory(socket)
+add_subdirectory(http)
 
 set(LIB_SUBDIR_HEADERS
     ${ACK_TRACKER_HEADERS}
@@ -66,6 +68,8 @@ set(LIB_SUBDIR_HEADERS
     ${LOGTHRDEST_HEADERS}
     ${LOGTHRSOURCE_HEADERS}
     ${SIGNAL_SLOT_CONNECTOR_HEADERS}
+    ${SOCKET_HEADERS}
+    ${HTTP_HEADERS}
     ${ADT_HEADERS}
     ${CMAKE_CURRENT_BINARY_DIR}/filter/filter-expr-grammar.h
     ${CMAKE_CURRENT_BINARY_DIR}/filterx/filterx-grammar.h
@@ -288,6 +292,8 @@ set(LIB_SOURCES
     ${LOGTHRDEST_SOURCES}
     ${LOGTHRSOURCE_SOURCES}
     ${SIGNAL_SLOT_CONNECTOR_SOURCES}
+    ${SOCKET_SOURCES}
+    ${HTTP_SOURCES}
     ${ADT_SOURCES}
     ${PROJECT_BINARY_DIR}/lib/cfg-grammar.c
     ${PROJECT_BINARY_DIR}/lib/block-ref-grammar.c
@@ -372,7 +378,15 @@ set(CORE_INCLUDE_DIRS
     ${LIBPCRE_INCLUDE_DIRS}
     ${Libsystemd_INCLUDE_DIRS}
     ${LIBUNWIND_INCLUDE_DIRS}
+    ${WRAP_INCLUDE_DIRS}
+    ${PROJECT_SOURCE_DIR}/lib/http/llhttp/include
 )
+
+set_source_files_properties(
+    http/llhttp/src/llhttp.c
+    http/llhttp/src/api.c
+    http/llhttp/src/http.c
+    PROPERTIES COMPILE_FLAGS -Wno-switch-default)
 
 add_library(syslog-ng SHARED ${LIB_SOURCES})
 
@@ -401,6 +415,7 @@ target_link_libraries(
     PkgConfig::LIBPCRE
     ${Libsystemd_LIBRARIES}
     ${LIBUNWIND_LIBRARIES}
+    ${WRAP_LIBRARIES}
     resolv
     libcap
     OpenSSL::SSL
@@ -469,6 +484,8 @@ install(FILES ${CSV_SCANNER_HEADERS} DESTINATION include/syslog-ng/scanner/csv-s
 install(FILES ${LOGTHRDEST_HEADERS} DESTINATION include/syslog-ng/logthrdest)
 install(FILES ${LOGTHRSOURCE_HEADERS} DESTINATION include/syslog-ng/logthrsource)
 install(FILES ${SIGNAL_SLOT_CONNECTOR_HEADERS} DESTINATION include/syslog-ng/signal-slot-connector)
+install(FILES ${SOCKET_HEADERS} DESTINATION include/syslog-ng/socket)
+install(FILES ${HTTP_HEADERS} DESTINATION include/syslog-ng/http)
 
 set(TOOLS
     merge-grammar.py

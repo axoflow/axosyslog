@@ -24,8 +24,8 @@
 #ifndef AFINET_SOURCE_H_INCLUDED
 #define AFINET_SOURCE_H_INCLUDED
 
-#include "afinet.h"
-#include "afsocket-source.h"
+#include "socket/afinet.h"
+#include "socket/afsocket-source.h"
 #include "transport/tls-context.h"
 
 typedef struct _AFInetSourceDriver

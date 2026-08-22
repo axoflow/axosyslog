@@ -23,8 +23,8 @@
 
 #include "afinet-source.h"
 #include "messages.h"
-#include "transport-mapper-inet.h"
-#include "socket-options-inet.h"
+#include "socket/transport-mapper-inet.h"
+#include "socket/socket-options-inet.h"
 
 #include <sys/types.h>
 #include <sys/socket.h>

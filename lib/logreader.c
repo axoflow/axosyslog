@@ -478,8 +478,8 @@ set:
   aux->local_addr = NULL;
 }
 
-static gboolean
-log_reader_handle_line(LogReader *self, const guchar *line, gsize length, LogTransportAuxData *aux)
+static LogMessage *
+log_reader_construct_message(LogReader *self, const guchar *line, gsize length)
 {
   LogMessage *m;
 
@@ -492,29 +492,35 @@ log_reader_handle_line(LogReader *self, const guchar *line, gsize length, LogTra
   if (length == 0 && !(self->options->flags & LR_EMPTY_LINES))
     {
       log_msg_unref(m);
-      return TRUE;
+      return NULL;
     }
 
   _log_reader_insert_msg_length_stats(self, length);
 
   log_msg_set_recvd_rawmsg_size(m, length);
 
+  return m;
+}
+
+static gboolean
+log_reader_post_message(LogReader *self, LogMessage *msg, LogTransportAuxData *aux)
+{
   if (aux)
     {
-      _set_addresses(self, m, aux);
-      m->proto = aux->proto;
+      _set_addresses(self, msg, aux);
+      msg->proto = aux->proto;
 
       if (aux->timestamp.tv_sec)
         {
           /* accurate timestamp was received from the transport layer, use
            * that instead of the one we generated */
-          m->timestamps[LM_TS_RECVD].ut_sec = aux->timestamp.tv_sec;
-          m->timestamps[LM_TS_RECVD].ut_usec = aux->timestamp.tv_nsec / 1000;
+          msg->timestamps[LM_TS_RECVD].ut_sec = aux->timestamp.tv_sec;
+          msg->timestamps[LM_TS_RECVD].ut_usec = aux->timestamp.tv_nsec / 1000;
         }
     }
-  log_transport_aux_data_foreach(aux, _add_aux_nvpair, m);
+  log_transport_aux_data_foreach(aux, _add_aux_nvpair, msg);
 
-  log_source_post(&self->super, m);
+  log_source_post(&self->super, msg);
   return log_source_free_to_send(&self->super);
 }
 
@@ -525,6 +531,7 @@ log_reader_fetch_log(LogReader *self)
   gint msg_count = 0;
   gboolean may_read = TRUE;
   LogTransportAuxData aux_storage = {0}, *aux = &aux_storage;
+  gboolean is_structured = log_proto_server_is_structured(self->proto);
 
   if ((self->options->flags & LR_IGNORE_AUX_DATA))
     aux = NULL;
@@ -542,11 +549,10 @@ log_reader_fetch_log(LogReader *self)
   while (msg_count < self->options->fetch_limit && !main_loop_worker_job_quit())
     {
       Bookmark *bookmark;
-      const guchar *msg;
-      gsize msg_len;
+      const guchar *line = NULL;
+      gsize line_len = 0;
+      LogMessage *msg = NULL;
       LogProtoStatus status;
-
-      msg = NULL;
 
       /* NOTE: may_read is used to implement multi-read checking. It
        * is initialized to TRUE to indicate that the protocol is
@@ -556,7 +562,12 @@ log_reader_fetch_log(LogReader *self)
 
       log_transport_aux_data_reinit(aux);
       bookmark = ack_tracker_request_bookmark(self->super.ack_tracker);
-      status = log_proto_server_fetch(self->proto, &msg, &msg_len, &may_read, aux, bookmark);
+
+      if (G_UNLIKELY(is_structured))
+        status = log_proto_server_fetch_structured(self->proto, &msg, aux, bookmark);
+      else
+        status = log_proto_server_fetch(self->proto, &line, &line_len, &may_read, aux, bookmark);
+
       switch (status)
         {
         case LPS_EOF:
@@ -574,13 +585,19 @@ log_reader_fetch_log(LogReader *self)
           break;
         }
 
-      if (!msg)
-        {
-          /* no more messages for now */
-          break;
-        }
+      gboolean message_fetched = line || msg;
+      if (!message_fetched)
+        break;
+
       msg_count++;
-      if (!log_reader_handle_line(self, msg, msg_len, aux))
+
+      if (!is_structured)
+        {
+          if (!(msg = log_reader_construct_message(self, line, line_len)))
+            continue;
+        }
+
+      if (!log_reader_post_message(self, msg, aux))
         {
           /* window is full, don't generate further messages */
           break;

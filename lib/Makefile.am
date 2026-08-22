@@ -30,6 +30,8 @@ include lib/logthrdest/Makefile.am
 include lib/signal-slot-connector/Makefile.am
 include lib/multi-line/Makefile.am
 include lib/perf/Makefile.am
+include lib/socket/Makefile.am
+include lib/http/Makefile.am
 
 LSNG_RELEASE		= $(shell echo @PACKAGE_VERSION@ | cut -d. -f1,2)
 
@@ -53,7 +55,7 @@ LSNG_AGE		= 0
 
 lib_LTLIBRARIES				+= lib/libsyslog-ng.la
 lib_libsyslog_ng_la_CFLAGS		= $(AM_CFLAGS) $(CORE_CFLAGS)
-lib_libsyslog_ng_la_LIBADD		= @CORE_DEPS_LIBS@ $(libsystemd_LIBS) $(top_builddir)/lib/secret-storage/libsecret-storage.la $(top_builddir)/lib/filterx/libfilterx.la
+lib_libsyslog_ng_la_LIBADD		= @CORE_DEPS_LIBS@ $(libsystemd_LIBS) $(LIBWRAP_LIBS) lib/http/libllhttp.la $(top_builddir)/lib/secret-storage/libsecret-storage.la $(top_builddir)/lib/filterx/libfilterx.la
 lib_libsyslog_ng_la_LDFLAGS		= @CORE_LDFLAGS@ -no-undefined -release ${LSNG_RELEASE} \
 					  -version-info ${LSNG_CURRENT}:${LSNG_REVISION}:${LSNG_AGE}
 
@@ -317,7 +319,9 @@ lib_libsyslog_ng_la_SOURCES		= \
 	$(logthrsource_sources)		\
 	$(logthrdest_sources) \
 	$(signal_slot_connector_sources) \
-	$(perf_sources)
+	$(perf_sources)		\
+	$(socket_sources)		\
+	$(http_sources)
 
 # each line with closely related files (e.g. the ones generated from the same source)
 BUILT_SOURCES += lib/cfg-lex.c lib/cfg-lex.h						\

@@ -24,12 +24,19 @@
 #include "plugin.h"
 #include "plugin-types.h"
 
+extern CfgParser http_source_parser;
+
 static Plugin http_plugins[] =
 {
   {
     .type = LL_CONTEXT_DESTINATION,
     .name = "http",
     .parser = &http_parser,
+  },
+  {
+    .type = LL_CONTEXT_SOURCE,
+    .name = "ehttp",
+    .parser = &http_source_parser,
   },
 };
 
