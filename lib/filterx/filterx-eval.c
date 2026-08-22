@@ -477,12 +477,13 @@ filterx_eval_freeze_object(FilterXObject **object)
 {
   FilterXEvalContext *context = filterx_eval_get_context();
 
-  if (context && context->env)
-    {
-      g_assert(!(*object)->allocator_used);
-      /* only compile contexts have an env. We can only freeze objects during compile time. */
-      filterx_env_freeze_object(context->env, object);
-    }
+  /* only compile contexts have an env, so this can only be called during
+   * compile time. Without env, the object is silently never frozen (nor
+   * tracked anywhere else), which just leaks it -- so this is a hard
+   * requirement, not a soft/optional one. */
+  g_assert(context && context->env);
+  g_assert(!(*object)->allocator_used);
+  filterx_env_freeze_object(context->env, object);
 }
 
 void
