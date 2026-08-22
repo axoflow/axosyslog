@@ -186,8 +186,8 @@ Test(filterx_eval, test_filterx_eval_context_dup_keeps_cloned_parent_containers_
     FilterXObject *r = filterx_object_from_json("{\"c\":{\"cc\":{\"ccc\":\"orig\"}}}", -1, NULL);
     cr_assert(filterx_object_is_ref(r));
 
-    FilterXObject *c = filterx_object_getattr(r, filterx_string_new_frozen("c"));
-    FilterXObject *cc = filterx_object_getattr(c, filterx_string_new_frozen("cc"));
+    FilterXObject *c = filterx_object_getattr_string(r, "c");
+    FilterXObject *cc = filterx_object_getattr_string(c, "cc");
     cr_assert(filterx_object_is_ref(cc));
 
     /* r and c are not stored anywhere themselves: from here on, their only
@@ -218,8 +218,9 @@ Test(filterx_eval, test_filterx_eval_context_dup_keeps_cloned_parent_containers_
    * via parent_container; if those ancestors weren't kept alive
    * independently of the original (now-gone) context, this reads freed
    * memory */
-  FilterXObject *new_value = filterx_string_new_frozen("changed");
-  cr_assert(filterx_object_setattr(cc_dup, filterx_string_new_frozen("ccc"), &new_value));
+  FilterXObject *new_value = filterx_string_new("changed", -1);
+  cr_assert(filterx_object_setattr_string(cc_dup, "ccc", &new_value));
+  filterx_object_unref(new_value);
 
   filterx_object_unref(cc_dup);
   filterx_eval_context_free_dup(dup_context);
