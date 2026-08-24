@@ -36,7 +36,9 @@ from axosyslog_light.syslog_ng_config.statements.destinations.example_destinatio
 from axosyslog_light.syslog_ng_config.statements.destinations.file_destination import FileDestination
 from axosyslog_light.syslog_ng_config.statements.destinations.http_destination import HttpDestination
 from axosyslog_light.syslog_ng_config.statements.destinations.network_destination import NetworkDestination
+from axosyslog_light.syslog_ng_config.statements.destinations.python_destination import PythonDestination
 from axosyslog_light.syslog_ng_config.statements.destinations.snmp_destination import SnmpDestination
+from axosyslog_light.syslog_ng_config.statements.destinations.sql_destination import SqlDestination
 from axosyslog_light.syslog_ng_config.statements.destinations.unix_dgram_destination import UnixDgramDestination
 from axosyslog_light.syslog_ng_config.statements.destinations.unix_stream_destination import UnixStreamDestination
 from axosyslog_light.syslog_ng_config.statements.filters.filter import Filter
@@ -65,6 +67,7 @@ from axosyslog_light.syslog_ng_config.statements.sources.unix_dgram_source impor
 from axosyslog_light.syslog_ng_config.statements.sources.unix_stream_source import UnixStreamSource
 from axosyslog_light.syslog_ng_config.statements.sources.webhook_source import WebhookJsonSource
 from axosyslog_light.syslog_ng_config.statements.sources.webhook_source import WebhookSource
+from axosyslog_light.syslog_ng_config.statements.sources.wildcard_file_source import WildcardFileSource
 from axosyslog_light.syslog_ng_config.statements.template.template import Template
 from axosyslog_light.syslog_ng_config.statements.template.template import TemplateFunction
 from axosyslog_light.syslog_ng_ctl.legacy_stats_handler import LegacyStatsHandler
@@ -156,6 +159,11 @@ class SyslogNgConfig(object):
         self.teardown.register(file_source.close_file)
         return file_source
 
+    def create_wildcard_file_source(self, **options):
+        wildcard_file_source = WildcardFileSource(self._stats_handler, self._prometheus_stats_handler, **options)
+        self.teardown.register(wildcard_file_source.close_files)
+        return wildcard_file_source
+
     def create_unix_dgram_source(self, **options):
         unix_dgram_source = UnixDgramSource(self._stats_handler, self._prometheus_stats_handler, **options)
         self.teardown.register(unix_dgram_source.close_socket)
@@ -237,6 +245,12 @@ class SyslogNgConfig(object):
     def create_metrics_probe(self, **options):
         return Parser("metrics_probe", self._stats_handler, self._prometheus_stats_handler, **options)
 
+    def create_map_value_pairs_parser(self, **options):
+        return Parser("map-value-pairs", self._stats_handler, self._prometheus_stats_handler, **options)
+
+    def create_python_parser(self, **options):
+        return Parser("python", self._stats_handler, self._prometheus_stats_handler, **options)
+
     def create_syslog_parser(self, **options):
         return Parser("syslog-parser", self._stats_handler, self._prometheus_stats_handler, **options)
 
@@ -267,6 +281,12 @@ class SyslogNgConfig(object):
 
     def create_snmp_destination(self, **options):
         return SnmpDestination(self._stats_handler, self._prometheus_stats_handler, **options)
+
+    def create_python_destination(self, **options):
+        return PythonDestination(self._stats_handler, self._prometheus_stats_handler, **options)
+
+    def create_sql_destination(self, **options):
+        return SqlDestination(self._stats_handler, self._prometheus_stats_handler, **options)
 
     def create_network_destination(self, **options):
         network_destination = NetworkDestination(self._stats_handler, self._prometheus_stats_handler, **options)

@@ -66,7 +66,9 @@ EXTRA_DIST += \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/destinations/file_destination.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/destinations/__init__.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/destinations/network_destination.py \
+	tests/light/src/axosyslog_light/syslog_ng_config/statements/destinations/python_destination.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/destinations/snmp_destination.py \
+	tests/light/src/axosyslog_light/syslog_ng_config/statements/destinations/sql_destination.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/destinations/unix_dgram_destination.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/destinations/unix_stream_destination.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/filters/filter.py \
@@ -92,6 +94,7 @@ EXTRA_DIST += \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/sources/unix_dgram_source.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/sources/unix_stream_source.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/sources/webhook_source.py \
+	tests/light/src/axosyslog_light/syslog_ng_config/statements/sources/wildcard_file_source.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/template/__init__.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/template/template.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/syslog_ng_config.py \
