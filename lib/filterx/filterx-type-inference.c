@@ -440,8 +440,8 @@ filterx_type_env_open_at_path(FilterXTypeEnv *self, const FilterXAccessPath *pat
 
 /* --- shapes --------------------------------------------------------------------------------- */
 
-static FilterXStaticType
-_kind_from_object(FilterXObject *obj)
+FilterXStaticType
+filterx_static_type_from_object(FilterXObject *obj)
 {
   if (!obj)
     return FILTERX_STATIC_TYPE_UNKNOWN;
@@ -466,9 +466,7 @@ typedef struct
 {
   FilterXTypeEnv *env;
   const FilterXAccessPath *base;
-  /* FALSE once an element turned up that no path can address, which is a key of the container
-   * that is not among its recorded children. */
-  gboolean complete;
+  gboolean all_keys_recorded;
 } _ObjectShapeCtx;
 
 static void _install_shape_from_object(FilterXTypeEnv *env, const FilterXAccessPath *base, FilterXObject *obj);
@@ -487,7 +485,7 @@ _install_element_shape(FilterXObject *key, FilterXObject *value, gpointer user_d
   FilterXAccessPath child = *ctx->base;
   if (!filterx_access_path_append_step(&child, step))
     {
-      ctx->complete = FALSE;
+      ctx->all_keys_recorded = FALSE;
       return TRUE;
     }
 
@@ -498,38 +496,35 @@ _install_element_shape(FilterXObject *key, FilterXObject *value, gpointer user_d
 static void
 _install_shape_from_object(FilterXTypeEnv *env, const FilterXAccessPath *base, FilterXObject *obj)
 {
-  FilterXStaticType kind = _kind_from_object(obj);
+  FilterXStaticType static_type = filterx_static_type_from_object(obj);
 
   _trace("| shape of %s from %s -> %s", _format_path(base),
-         obj ? filterx_object_get_type_name(obj) : "(null)", _static_type_name(kind));
+         obj ? filterx_object_get_type_name(obj) : "(null)", _static_type_name(static_type));
 
-  if (kind != FILTERX_STATIC_TYPE_DICT && kind != FILTERX_STATIC_TYPE_LIST)
+  if (static_type != FILTERX_STATIC_TYPE_DICT && static_type != FILTERX_STATIC_TYPE_LIST)
     {
-      filterx_type_env_set_at_path(env, base, kind, FALSE);
+      filterx_type_env_set_at_path(env, base, static_type, FALSE);
       return;
     }
 
-  /* An object in hand has an exactly known key set, so the container starts out closed.  An empty
-   * one is closed with no children at all, which is what the old FRESH sentinel used to encode.
-   *
-   * It only stays closed if every key made it into a child path.  A list keeps none of its
-   * elements and a dict loses the ones past the depth cap, and closed-with-no-children says the
-   * container is empty -- a strictly stronger claim than the one that just went unrecorded. */
-  filterx_type_env_set_at_path(env, base, kind, TRUE);
+  /* An object in hand has an exactly known key set, so it starts out closed.  It only stays
+   * closed if every key made it into a child path: closed with no children claims the container
+   * is empty, which is stronger than the key merely having gone unrecorded. */
+  filterx_type_env_set_at_path(env, base, static_type, TRUE);
 
-  _ObjectShapeCtx ctx = { .env = env, .base = base, .complete = TRUE };
+  _ObjectShapeCtx ctx = { .env = env, .base = base, .all_keys_recorded = TRUE };
   filterx_object_iter(obj, _install_element_shape, &ctx);
 
-  if (!ctx.complete)
+  if (!ctx.all_keys_recorded)
     _mark_not_closed(env, base);
 }
 
-/* Copy range(@src) out of @src_env and re-root it at @dst in @dst_env.  The two may be the same
- * env and the two ranges may overlap -- d.sub = d and d = d.sub are both real statements -- which
- * is why the source is snapshotted before the destination is dropped. */
+/* Copy range(@src) out of @src_env and re-root it at @dst in @dst_env.  The two envs may be the
+ * same one and the two ranges may overlap, `d.sub = d` and `d = d.sub` both being real
+ * statements, so the source is snapshotted before the destination is dropped. */
 static void
 _install_shape_from_tracked_path(FilterXTypeEnv *dst_env, const FilterXAccessPath *dst,
-            const FilterXTypeEnv *src_env, const FilterXAccessPath *src)
+                                 const FilterXTypeEnv *src_env, const FilterXAccessPath *src)
 {
   _Snapshot snap;
 
@@ -569,38 +564,37 @@ _install_shape_from_tracked_path(FilterXTypeEnv *dst_env, const FilterXAccessPat
   _snapshot_clear(&snap);
 }
 
-/* How much of a written value's shape this pass can see.  There are only three answers: the value
- * itself is in hand, it is a read of a location already tracked, or neither. */
+/* where the shape of a written value comes from, when it comes from anywhere */
 typedef enum
 {
-  SHAPE_STATIC_TYPE_ONLY,      /* only the kind is known */
-  SHAPE_FROM_OBJECT,  /* a folded literal, or a partially evaluated literal container */
-  SHAPE_FROM_TRACKED_PATH,    /* a read of already tracked path in this env */
+  SHAPE_STATIC_TYPE_ONLY,
+  SHAPE_FROM_OBJECT,          /* a folded literal, or a sparse literal container */
+  SHAPE_FROM_TRACKED_PATH,    /* a read of a location this env already records */
 } _ShapeSource;
 
 typedef struct
 {
-  _ShapeSource kind;
-  FilterXStaticType expr_type;
+  _ShapeSource source;
+  FilterXStaticType static_type;
   FilterXObject *object;          /* SHAPE_FROM_OBJECT, owned when @object_owned */
   gboolean object_owned;
-  FilterXExpr *container_expr;    /* a literal container: its holes need overlaying */
+  FilterXExpr *container_expr;    /* a literal container, whose non-literal elements need typing */
   FilterXAccessPath src_path;       /* SHAPE_FROM_TRACKED_PATH */
 } _Shape;
 
 static _Shape
 _shape_of(FilterXExpr *rhs_expr)
 {
-  _Shape shape = { .kind = SHAPE_STATIC_TYPE_ONLY, .expr_type = FILTERX_STATIC_TYPE_UNKNOWN };
+  _Shape shape = { .source = SHAPE_STATIC_TYPE_ONLY, .static_type = FILTERX_STATIC_TYPE_UNKNOWN };
 
   if (!rhs_expr)
     return shape;
 
-  shape.expr_type = rhs_expr->static_type;
+  shape.static_type = rhs_expr->static_type;
 
   if (filterx_expr_is_literal(rhs_expr))
     {
-      shape.kind = SHAPE_FROM_OBJECT;
+      shape.source = SHAPE_FROM_OBJECT;
       shape.object = filterx_literal_get_value(rhs_expr);
       shape.object_owned = TRUE;
       return shape;
@@ -608,20 +602,32 @@ _shape_of(FilterXExpr *rhs_expr)
 
   if (filterx_expr_is_literal_container(rhs_expr))
     {
-      /* The template is built by early-evaluating every element, and a non-literal key fails
-       * filterx_mapping_normalize_key(), which bails out of the whole early eval.  So a template
-       * at all means every key is a literal string and the key set is complete. */
       shape.container_expr = rhs_expr;
       shape.object = filterx_literal_container_get_sparse_container(rhs_expr);
       if (shape.object)
-        shape.kind = SHAPE_FROM_OBJECT;
+        shape.source = SHAPE_FROM_OBJECT;
       return shape;
     }
 
   if (filterx_expr_get_path(rhs_expr, &shape.src_path) && !shape.src_path.truncated)
-    shape.kind = SHAPE_FROM_TRACKED_PATH;
+    shape.source = SHAPE_FROM_TRACKED_PATH;
 
   return shape;
+}
+
+static const gchar *
+_shape_source_name(_ShapeSource source)
+{
+  switch (source)
+    {
+    case SHAPE_FROM_OBJECT:
+      return "from object";
+    case SHAPE_FROM_TRACKED_PATH:
+      return "from tracked path";
+    case SHAPE_STATIC_TYPE_ONLY:
+    default:
+      return "static type only";
+    }
 }
 
 static void
@@ -634,7 +640,7 @@ _clear_shape(_Shape *shape)
 static void
 _install_shape(FilterXTypeEnv *self, const FilterXAccessPath *path, _Shape *shape)
 {
-  switch (shape->kind)
+  switch (shape->source)
     {
     case SHAPE_FROM_OBJECT:
       _install_shape_from_object(self, path, shape->object);
@@ -644,15 +650,23 @@ _install_shape(FilterXTypeEnv *self, const FilterXAccessPath *path, _Shape *shap
       break;
     case SHAPE_STATIC_TYPE_ONLY:
     default:
-      filterx_type_env_set_at_path(self, path, shape->expr_type, FALSE);
+      filterx_type_env_set_at_path(self, path, shape->static_type, FALSE);
       break;
     }
 
-  /* A partially evaluated container leaves its holes as nulls in the template, and a literal
-   * container that could not be evaluated at all has no template to walk.  A hole at a key
-   * nothing addresses goes unrecorded, which costs the container its `closed`. */
   if (shape->container_expr && !filterx_literal_container_infer_nonliteral_elements(shape->container_expr, self, path))
     _mark_not_closed(self, path);
+}
+
+/* A truncated path names no location to act on, so the deepest ancestor it does address is what
+ * the env can still speak about.  `d = {}; d[$k] = "s";` leaves d a DICT with no leaves, which is
+ * what makes the `d.a = 1` after it the only thing d.a can be. */
+static void
+_open_deepest_addressable_ancestor(FilterXTypeEnv *self, const FilterXAccessPath *path)
+{
+  FilterXAccessPath ancestor = *path;
+  ancestor.truncated = FALSE;
+  filterx_type_env_open_at_path(self, &ancestor);
 }
 
 void
@@ -660,21 +674,14 @@ filterx_type_env_set_shape_at_path(FilterXTypeEnv *self, const FilterXAccessPath
 {
   if (path->truncated)
     {
-      /* The write has no exact address -- a key nothing can name, or a level past the depth cap --
-       * so it may have landed anywhere under the deepest addressable ancestor, and that ancestor
-       * is all this env can still speak about.  `d = {}; d[$k] = "s";` leaves d a DICT with no
-       * leaves, which is what makes the `d.a = 1` after it the only thing d.a can be. */
-      FilterXAccessPath prefix = *path;
-      prefix.truncated = FALSE;
-      filterx_type_env_open_at_path(self, &prefix);
+      _open_deepest_addressable_ancestor(self, path);
       return;
     }
 
   _Shape shape = _shape_of(rhs_expr);
 
   _trace("| write %s <- %s (%s, %s)", _format_path(path), rhs_expr ? rhs_expr->type : "(none)",
-         shape.kind == SHAPE_FROM_OBJECT ? "observable" : (shape.kind == SHAPE_FROM_TRACKED_PATH ? "observed" : "opaque"),
-         _static_type_name(shape.expr_type));
+         _shape_source_name(shape.source), _static_type_name(shape.static_type));
   _trace_depth++;
 
   _install_shape(self, path, &shape);
@@ -688,23 +695,47 @@ filterx_type_env_clear_at_path(FilterXTypeEnv *self, const FilterXAccessPath *pa
 {
   if (path->truncated)
     {
-      /* The victim cannot be named.  A removal falsifies nothing on its own -- it only makes reads
-       * answer C NULL, and only shrinks a key set `closed` bounds from above -- but opening the
-       * deepest addressable ancestor costs nothing and leaves no lemma to re-derive. */
-      FilterXAccessPath prefix = *path;
-      prefix.truncated = FALSE;
-      filterx_type_env_open_at_path(self, &prefix);
+      _open_deepest_addressable_ancestor(self, path);
       return;
     }
 
   _trace("| clear %s", _format_path(path));
 
-  /* unset() on a named key proves the key gone, so the parent's `closed` survives with a smaller
-   * key set and there is no obligation to discharge. */
+  /* the parent keeps `closed`: a named key proven gone only shrinks its key set */
   _drop_range(self, path, TRUE);
 }
 
 /* --- the expression-level entry points ------------------------------------------------------ */
+
+void
+filterx_type_env_update_on_write(FilterXTypeEnv *self, FilterXExpr *target_expr, FilterXExpr *rhs_expr)
+{
+  FilterXAccessPath path;
+
+  if (filterx_expr_get_path(target_expr, &path))
+    {
+      filterx_type_env_set_shape_at_path(self, &path, rhs_expr);
+      return;
+    }
+
+  /* A dpath resolves its elements at runtime, so its root variable is the deepest location this
+   * pass can name for the write.  The root keeps its static type: the write reaches into the
+   * container rather than replacing it. */
+  FilterXExpr *dpath_root = filterx_dpath_lvalue_get_variable(target_expr);
+  if (dpath_root && filterx_expr_get_path(dpath_root, &path))
+    filterx_type_env_open_at_path(self, &path);
+}
+
+void
+filterx_type_env_update_on_optional_write(FilterXTypeEnv *self, FilterXExpr *target_expr, FilterXExpr *rhs_expr)
+{
+  FilterXTypeEnv *if_written = filterx_type_env_clone(self);
+
+  filterx_type_env_update_on_write(if_written, target_expr, rhs_expr);
+
+  filterx_type_env_meet_into(self, if_written);
+  filterx_type_env_free(if_written);
+}
 
 void
 filterx_type_env_update_on_remove(FilterXTypeEnv *self, FilterXExpr *target_expr)
@@ -717,6 +748,77 @@ filterx_type_env_update_on_remove(FilterXTypeEnv *self, FilterXExpr *target_expr
   filterx_type_env_clear_at_path(self, &path);
 }
 
+/* what `target += rhs` leaves in target */
+static FilterXStaticType
+_plus_assign_result(FilterXStaticType target, FilterXStaticType rhs)
+{
+  FilterXStaticType promoted = filterx_static_type_numeric_promote(target, rhs);
+  if (promoted != FILTERX_STATIC_TYPE_UNKNOWN)
+    return promoted;
+
+  gboolean merges_in_place = (target == rhs &&
+                              (target == FILTERX_STATIC_TYPE_DICT ||
+                               target == FILTERX_STATIC_TYPE_LIST ||
+                               target == FILTERX_STATIC_TYPE_STRING));
+  return merges_in_place ? target : FILTERX_STATIC_TYPE_UNKNOWN;
+}
+
+/* The RHS may be a range of the very env being written, and the per-key overwrite would otherwise
+ * read entries it has already replaced. */
+static FilterXTypeEnv *
+_materialize_shape_in_scratch_env(FilterXTypeEnv *self, _Shape *shape, const FilterXAccessPath *root)
+{
+  FilterXTypeEnv *scratch = filterx_type_env_new();
+
+  if (shape->source == SHAPE_FROM_TRACKED_PATH)
+    _install_shape_from_tracked_path(scratch, root, self, &shape->src_path);
+  else
+    _install_shape(scratch, root, shape);
+
+  return scratch;
+}
+
+/* filterx_mapping_merge() is a shallow per-key overwrite: the RHS's keys replace the target's and
+ * the target's other keys survive.  FALSE when the RHS is not closed, its key set being one this
+ * pass cannot enumerate. */
+static gboolean
+_merge_dict_keys_into_path(FilterXTypeEnv *self, const FilterXAccessPath *path, _Shape *rhs_shape)
+{
+  FilterXAccessPath scratch_root = { .root = 0, .n_steps = 0 };
+  FilterXTypeEnv *scratch = _materialize_shape_in_scratch_env(self, rhs_shape, &scratch_root);
+
+  gpointer rhs_fact = _lookup(scratch, &scratch_root);
+  if (!rhs_fact || !_fact_is_closed(rhs_fact))
+    {
+      filterx_type_env_free(scratch);
+      return FALSE;
+    }
+
+  _Snapshot children;
+  _snapshot_direct_children(scratch, &scratch_root, &children);
+
+  for (guint i = 0; i < children.paths->len; i++)
+    {
+      const FilterXAccessPath *child = _snapshot_path(&children, i);
+
+      FilterXAccessPath dst = *path;
+      if (!filterx_access_path_append_step(&dst, child->steps[child->n_steps - 1]))
+        {
+          /* the key the merge brings in lands past the depth cap, so the target gains one it has
+           * no entry for */
+          _mark_not_closed(self, path);
+          continue;
+        }
+      dst.truncated = FALSE;
+
+      _install_shape_from_tracked_path(self, &dst, scratch, child);
+    }
+
+  _snapshot_clear(&children);
+  filterx_type_env_free(scratch);
+  return TRUE;
+}
+
 FilterXStaticType
 filterx_type_env_update_on_plus_assign(FilterXTypeEnv *self, FilterXExpr *target_expr, FilterXExpr *rhs_expr)
 {
@@ -727,111 +829,48 @@ filterx_type_env_update_on_plus_assign(FilterXTypeEnv *self, FilterXExpr *target
 
   if (path.truncated)
     {
-      /* The read answers UNKNOWN and the write would land at a path this env cannot address, so
-       * retire what is below the representable prefix instead of leaving a stale claim. */
-      FilterXAccessPath prefix = path;
-      prefix.truncated = FALSE;
-      filterx_type_env_open_at_path(self, &prefix);
+      _open_deepest_addressable_ancestor(self, &path);
       return FILTERX_STATIC_TYPE_UNKNOWN;
     }
 
   FilterXStaticType target = filterx_type_env_get_static_type_at_path(self, &path);
   FilterXStaticType rhs = rhs_expr ? rhs_expr->static_type : FILTERX_STATIC_TYPE_UNKNOWN;
+  FilterXStaticType result = _plus_assign_result(target, rhs);
 
-  /* What `target += rhs` leaves in target: numeric promotion, or a same-kind merge/concatenation. */
-  FilterXStaticType merged = filterx_static_type_numeric_promote(target, rhs);
-  if (merged == FILTERX_STATIC_TYPE_UNKNOWN &&
-      target == rhs &&
-      (target == FILTERX_STATIC_TYPE_DICT ||
-       target == FILTERX_STATIC_TYPE_LIST ||
-       target == FILTERX_STATIC_TYPE_STRING))
-    merged = target;
+  _trace("| merge %s: %s += %s -> %s", _format_path(&path), _static_type_name(target),
+         _static_type_name(rhs), _static_type_name(result));
 
-  _trace("| merge %s: %s += %s -> %s", _format_path(&path), _static_type_name(target), _static_type_name(rhs),
-         _static_type_name(merged));
-
-  if (merged != FILTERX_STATIC_TYPE_DICT)
+  if (result != FILTERX_STATIC_TYPE_DICT)
     {
-      filterx_type_env_set_at_path(self, &path, merged, FALSE);
-      return merged;
+      filterx_type_env_set_at_path(self, &path, result, FALSE);
+      return result;
     }
 
-  /* `target += rhs` on a dict is filterx_mapping_merge(): a shallow per-key overwrite, so the
-   * RHS's keys win and the target's own keys survive. */
   gpointer target_fact = _lookup(self, &path);
   if (!target_fact)
-    return merged;
-
-  _Shape shape = _shape_of(rhs_expr);
-
-  /* Only a dict merge is per-key; a list or string concatenation says nothing about which of the
-   * target's own keys survived where. */
-  if (_fact_static_type(target_fact) != FILTERX_STATIC_TYPE_DICT || shape.expr_type != FILTERX_STATIC_TYPE_DICT)
-    {
-      filterx_type_env_open_at_path(self, &path);
-      _clear_shape(&shape);
-      return merged;
-    }
-
-  /* Materialise the RHS under a scratch root first: it may be a range of this very env, and the
-   * per-key overwrite below would otherwise read entries it has already replaced. */
-  FilterXTypeEnv *scratch = filterx_type_env_new();
-  FilterXAccessPath scratch_root = { .root = 0, .n_steps = 0 };
-
-  if (shape.kind == SHAPE_FROM_TRACKED_PATH)
-    _install_shape_from_tracked_path(scratch, &scratch_root, self, &shape.src_path);
-  else
-    _install_shape(scratch, &scratch_root, &shape);
-
-  gpointer rhs_fact = _lookup(scratch, &scratch_root);
-  gboolean rhs_closed = rhs_fact && _fact_is_closed(rhs_fact);
-
-  /* Only a closed RHS has a key set this pass can enumerate.  An open one may carry a key it never
-   * recorded, and that key overwrites the target's own with a value nothing here has seen -- so
-   * nothing below the target survives, though the merge itself still leaves a dict. */
-  if (!rhs_closed)
-    {
-      filterx_type_env_open_at_path(self, &path);
-      filterx_type_env_free(scratch);
-      _clear_shape(&shape);
-      return merged;
-    }
+    return result;
 
   gboolean target_closed = _fact_is_closed(target_fact);
+  _Shape shape = _shape_of(rhs_expr);
 
-  _Snapshot children;
-  _snapshot_direct_children(scratch, &scratch_root, &children);
+  /* only a dict merge is per-key; a list or string concatenation says nothing about where the
+   * target's own keys ended up */
+  gboolean merged_per_key = (_fact_static_type(target_fact) == FILTERX_STATIC_TYPE_DICT &&
+                             shape.static_type == FILTERX_STATIC_TYPE_DICT &&
+                             _merge_dict_keys_into_path(self, &path, &shape));
 
-  for (guint i = 0; i < children.paths->len; i++)
+  if (!merged_per_key)
+    filterx_type_env_open_at_path(self, &path);
+  else
     {
-      const FilterXAccessPath *child = _snapshot_path(&children, i);
-      const gchar *step = child->steps[child->n_steps - 1];
-
-      FilterXAccessPath dst = path;
-      if (!filterx_access_path_append_step(&dst, step))
-        {
-          /* The key the merge brings in lands past the depth cap, so the target gains one it has
-           * no entry for. */
-          _mark_not_closed(self, &path);
-          continue;
-        }
-      dst.truncated = FALSE;
-
-      /* filterx_mapping_merge() is a shallow per-key overwrite, so a key of the RHS simply
-       * replaces the target's. */
-      _install_shape_from_tracked_path(self, &dst, scratch, child);
+      /* the RHS's keys are all accounted for above, so only the target's own key set still bounds
+       * the result */
+      _trace("| set %s <- DICT%s", _format_path(&path), target_closed ? " closed" : "");
+      _insert(self, &path, _fact_pack(FILTERX_STATIC_TYPE_DICT, target_closed));
     }
-  _snapshot_clear(&children);
 
-  /* The RHS is closed, so its keys are all accounted for above and only the target's own key set
-   * decides whether the result is still bounded. */
-  _trace("| set %s <- DICT%s", _format_path(&path), target_closed ? " closed" : "");
-  _insert(self, &path, _fact_pack(FILTERX_STATIC_TYPE_DICT, target_closed));
-
-  filterx_type_env_free(scratch);
   _clear_shape(&shape);
-
-  return merged;
+  return result;
 }
 
 static gboolean
@@ -842,8 +881,7 @@ _open_argument(FilterXExpr *parent, FilterXExpr **child, gpointer user_data)
 
   if (*child && filterx_expr_get_path(*child, &path))
     {
-      path.truncated = FALSE;   /* the representable prefix is what there is to open */
-      filterx_type_env_open_at_path(env, &path);
+      _open_deepest_addressable_ancestor(env, &path);
     }
 
   return TRUE;

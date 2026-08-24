@@ -23,11 +23,8 @@
 #define FILTERX_TYPE_INFERENCE_H_INCLUDED
 
 #include "syslog-ng.h"
-#include "filterx/filterx-variable.h"
+#include "filterx/filterx-object.h"
 
-/* What an expression's value is, when it evaluates to one at all.  Flat, because the nesting an
- * expression reaches through already lives in the expression tree: d.a.b is
- * getattr(getattr(var d, "a"), "b") and every node gets its own kind from its own path. */
 typedef enum
 {
   FILTERX_STATIC_TYPE_UNKNOWN = 0,
@@ -46,91 +43,51 @@ filterx_static_type_meet(FilterXStaticType a, FilterXStaticType b)
 }
 
 FilterXStaticType filterx_static_type_numeric_promote(FilterXStaticType a, FilterXStaticType b);
+FilterXStaticType filterx_static_type_from_object(FilterXObject *obj);
 
-/* One GTree per env, keyed by a path, holding a flat fact: a kind plus a `closed` bit.
- *
- *   entry at P      the value at P exists and has this kind
- *   no entry at P   nothing is known about whether P exists
- *   `closed` at P   P is a container with no keys beyond the child paths recorded here
- *
- * There is nothing else: a lookup either hits an entry that speaks for exactly that location, or
- * misses and answers UNKNOWN.  Nothing is summarised over the keys this pass cannot name, which
- * is what makes a hit knowledge rather than a bound -- and what a write through such a key costs:
- * it may have landed anywhere in its container, so the container keeps its kind and loses its
- * whole interior.  `d = {}; d[$k] = "s";` leaves d a DICT with no leaves, and the `d.a = 1` after
- * it is then simply what d.a is.
- *
- * A read only ever describes a non-NULL eval result -- every in-tree container returns C NULL for
- * a missing key rather than a null object -- which is what lets a key written on one branch of an
- * if/else keep its type past the join.
- */
+/* What is known about the locations a block can reach.  Keyed by path with no inheritance: an entry
+ * speaks for its own location only, and `closed` says the recorded children are all the keys that
+ * container has.  Every in-tree container returns C NULL for a missing key, so an entry only ever
+ * describes a non-NULL eval result. */
 typedef struct _FilterXTypeEnv FilterXTypeEnv;
 
 FilterXTypeEnv *filterx_type_env_new(void);
 FilterXTypeEnv *filterx_type_env_clone(const FilterXTypeEnv *self);
 void filterx_type_env_free(FilterXTypeEnv *self);
 
-typedef gboolean (*FilterXTypeEnvHandlePredicate)(FilterXVariableHandle handle, gpointer user_data);
+void filterx_type_env_meet_into(FilterXTypeEnv *dst, const FilterXTypeEnv *src);
 
-FilterXTypeEnv *filterx_type_env_clone_filtered(const FilterXTypeEnv *self,
-                                                FilterXTypeEnvHandlePredicate pred, gpointer user_data);
-
-struct _FilterXExpr;
 /* Defined in filterx-expr.h, which includes this header: an expression is what mints a path, so
  * the type lives with the expression tree and only pointers to it cross to this side. */
 struct _FilterXAccessPath;
 
-/* TRUE when @path has an entry of its own, which is a claim that the value exists, plus its
- * `closed` bit.  Recorded-at-UNKNOWN and unrecorded read the same through get_at_path() and are
- * not the same fact: the join turns on exactly that difference. */
-gboolean filterx_type_env_get_fact_at_path(const FilterXTypeEnv *self, const struct _FilterXAccessPath *path,
-                                 FilterXStaticType *kind_out, gboolean *closed_out);
-
-void filterx_type_env_set_at_path(FilterXTypeEnv *self, const struct _FilterXAccessPath *path,
-                                  FilterXStaticType kind, gboolean closed);
-
-/* Record that @path now holds what @rhs_expr evaluates to.  A literal, a partially evaluated
- * literal container and a read of another tracked location carry a shape, which is installed
- * below @path; anything else installs its flat kind and nothing under it.
- *
- * A truncated @path names no location to install anything at, so the deepest addressable ancestor
- * of the write is opened instead. */
+/* Record that @path now holds what @rhs_expr evaluates to. */
 void filterx_type_env_set_shape_at_path(FilterXTypeEnv *self, const struct _FilterXAccessPath *path,
-                                        struct _FilterXExpr *rhs_expr);
+                                        FilterXExpr *rhs_expr);
 
-/* Something mutated the container at @path in a way this pass cannot follow: keep its kind, drop
- * everything below it and stop claiming its key set is complete. */
-void filterx_type_env_open_at_path(FilterXTypeEnv *self, const struct _FilterXAccessPath *path);
+FilterXStaticType filterx_type_env_get_static_type_of_expr(const FilterXTypeEnv *self, FilterXExpr *expr);
 
-/* Retire what is known about @path, which unset() and move() have proven gone.  The parent keeps
- * `closed`: that is an upper bound on its key set, and a removal only ever shrinks one. */
-void filterx_type_env_clear_at_path(FilterXTypeEnv *self, const struct _FilterXAccessPath *path);
+void filterx_type_env_update_on_write(FilterXTypeEnv *self, FilterXExpr *target_expr, FilterXExpr *rhs_expr);
 
-/* Convenience for the read hooks: peel @expr to a path and read it. */
-FilterXStaticType filterx_type_env_get_static_type_of_expr(const FilterXTypeEnv *self, struct _FilterXExpr *expr);
+/* `??=` writes only when the target is null, so what holds afterwards is the meet of having
+ * written and of not having written. */
+void filterx_type_env_update_on_optional_write(FilterXTypeEnv *self, FilterXExpr *target_expr,
+                                               FilterXExpr *rhs_expr);
 
-void filterx_type_env_update_on_remove(FilterXTypeEnv *self, struct _FilterXExpr *target_expr);
+void filterx_type_env_update_on_remove(FilterXTypeEnv *self, FilterXExpr *target_expr);
 
-FilterXStaticType filterx_type_env_update_on_plus_assign(FilterXTypeEnv *self,
-                                                            struct _FilterXExpr *target_expr,
-                                                            struct _FilterXExpr *rhs_expr);
+FilterXStaticType filterx_type_env_update_on_plus_assign(FilterXTypeEnv *self, FilterXExpr *target_expr,
+                                                         FilterXExpr *rhs_expr);
 
-/* Every container an expression can reach may have been mutated in place by a callee, so open
- * each argument that names a tracked location. */
-void filterx_type_env_open_arguments(FilterXTypeEnv *self, struct _FilterXExpr *expr);
+/* a callee may mutate in place any container it was handed */
+void filterx_type_env_open_arguments(FilterXTypeEnv *self, FilterXExpr *expr);
 
-void filterx_type_env_meet_into(FilterXTypeEnv *dst, const FilterXTypeEnv *src);
+void filterx_expr_infer_types(FilterXExpr *self, FilterXTypeEnv *env);
 
-void filterx_expr_infer_types(struct _FilterXExpr *self, FilterXTypeEnv *env);
-
-/* SYSLOG_NG_FILTERX_TRACE_TYPES in the environment dumps the pass to stderr as it runs: the
- * traversal as an indented tree, every fact the env gains or loses, and the whole env after each
- * statement of a block.  Both calls below are no-ops without it.
- *
- * A compiler pass reads as a whole or not at all, which is why this is stderr rather than
- * msg_trace(): an indented tree does not survive evt_tag formatting, and the same reasoning gave
- * the JIT its own IR dump channel. */
+/* SYSLOG_NG_FILTERX_TRACE_TYPES enables the dump of the pass to stderr */
 gboolean filterx_type_inference_trace_enabled(void);
+
+/* no-ops unless the trace is enabled */
 void filterx_type_inference_trace_banner(const gchar *format, ...) G_GNUC_PRINTF(1, 2);
 void filterx_type_env_trace_dump(const FilterXTypeEnv *self, const gchar *label);
 

@@ -25,12 +25,30 @@
 #include "filterx/filterx-type-inference.h"
 #include "filterx/filterx-expr.h"
 
-/* Not part of the public interface: every compiler-facing caller goes through
- * filterx_type_env_get_static_type_of_expr() instead.  Exposed here so the path/env test suites can exercise
- * path-keyed reads directly. */
+/* Path-keyed access, for the test suites.  Every compiler-facing caller goes through
+ * filterx-type-inference.h instead. */
 
-/* The kind at @path: its own entry, or UNKNOWN when there is none.  Nothing is inherited from an
- * ancestor -- an entry is the only thing that speaks for a location. */
 FilterXStaticType filterx_type_env_get_static_type_at_path(const FilterXTypeEnv *self, const FilterXAccessPath *path);
+
+/* TRUE when @path has an entry of its own, which is a claim that the value exists.  Recorded at
+ * UNKNOWN and unrecorded read the same through get_static_type_at_path(), and the meet turns on
+ * exactly that difference. */
+gboolean filterx_type_env_get_fact_at_path(const FilterXTypeEnv *self, const FilterXAccessPath *path,
+                                           FilterXStaticType *static_type_out, gboolean *closed_out);
+
+void filterx_type_env_set_at_path(FilterXTypeEnv *self, const FilterXAccessPath *path,
+                                  FilterXStaticType static_type, gboolean closed);
+
+/* Something mutated the container at @path in a way this pass cannot follow: keep its static type,
+ * drop everything below it and stop claiming its key set is complete. */
+void filterx_type_env_open_at_path(FilterXTypeEnv *self, const FilterXAccessPath *path);
+
+/* unset() and move() prove @path gone, which is why the parent keeps `closed` here. */
+void filterx_type_env_clear_at_path(FilterXTypeEnv *self, const FilterXAccessPath *path);
+
+typedef gboolean (*FilterXTypeEnvHandlePredicate)(FilterXVariableHandle handle, gpointer user_data);
+
+FilterXTypeEnv *filterx_type_env_clone_filtered(const FilterXTypeEnv *self,
+                                                FilterXTypeEnvHandlePredicate pred, gpointer user_data);
 
 #endif

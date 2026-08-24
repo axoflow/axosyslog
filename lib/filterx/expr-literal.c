@@ -21,10 +21,7 @@
  */
 #include "filterx/expr-literal.h"
 #include "filterx/filterx-eval.h"
-#include "filterx/object-dict.h"
-#include "filterx/object-list.h"
 #include "filterx/object-string.h"
-#include "filterx/object-primitive.h"
 
 typedef struct _FilterXLiteral
 {
@@ -86,40 +83,11 @@ _literal_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 #include "filterx/jit/jit.h"
 #include "filterx/jit/ffi.h"
 
-/* Only this node's own kind; whatever nesting the object has is installed into the env by the
- * write that stores it somewhere, which is the only place a path exists to install it at. */
-static FilterXStaticType
-_kind_from_filterx_object(FilterXObject *obj)
-{
-  if (!obj)
-    return FILTERX_STATIC_TYPE_UNKNOWN;
-
-  if (filterx_object_is_type_or_ref(obj, &FILTERX_TYPE_NAME(string)))
-    return FILTERX_STATIC_TYPE_STRING;
-
-  if (filterx_object_is_type_or_ref(obj, &FILTERX_TYPE_NAME(integer)))
-    return FILTERX_STATIC_TYPE_INTEGER;
-
-  if (filterx_object_is_type_or_ref(obj, &FILTERX_TYPE_NAME(double)))
-    return FILTERX_STATIC_TYPE_DOUBLE;
-
-  if (filterx_object_is_type_or_ref(obj, &FILTERX_TYPE_NAME(boolean)))
-    return FILTERX_STATIC_TYPE_BOOLEAN;
-
-  if (filterx_object_is_type_or_ref(obj, &FILTERX_TYPE_NAME(dict)))
-    return FILTERX_STATIC_TYPE_DICT;
-
-  if (filterx_object_is_type_or_ref(obj, &FILTERX_TYPE_NAME(list)))
-    return FILTERX_STATIC_TYPE_LIST;
-
-  return FILTERX_STATIC_TYPE_UNKNOWN;
-}
-
 static void
 _literal_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
 {
   FilterXLiteral *self = (FilterXLiteral *) s;
-  s->static_type = _kind_from_filterx_object(self->object);
+  s->static_type = filterx_static_type_from_object(self->object);
 }
 
 static FilterXIRValue

@@ -187,38 +187,22 @@ fx_jit_do_nullv_setattr(FilterXExpr *s, FilterXObject *lhs, FilterXObject *clone
   return _do_nullv_setattr((FilterXSetAttr *) s, lhs, cloned);
 }
 
-/* The written location is exactly one path, so the write overwrites it rather than meeting into
- * it: `$a.b = "s"; $a.b = 1;` leaves INTEGER.  Sibling keys and the enclosing level are untouched,
- * and a closed container stays closed, the new key now being a recorded child of its own. */
-static void
-_setattr_record_write(FilterXSetAttr *self, FilterXTypeEnv *env)
-{
-  FilterXAccessPath path;
-
-  if (filterx_expr_get_path(&self->super, &path))
-    filterx_type_env_set_shape_at_path(env, &path, self->new_value);
-}
-
 static void
 _setattr_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
 {
+  FilterXSetAttr *self = (FilterXSetAttr *) s;
+
   filterx_expr_infer_types_default(s, env);
-  _setattr_record_write((FilterXSetAttr *) s, env);
+  filterx_type_env_update_on_write(env, s, self->new_value);
 }
 
 static void
 _nullv_setattr_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
 {
+  FilterXSetAttr *self = (FilterXSetAttr *) s;
+
   filterx_expr_infer_types_default(s, env);
-
-  /* ??= leaves the target alone when the value is null, so what holds afterwards is the meet of
-   * having written and of not having written. */
-  FilterXTypeEnv *assigned_env = filterx_type_env_clone(env);
-
-  _setattr_record_write((FilterXSetAttr *) s, assigned_env);
-
-  filterx_type_env_meet_into(env, assigned_env);
-  filterx_type_env_free(assigned_env);
+  filterx_type_env_update_on_optional_write(env, s, self->new_value);
 }
 
 static inline FilterXIRValue
