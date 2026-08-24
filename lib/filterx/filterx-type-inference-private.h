@@ -23,7 +23,6 @@
 #define FILTERX_TYPE_INFERENCE_PRIVATE_H_INCLUDED
 
 #include "filterx/filterx-type-inference.h"
-#include "filterx/filterx-expr.h"
 
 /* Path-keyed access, for the test suites.  Every compiler-facing caller goes through
  * filterx-type-inference.h instead. */

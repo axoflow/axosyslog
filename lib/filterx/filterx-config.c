@@ -20,7 +20,7 @@
  *
  */
 #include "filterx-config.h"
-#include "filterx/filterx-expr.h"
+#include "filterx/filterx-access-path.h"
 #include "syslog-ng.h"
 #include "messages.h"
 #include "cfg.h"

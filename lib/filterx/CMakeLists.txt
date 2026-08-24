@@ -32,6 +32,7 @@ set(FILTERX_HEADERS
     filterx/expr-unset.h
     filterx/expr-variable.h
     filterx/expr-string-operators.h
+    filterx/filterx-access-path.h
     filterx/filterx-allocator.h
     filterx/filterx-config.h
     filterx/filterx-error.h
@@ -127,6 +128,7 @@ set(FILTERX_SOURCES
     filterx/expr-unset.c
     filterx/expr-variable.c
     filterx/expr-string-operators.c
+    filterx/filterx-access-path.c
     filterx/filterx-allocator.c
     filterx/filterx-config.c
     filterx/filterx-error.c

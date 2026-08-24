@@ -24,6 +24,7 @@
 
 #include "syslog-ng.h"
 #include "filterx/filterx-object.h"
+#include "filterx/filterx-access-path.h"
 
 typedef enum
 {
@@ -57,12 +58,8 @@ void filterx_type_env_free(FilterXTypeEnv *self);
 
 void filterx_type_env_meet_into(FilterXTypeEnv *dst, const FilterXTypeEnv *src);
 
-/* Defined in filterx-expr.h, which includes this header: an expression is what mints a path, so
- * the type lives with the expression tree and only pointers to it cross to this side. */
-struct _FilterXAccessPath;
-
 /* Record that @path now holds what @rhs_expr evaluates to. */
-void filterx_type_env_set_shape_at_path(FilterXTypeEnv *self, const struct _FilterXAccessPath *path,
+void filterx_type_env_set_shape_at_path(FilterXTypeEnv *self, const FilterXAccessPath *path,
                                         FilterXExpr *rhs_expr);
 
 FilterXStaticType filterx_type_env_get_static_type_of_expr(const FilterXTypeEnv *self, FilterXExpr *expr);
