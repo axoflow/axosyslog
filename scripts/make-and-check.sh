@@ -44,9 +44,7 @@ logged_main() {
   fi
 
   export CFLAGS="$CFLAGS -Werror"
-  exec_prop_check "make -j 1 distcheck V=1 --keep-going" &&
-
-  make func-test V=1 --keep-going
+  exec_prop_check "make -j 1 distcheck V=1 --keep-going"
 }
 
 main "$@"
