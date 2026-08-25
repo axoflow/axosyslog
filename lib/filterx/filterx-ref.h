@@ -48,9 +48,15 @@ struct _FilterXRef
   FilterXObject super;
   FilterXObject *value;
   FilterXWeakRef parent_container;
+
+  /* NOTE: this pointer is only set on shadow xrefs. It identifies (but does
+   * not reference) the xref we are shadowing for, so clone_container() can
+   * properly identify which entry triggered the copy-on-write. */
+  gpointer shadowed_xref;
 };
 
 gboolean _filterx_ref_cow_recurse(FilterXObject *s, gpointer user_data);
+FilterXObject *_filterx_ref_new(FilterXObject *value);
 
 static inline void
 _filterx_ref_cow(FilterXRef *self)
@@ -89,15 +95,6 @@ filterx_ref_add_inplace(FilterXObject *s, FilterXObject *o)
   return self->value->type->add_inplace(self->value, s, o);
 }
 
-static inline gboolean
-filterx_ref_values_equal(FilterXObject *r1, FilterXObject *r2)
-{
-  if (filterx_object_is_ref(r1))
-    r1 = ((FilterXRef *) r1)->value;
-  if (filterx_object_is_ref(r2))
-    r2 = ((FilterXRef *) r2)->value;
-  return r1 == r2;
-}
 
 static inline void
 filterx_ref_set_parent_container(FilterXObject *s, FilterXObject *parent)
@@ -145,6 +142,28 @@ filterx_ref_float(FilterXObject *s)
   return s;
 }
 
+/* TRUE iff the floating xref @s is the stand-in for the stored xref */
+static inline gboolean
+filterx_ref_shadows(FilterXObject *s, FilterXObject *stored)
+{
+  if (!s || !filterx_object_is_ref(s))
+    return FALSE;
+
+  FilterXRef *self = (FilterXRef *) s;
+  return self->shadowed_xref == stored;
+}
+
+/* Creates a new shadow xref wrapping the same value as the stored xref
+ * @original, marked as the stand-in for @original (see
+ * filterx_ref_shadows()). */
+static inline FilterXObject *
+filterx_ref_create_shadow(FilterXObject *original)
+{
+  FilterXRef *orig = (FilterXRef *) original;
+  FilterXObject *s = filterx_ref_float_unchecked(_filterx_ref_new(filterx_object_ref(orig->value)));
+  ((FilterXRef *) s)->shadowed_xref = original;
+  return s;
+}
 
 /* ground this xref (e.g.  make it not floating), the reverse of
  * filterx_ref_float().  This is to be used when the xref is stored
@@ -156,6 +175,7 @@ filterx_ref_ground_unchecked(FilterXObject *s)
 
   s->floating_ref = FALSE;
   filterx_weakref_set(&self->parent_container, NULL);
+  self->shadowed_xref = NULL;
   return s;
 }
 
@@ -170,6 +190,5 @@ filterx_ref_ground(FilterXObject *s)
 }
 
 FilterXObject *filterx_ref_dup(FilterXObject *s);
-FilterXObject *_filterx_ref_new(FilterXObject *value);
 
 #endif

@@ -235,7 +235,7 @@ _filterx_list_clone_container(FilterXObject *s, FilterXObject *container, Filter
     {
       FilterXObject *el = g_ptr_array_index(self->array, i);
 
-      if (child_of_interest && filterx_ref_values_equal(el, child_of_interest))
+      if (child_of_interest && filterx_ref_shadows(child_of_interest, el))
         {
           /* child_of_interest is a movable, floating xref, which is grounded by this clone */
           el = _object_clone(child_of_interest, dup);
