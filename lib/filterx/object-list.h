@@ -52,7 +52,7 @@ static inline FilterXObject *
 filterx_list_peek_subscript(FilterXObject *s, gint64 index)
 {
   FilterXListObject *self = (FilterXListObject *) s;
-  return g_ptr_array_index(self->array, index);
+  return (FilterXObject *) g_ptr_array_index(self->array, index);
 }
 
 /* NOTE: index must be valid! */
