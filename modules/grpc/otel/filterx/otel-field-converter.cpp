@@ -38,6 +38,9 @@
 #include "generic-number.h"
 #include "filterx/object-message-value.h"
 #include "filterx/object-null.h"
+#include "filterx/object-dict.h"
+#include "filterx/object-list.h"
+#include "filterx/filterx-sequence.h"
 
 #include "compat/cpp-end.h"
 
@@ -421,4 +424,80 @@ syslogng::grpc::otel::iter_on_otel_protobuf_message_fields(google::protobuf::Mes
     }
 
   return true;
+}
+
+static FilterXObject *_convert_field_value_to_plain(FilterXObject *value);
+
+static gboolean
+_add_field_to_dict(FilterXObject *key, FilterXObject *value, gpointer user_data)
+{
+  FilterXObject *dict = (FilterXObject *) user_data;
+
+  FilterXObject *plain_value = _convert_field_value_to_plain(value);
+  if (!plain_value)
+    return FALSE;
+
+  gboolean success = filterx_object_set_subscript(dict, key, &plain_value);
+  filterx_object_unref(plain_value);
+  return success;
+}
+
+static gboolean
+_append_element_to_list(FilterXObject *key, FilterXObject *value, gpointer user_data)
+{
+  FilterXObject *list = (FilterXObject *) user_data;
+
+  FilterXObject *plain_value = _convert_field_value_to_plain(value);
+  if (!plain_value)
+    return FALSE;
+
+  gboolean success = filterx_sequence_append(list, &plain_value);
+  filterx_object_unref(plain_value);
+  return success;
+}
+
+/* no recursion depth limit here: input nesting is already bounded by the
+ * protobuf parser's recursion limit (100 by default) */
+static FilterXObject *
+_convert_field_value_to_plain(FilterXObject *value)
+{
+  if (filterx_object_is_type(value, &FILTERX_TYPE_NAME(otel_kvlist)))
+    {
+      FilterXObject *dict = filterx_dict_new();
+      if (!filterx_object_iter(value, _add_field_to_dict, dict))
+        {
+          filterx_object_unref(dict);
+          return NULL;
+        }
+      return dict;
+    }
+
+  if (filterx_object_is_type(value, &FILTERX_TYPE_NAME(otel_array)))
+    {
+      FilterXObject *list = filterx_list_new();
+      if (!filterx_object_iter(value, _append_element_to_list, list))
+        {
+          filterx_object_unref(list);
+          return NULL;
+        }
+      return list;
+    }
+
+  return filterx_object_ref(value);
+}
+
+FilterXObject *
+syslogng::grpc::otel::otel_protobuf_message_to_filterx_dict(const google::protobuf::Message &message)
+{
+  /* the reflection based getters need a mutable Message, but only set fields are read */
+  google::protobuf::Message &mutable_message = const_cast<google::protobuf::Message &>(message);
+
+  FilterXObject *dict = filterx_dict_new();
+  if (!iter_on_otel_protobuf_message_fields(mutable_message, _add_field_to_dict, dict))
+    {
+      filterx_object_unref(dict);
+      return NULL;
+    }
+
+  return dict;
 }

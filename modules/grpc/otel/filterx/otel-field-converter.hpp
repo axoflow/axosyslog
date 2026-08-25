@@ -60,6 +60,8 @@ ProtobufFieldConverter *get_otel_protobuf_field_converter(const FieldDescriptor 
 bool iter_on_otel_protobuf_message_fields(google::protobuf::Message &message, FilterXObjectIterFunc func,
                                           void *user_data);
 
+FilterXObject *otel_protobuf_message_to_filterx_dict(const google::protobuf::Message &message);
+
 }
 }
 }
