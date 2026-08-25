@@ -1115,6 +1115,12 @@ _unset_raw_fields(LogMessage *msg)
 }
 
 void
+syslogng::grpc::otel::ProtobufParser::store_peer_address(LogMessage *msg, const ::grpc::string &peer)
+{
+  msg->saddr = _extract_saddr(peer);
+}
+
+void
 syslogng::grpc::otel::ProtobufParser::store_raw_metadata(LogMessage *msg, const ::grpc::string &peer,
                                                          const Resource &resource,
                                                          const std::string &resource_schema_url,
@@ -1123,7 +1129,7 @@ syslogng::grpc::otel::ProtobufParser::store_raw_metadata(LogMessage *msg, const 
 {
   std::string serialized;
 
-  msg->saddr = _extract_saddr(peer);
+  store_peer_address(msg, peer);
 
   /* .otel_raw.resource */
   resource.SerializePartialToString(&serialized);

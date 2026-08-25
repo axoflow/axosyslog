@@ -57,6 +57,7 @@
 %token KW_KEEP_ALIVE
 %token KW_MODE
 %token KW_LOGMESSAGE
+%token KW_FILTERX_DICT
 
 %type <ptr> source_otel
 %type <num> source_otel_mode
@@ -99,6 +100,7 @@ source_otel_option
 
 source_otel_mode
   : KW_LOGMESSAGE { $$ = OSM_LOGMESSAGE; }
+  | KW_FILTERX_DICT { $$ = OSM_FILTERX_DICT; }
   ;
 
 parser_otel

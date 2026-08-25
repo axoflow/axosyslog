@@ -40,6 +40,7 @@ static CfgLexerKeyword otel_keywords[] =
   { "keep_alive",                KW_KEEP_ALIVE },
   { "mode",                      KW_MODE },
   { "logmessage",                KW_LOGMESSAGE },
+  { "filterx_dict",              KW_FILTERX_DICT },
   { NULL }
 };
 
