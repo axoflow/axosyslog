@@ -219,7 +219,8 @@ log_matcher_glob_compile(LogMatcher *s, const gchar *pattern, GError **error)
   g_return_val_if_fail(error == NULL || *error == NULL, FALSE);
   log_matcher_store_pattern(s, pattern);
 
-  g_pattern_spec_free(self->pattern);
+  if (self->pattern)
+    g_pattern_spec_free(self->pattern);
   self->pattern = g_pattern_spec_new(pattern);
   return TRUE;
 }
