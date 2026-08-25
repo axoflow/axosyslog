@@ -259,7 +259,8 @@ static void
 log_matcher_glob_free(LogMatcher *s)
 {
   LogMatcherGlob *self = (LogMatcherGlob *)s;
-  g_pattern_spec_free(self->pattern);
+  if (self->pattern)
+    g_pattern_spec_free(self->pattern);
   log_matcher_free_method(s);
 }
 
