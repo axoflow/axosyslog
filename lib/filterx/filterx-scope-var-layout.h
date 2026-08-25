@@ -34,6 +34,7 @@ typedef struct _FilterXScopeVariableLayout
 
 FilterXScopeVariableLayout *filterx_scope_variable_layout_new(FilterXExpr *root);
 FilterXScopeVariableLayout *filterx_scope_variable_layout_new_from_handles(FilterXVariableHandle *handles, gsize size);
+gint filterx_scope_variable_layout_get_index(FilterXScopeVariableLayout *self, FilterXVariableHandle handle);
 void filterx_scope_variable_layout_free(FilterXScopeVariableLayout *self);
 
 #endif
