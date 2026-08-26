@@ -17,6 +17,7 @@ set(GEOIP2_SOURCES
   geoip-parser-parser.c
   geoip-plugin.c
   maxminddb-helper.c
+  filterx-func-geoip.c
 )
 
 add_module(
@@ -26,5 +27,7 @@ add_module(
   DEPENDS ${LIBMAXMINDDB_LIBRARY}
   SOURCES ${GEOIP2_SOURCES}
 )
+
+install(FILES geoip-databases.tsv DESTINATION share/syslog-ng)
 
 add_test_subdirectory(tests)

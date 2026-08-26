@@ -627,6 +627,7 @@ fi
 %if %{with maxminddb}
 %files geoip
 %{_libdir}/syslog-ng/libgeoip2-plugin.so
+%{_datadir}/syslog-ng/geoip-databases.tsv
 %endif
 
 %if %{with riemann}
