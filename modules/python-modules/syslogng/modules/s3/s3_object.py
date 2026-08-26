@@ -929,7 +929,10 @@ class S3Object:
                 chunk = self.__current_chunk
                 self.__current_chunk.buffer.finish()
                 self.__current_chunk = None
-                self.__prev_chunk = None
+
+            # after a chunk rollover only __prev_chunk is set, and leaving it here would let the
+            # next write() open a new chunk on an already finished object
+            self.__prev_chunk = None
 
         if chunk is not None:
             self.__upload_chunk(chunk)
