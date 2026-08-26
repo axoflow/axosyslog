@@ -56,6 +56,27 @@ _eval_getattr(FilterXExpr *s)
 }
 
 static gboolean
+_assign(FilterXExpr *s, FilterXObject **new_value)
+{
+  FilterXGetAttr *self = (FilterXGetAttr *) s;
+  gboolean success = FALSE;
+
+  FilterXObject *variable = filterx_expr_eval_typed(self->operand);
+  if (!variable)
+    return FALSE;
+  if (!filterx_object_setattr(variable, self->attr, new_value))
+    {
+      filterx_eval_push_error_static_info("Failed to assign to object",
+                                          "setattr() method failed");
+      goto error;
+    }
+  success = TRUE;
+error:
+  filterx_object_unref(variable);
+  return success;
+}
+
+static gboolean
 _unset(FilterXExpr *s)
 {
   FilterXGetAttr *self = (FilterXGetAttr *) s;
@@ -193,6 +214,7 @@ filterx_getattr_new(FilterXExpr *operand, FilterXObject *attr_name)
 
   filterx_expr_init_instance(&self->super, FILTERX_EXPR_TYPE_NAME(getattr), FXE_READ);
   self->super.eval = _eval_getattr;
+  self->super.assign = _assign;
   self->super.unset = _unset;
   self->super.move = _move;
   self->super.is_set = _isset;
