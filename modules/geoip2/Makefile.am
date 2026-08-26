@@ -9,7 +9,9 @@ modules_geoip2_libgeoip2_plugin_la_SOURCES=	\
 	modules/geoip2/geoip-parser-parser.h	\
 	modules/geoip2/geoip-plugin.c		\
 	modules/geoip2/maxminddb-helper.h	\
-	modules/geoip2/maxminddb-helper.c
+	modules/geoip2/maxminddb-helper.c	\
+	modules/geoip2/filterx-func-geoip.h	\
+	modules/geoip2/filterx-func-geoip.c
 
 modules_geoip2_libgeoip2_plugin_la_CPPFLAGS	=	\
 	$(AM_CPPFLAGS)					\
@@ -27,6 +29,9 @@ modules_geoip2_libgeoip2_plugin_la_LDFLAGS	=	\
 EXTRA_modules_geoip2_libgeoip2_plugin_la_DEPENDENCIES	=	\
 	$(MODULE_DEPS_LIBS)
 
+geoip2datadir					=	$(pkgdatadir)
+geoip2data_DATA					=	modules/geoip2/geoip-databases.tsv
+
 modules/geoip2 modules/geoip2/ mod-geoip2:	\
 	modules/geoip2/libgeoip2-plugin.la
 else
@@ -39,6 +44,7 @@ BUILT_SOURCES					+=	\
 	modules/geoip2/geoip-parser-grammar.h
 EXTRA_DIST					+=	\
 	modules/geoip2/geoip-parser-grammar.ym		\
+	modules/geoip2/geoip-databases.tsv		\
         modules/geoip2/tfgeoip.c	\
 	modules/geoip2/CMakeLists.txt
 

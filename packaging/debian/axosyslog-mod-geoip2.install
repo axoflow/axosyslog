@@ -1,1 +1,2 @@
 usr/lib/syslog-ng/*/libgeoip2-plugin.so
+usr/share/syslog-ng/geoip-databases.tsv
