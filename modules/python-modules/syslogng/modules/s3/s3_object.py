@@ -433,9 +433,13 @@ class S3Object:
         self.__lock = Lock()
         self.__current_chunk: Optional[S3Chunk] = None
         self.__prev_chunk: Optional[S3Chunk] = None
-        self.__upload_futures: List[Future] = []
         self.__multipart_completed: bool = False
         self.__multipart_complete_future: Optional[Future] = None
+        self.__pending_uploads: int = 0
+        self.__complete_requested: bool = False
+
+        # Set when the multipart upload is completed, dropped or abandoned.
+        self.__completion_settled = Event()
 
         if persist is None:
             assert (
@@ -500,7 +504,7 @@ class S3Object:
                 self.__upload_chunk(chunk)
 
             self.__persist.finished = True
-            self.__complete_multipart()
+            self.__request_complete_multipart()
 
     @staticmethod
     def create_initial(
@@ -622,21 +626,6 @@ class S3Object:
     def modified_at(self) -> float:
         return self.__modified_at
 
-    @property
-    def uploaded_parts(self) -> List[Dict[str, Any]]:
-        """
-        Waits for part uploads to finish, then returns a shallow copy of the uploaded parts.
-        Can be used directly at the finish_multipart_upload() function.
-        """
-        while True:
-            with self.__lock:
-                try:
-                    future = self.__upload_futures.pop()
-                except IndexError:
-                    break
-            future.result()
-        return self.__persist.uploaded_parts
-
     def __ensure_multipart_upload_started(self) -> bool:
         if self.__persist.upload_id != "":
             return True
@@ -683,6 +672,13 @@ class S3Object:
             return True
 
     def __upload_chunk_cb(self, chunk: S3Chunk, is_retry: bool) -> None:
+        try:
+            self.__upload_chunk_cb_impl(chunk, is_retry)
+        finally:
+            # A retry increments the counter before this runs, so it cannot reach 0 too early.
+            self.__part_upload_settled()
+
+    def __upload_chunk_cb_impl(self, chunk: S3Chunk, is_retry: bool) -> None:
         if not self.__ensure_multipart_upload_started():
             self.__upload_chunk(chunk, is_retry=True)
             return
@@ -744,9 +740,27 @@ class S3Object:
             )
             return
 
-        future = self.__executor.submit(self.__upload_chunk_cb, chunk, is_retry)
         with self.__lock:
-            self.__upload_futures.append(future)
+            self.__pending_uploads += 1
+
+        self.__executor.submit(self.__upload_chunk_cb, chunk, is_retry)
+
+    def __part_upload_settled(self) -> None:
+        """One part upload attempt reached a terminal state. Start the completion if it was the last one."""
+        with self.__lock:
+            self.__pending_uploads -= 1
+            if self.__pending_uploads < 0:
+                # Never raise here: this runs in a finally block that must start the completion.
+                self.__logger.error(f"Part upload accounting underflow: {self.bucket}/{self.key}")
+            ready = (
+                self.__pending_uploads == 0
+                and self.__complete_requested
+                and self.__multipart_complete_future is None
+                and not self.__multipart_completed
+            )
+
+        if ready:
+            self.__complete_multipart()
 
     def write(self, data: bytes) -> None:
         """Raises OSError on write failure. Cannot be called from multiple threads."""
@@ -811,7 +825,17 @@ class S3Object:
         return True
 
     def __complete_multipart_cb(self, is_retry: bool) -> None:
-        uploaded_parts = self.uploaded_parts
+        try:
+            self.__complete_multipart_cb_impl(is_retry)
+        except Exception:
+            # An unexpected error must not leave wait_for_upload_to_complete() blocked forever.
+            # The persist file stays on disk, so syslog-ng retries this object at the next start.
+            self.__logger.exception(f"Unexpected error while completing multipart upload: {self.bucket}/{self.key}")
+            self.__completion_settled.set()
+
+    def __complete_multipart_cb_impl(self, is_retry: bool) -> None:
+        # Every part upload already reached a terminal state, so this never waits on the pool.
+        uploaded_parts = self.__persist.uploaded_parts
         pending_parts = self.__persist.pending_parts
 
         if len(pending_parts) > 0:
@@ -829,6 +853,7 @@ class S3Object:
             self.__persist.unlink()
             with self.__lock:
                 self.__multipart_completed = True
+            self.__completion_settled.set()
             return
 
         assert self.__persist.upload_id
@@ -858,6 +883,7 @@ class S3Object:
                 self.__persist.unlink()
                 with self.__lock:
                     self.__multipart_completed = True
+                self.__completion_settled.set()
                 return
 
             self.__logger.error(f"Failed to complete multipart upload: {self.bucket}/{self.key} => {e}")
@@ -870,16 +896,28 @@ class S3Object:
         self.__persist.unlink()
         with self.__lock:
             self.__multipart_completed = True
+        self.__completion_settled.set()
 
     def __complete_multipart(self, is_retry: bool = False) -> None:
         if is_retry and self.__exit_requested.is_set():
             self.__logger.debug(f"Exit requested, skipping multipart upload completion: {self.bucket}/{self.key}")
             with self.__lock:
                 self.__multipart_complete_future = None
+            self.__completion_settled.set()
             return
 
+        settled = False
         with self.__lock:
-            self.__multipart_complete_future = self.__executor.submit(self.__complete_multipart_cb, is_retry)
+            try:
+                self.__multipart_complete_future = self.__executor.submit(self.__complete_multipart_cb, is_retry)
+            except RuntimeError as e:
+                # The pool is already shut down. The persist file stays, so the next start retries.
+                self.__logger.error(f"Failed to schedule multipart completion: {self.bucket}/{self.key} => {e}")
+                self.__multipart_complete_future = None
+                settled = True
+
+        if settled:
+            self.__completion_settled.set()
 
     def finish(self) -> None:
         if self.finished:
@@ -897,23 +935,23 @@ class S3Object:
             self.__upload_chunk(chunk)
 
         self.__persist.finished = True
-        self.__complete_multipart()
+        self.__request_complete_multipart()
+
+    def __request_complete_multipart(self) -> None:
+        with self.__lock:
+            self.__complete_requested = True
+            ready = (
+                self.__pending_uploads == 0
+                and self.__multipart_complete_future is None
+                and not self.__multipart_completed
+            )
+
+        if ready:
+            self.__complete_multipart()
 
     def wait_for_upload_to_complete(self) -> None:
         assert self.finished
-
-        is_retry = False
-        while True:
-            with self.__lock:
-                if self.__multipart_complete_future is None:
-                    break
-                if self.__multipart_completed:
-                    break
-                if is_retry and self.__exit_requested.is_set():
-                    break
-                future = self.__multipart_complete_future
-            future.result()
-            is_retry = True
+        self.__completion_settled.wait()
 
     def __list_pending_multiparts_in_s3(self) -> Optional[Set[str]]:
         uploads: Set[str] = set()
