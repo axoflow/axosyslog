@@ -25,8 +25,8 @@
 #                                  also the supported way to switch modes in a tree
 #            --monolithic          link modules into the core lib (autotools/dbld only;
 #                                  --with-linking-mode=monolithic). Default: dynamic.
-#            -j N | --jobs N       build parallelism, cmake/autotools only
-#                                  (dbld/alpine manage their own). Default:
+#            -j N | --jobs N       build parallelism, cmake/autotools/dbld only
+#                                  (alpine manage their own). Default:
 #                                  AXOSYSLOG_BUILD_JOBS if set, else nproc-2,
 #                                  floor 1.
 #            --no-install          skip the install step (cmake/autotools only)
@@ -199,10 +199,6 @@ if [ "$MODE" = dbld ] && [ "$DO_INSTALL" -eq 0 ]; then
   fail "--no-install does not apply to dbld; it always installs into the container prefix"
 fi
 
-if [ "$MODE" = dbld ] && [ -n "$JOBS" ]; then
-  fail "-j does not apply to dbld; the container manages build parallelism"
-fi
-
 # alpine is a fixed production image build and takes no build flavor at all.
 if [ "$MODE" = alpine ] && { [ -n "$SANITIZER" ] || [ "$CLEAN" -eq 1 ] || [ "$NO_JIT" -eq 1 ] \
      || [ "$DO_INSTALL" -eq 0 ] || [ -n "$JOBS" ]; }; then
@@ -219,10 +215,10 @@ if [ "$DO_LIGHT" -eq 1 ] && [ "$DO_INSTALL" -eq 0 ]; then
   fail "--light needs the installed binary; drop --no-install"
 fi
 
-# -j defaults only where the wrapper drives make/ninja; dbld/alpine manage their own
+# -j defaults everywhere except alpine, which manages its own parallelism
 if [ -z "$JOBS" ]; then
   case "$MODE" in
-    cmake|autotools) JOBS="${AXOSYSLOG_BUILD_JOBS:-$(default_jobs)}" ;;
+    cmake|autotools|dbld) JOBS="${AXOSYSLOG_BUILD_JOBS:-$(default_jobs)}" ;;
   esac
 fi
 
@@ -478,7 +474,7 @@ run_check() {
       ctest --test-dir "$BUILD" --parallel "$JOBS" --output-on-failure "${EXTRA_ARGS[@]}" ;;
     dbld)
       say "unit tests: dbld make-check${EXTRA_ARGS[*]:+  MAKE_ARGS=${EXTRA_ARGS[*]}}"
-      ( cd "$ROOT" && ./dbld/rules make-check MAKE_ARGS="${EXTRA_ARGS[*]}" ) ;;
+      ( cd "$ROOT" && ./dbld/rules make-check MAKE_ARGS="-j$JOBS ${EXTRA_ARGS[*]}" ) ;;
   esac
 }
 
