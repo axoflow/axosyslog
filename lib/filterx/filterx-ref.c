@@ -132,7 +132,7 @@
  *      old and new.  They also handle filterx_object_cow_prepare() if an
  *      object is not yet wrapped.
  *
- *   2) filterx_object_copy() does not explicitly wrap a bare object,
+ *   3) filterx_object_copy() does not explicitly wrap a bare object,
  *      but will clone the xref if it is already wrapped.
  *
  * The number of copies for objects are tracked by the
@@ -193,17 +193,19 @@
  *
  * Sharing of xrefs
  * ----------------
+ *
  * The idea of FilterXRefs (or xrefs) is to represent a distinct copy of a
- * mutable data structure.  There's an exception to everything though: and
- * that is the potential sharing of xrefs between multiple shared object
- * hierarchies.
+ * mutable data structure.  There's an exception to everything though:
+ * sometimes the same xref instance can represent multiple copies, when they
+ * end up being shared in multiple object hierarchies.
  *
  * FilterXRef instances can be shared when we have a dict embedded in
  * another dict (e.g.  top-level and a child) and the top-level dict is
  * being shared by two xrefs.  In this case, while the xref to the top-level
- * is distinct (kept in two variables for example), the xref to the child
- * (contained in the top-level as a value) is shared, and the child dict
- * itself may contain additional xrefs to further mutable data objects.
+ * is distinct (kept in two variables for example), but the xref to the
+ * child (contained in the top-level as a value) is shared (as the value is
+ * still shared), and the child dict itself may contain additional xrefs to
+ * further mutable data objects.
  *
  * When manipulating data structures through xrefs we have to know if those
  * xrefs are shared or not.  Actually we can't mutate objects through shared
@@ -213,8 +215,8 @@
  *
  * To avoid this, xref sharing needs to be eliminated.
  *
- * Floating xrefs
- * --------------
+ * Shadow xrefs
+ * ------------
  * As we navigate and change the hierarchy of dict/list instances while
  * interpreting the filterx statements, we need to notice and eliminate the
  * use of shared xrefs.  If an xref is shared, that means that `fx_ref_cnt`
@@ -228,13 +230,19 @@
  *
  * Any expr that evaluates to an object in a hierarchical structure (e.g.
  * getattr or get_subscript) must check for shared xrefs and actively
- * replace them with a "floating xref" instead of returning the stored xref.
+ * replace them with a "shadow xref" instead of returning the stored xref.
  * See the function
- * `_filterx_ref_replace_shared_xref_with_a_floating_one()`.
+ * `_filterx_ref_replace_shared_xref_with_a_shadow()`.
  *
- * A floating xref is a temporary FilterXRef that is explicitly marked as
- * floating using the `filterx_ref_floating()` function (and the associated
- * FILTERX_REF_FLAG_FLOATING flag).
+ * A shadow xref is a temporary FilterXRef that is explicitly marked as a
+ * shadow using the `filterx_ref_create_shadow()` function. A shadow xref
+ * is also a floating xref (see Floating xrefs below).
+ *
+ * Floating xrefs
+ * --------------
+ * Sometimes we have an xref that is not yet stored anywhere (such as a
+ * shadow xref, or an xref that has just been unplugged from its storage
+ * mechanism using `move()`). We call xrefs in this state as "floating xrefs".
  *
  * Floating xrefs are yet to be stored somewhere or be discarded at the end
  * of the FilterX statement unless they are actually needed.  A floating xref
@@ -250,13 +258,14 @@
  * -----------------------------------
  *
  *   1) when a hierarchical structure is sharing an xref with another, then
- *      the getattr/get_subscript operation returns a floating xref instead of
- *      the stored (& shared) one.
+ *      the getattr/get_subscript operation returns a shadow xref instead of
+ *      the stored (& shared) one.  A shadow xref is always floating when it
+ *      is created.
  *
  *   2) `filterx_object_cow_fork2()` generates a floating ref as the new copy
  *
- *   3) the new `move()` FilterX "function" retrieves the stored xref, unsets
- *      it and returns it as a floating xref.
+ *   3) the new `move()` FilterX "function" retrieves the stored xref,
+ *      unplugs it from its container, and returns it as a floating xref.
  *
  * When do we ground floating xrefs
  * --------------------------------
@@ -266,6 +275,9 @@
  *   2) filterx_object_copy() turns the floating xref into a simple xref,
  *      without generating a new clone.
  *
+ *   3) in dict/list copy-on-write operations, when the contents of the
+ *      dict/list are cloned.  This is actually a special case for
+ *      filterx_object_copy().
  */
 static FilterXObject *
 _filterx_ref_clone(FilterXObject *s)
@@ -426,7 +438,7 @@ _filterx_ref_truthy(FilterXObject *s)
  * parent itself is shared.
  *
  * In these cases, we need a new ref instance, which has the proper
- * parent_container value, while still cotinuing to share the dict (e.g.
+ * parent_container value, while still continuing to share the dict (e.g.
  * self->value).
  *
  * In case we are just using the values in a read-only manner, the dicts
@@ -438,7 +450,7 @@ _filterx_ref_truthy(FilterXObject *s)
  * "child_of_interest" argument we are passing to clone_container().
  */
 static FilterXObject *
-_filterx_ref_replace_shared_xref_with_a_floating_one(FilterXObject *s, FilterXObject *c)
+_filterx_ref_replace_shared_xref_with_a_shadow(FilterXObject *s, FilterXObject *c)
 {
   if (!s || !filterx_object_is_ref(s))
     return s;
@@ -450,7 +462,7 @@ _filterx_ref_replace_shared_xref_with_a_floating_one(FilterXObject *s, FilterXOb
       g_atomic_counter_get(_get_fx_ref_cnt(container)) <= 1)
     return s;
 
-  FilterXObject *result = filterx_ref_float(_filterx_ref_new(filterx_object_ref(self->value)));
+  FilterXObject *result = filterx_ref_create_shadow(&self->super);
   filterx_object_unref(&self->super);
   filterx_ref_set_parent_container(result, &container->super);
   return result;
@@ -461,7 +473,7 @@ _filterx_ref_getattr(FilterXObject *s, FilterXObject *attr)
 {
   FilterXRef *self = (FilterXRef *) s;
   FilterXObject *result = filterx_object_getattr(self->value, attr);
-  return _filterx_ref_replace_shared_xref_with_a_floating_one(result, s);
+  return _filterx_ref_replace_shared_xref_with_a_shadow(result, s);
 }
 
 static FilterXObject *
@@ -469,7 +481,7 @@ _filterx_ref_get_subscript(FilterXObject *s, FilterXObject *key)
 {
   FilterXRef *self = (FilterXRef *) s;
   FilterXObject *result = filterx_object_get_subscript(self->value, key);
-  return _filterx_ref_replace_shared_xref_with_a_floating_one(result, s);
+  return _filterx_ref_replace_shared_xref_with_a_shadow(result, s);
 }
 
 static gboolean

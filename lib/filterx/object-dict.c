@@ -483,7 +483,7 @@ _table_clone_index(FilterXDictTable *target, FilterXDictTable *source, FilterXOb
         continue;
 
       ep->key = _object_clone(ep->key, dup);
-      if (child_of_interest && filterx_ref_values_equal(ep->value, child_of_interest))
+      if (child_of_interest && filterx_ref_shadows(child_of_interest, ep->value))
         {
           /* child_of_interest is a movable, floating xref, which is grounded by this copy */
           ep->value = _object_clone(child_of_interest, dup);

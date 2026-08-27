@@ -24,6 +24,7 @@
 
 #include "filterx/filterx-eval.h"
 #include "filterx/object-string.h"
+#include "filterx/object-primitive.h"
 #include "filterx/object-dict.h"
 #include "filterx/json-repr.h"
 #include "scratch-buffers.h"
@@ -51,6 +52,12 @@ static FilterXObject *
 _value_string(const gchar *attr)
 {
   return filterx_string_new_frozen(attr);
+}
+
+static gboolean
+_unwrapped_values_equal(FilterXObject *r1, FilterXObject *r2)
+{
+  return filterx_ref_unwrap_ro(r1) == filterx_ref_unwrap_ro(r2);
 }
 
 Test(filterx_cow, test_filterx_cow_child_objects_are_refs_too)
@@ -105,8 +112,8 @@ Test(filterx_cow, test_filterx_cow_fork_creates_a_second_reference_to_the_same_o
   cr_assert(filterx_object_is_type(c_comma_cc, &FILTERX_TYPE_NAME(string)));
 
   /* access through c and c_comma still refers to the same dict, so all objects are equal */
-  cr_assert(filterx_ref_values_equal(c_comma_c, cc));
-  cr_assert(filterx_ref_values_equal(c_comma_cc, ccc));
+  cr_assert(_unwrapped_values_equal(c_comma_c, cc));
+  cr_assert(_unwrapped_values_equal(c_comma_cc, ccc));
 
   filterx_object_unref(c_comma_cc);
   filterx_object_unref(c_comma_c);
@@ -202,6 +209,75 @@ Test(filterx_cow, test_filterx_cow_make_grandchild_writable_creates_an_unshared_
 
   filterx_object_unref(c_comma_c);
   filterx_object_unref(c_comma);
+  filterx_object_unref(r);
+}
+
+Test(filterx_cow, test_filterx_cow_write_through_floating_ref_lands_in_its_own_slot_despite_aliasing_siblings)
+{
+  FilterXObject *r = filterx_object_from_json("{\"a\":{\"dataset\":\"ds\"}}", -1, NULL);
+  cr_assert(filterx_object_is_ref(r));
+
+  /* d.b = d.a: "a" and "b" become sibling xrefs sharing the same dict */
+  FilterXObject *a = filterx_object_getattr(r, _attr_string("a"));
+  FilterXObject *b_value = filterx_object_cow_fork2(a, NULL);
+  cr_assert(filterx_object_setattr(r, _attr_string("b"), &b_value) == TRUE);
+  filterx_object_unref(b_value);
+
+  /* simulate an assignment (e.g. the variable copy at a log path fork point) */
+  FilterXObject *r_comma = filterx_object_copy(r);
+
+  /* the first write through d.b: getattr returns a floating stand-in for the
+   * stored xref as r_comma is shared, the write must land in "b", not "a" */
+  FilterXObject *b = filterx_object_getattr(r_comma, _attr_string("b"));
+  FilterXObject *changed_string = _value_string("changed");
+  cr_assert(filterx_object_setattr(b, _attr_string("dataset"), &changed_string) == TRUE);
+  filterx_object_unref(changed_string);
+  filterx_object_unref(b);
+
+  GString *r_comma_json = scratch_buffers_alloc();
+  GString *r_json = scratch_buffers_alloc();
+  cr_assert(filterx_object_to_json(r_comma, r_comma_json) == TRUE);
+  cr_assert(filterx_object_to_json(r, r_json) == TRUE);
+
+  cr_assert_str_eq(r_comma_json->str, "{\"a\":{\"dataset\":\"ds\"},\"b\":{\"dataset\":\"changed\"}}");
+  cr_assert_str_eq(r_json->str, "{\"a\":{\"dataset\":\"ds\"},\"b\":{\"dataset\":\"ds\"}}");
+
+  filterx_object_unref(r_comma);
+  filterx_object_unref(r);
+}
+
+Test(filterx_cow, test_filterx_cow_write_through_floating_ref_lands_in_its_own_index_despite_aliasing_siblings)
+{
+  FilterXObject *r = filterx_object_from_json("[{\"dataset\":\"ds\"}]", -1, NULL);
+  cr_assert(filterx_object_is_ref(r));
+
+  /* l[1] = l[0]: the two elements become sibling xrefs sharing the same dict */
+  FilterXObject *zero = filterx_integer_new(0);
+  FilterXObject *one = filterx_integer_new(1);
+  FilterXObject *first = filterx_object_get_subscript(r, zero);
+  FilterXObject *second_value = filterx_object_cow_fork2(first, NULL);
+  cr_assert(filterx_object_set_subscript(r, one, &second_value) == TRUE);
+  filterx_object_unref(second_value);
+
+  FilterXObject *r_comma = filterx_object_copy(r);
+
+  FilterXObject *second = filterx_object_get_subscript(r_comma, one);
+  FilterXObject *changed_string = _value_string("changed");
+  cr_assert(filterx_object_setattr(second, _attr_string("dataset"), &changed_string) == TRUE);
+  filterx_object_unref(changed_string);
+  filterx_object_unref(second);
+
+  GString *r_comma_json = scratch_buffers_alloc();
+  GString *r_json = scratch_buffers_alloc();
+  cr_assert(filterx_object_to_json(r_comma, r_comma_json) == TRUE);
+  cr_assert(filterx_object_to_json(r, r_json) == TRUE);
+
+  cr_assert_str_eq(r_comma_json->str, "[{\"dataset\":\"ds\"},{\"dataset\":\"changed\"}]");
+  cr_assert_str_eq(r_json->str, "[{\"dataset\":\"ds\"},{\"dataset\":\"ds\"}]");
+
+  filterx_object_unref(one);
+  filterx_object_unref(zero);
+  filterx_object_unref(r_comma);
   filterx_object_unref(r);
 }
 
