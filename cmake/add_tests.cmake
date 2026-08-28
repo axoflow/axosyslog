@@ -23,11 +23,6 @@
 
 include(CMakeParseArguments)
 
-if (BUILD_TESTING)
-  include(CheckPIESupported)
-  check_pie_supported()
-endif()
-
 # Tests with known sanitizer findings, excluded from the leak/ASan error check.
 # The cmake counterpart of the sanitizer_exception_list in scripts/test-grep.sh.
 # TODO fix them.
@@ -60,8 +55,6 @@ function (add_unit_test)
   if (${ADD_UNIT_TEST_CRITERION})
     target_link_libraries(${ADD_UNIT_TEST_TARGET} ${CRITERION_LIBRARIES})
     target_include_directories(${ADD_UNIT_TEST_TARGET} PUBLIC ${CRITERION_INCLUDE_DIRS})
-    set_property(TARGET ${ADD_UNIT_TEST_TARGET} PROPERTY POSITION_INDEPENDENT_CODE FALSE)
-
   endif()
 
   if (${ADD_UNIT_TEST_LIBTEST})
