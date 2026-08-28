@@ -89,8 +89,8 @@ serialize_read_uint32(SerializeArchive *archive, guint32 *value)
 static inline gboolean
 serialize_write_uint32_array(SerializeArchive *archive, guint32 *values, gsize elements)
 {
-  const gsize buffer_size = 128;
-  guint32 converted_values[buffer_size];
+  guint32 converted_values[128];
+  const gsize buffer_size = G_N_ELEMENTS(converted_values);
   gsize converted_ndx;
 
   while (elements > 0)
