@@ -22,7 +22,7 @@
  */
 
 #include <criterion/criterion.h>
-#include <criterion/parameterized.h>
+#include "libtest/parameterized.h"
 
 #include "cfg-tree.h"
 #include "apphook.h"
@@ -103,18 +103,13 @@ typedef struct _PipeParameter
   gboolean was_deinit_called;
 } PipeParameter;
 
-ParameterizedTestParameters(cfg_tree, test_pipe_init)
+static PipeParameter test_data_list[] =
 {
-  static PipeParameter test_data_list[] =
-  {
-    {.always_pipe_value = TRUE, .tree_start_expected = TRUE, .tree_stop_expected = TRUE, .was_init_called = TRUE, .was_deinit_called = TRUE},
-    {.always_pipe_value = FALSE, .tree_start_expected = FALSE, .tree_stop_expected = TRUE, .was_init_called = TRUE, .was_deinit_called = FALSE}
-  };
+  {.always_pipe_value = TRUE, .tree_start_expected = TRUE, .tree_stop_expected = TRUE, .was_init_called = TRUE, .was_deinit_called = TRUE},
+  {.always_pipe_value = FALSE, .tree_start_expected = FALSE, .tree_stop_expected = TRUE, .was_init_called = TRUE, .was_deinit_called = FALSE}
+};
 
-  return cr_make_param_array(PipeParameter, test_data_list, sizeof(test_data_list) / sizeof(test_data_list[0]));
-}
-
-ParameterizedTest(PipeParameter *test_data, cfg_tree, test_pipe_init)
+StaticParameterizedTest(PipeParameter *test_data, test_data_list, cfg_tree, test_pipe_init)
 {
   CfgTree tree;
   AlmightyAlwaysPipe *pipe;

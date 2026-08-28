@@ -21,7 +21,7 @@
  *
  */
 #include <criterion/criterion.h>
-#include <criterion/parameterized.h>
+#include "libtest/parameterized.h"
 #include "libtest/stopwatch.h"
 
 #include "str-repr/encode.h"
@@ -75,43 +75,34 @@ assert_encode_with_forbidden_equals(const gchar *input, const gchar *forbidden_c
   g_string_free(str, TRUE);
 }
 
-ParameterizedTestParameters(encode, test_strings)
+static EncodeTestStr test_strings_params[] =
 {
-  static EncodeTestStr test_cases[] =
-  {
-    {"", "\"\""},
-    {"a", "a"},
-    {"alma", "alma"},
-    {"al\nma", "\"al\\nma\""},
+  {"", "\"\""},
+  {"a", "a"},
+  {"alma", "alma"},
+  {"al\nma", "\"al\\nma\""},
 
-    {"foo bar", "\"foo bar\""},
-    /* embedded quote */
-    {"\"value1", "'\"value1'"},
-    {"'value1", "\"'value1\""},
-    /* control sequences */
-    {"\b \f \n \r \t \\", "\"\\b \\f \\n \\r \\t \\\\\""}
-  };
+  {"foo bar", "\"foo bar\""},
+  /* embedded quote */
+  {"\"value1", "'\"value1'"},
+  {"'value1", "\"'value1\""},
+  /* control sequences */
+  {"\b \f \n \r \t \\", "\"\\b \\f \\n \\r \\t \\\\\""}
+};
 
-  return cr_make_param_array(EncodeTestStr, test_cases, sizeof(test_cases) / sizeof(test_cases[0]));
-}
-
-ParameterizedTest(EncodeTestStr *test_cases, encode, test_strings)
+StaticParameterizedTest(EncodeTestStr *test_cases, test_strings_params, encode, test_strings)
 {
   assert_encode_equals(test_cases->actual, test_cases->expected);
 }
 
-ParameterizedTestParameters(encode, test_encode_strings_that_need_quotation)
+static EncodeTestForbidden test_encode_strings_that_need_quotation_params[] =
 {
-  static EncodeTestForbidden test_cases[] =
-  {
-    {"foo,", ",", "\"foo,\""},
-    {"\"'foo,", ",", "\"\\\"'foo,\""}
-  };
+  {"foo,", ",", "\"foo,\""},
+  {"\"'foo,", ",", "\"\\\"'foo,\""}
+};
 
-  return cr_make_param_array(EncodeTestForbidden, test_cases, sizeof(test_cases) / sizeof(test_cases[0]));
-}
-
-ParameterizedTest(EncodeTestForbidden *test_cases, encode, test_encode_strings_that_need_quotation)
+StaticParameterizedTest(EncodeTestForbidden *test_cases, test_encode_strings_that_need_quotation_params, encode,
+                        test_encode_strings_that_need_quotation)
 {
   assert_encode_with_forbidden_equals(test_cases->actual, test_cases->forbidden, test_cases->expected);
 }

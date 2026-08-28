@@ -21,7 +21,7 @@
  */
 
 #include <criterion/criterion.h>
-#include <criterion/parameterized.h>
+#include "libtest/parameterized.h"
 #include "libtest/msg_parse_lib.h"
 
 #include "logmsg/logmsg.h"
@@ -82,19 +82,15 @@ teardown(void)
 
 TestSuite(clone_logmsg, .init = setup, .fini = teardown);
 
-ParameterizedTestParameters(clone_logmsg, test_cloning_with_log_message)
+static const gchar *messages[] =
 {
-  static const gchar *messages[] =
-  {
-    "<7>1 2006-10-29T01:59:59.156+01:00 mymachine.example.com evntslog - ID47 [exampleSDID@0 iut=\"3\" eventSource=\"Application\" eventID=\"1011\"][examplePriority@0 class=\"high\"] BOMAn application event log entry...",
-    "<132>1 2006-10-29T01:59:59.156+01:00 mymachine evntslog - - [exampleSDID@0 iut=\"3\"] [eventSource=\"Application\" eventID=\"1011\"][examplePriority@0 class=\"high\"] BOMAn application event log entry...",
-  };
+  "<7>1 2006-10-29T01:59:59.156+01:00 mymachine.example.com evntslog - ID47 [exampleSDID@0 iut=\"3\" eventSource=\"Application\" eventID=\"1011\"][examplePriority@0 class=\"high\"] BOMAn application event log entry...",
+  "<132>1 2006-10-29T01:59:59.156+01:00 mymachine evntslog - - [exampleSDID@0 iut=\"3\"] [eventSource=\"Application\" eventID=\"1011\"][examplePriority@0 class=\"high\"] BOMAn application event log entry...",
+};
 
-  return cr_make_param_array(const gchar *, messages, G_N_ELEMENTS(messages));
-}
-
-ParameterizedTest(const gchar *msg, clone_logmsg, test_cloning_with_log_message)
+StaticParameterizedTest(const gchar **message, messages, clone_logmsg, test_cloning_with_log_message)
 {
+  const gchar *msg = *message;
   LogMessage *original_log_message, *log_message, *cloned_log_message;
   regex_t bad_hostname;
   GSockAddr *addr = g_sockaddr_inet_new("10.10.10.10", 1010);

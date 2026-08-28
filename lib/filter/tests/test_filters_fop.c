@@ -21,7 +21,7 @@
  *
  */
 #include <criterion/criterion.h>
-#include <criterion/parameterized.h>
+#include "libtest/parameterized.h"
 #include "test_filters_common.h"
 
 #include "filter/filter-op.h"
@@ -53,40 +53,35 @@ typedef struct _FilterParams
   gboolean expected_result;
 } FilterParams;
 
-ParameterizedTestParameters(filter_op, test_or_evaluation)
+static FilterParams test_data_list[] =
 {
-  static FilterParams test_data_list[] =
-  {
-    // Filters inside evaluates to TRUE
-    {.config_snippet = "    facility(2) or     facility(2)", .expected_result = TRUE  },
-    {.config_snippet = "    facility(2) or not facility(2)", .expected_result = TRUE  },
-    {.config_snippet = "not facility(2) or     facility(2)", .expected_result = TRUE  },
-    {.config_snippet = "not facility(2) or not facility(2)", .expected_result = FALSE },
-    // note: The above expression evaluated in the following way: not (TRUE or (not TRUE))
-    //       The expression below has the same expected result, but for a different reason.
-    {.config_snippet = "(not facility(2)) or (not facility(2))", .expected_result = FALSE },
+  // Filters inside evaluates to TRUE
+  {.config_snippet = "    facility(2) or     facility(2)", .expected_result = TRUE  },
+  {.config_snippet = "    facility(2) or not facility(2)", .expected_result = TRUE  },
+  {.config_snippet = "not facility(2) or     facility(2)", .expected_result = TRUE  },
+  {.config_snippet = "not facility(2) or not facility(2)", .expected_result = FALSE },
+  // note: The above expression evaluated in the following way: not (TRUE or (not TRUE))
+  //       The expression below has the same expected result, but for a different reason.
+  {.config_snippet = "(not facility(2)) or (not facility(2))", .expected_result = FALSE },
 
-    // Filters inside evaluates to FALSE
-    {.config_snippet = "    facility(3) or     facility(3)", .expected_result = FALSE },
-    {.config_snippet = "    facility(3) or not facility(3)", .expected_result = TRUE  },
-    {.config_snippet = "not facility(3) or     facility(3)", .expected_result = TRUE  },
-    {.config_snippet = "not facility(3) or not facility(3)", .expected_result = TRUE  },
-    // same as before
-    {.config_snippet = "(not facility(3)) or (not facility(3))", .expected_result = TRUE  },
+  // Filters inside evaluates to FALSE
+  {.config_snippet = "    facility(3) or     facility(3)", .expected_result = FALSE },
+  {.config_snippet = "    facility(3) or not facility(3)", .expected_result = TRUE  },
+  {.config_snippet = "not facility(3) or     facility(3)", .expected_result = TRUE  },
+  {.config_snippet = "not facility(3) or not facility(3)", .expected_result = TRUE  },
+  // same as before
+  {.config_snippet = "(not facility(3)) or (not facility(3))", .expected_result = TRUE  },
 
-    // Mixed TRUE and FALSE evaluations
-    {.config_snippet = "    facility(2) or     facility(3)", .expected_result = TRUE  },
-    {.config_snippet = "    facility(2) or not facility(3)", .expected_result = TRUE  },
-    {.config_snippet = "not facility(2) or     facility(3)", .expected_result = FALSE },
-    {.config_snippet = "not facility(2) or not facility(3)", .expected_result = TRUE  },
-    // same as before
-    {.config_snippet = "(not facility(2)) or (not facility(3))", .expected_result = TRUE },
-  };
+  // Mixed TRUE and FALSE evaluations
+  {.config_snippet = "    facility(2) or     facility(3)", .expected_result = TRUE  },
+  {.config_snippet = "    facility(2) or not facility(3)", .expected_result = TRUE  },
+  {.config_snippet = "not facility(2) or     facility(3)", .expected_result = FALSE },
+  {.config_snippet = "not facility(2) or not facility(3)", .expected_result = TRUE  },
+  // same as before
+  {.config_snippet = "(not facility(2)) or (not facility(3))", .expected_result = TRUE },
+};
 
-  return cr_make_param_array(FilterParams, test_data_list, G_N_ELEMENTS(test_data_list));
-}
-
-ParameterizedTest(FilterParams *params, filter_op, test_or_evaluation)
+StaticParameterizedTest(FilterParams *params, test_data_list, filter_op, test_or_evaluation)
 {
   const gchar *msg = "<16> openvpn[2499]: PTHREAD support initialized";
   FilterExprNode *filter = _compile_standalone_filter(params->config_snippet);

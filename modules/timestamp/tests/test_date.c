@@ -23,7 +23,7 @@
  */
 
 #include <criterion/criterion.h>
-#include <criterion/parameterized.h>
+#include "libtest/parameterized.h"
 #include "libtest/fake-time.h"
 
 #include "date-parser.h"
@@ -93,96 +93,91 @@ teardown(void)
 
 TestSuite(date, .init = setup, .fini = teardown);
 
-ParameterizedTestParameters(date, test_date_parser)
+static struct date_params test_date_parser_params[] =
 {
-  static struct date_params params[] =
-  {
-    { "2015-01-26T16:14:49+03:00", NULL, NULL, LM_TS_RECVD, "2015-01-26T16:14:49+03:00" },
+  { "2015-01-26T16:14:49+03:00", NULL, NULL, LM_TS_RECVD, "2015-01-26T16:14:49+03:00" },
 
-    /* Various ISO8601 formats */
-    { "2015-01-26T16:14:49+0300", NULL, NULL, LM_TS_STAMP, "2015-01-26T16:14:49+03:00" },
-    { "2015-01-26T16:14:49+0330", NULL, NULL, LM_TS_STAMP, "2015-01-26T16:14:49+03:30" },
-    { "2015-01-26T16:14:49+0200", NULL, NULL, LM_TS_STAMP, "2015-01-26T16:14:49+02:00" },
-    { "2015-01-26T16:14:49+03:00", NULL, NULL, LM_TS_STAMP, "2015-01-26T16:14:49+03:00" },
-    { "2015-01-26T16:14:49+03:30", NULL, NULL, LM_TS_STAMP, "2015-01-26T16:14:49+03:30" },
-    { "2015-01-26T16:14:49+02:00", NULL, NULL, LM_TS_STAMP, "2015-01-26T16:14:49+02:00" },
-    { "2015-01-26T16:14:49Z", NULL, NULL, LM_TS_STAMP, "2015-01-26T16:14:49+00:00" },
-    { "2015-01-26T16:14:49A", NULL, NULL, LM_TS_STAMP, "2015-01-26T16:14:49-01:00" },
-    { "2015-01-26T16:14:49B", NULL, NULL, LM_TS_STAMP, "2015-01-26T16:14:49-02:00" },
-    { "2015-01-26T16:14:49N", NULL, NULL, LM_TS_STAMP, "2015-01-26T16:14:49+01:00" },
-    { "2015-01-26T16:14:49O", NULL, NULL, LM_TS_STAMP, "2015-01-26T16:14:49+02:00" },
-    { "2015-01-26T16:14:49GMT", NULL, NULL, LM_TS_STAMP, "2015-01-26T16:14:49+00:00" },
-    { "2015-01-26T16:14:49PDT", NULL, NULL, LM_TS_STAMP, "2015-01-26T16:14:49-07:00" },
+  /* Various ISO8601 formats */
+  { "2015-01-26T16:14:49+0300", NULL, NULL, LM_TS_STAMP, "2015-01-26T16:14:49+03:00" },
+  { "2015-01-26T16:14:49+0330", NULL, NULL, LM_TS_STAMP, "2015-01-26T16:14:49+03:30" },
+  { "2015-01-26T16:14:49+0200", NULL, NULL, LM_TS_STAMP, "2015-01-26T16:14:49+02:00" },
+  { "2015-01-26T16:14:49+03:00", NULL, NULL, LM_TS_STAMP, "2015-01-26T16:14:49+03:00" },
+  { "2015-01-26T16:14:49+03:30", NULL, NULL, LM_TS_STAMP, "2015-01-26T16:14:49+03:30" },
+  { "2015-01-26T16:14:49+02:00", NULL, NULL, LM_TS_STAMP, "2015-01-26T16:14:49+02:00" },
+  { "2015-01-26T16:14:49Z", NULL, NULL, LM_TS_STAMP, "2015-01-26T16:14:49+00:00" },
+  { "2015-01-26T16:14:49A", NULL, NULL, LM_TS_STAMP, "2015-01-26T16:14:49-01:00" },
+  { "2015-01-26T16:14:49B", NULL, NULL, LM_TS_STAMP, "2015-01-26T16:14:49-02:00" },
+  { "2015-01-26T16:14:49N", NULL, NULL, LM_TS_STAMP, "2015-01-26T16:14:49+01:00" },
+  { "2015-01-26T16:14:49O", NULL, NULL, LM_TS_STAMP, "2015-01-26T16:14:49+02:00" },
+  { "2015-01-26T16:14:49GMT", NULL, NULL, LM_TS_STAMP, "2015-01-26T16:14:49+00:00" },
+  { "2015-01-26T16:14:49PDT", NULL, NULL, LM_TS_STAMP, "2015-01-26T16:14:49-07:00" },
 
-    /* RFC 2822 */
-    { "Tue, 27 Jan 2015 11:48:46 +0200", NULL, "%a, %d %b %Y %T %z", LM_TS_STAMP, "2015-01-27T11:48:46+02:00" },
+  /* RFC 2822 */
+  { "Tue, 27 Jan 2015 11:48:46 +0200", NULL, "%a, %d %b %Y %T %z", LM_TS_STAMP, "2015-01-27T11:48:46+02:00" },
 
-    /* Apache-like */
-    { "21/Jan/2015:14:40:07 +0500", NULL, "%d/%b/%Y:%T %z", LM_TS_STAMP, "2015-01-21T14:40:07+05:00" },
+  /* Apache-like */
+  { "21/Jan/2015:14:40:07 +0500", NULL, "%d/%b/%Y:%T %z", LM_TS_STAMP, "2015-01-21T14:40:07+05:00" },
 
-    /* Dates without timezones. America/Phoenix has no DST */
-    { "Tue, 27 Jan 2015 11:48:46", NULL, "%a, %d %b %Y %T", LM_TS_STAMP, "2015-01-27T11:48:46+01:00" },
-    { "Tue, 27 Jan 2015 11:48:46", "America/Phoenix", "%a, %d %b %Y %T", LM_TS_STAMP, "2015-01-27T11:48:46-07:00" },
-    { "Tue, 27 Jan 2015 11:48:46", "+05:00", "%a, %d %b %Y %T", LM_TS_STAMP, "2015-01-27T11:48:46+05:00" },
+  /* Dates without timezones. America/Phoenix has no DST */
+  { "Tue, 27 Jan 2015 11:48:46", NULL, "%a, %d %b %Y %T", LM_TS_STAMP, "2015-01-27T11:48:46+01:00" },
+  { "Tue, 27 Jan 2015 11:48:46", "America/Phoenix", "%a, %d %b %Y %T", LM_TS_STAMP, "2015-01-27T11:48:46-07:00" },
+  { "Tue, 27 Jan 2015 11:48:46", "+05:00", "%a, %d %b %Y %T", LM_TS_STAMP, "2015-01-27T11:48:46+05:00" },
 
-    /* Try without the year. */
-    { "01/Jan:00:40:07 +0500", NULL, "%d/%b:%T %z", LM_TS_STAMP, "2016-01-01T00:40:07+05:00" },
-    { "01/Aug:00:40:07 +0500", NULL, "%d/%b:%T %z", LM_TS_STAMP, "2015-08-01T00:40:07+05:00" },
-    { "01/Sep:00:40:07 +0500", NULL, "%d/%b:%T %z", LM_TS_STAMP, "2015-09-01T00:40:07+05:00" },
-    { "01/Oct:00:40:07 +0500", NULL, "%d/%b:%T %z", LM_TS_STAMP, "2015-10-01T00:40:07+05:00" },
-    { "01/Nov:00:40:07 +0500", NULL, "%d/%b:%T %z", LM_TS_STAMP, "2015-11-01T00:40:07+05:00" },
+  /* Try without the year. */
+  { "01/Jan:00:40:07 +0500", NULL, "%d/%b:%T %z", LM_TS_STAMP, "2016-01-01T00:40:07+05:00" },
+  { "01/Aug:00:40:07 +0500", NULL, "%d/%b:%T %z", LM_TS_STAMP, "2015-08-01T00:40:07+05:00" },
+  { "01/Sep:00:40:07 +0500", NULL, "%d/%b:%T %z", LM_TS_STAMP, "2015-09-01T00:40:07+05:00" },
+  { "01/Oct:00:40:07 +0500", NULL, "%d/%b:%T %z", LM_TS_STAMP, "2015-10-01T00:40:07+05:00" },
+  { "01/Nov:00:40:07 +0500", NULL, "%d/%b:%T %z", LM_TS_STAMP, "2015-11-01T00:40:07+05:00" },
 
 
-    { "1446128356 +01:00", NULL, "%s %z", LM_TS_STAMP, "2015-10-29T15:19:16+01:00" },
-    { "1446128356", "Europe/Budapest", "%s", LM_TS_STAMP, "2015-10-29T15:19:16+01:00" },
+  { "1446128356 +01:00", NULL, "%s %z", LM_TS_STAMP, "2015-10-29T15:19:16+01:00" },
+  { "1446128356", "Europe/Budapest", "%s", LM_TS_STAMP, "2015-10-29T15:19:16+01:00" },
 
-    /* %Y-%m-%d %H:%M:%S %z */
-    { "2015-01-26 00:40:07 PDT", NULL, "%Y-%m-%d %H:%M:%S %z", LM_TS_STAMP, "2015-01-26T00:40:07-07:00" },
-    { "2015-01-26 00:40:07 EDT", NULL, "%Y-%m-%d %H:%M:%S %z", LM_TS_STAMP, "2015-01-26T00:40:07-04:00" },
-    { "2015-01-26 00:40:07 CET", NULL, "%Y-%m-%d %H:%M:%S %z", LM_TS_STAMP, "2015-01-26T00:40:07+01:00" },
-    { "2015-01-26 00:40:07 GMT", NULL, "%Y-%m-%d %H:%M:%S %z", LM_TS_STAMP, "2015-01-26T00:40:07+00:00" },
-    { "2015-01-26 00:40:07 UT", NULL, "%Y-%m-%d %H:%M:%S %z", LM_TS_STAMP, "2015-01-26T00:40:07+00:00" },
-    { "2015-01-26 00:40:07 UTC", NULL, "%Y-%m-%d %H:%M:%S %z", LM_TS_STAMP, "2015-01-26T00:40:07+00:00" },
+  /* %Y-%m-%d %H:%M:%S %z */
+  { "2015-01-26 00:40:07 PDT", NULL, "%Y-%m-%d %H:%M:%S %z", LM_TS_STAMP, "2015-01-26T00:40:07-07:00" },
+  { "2015-01-26 00:40:07 EDT", NULL, "%Y-%m-%d %H:%M:%S %z", LM_TS_STAMP, "2015-01-26T00:40:07-04:00" },
+  { "2015-01-26 00:40:07 CET", NULL, "%Y-%m-%d %H:%M:%S %z", LM_TS_STAMP, "2015-01-26T00:40:07+01:00" },
+  { "2015-01-26 00:40:07 GMT", NULL, "%Y-%m-%d %H:%M:%S %z", LM_TS_STAMP, "2015-01-26T00:40:07+00:00" },
+  { "2015-01-26 00:40:07 UT", NULL, "%Y-%m-%d %H:%M:%S %z", LM_TS_STAMP, "2015-01-26T00:40:07+00:00" },
+  { "2015-01-26 00:40:07 UTC", NULL, "%Y-%m-%d %H:%M:%S %z", LM_TS_STAMP, "2015-01-26T00:40:07+00:00" },
 
-    //The same test as above but using %Z instead of %z
-    /* RFC 2822 */
-    { "Tue, 27 Jan 2015 11:48:46 +0200", NULL, "%a, %d %b %Y %T %Z", LM_TS_STAMP, "2015-01-27T11:48:46+02:00" },
-    { "2015-01-26 00:40:07 UTC", NULL, "%Y-%m-%d %H:%M:%S %Z", LM_TS_STAMP, "2015-01-26T00:40:07+00:00" },
+  //The same test as above but using %Z instead of %z
+  /* RFC 2822 */
+  { "Tue, 27 Jan 2015 11:48:46 +0200", NULL, "%a, %d %b %Y %T %Z", LM_TS_STAMP, "2015-01-27T11:48:46+02:00" },
+  { "2015-01-26 00:40:07 UTC", NULL, "%Y-%m-%d %H:%M:%S %Z", LM_TS_STAMP, "2015-01-26T00:40:07+00:00" },
 
-    /* Apache-like */
-    { "21/Jan/2015:14:40:07 +0500", NULL, "%d/%b/%Y:%T %Z", LM_TS_STAMP, "2015-01-21T14:40:07+05:00" },
+  /* Apache-like */
+  { "21/Jan/2015:14:40:07 +0500", NULL, "%d/%b/%Y:%T %Z", LM_TS_STAMP, "2015-01-21T14:40:07+05:00" },
 
-    /* Try without the year. */
-    { "01/Jan:00:40:07 +0500", NULL, "%d/%b:%T %Z", LM_TS_STAMP, "2016-01-01T00:40:07+05:00" },
-    { "01/Aug:00:40:07 +0500", NULL, "%d/%b:%T %Z", LM_TS_STAMP, "2015-08-01T00:40:07+05:00" },
-    { "01/Sep:00:40:07 +0500", NULL, "%d/%b:%T %Z", LM_TS_STAMP, "2015-09-01T00:40:07+05:00" },
-    { "01/Oct:00:40:07 +0500", NULL, "%d/%b:%T %Z", LM_TS_STAMP, "2015-10-01T00:40:07+05:00" },
-    { "01/Nov:00:40:07 +0500", NULL, "%d/%b:%T %Z", LM_TS_STAMP, "2015-11-01T00:40:07+05:00" },
+  /* Try without the year. */
+  { "01/Jan:00:40:07 +0500", NULL, "%d/%b:%T %Z", LM_TS_STAMP, "2016-01-01T00:40:07+05:00" },
+  { "01/Aug:00:40:07 +0500", NULL, "%d/%b:%T %Z", LM_TS_STAMP, "2015-08-01T00:40:07+05:00" },
+  { "01/Sep:00:40:07 +0500", NULL, "%d/%b:%T %Z", LM_TS_STAMP, "2015-09-01T00:40:07+05:00" },
+  { "01/Oct:00:40:07 +0500", NULL, "%d/%b:%T %Z", LM_TS_STAMP, "2015-10-01T00:40:07+05:00" },
+  { "01/Nov:00:40:07 +0500", NULL, "%d/%b:%T %Z", LM_TS_STAMP, "2015-11-01T00:40:07+05:00" },
 
 
-    { "1446128356 +01:00", NULL, "%s %z", LM_TS_STAMP, "2015-10-29T15:19:16+01:00" },
-    { "1446128356", "Europe/Budapest", "%s", LM_TS_STAMP, "2015-10-29T15:19:16+01:00" },
+  { "1446128356 +01:00", NULL, "%s %z", LM_TS_STAMP, "2015-10-29T15:19:16+01:00" },
+  { "1446128356", "Europe/Budapest", "%s", LM_TS_STAMP, "2015-10-29T15:19:16+01:00" },
 
-    /* %Y-%m-%d %H:%M:%S %Z */
-    { "2015-01-26 00:40:07 PDT", NULL, "%Y-%m-%d %H:%M:%S %Z", LM_TS_STAMP, "2015-01-26T00:40:07-07:00" },
-    { "2015-01-26 00:40:07 EDT", NULL, "%Y-%m-%d %H:%M:%S %Z", LM_TS_STAMP, "2015-01-26T00:40:07-04:00" },
-    { "2015-01-26 00:40:07 CET", NULL, "%Y-%m-%d %H:%M:%S %Z", LM_TS_STAMP, "2015-01-26T00:40:07+01:00" },
+  /* %Y-%m-%d %H:%M:%S %Z */
+  { "2015-01-26 00:40:07 PDT", NULL, "%Y-%m-%d %H:%M:%S %Z", LM_TS_STAMP, "2015-01-26T00:40:07-07:00" },
+  { "2015-01-26 00:40:07 EDT", NULL, "%Y-%m-%d %H:%M:%S %Z", LM_TS_STAMP, "2015-01-26T00:40:07-04:00" },
+  { "2015-01-26 00:40:07 CET", NULL, "%Y-%m-%d %H:%M:%S %Z", LM_TS_STAMP, "2015-01-26T00:40:07+01:00" },
 
-    /* Try with different missing fields*/
-    { "10:30:00 PDT", NULL, "%H:%M:%S %Z", LM_TS_STAMP, "2015-12-30T10:30:00-07:00" },
-    { "03-17 10:30:00 PDT", NULL, "%m-%d %H:%M:%S %Z", LM_TS_STAMP, "2015-03-17T10:30:00-07:00" },
-    { "03 10:30:00 PDT", NULL, "%m %H:%M:%S %Z", LM_TS_STAMP, "2015-03-01T10:30:00-07:00" },
-    { "2015-03 10:30:00 EDT", NULL, "%Y-%m %H:%M:%S %Z", LM_TS_STAMP, "2015-03-01T10:30:00-04:00" },
-    { "2015-03-01 EDT", NULL, "%Y-%m-%d %Z", LM_TS_STAMP, "2015-03-01T00:00:00-04:00" },
-    { "2015-03 EDT", NULL, "%Y-%m %Z", LM_TS_STAMP, "2015-03-01T00:00:00-04:00" },
-    { "2015-03-01 10:30 EDT", NULL, "%Y-%m-%d %H:%M %Z", LM_TS_STAMP, "2015-03-01T10:30:00-04:00" },
+  /* Try with different missing fields*/
+  { "10:30:00 PDT", NULL, "%H:%M:%S %Z", LM_TS_STAMP, "2015-12-30T10:30:00-07:00" },
+  { "03-17 10:30:00 PDT", NULL, "%m-%d %H:%M:%S %Z", LM_TS_STAMP, "2015-03-17T10:30:00-07:00" },
+  { "03 10:30:00 PDT", NULL, "%m %H:%M:%S %Z", LM_TS_STAMP, "2015-03-01T10:30:00-07:00" },
+  { "2015-03 10:30:00 EDT", NULL, "%Y-%m %H:%M:%S %Z", LM_TS_STAMP, "2015-03-01T10:30:00-04:00" },
+  { "2015-03-01 EDT", NULL, "%Y-%m-%d %Z", LM_TS_STAMP, "2015-03-01T00:00:00-04:00" },
+  { "2015-03 EDT", NULL, "%Y-%m %Z", LM_TS_STAMP, "2015-03-01T00:00:00-04:00" },
+  { "2015-03-01 10:30 EDT", NULL, "%Y-%m-%d %H:%M %Z", LM_TS_STAMP, "2015-03-01T10:30:00-04:00" },
 
-  };
+};
 
-  return cr_make_param_array(struct date_params, params, sizeof(params) / sizeof(struct date_params));
-}
-
-ParameterizedTest(struct date_params *params, date, test_date_parser)
+StaticParameterizedTest(struct date_params *params, test_date_parser_params, date, test_date_parser)
 {
   LogMessage *logmsg;
   LogParser *parser = _construct_parser(params->timezone_, params->format, params->time_stamp);
@@ -228,20 +223,15 @@ struct date_with_multiple_formats_params
   int expected_usec;
 };
 
-ParameterizedTestParameters(date, test_date_with_multiple_formats)
+static struct date_with_multiple_formats_params test_date_with_multiple_formats_params[] =
 {
-  static struct date_with_multiple_formats_params params[] =
-  {
-    { "2017-02-02 00:29:16",                0 },
-    { "2017-02-02 00:29:16,706",       706000 },
-    { "2019-05-04T21:55:46.989+02:00", 989000 },
-  };
+  { "2017-02-02 00:29:16",                0 },
+  { "2017-02-02 00:29:16,706",       706000 },
+  { "2019-05-04T21:55:46.989+02:00", 989000 },
+};
 
-  return cr_make_param_array(struct date_with_multiple_formats_params, params,
-                             sizeof (params) / sizeof(struct date_with_multiple_formats_params));
-}
-
-ParameterizedTest(struct date_with_multiple_formats_params *params, date, test_date_with_multiple_formats)
+StaticParameterizedTest(struct date_with_multiple_formats_params *params, test_date_with_multiple_formats_params, date,
+                        test_date_with_multiple_formats)
 {
   LogParser *parser;
   GList *formats;

@@ -23,7 +23,7 @@
  */
 
 #include <criterion/criterion.h>
-#include <criterion/parameterized.h>
+#include "libtest/parameterized.h"
 #include "libtest/mock-transport.h"
 #include "libtest/proto_lib.h"
 #include "libtest/msg_parse_lib.h"
@@ -73,21 +73,14 @@ log_proto_prefix_suffix_multiline_server_new(LogTransport *transport,
 }
 
 
-ParameterizedTestParameters(log_proto, test_lines_separated_with_prefix)
+static LogTransportMockConstructor log_transport_mock_constructors[] =
 {
-  static LogTransportMockConstructor log_transport_mock_new_data_list[] =
-  {
-    log_transport_mock_stream_new,
-    log_transport_mock_records_new,
-  };
+  log_transport_mock_stream_new,
+  log_transport_mock_records_new,
+};
 
-  return cr_make_param_array(
-           LogTransportMockConstructor,
-           log_transport_mock_new_data_list,
-           G_N_ELEMENTS(log_transport_mock_new_data_list));
-}
-
-ParameterizedTest(LogTransportMockConstructor *log_transport_mock_new, log_proto, test_lines_separated_with_prefix)
+StaticParameterizedTest(LogTransportMockConstructor *log_transport_mock_new, log_transport_mock_constructors, log_proto,
+                        test_lines_separated_with_prefix)
 {
   LogProtoServer *proto;
 
@@ -114,22 +107,8 @@ ParameterizedTest(LogTransportMockConstructor *log_transport_mock_new, log_proto
   log_proto_server_free(proto);
 }
 
-ParameterizedTestParameters(log_proto, test_lines_separated_with_prefix_and_garbage)
-{
-  static LogTransportMockConstructor log_transport_mock_new_data_list[] =
-  {
-    log_transport_mock_stream_new,
-    log_transport_mock_records_new,
-  };
-
-  return cr_make_param_array(
-           LogTransportMockConstructor,
-           log_transport_mock_new_data_list,
-           G_N_ELEMENTS(log_transport_mock_new_data_list));
-}
-
-ParameterizedTest(LogTransportMockConstructor *log_transport_mock_new, log_proto,
-                  test_lines_separated_with_prefix_and_garbage)
+StaticParameterizedTest(LogTransportMockConstructor *log_transport_mock_new, log_transport_mock_constructors, log_proto,
+                        test_lines_separated_with_prefix_and_garbage)
 {
   LogProtoServer *proto;
 
@@ -156,22 +135,8 @@ ParameterizedTest(LogTransportMockConstructor *log_transport_mock_new, log_proto
   log_proto_server_free(proto);
 }
 
-ParameterizedTestParameters(log_proto, test_lines_separated_with_prefix_and_suffix)
-{
-  static LogTransportMockConstructor log_transport_mock_new_data_list[] =
-  {
-    log_transport_mock_stream_new,
-    log_transport_mock_records_new,
-  };
-
-  return cr_make_param_array(
-           LogTransportMockConstructor,
-           log_transport_mock_new_data_list,
-           G_N_ELEMENTS(log_transport_mock_new_data_list));
-}
-
-ParameterizedTest(LogTransportMockConstructor *log_transport_mock_new, log_proto,
-                  test_lines_separated_with_prefix_and_suffix)
+StaticParameterizedTest(LogTransportMockConstructor *log_transport_mock_new, log_transport_mock_constructors, log_proto,
+                        test_lines_separated_with_prefix_and_suffix)
 {
   LogProtoServer *proto;
 
@@ -194,21 +159,8 @@ ParameterizedTest(LogTransportMockConstructor *log_transport_mock_new, log_proto
   log_proto_server_free(proto);
 }
 
-ParameterizedTestParameters(log_proto, test_lines_separated_with_garbage)
-{
-  static LogTransportMockConstructor log_transport_mock_new_data_list[] =
-  {
-    log_transport_mock_stream_new,
-    log_transport_mock_records_new,
-  };
-
-  return cr_make_param_array(
-           LogTransportMockConstructor,
-           log_transport_mock_new_data_list,
-           G_N_ELEMENTS(log_transport_mock_new_data_list));
-}
-
-ParameterizedTest(LogTransportMockConstructor *log_transport_mock_new, log_proto, test_lines_separated_with_garbage)
+StaticParameterizedTest(LogTransportMockConstructor *log_transport_mock_new, log_transport_mock_constructors, log_proto,
+                        test_lines_separated_with_garbage)
 {
   LogProtoServer *proto;
 
@@ -235,21 +187,8 @@ ParameterizedTest(LogTransportMockConstructor *log_transport_mock_new, log_proto
   log_proto_server_free(proto);
 }
 
-ParameterizedTestParameters(log_proto, test_first_line_without_prefix)
-{
-  static LogTransportMockConstructor log_transport_mock_new_data_list[] =
-  {
-    log_transport_mock_stream_new,
-    log_transport_mock_records_new,
-  };
-
-  return cr_make_param_array(
-           LogTransportMockConstructor,
-           log_transport_mock_new_data_list,
-           G_N_ELEMENTS(log_transport_mock_new_data_list));
-}
-
-ParameterizedTest(LogTransportMockConstructor *log_transport_mock_new, log_proto, test_first_line_without_prefix)
+StaticParameterizedTest(LogTransportMockConstructor *log_transport_mock_new, log_transport_mock_constructors, log_proto,
+                        test_first_line_without_prefix)
 {
   LogProtoServer *proto;
 

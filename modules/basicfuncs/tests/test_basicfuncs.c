@@ -22,7 +22,7 @@
  */
 
 #include <criterion/criterion.h>
-#include <criterion/parameterized.h>
+#include "libtest/parameterized.h"
 #include "libtest/cr_template.h"
 #include "libtest/grab-logging.h"
 #include "libtest/mock-function.h"
@@ -629,49 +629,39 @@ struct test_params
   char *expected;
 };
 
-ParameterizedTestParameters(basicfuncs, test_map)
+static struct test_params test_map_params[] =
 {
-  static struct test_params params[] =
-  {
-    { "Some prefix $(map \"$(+ 1 $_)\" 0,1,2)", "Some prefix 1,2,3" },
-    { "Some prefix $(map \"$(+ 1 $_)\" $(+ 1 1))", "Some prefix 3" },
-    { "Some prefix $(map \"$(+ 1 $_)\" 0,1,2)", "Some prefix 1,2,3" },
-    { "Some prefix $(map \"$(+ 1 $_)\" '')", "Some prefix " },
-    { "Some prefix $(map $(+ 1 $_) $(map $(+ 1 $_) 0,1,2))", "Some prefix 2,3,4" }, // embedded map
-    { "Some prefix $(map \"$(if ('$_' eq '1') 'same' 'different')\" 0,1,2)", "Some prefix different,same,different" },
-    { "Some prefix $(map \"$(if ('$_' le '1') 'smaller' 'larger')\" 0,1,2)", "Some prefix smaller,smaller,larger" },
-    { "Some prefix $(map \"$(if ('$_' ge '1') 'larger' 'smaller')\" 0,1,2)", "Some prefix smaller,larger,larger"},
-    { "$(map \"$(if ('$(echo $_)' eq '1') 'same' 'different')\" 0,1,2)", "different,same,different"},
-  };
+  { "Some prefix $(map \"$(+ 1 $_)\" 0,1,2)", "Some prefix 1,2,3" },
+  { "Some prefix $(map \"$(+ 1 $_)\" $(+ 1 1))", "Some prefix 3" },
+  { "Some prefix $(map \"$(+ 1 $_)\" 0,1,2)", "Some prefix 1,2,3" },
+  { "Some prefix $(map \"$(+ 1 $_)\" '')", "Some prefix " },
+  { "Some prefix $(map $(+ 1 $_) $(map $(+ 1 $_) 0,1,2))", "Some prefix 2,3,4" }, // embedded map
+  { "Some prefix $(map \"$(if ('$_' eq '1') 'same' 'different')\" 0,1,2)", "Some prefix different,same,different" },
+  { "Some prefix $(map \"$(if ('$_' le '1') 'smaller' 'larger')\" 0,1,2)", "Some prefix smaller,smaller,larger" },
+  { "Some prefix $(map \"$(if ('$_' ge '1') 'larger' 'smaller')\" 0,1,2)", "Some prefix smaller,larger,larger"},
+  { "$(map \"$(if ('$(echo $_)' eq '1') 'same' 'different')\" 0,1,2)", "different,same,different"},
+};
 
-  return cr_make_param_array(struct test_params, params, sizeof(params)/sizeof(params[0]));
-}
-
-ParameterizedTest(struct test_params *param, basicfuncs, test_map)
+StaticParameterizedTest(struct test_params *param, test_map_params, basicfuncs, test_map)
 {
   assert_template_format(param->template, param->expected);
 }
 
-ParameterizedTestParameters(basicfuncs, test_filter)
+static struct test_params test_filter_params[] =
 {
-  static struct test_params params[] =
-  {
-    { "Some prefix $(filter ('1' == '1') 0,1,2)", "Some prefix 0,1,2" },
-    { "$(filter ('$_' le '1') 0,1,2)", "0,1" },
-    { "$(filter ('$(% $_ 2)' eq '0') 0,1,2,3)", "0,2" },
-    { "Something $(filter ('$_' eq '0') '')", "Something " },
-    { "$(filter ('1' eq '0') '')", "" },
-    { "$(filter message('árvíztűrőtükörfúrógép') 'doesnotchange')", "doesnotchange" },
-    { "$(filter (message('árvíz') and ('${APP.VALUE}' eq 'value')) 'doesnotchange')", "doesnotchange" },
-    { "$(filter (message('donotmatch') or ('${APP.VALUE}' eq 'value')) 'doesnotchange')", "doesnotchange" },
-    { "$(filter ('$YEAR' ge '1900') 'doesnotchange')", "doesnotchange" },
-    { "$(filter ('$YEAR' le '1900') 'doesnotchange')", "" },
-  };
+  { "Some prefix $(filter ('1' == '1') 0,1,2)", "Some prefix 0,1,2" },
+  { "$(filter ('$_' le '1') 0,1,2)", "0,1" },
+  { "$(filter ('$(% $_ 2)' eq '0') 0,1,2,3)", "0,2" },
+  { "Something $(filter ('$_' eq '0') '')", "Something " },
+  { "$(filter ('1' eq '0') '')", "" },
+  { "$(filter message('árvíztűrőtükörfúrógép') 'doesnotchange')", "doesnotchange" },
+  { "$(filter (message('árvíz') and ('${APP.VALUE}' eq 'value')) 'doesnotchange')", "doesnotchange" },
+  { "$(filter (message('donotmatch') or ('${APP.VALUE}' eq 'value')) 'doesnotchange')", "doesnotchange" },
+  { "$(filter ('$YEAR' ge '1900') 'doesnotchange')", "doesnotchange" },
+  { "$(filter ('$YEAR' le '1900') 'doesnotchange')", "" },
+};
 
-  return cr_make_param_array(struct test_params, params, sizeof(params)/sizeof(params[0]));
-}
-
-ParameterizedTest(struct test_params *param, basicfuncs, test_filter)
+StaticParameterizedTest(struct test_params *param, test_filter_params, basicfuncs, test_filter)
 {
   assert_template_format(param->template, param->expected);
 }

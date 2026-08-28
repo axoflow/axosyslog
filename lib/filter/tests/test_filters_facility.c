@@ -21,7 +21,7 @@
  *
  */
 #include <criterion/criterion.h>
-#include <criterion/parameterized.h>
+#include "libtest/parameterized.h"
 #include "test_filters_common.h"
 
 #include "filter/filter-expr.h"
@@ -42,25 +42,20 @@ typedef struct _FilterParamBits
   gboolean    expected_result;
 } FilterParamBits;
 
-ParameterizedTestParameters(filter, test_filter_facility_str)
+static FilterParamBits test_filter_facility_str_params[] =
 {
-  static FilterParamBits test_data_list[] =
-  {
-    {.msg = "<15> openvpn[2499]: PTHREAD support initialized", .fac_str = "user", .expected_result = TRUE},
-    {.msg = "<15> openvpn[2499]: PTHREAD support initialized", .fac_str = "daemon", .expected_result = FALSE},
-    {.msg = "<2> openvpn[2499]: PTHREAD support initialized",  .fac_str = "kern", .expected_result = TRUE},
-    {.msg = "<128> openvpn[2499]: PTHREAD support initialized", .fac_str = "local0", .expected_result = TRUE},
-    {.msg = "<32> openvpn[2499]: PTHREAD support initialized", .fac_str = "local1", .expected_result = FALSE},
-    {.msg = "<32> openvpn[2499]: PTHREAD support initialized", .fac_str = "auth", .expected_result = TRUE},
+  {.msg = "<15> openvpn[2499]: PTHREAD support initialized", .fac_str = "user", .expected_result = TRUE},
+  {.msg = "<15> openvpn[2499]: PTHREAD support initialized", .fac_str = "daemon", .expected_result = FALSE},
+  {.msg = "<2> openvpn[2499]: PTHREAD support initialized",  .fac_str = "kern", .expected_result = TRUE},
+  {.msg = "<128> openvpn[2499]: PTHREAD support initialized", .fac_str = "local0", .expected_result = TRUE},
+  {.msg = "<32> openvpn[2499]: PTHREAD support initialized", .fac_str = "local1", .expected_result = FALSE},
+  {.msg = "<32> openvpn[2499]: PTHREAD support initialized", .fac_str = "auth", .expected_result = TRUE},
 #ifdef LOG_AUTHPRIV
-    {.msg = "<80> openvpn[2499]: PTHREAD support initialized", .fac_str = "authpriv", .expected_result = TRUE},
+  {.msg = "<80> openvpn[2499]: PTHREAD support initialized", .fac_str = "authpriv", .expected_result = TRUE},
 #endif
-  };
+};
 
-  return cr_make_param_array(FilterParamBits, test_data_list, G_N_ELEMENTS(test_data_list));
-}
-
-ParameterizedTest(FilterParamBits *param, filter, test_filter_facility_str)
+StaticParameterizedTest(FilterParamBits *param, test_filter_facility_str_params, filter, test_filter_facility_str)
 {
   FilterExprNode *filter = filter_facility_new(facility_bits(param->fac_str));
   testcase(param->msg, filter, param->expected_result);
@@ -73,24 +68,19 @@ typedef struct _FilterParamFacilities
   gboolean    expected_result;
 } FilterParamFacilities;
 
-ParameterizedTestParameters(filter, test_filter_facility)
+static FilterParamFacilities test_filter_facility_params[] =
 {
-  static FilterParamFacilities test_data_list[] =
-  {
-    {.msg = "<15> openvpn[2499]: PTHREAD support initialized", .facilities = 0x80000000 | (LOG_USER >> 3), .expected_result = TRUE},
-    {.msg = "<15> openvpn[2499]: PTHREAD support initialized", .facilities = 0x80000000 | (LOG_DAEMON >> 3), .expected_result = FALSE},
-    {.msg = "<2> openvpn[2499]: PTHREAD support initialized",  .facilities = 0x80000000 | (LOG_KERN >> 3), .expected_result = TRUE},
-    {.msg = "<128> openvpn[2499]: PTHREAD support initialized", .facilities = 0x80000000 | (LOG_LOCAL0 >> 3), .expected_result = TRUE},
-    {.msg = "<32> openvpn[2499]: PTHREAD support initialized", .facilities = 0x80000000 | (LOG_AUTH >> 3), .expected_result = TRUE},
+  {.msg = "<15> openvpn[2499]: PTHREAD support initialized", .facilities = 0x80000000 | (LOG_USER >> 3), .expected_result = TRUE},
+  {.msg = "<15> openvpn[2499]: PTHREAD support initialized", .facilities = 0x80000000 | (LOG_DAEMON >> 3), .expected_result = FALSE},
+  {.msg = "<2> openvpn[2499]: PTHREAD support initialized",  .facilities = 0x80000000 | (LOG_KERN >> 3), .expected_result = TRUE},
+  {.msg = "<128> openvpn[2499]: PTHREAD support initialized", .facilities = 0x80000000 | (LOG_LOCAL0 >> 3), .expected_result = TRUE},
+  {.msg = "<32> openvpn[2499]: PTHREAD support initialized", .facilities = 0x80000000 | (LOG_AUTH >> 3), .expected_result = TRUE},
 #ifdef LOG_AUTHPRIV
-    {.msg = "<80> openvpn[2499]: PTHREAD support initialized", .facilities = 0x80000000 | (LOG_AUTHPRIV >> 3), .expected_result = TRUE},
+  {.msg = "<80> openvpn[2499]: PTHREAD support initialized", .facilities = 0x80000000 | (LOG_AUTHPRIV >> 3), .expected_result = TRUE},
 #endif
-  };
+};
 
-  return cr_make_param_array(FilterParamFacilities, test_data_list, G_N_ELEMENTS(test_data_list));
-}
-
-ParameterizedTest(FilterParamFacilities *param, filter, test_filter_facility)
+StaticParameterizedTest(FilterParamFacilities *param, test_filter_facility_params, filter, test_filter_facility)
 {
   FilterExprNode *filter = filter_facility_new(param->facilities);
   testcase(param->msg, filter, param->expected_result);

@@ -23,7 +23,7 @@
  */
 
 #include <criterion/criterion.h>
-#include <criterion/parameterized.h>
+#include "libtest/parameterized.h"
 
 #include "apphook.h"
 #include "radix.h"
@@ -297,872 +297,869 @@ Test(dbparser, test_parsers, .init = test_setup, .fini = test_teardown)
   r_free_node(root, NULL);
 }
 
-ParameterizedTestParameters(dbparser, test_radix_search_matches)
+static RadixTestParam parser_params[] =
 {
-  static RadixTestParam parser_params[] =
+  /* test_ip_matches */
   {
-    /* test_ip_matches */
-    {
-      .node_to_insert = {"@IPvANY:ip@", NULL},
-      .key = "192.168.1.1 huhuhu",
-      .expected_pattern = {"ip", "192.168.1.1", NULL}
-    },
-    {
-      .node_to_insert = {"@IPvANY:ip@", NULL},
-      .key = "192.168.1.1. huhuhu",
-      .expected_pattern = {"ip", "192.168.1.1", NULL}
-    },
-    {
-      .node_to_insert = {"@IPvANY:ip@", NULL},
-      .key = "192.168.1huhuhu",
-      .expected_pattern = {NULL}
-    },
-    {
-      .node_to_insert = {"@IPvANY:ip@", NULL},
-      .key = "192.168.1.huhuhu",
-      .expected_pattern = {NULL}
-    },
-    {
-      .node_to_insert = {"@IPvANY:ip@", NULL},
-      .key = "192.168.1 huhuhu",
-      .expected_pattern = {NULL}
-    },
-    {
-      .node_to_insert = {"@IPvANY:ip@", NULL},
-      .key = "192.168.1. huhuhu",
-      .expected_pattern = {NULL}
-    },
-    {
-      .node_to_insert = {"@IPvANY:ip@", NULL},
-      .key = "192.168.1.1huhuhu",
-      .expected_pattern = {"ip", "192.168.1.1", NULL}
-    },
-    {
-      .node_to_insert = {"@IPvANY:ip@", NULL},
-      .key ="ABCD:EF01:2345:6789:ABCD:EF01:2345:6789 huhuhu",
-      .expected_pattern = {"ip", "ABCD:EF01:2345:6789:ABCD:EF01:2345:6789", NULL}
-    },
-    {
-      .node_to_insert = {"@IPvANY:ip@", NULL},
-      .key ="abcd:ef01:2345:6789:abcd:ef01:2345:6789 huhuhu",
-      .expected_pattern = {"ip", "abcd:ef01:2345:6789:abcd:ef01:2345:6789", NULL}
-    },
-    {
-      .node_to_insert = {"@IPvANY:ip@", NULL},
-      .key =":: huhuhu",
-      .expected_pattern = {"ip", "::", NULL}
-    },
-    {
-      .node_to_insert = {"@IPvANY:ip@", NULL},
-      .key ="0:0:0:0:0:0:13.1.68.3 huhuhu",
-      .expected_pattern = {"ip", "0:0:0:0:0:0:13.1.68.3", NULL}
-    },
-    {
-      .node_to_insert = {"@IPvANY:ip@", NULL},
-      .key ="::202.1.68.3 huhuhu",
-      .expected_pattern = {"ip", "::202.1.68.3", NULL}
-    },
-    {
-      .node_to_insert = {"@IPvANY:ip@", NULL},
-      .key ="2001:0DB8:0:CD30:: huhuhu",
-      .expected_pattern = {"ip", "2001:0DB8:0:CD30::", NULL}
-    },
-    {
-      .node_to_insert = {"@IPvANY:ip@", NULL},
-      .key ="ABCD:EF01:2345:6789:ABCD:EF01:2345:6789.huhuhu",
-      .expected_pattern = {"ip", "ABCD:EF01:2345:6789:ABCD:EF01:2345:6789", NULL}
-    },
-    {
-      .node_to_insert = {"@IPvANY:ip@", NULL},
-      .key ="abcd:ef01:2345:6789:abcd:ef01:2345:6789.huhuhu",
-      .expected_pattern = {"ip", "abcd:ef01:2345:6789:abcd:ef01:2345:6789", NULL}
-    },
-    {
-      .node_to_insert = {"@IPvANY:ip@", NULL},
-      .key ="::.huhuhu",
-      .expected_pattern = {"ip", "::", NULL}
-    },
-    {
-      .node_to_insert = {"@IPvANY:ip@", NULL},
-      .key ="0:0:0:0:0:0:13.1.68.3.huhuhu",
-      .expected_pattern = {"ip", "0:0:0:0:0:0:13.1.68.3", NULL}
-    },
-    {
-      .node_to_insert = {"@IPvANY:ip@", NULL},
-      .key ="::202.1.68.3.huhuhu",
-      .expected_pattern = {"ip", "::202.1.68.3", NULL}
-    },
-    {
-      .node_to_insert = {"@IPvANY:ip@", NULL},
-      .key ="2001:0DB8:0:CD30::.huhuhu",
-      .expected_pattern = {"ip", "2001:0DB8:0:CD30::", NULL}
-    },
-    {
-      .node_to_insert = {"@IPvANY:ip@", NULL},
-      .key ="1:2:3:4:5:6:7:8.huhuhu",
-      .expected_pattern = {"ip", "1:2:3:4:5:6:7:8", NULL}
-    },
-    {
-      .node_to_insert = {"@IPvANY:ip@", NULL},
-      .key ="1:2:3:4:5:6:7:8 huhuhu",
-      .expected_pattern = {"ip", "1:2:3:4:5:6:7:8", NULL}
-    },
-    {
-      .node_to_insert = {"@IPvANY:ip@", NULL},
-      .key ="1:2:3:4:5:6:7:8:huhuhu",
-      .expected_pattern = {"ip", "1:2:3:4:5:6:7:8", NULL}
-    },
-    {
-      .node_to_insert = {"@IPvANY:ip@", NULL},
-      .key ="1:2:3:4:5:6:7 huhu",
-      .expected_pattern = {NULL}
-    },
-    {
-      .node_to_insert = {"@IPvANY:ip@", NULL},
-      .key ="1:2:3:4:5:6:7.huhu",
-      .expected_pattern = {NULL}
-    },
-    {
-      .node_to_insert = {"@IPvANY:ip@", NULL},
-      .key ="1:2:3:4:5:6:7:huhu",
-      .expected_pattern = {NULL}
-    },
-    {
-      .node_to_insert = {"@IPvANY:ip@", NULL},
-      .key ="1:2:3:4:5:6:77777:8 huhu",
-      .expected_pattern = {NULL}
-    },
-    {
-      .node_to_insert = {"@IPvANY:ip@", NULL},
-      .key ="1:2:3:4:5:6:1.2.333.4 huhu",
-      .expected_pattern = {NULL}
-    },
-    {
-      .node_to_insert = {"@IPvANY:ip@", NULL},
-      .key ="v12345",
-      .expected_pattern = {NULL}
-    },
-    /* test_ipv4_matches */
-    {
-      .node_to_insert = {"@IPv4:ipv4@", NULL},
-      .key = "192.168.1.1 huhuhu",
-      .expected_pattern = {"ipv4", "192.168.1.1", NULL}
-    },
-    {
-      .node_to_insert = {"@IPv4:ipv4@", NULL},
-      .key = "192.168.1.1. huhuhu",
-      .expected_pattern = {"ipv4", "192.168.1.1", NULL}
-    },
-    {
-      .node_to_insert = {"@IPv4:ipv4@", NULL},
-      .key = "192.168.1.1.huhuhu",
-      .expected_pattern = {"ipv4", "192.168.1.1", NULL}
-    },
-    {
-      .node_to_insert = {"@IPv4:ipv4@", NULL},
-      .key = "192.168.1.1.. huhuhu",
-      .expected_pattern = {"ipv4", "192.168.1.1", NULL}
-    },
-    {
-      .node_to_insert = {"@IPv4:ipv4@", NULL},
-      .key = "192.168.1.1.2 huhuhu",
-      .expected_pattern = {"ipv4", "192.168.1.1", NULL}
-    },
-    {
-      .node_to_insert = {"@IPv4:ipv4@", NULL},
-      .key = "192.168.1.1..huhuhu",
-      .expected_pattern = {"ipv4", "192.168.1.1", NULL}
-    },
-    {
-      .node_to_insert = {"@IPv4:ipv4@", NULL},
-      .key = "192.168.1.1huhuhu",
-      .expected_pattern = {"ipv4", "192.168.1.1", NULL}
-    },
-    {
-      .node_to_insert = {"@IPv4:ipv4@", NULL},
-      .key = "192.168.1huhuhu",
-      .expected_pattern = {NULL}
-    },
-    {
-      .node_to_insert = {"@IPv4:ipv4@", NULL},
-      .key = "192.168.1.huhuhu",
-      .expected_pattern = {NULL}
-    },
-    {
-      .node_to_insert = {"@IPv4:ipv4@", NULL},
-      .key = "192.168.1 huhuhu",
-      .expected_pattern = {NULL}
-    },
-    {
-      .node_to_insert = {"@IPv4:ipv4@", NULL},
-      .key = "192.168.1. huhuhu",
-      .expected_pattern = {NULL}
-    },
-    {
-      .node_to_insert = {"@IPv4:ipv4@", NULL},
-      .key = "v12345",
-      .expected_pattern = {NULL}
-    },
-    /* test_ipv6_matches */
-    {
-      .node_to_insert = {"@IPv6:ipv6@", NULL},
-      .key = "1:2:3:4:5:6:7 huhu",
-      .expected_pattern = {NULL}
-    },
-    {
-      .node_to_insert = {"@IPv6:ipv6@", NULL},
-      .key = "1:2:3:4:5:6:7.huhu",
-      .expected_pattern = {NULL}
-    },
-    {
-      .node_to_insert = {"@IPv6:ipv6@", NULL},
-      .key = "1:2:3:4:5:6:7:huhu",
-      .expected_pattern = {NULL},
-    },
-    {
-      .node_to_insert = {"@IPv6:ipv6@", NULL},
-      .key = "v12345",
-      .expected_pattern = {NULL},
-    },
-    {
-      .node_to_insert = {"@IPv6:ipv6@", NULL},
-      .key = "ABCD:EF01:2345:6789:ABCD:EF01:2345:6789 huhuhu",
-      .expected_pattern = {"ipv6", "ABCD:EF01:2345:6789:ABCD:EF01:2345:6789", NULL}
-    },
-    {
-      .node_to_insert = {"@IPv6:ipv6@", NULL},
-      .key = "abcd:ef01:2345:6789:abcd:ef01:2345:6789 huhuhu",
-      .expected_pattern = {"ipv6", "abcd:ef01:2345:6789:abcd:ef01:2345:6789", NULL}
-    },
-    {
-      .node_to_insert = {"@IPv6:ipv6@", NULL},
-      .key = "0:0:0:0:0:0:0:0 huhuhu",
-      .expected_pattern = {"ipv6", "0:0:0:0:0:0:0:0", NULL}
-    },
-    {
-      .node_to_insert = {"@IPv6:ipv6@", NULL},
-      .key = "2001:DB8::8:800:200C:417A huhuhu",
-      .expected_pattern = {"ipv6", "2001:DB8::8:800:200C:417A", NULL}
-    },
-    {
-      .node_to_insert = {"@IPv6:ipv6@", NULL},
-      .key = "FF01::101 huhuhu",
-      .expected_pattern = {"ipv6", "FF01::101", NULL}
-    },
-    {
-      .node_to_insert = {"@IPv6:ipv6@", NULL},
-      .key = "::1 huhuhu",
-      .expected_pattern = {"ipv6", "::1", NULL}
-    },
-    {
-      .node_to_insert = {"@IPv6:ipv6@", NULL},
-      .key = ":: huhuhu",
-      .expected_pattern = {"ipv6", "::", NULL}
-    },
-    {
-      .node_to_insert = {"@IPv6:ipv6@", NULL},
-      .key = "0:0:0:0:0:0:13.1.68.3 huhuhu",
-      .expected_pattern = {"ipv6", "0:0:0:0:0:0:13.1.68.3", NULL}
-    },
-    {
-      .node_to_insert = {"@IPv6:ipv6@", NULL},
-      .key = "::202.1.68.3 huhuhu",
-      .expected_pattern = {"ipv6", "::202.1.68.3", NULL}
-    },
-    {
-      .node_to_insert = {"@IPv6:ipv6@", NULL},
-      .key = "2001:0DB8:0:CD30:: huhuhu",
-      .expected_pattern = {"ipv6", "2001:0DB8:0:CD30::", NULL}
-    },
-    {
-      .node_to_insert = {"@IPv6:ipv6@", NULL},
-      .key = "2001:0DB8:0:CD30::huhuhu",
-      .expected_pattern = {"ipv6", "2001:0DB8:0:CD30::", NULL}
-    },
-    {
-      .node_to_insert = {"@IPv6:ipv6@", NULL},
-      .key = "::ffff:200.200.200.200huhuhu",
-      .expected_pattern = {"ipv6", "::ffff:200.200.200.200", NULL}
-    },
-    {
-      .node_to_insert = {"@IPv6:ipv6@", NULL},
-      .key = "2001:0DB8:0:CD30::huhuhu",
-      .expected_pattern = {"ipv6", "2001:0DB8:0:CD30::", NULL}
-    },
-    {
-      .node_to_insert = {"@IPv6:ipv6@", NULL},
-      .key = "::ffff:200.200.200.200 :huhuhu",
-      .expected_pattern = {"ipv6", "::ffff:200.200.200.200", NULL}
-    },
-    {
-      .node_to_insert = {"@IPv6:ipv6@", NULL},
-      .key = "::ffff:200.200.200.200: huhuhu",
-      .expected_pattern = {"ipv6", "::ffff:200.200.200.200", NULL}
-    },
-    {
-      .node_to_insert = {"@IPv6:ipv6@", NULL},
-      .key = "::ffff:200.200.200.200. :huhuhu",
-      .expected_pattern = {"ipv6", "::ffff:200.200.200.200", NULL}
-    },
-    {
-      .node_to_insert = {"@IPv6:ipv6@", NULL},
-      .key = "::ffff:200.200.200.200.:huhuhu",
-      .expected_pattern = {"ipv6", "::ffff:200.200.200.200", NULL}
-    },
-    {
-      .node_to_insert = {"@IPv6:ipv6@", NULL},
-      .key = "::ffff:200.200.200.200.2:huhuhu",
-      .expected_pattern = {"ipv6", "::ffff:200.200.200.200", NULL}
-    },
-    {
-      .node_to_insert = {"@IPv6:ipv6@", NULL},
-      .key = "::0: huhuhu",
-      .expected_pattern = {"ipv6", "::0", NULL}
-    },
-    {
-      .node_to_insert = {"@IPv6:ipv6@", NULL},
-      .key = "0:0:0:0:0:0:0:0: huhuhu",
-      .expected_pattern = {"ipv6", "0:0:0:0:0:0:0:0", NULL}
-    },
-    {
-      .node_to_insert = {"@IPv6:ipv6@", NULL},
-      .key = "::129.144.52.38: huhuhu",
-      .expected_pattern = {"ipv6", "::129.144.52.38", NULL}
-    },
-    {
-      .node_to_insert = {"@IPv6:ipv6@", NULL},
-      .key = "::ffff:129.144.52.38: huhuhu",
-      .expected_pattern = {"ipv6", "::ffff:129.144.52.38", NULL}
-    },
-    {
-      .node_to_insert = {"@IPv6:ipv6@", NULL},
-      .key = "ABCD:EF01:2345:6789:ABCD:EF01:2345:6789.huhuhu",
-      .expected_pattern = {"ipv6", "ABCD:EF01:2345:6789:ABCD:EF01:2345:6789", NULL}
-    },
-    {
-      .node_to_insert = {"@IPv6:ipv6@", NULL},
-      .key = "abcd:ef01:2345:6789:abcd:ef01:2345:6789.huhuhu",
-      .expected_pattern = {"ipv6", "abcd:ef01:2345:6789:abcd:ef01:2345:6789", NULL}
-    },
-    {
-      .node_to_insert = {"@IPv6:ipv6@", NULL},
-      .key = "0:0:0:0:0:0:0:0.huhuhu",
-      .expected_pattern = {"ipv6", "0:0:0:0:0:0:0:0", NULL}
-    },
-    {
-      .node_to_insert = {"@IPv6:ipv6@", NULL},
-      .key = "2001:DB8::8:800:200C:417A.huhuhu",
-      .expected_pattern = {"ipv6", "2001:DB8::8:800:200C:417A", NULL}
-    },
-    {
-      .node_to_insert = {"@IPv6:ipv6@", NULL},
-      .key = "FF01::101.huhuhu",
-      .expected_pattern = {"ipv6", "FF01::101", NULL}
-    },
-    {
-      .node_to_insert = {"@IPv6:ipv6@", NULL},
-      .key = "::1.huhuhu",
-      .expected_pattern = {"ipv6", "::1", NULL}
-    },
-    {
-      .node_to_insert = {"@IPv6:ipv6@", NULL},
-      .key = "::.huhuhu",
-      .expected_pattern = {"ipv6", "::", NULL}
-    },
-    {
-      .node_to_insert = {"@IPv6:ipv6@", NULL},
-      .key = "0:0:0:0:0:0:13.1.68.3.huhuhu",
-      .expected_pattern = {"ipv6", "0:0:0:0:0:0:13.1.68.3", NULL}
-    },
-    {
-      .node_to_insert = {"@IPv6:ipv6@", NULL},
-      .key = "::202.1.68.3.huhuhu",
-      .expected_pattern = {"ipv6", "::202.1.68.3", NULL}
-    },
-    {
-      .node_to_insert = {"@IPv6:ipv6@", NULL},
-      .key = "2001:0DB8:0:CD30::.huhuhu",
-      .expected_pattern = {"ipv6", "2001:0DB8:0:CD30::", NULL}
-    },
-    /* test_number_matches */
-    {
-      .node_to_insert = {"@NUMBER:number@", NULL},
-      .key = "12345 hihihi",
-      .expected_pattern = {"number", "12345", NULL}
-    },
-    {
-      .node_to_insert = {"@NUMBER:number@", NULL},
-      .key = "12345 hihihi",
-      .expected_pattern = {"number", "12345", NULL}
-    },
-    {
-      .node_to_insert = {"@NUMBER:number@", NULL},
-      .key = "0xaf12345 hihihi",
-      .expected_pattern = {"number", "0xaf12345", NULL}
-    },
-    {
-      .node_to_insert = {"@NUMBER:number@", NULL},
-      .key = "0xAF12345 hihihi",
-      .expected_pattern = {"number", "0xAF12345", NULL}
-    },
-    {
-      .node_to_insert = {"@NUMBER:number@", NULL},
-      .key = "+0xAF12345 hihihi",
-      .expected_pattern = {"number", "+0xAF12345", NULL}
-    },
-    {
-      .node_to_insert = {"@NUMBER:number@", NULL},
-      .key = "-0xAF12345 hihihi",
-      .expected_pattern = {"number", "-0xAF12345", NULL}
-    },
-    {
-      .node_to_insert = {"@NUMBER:number@", NULL},
-      .key = "0x12345 hihihi",
-      .expected_pattern = {"number", "0x12345", NULL}
-    },
-    {
-      .node_to_insert = {"@NUMBER:number@", NULL},
-      .key = "0XABCDEF12345ABCDEF hihihi",
-      .expected_pattern = {"number", "0XABCDEF12345ABCDEF", NULL}
-    },
-    {
-      .node_to_insert = {"@NUMBER:number@", NULL},
-      .key = "-12345 hihihi",
-      .expected_pattern = {"number", "-12345", NULL}
-    },
-    {
-      .node_to_insert = {"@NUMBER:number@", NULL},
-      .key = "+12345 hihihi",
-      .expected_pattern = {"number", "+12345", NULL}
-    },
-    {
-      .node_to_insert = {"@NUMBER:number@", NULL},
-      .key = "v12345",
-      .expected_pattern = {NULL}
-    },
-    /* test_qstring_matches */
-    {
-      .node_to_insert = {"@QSTRING:qstring:'@", NULL},
-      .key = "'quoted string' hehehe",
-      .expected_pattern = {"qstring", "quoted string", NULL}
-    },
-    {
-      .node_to_insert = {"@QSTRING:qstring:()@", NULL},
-      .key = "(quoted string) hehehe",
-      .expected_pattern = {"qstring", "quoted string", NULL}
-    },
-    {
-      .node_to_insert = {"@QSTRING:qstring:()@", NULL},
-      .key = "(nested (quoted string())) hehehe",
-      .expected_pattern = {"qstring", "nested (quoted string())", NULL}
-    },
-    {
-      .node_to_insert = {"@QSTRING:qstring:()@", NULL},
-      .key = "(unbalanced (nested (quoted string())) hehehe",
-      .expected_pattern = {NULL}
-    },
-    {
-      .node_to_insert = {"@QSTRING:qstring:'@", NULL},
-      .key = "v12345",
-      .expected_pattern = {NULL}
-    },
-    /* test_estring_matches */
-    {
-      .node_to_insert = {"ddd @ESTRING:estring::@",
-        "dddd @ESTRING:estring::*@",
-        "dddd2 @ESTRING:estring::*@ d",
-        "zzz @ESTRING:test:gép@",
-        NULL
-      },
-      .key = "ddd estring: hehehe",
-      .expected_pattern = {"estring", "estring", NULL},
-    },
-    {
-      .node_to_insert = {"ddd @ESTRING:estring::@",
-        "dddd @ESTRING:estring::*@",
-        "dddd2 @ESTRING:estring::*@ d",
-        "zzz @ESTRING:test:gép@",
-        NULL
-      },
-      .key = "ddd v12345",
-      .expected_pattern = {NULL},
-    },
-    {
-      .node_to_insert = {"ddd @ESTRING:estring::@",
-        "dddd @ESTRING:estring::*@",
-        "dddd2 @ESTRING:estring::*@ d",
-        "zzz @ESTRING:test:gép@",
-        NULL
-      },
-      .key = "dddd estring:* hehehe",
-      .expected_pattern = {"estring", "estring", NULL},
-    },
-    {
-      .node_to_insert = {"ddd @ESTRING:estring::@",
-        "dddd @ESTRING:estring::*@",
-        "dddd2 @ESTRING:estring::*@ d",
-        "zzz @ESTRING:test:gép@",
-        NULL
-      },
-      .key = "dddd estring:estring:* hehehe",
-      .expected_pattern = {"estring", "estring:estring", NULL},
-    },
-    {
-      .node_to_insert = {"ddd @ESTRING:estring::@",
-        "dddd @ESTRING:estring::*@",
-        "dddd2 @ESTRING:estring::*@ d",
-        "zzz @ESTRING:test:gép@",
-        NULL
-      },
-      .key = "dddd estring:estring::* hehehe",
-      .expected_pattern = {"estring", "estring:estring:", NULL},
-    },
-    {
-      .node_to_insert = {"ddd @ESTRING:estring::@",
-        "dddd @ESTRING:estring::*@",
-        "dddd2 @ESTRING:estring::*@ d",
-        "zzz @ESTRING:test:gép@",
-        NULL
-      },
-      .key = "dddd2 estring:estring::* d",
-      .expected_pattern = {"estring", "estring:estring:", NULL}
-    },
-    {
-      .node_to_insert = {"ddd @ESTRING:estring::@",
-        "dddd @ESTRING:estring::*@",
-        "dddd2 @ESTRING:estring::*@ d",
-        "zzz @ESTRING:test:gép@",
-        NULL
-      },
-      .key = "dddd2 estring:estring::* ",
-      .expected_pattern = {NULL},
-    },
-    {
-      .node_to_insert = {"ddd @ESTRING:estring::@",
-        "dddd @ESTRING:estring::*@",
-        "dddd2 @ESTRING:estring::*@ d",
-        "zzz @ESTRING:test:gép@",
-        NULL
-      },
-      .key = "dddd2 estring:estring::*",
-      .expected_pattern = {NULL},
-    },
-    {
-      .node_to_insert = {"ddd @ESTRING:estring::@",
-        "dddd @ESTRING:estring::*@",
-        "dddd2 @ESTRING:estring::*@ d",
-        "zzz @ESTRING:test:gép@",
-        NULL
-      },
-      .key = "dddd2 estring:estring:*",
-      .expected_pattern = {NULL}
-    },
-    {
-      .node_to_insert = {"ddd @ESTRING:estring::@",
-        "dddd @ESTRING:estring::*@",
-        "dddd2 @ESTRING:estring::*@ d",
-        "zzz @ESTRING:test:gép@",
-        NULL
-      },
-      .key = "dddd2 estring:estring",
-      .expected_pattern = {NULL},
-    },
-    {
-      .node_to_insert = {"ddd @ESTRING:estring::@",
-        "dddd @ESTRING:estring::*@",
-        "dddd2 @ESTRING:estring::*@ d",
-        "zzz @ESTRING:test:gép@",
-        NULL
-      },
-      .key = "dddd v12345",
-      .expected_pattern = {NULL},
-    },
-    {
-      .node_to_insert = {"ddd @ESTRING:estring::@",
-        "dddd @ESTRING:estring::*@",
-        "dddd2 @ESTRING:estring::*@ d",
-        "zzz @ESTRING:test:gép@",
-        NULL
-      },
-      .key = "zzz árvíztűrőtükörfúrógép",
-      .expected_pattern = {"test", "árvíztűrőtükörfúró", NULL},
-    },
-    /* test_string_matches */
-    {
-      .node_to_insert = {"@STRING:string@", NULL},
-      .key = "string hehehe",
-      .expected_pattern = {"string", "string", NULL},
-    },
-    /* test_float_matches */
-    {
-      .node_to_insert = {"@FLOAT:float@", NULL},
-      .key = "12345 hihihi",
-      .expected_pattern = {"float", "12345", NULL},
-    },
-    {
-      .node_to_insert = {"@FLOAT:float@", NULL},
-      .key = "12345hihihi",
-      .expected_pattern = {"float", "12345", NULL},
-    },
-    {
-      .node_to_insert = {"@FLOAT:float@", NULL},
-      .key = "12.345hihihi",
-      .expected_pattern = {"float", "12.345", NULL},
-    },
-    {
-      .node_to_insert = {"@FLOAT:float@", NULL},
-      .key = "12.345.hihihi",
-      .expected_pattern = {"float", "12.345", NULL},
-    },
-    {
-      .node_to_insert = {"@FLOAT:float@", NULL},
-      .key = "12.345.6hihihi",
-      .expected_pattern = {"float", "12.345", NULL},
-    },
-    {
-      .node_to_insert = {"@FLOAT:float@", NULL},
-      .key = "12345.hihihi",
-      .expected_pattern = {"float", "12345.", NULL}
-    },
-    {
-      .node_to_insert = {"@FLOAT:float@", NULL},
-      .key = "-12.345 hihihi",
-      .expected_pattern = {"float", "-12.345", NULL},
-    },
-    {
-      .node_to_insert = {"@FLOAT:float@", NULL},
-      .key = "-12.345e12 hihihi",
-      .expected_pattern = {"float", "-12.345e12", NULL},
-    },
-    {
-      .node_to_insert = {"@FLOAT:float@", NULL},
-      .key = "-12.345e-12 hihihi",
-      .expected_pattern = {"float", "-12.345e-12", NULL},
-    },
-    {
-      .node_to_insert = {"@FLOAT:float@", NULL},
-      .key = "12.345e12 hihihi",
-      .expected_pattern = {"float", "12.345e12", NULL}
-    },
-    {
-      .node_to_insert = {"@FLOAT:float@", NULL},
-      .key = "12.345e-12 hihihi",
-      .expected_pattern = {"float", "12.345e-12", NULL},
-    },
-    {
-      .node_to_insert = {"@FLOAT:float@", NULL},
-      .key = "12.345e+12 hihihi",
-      .expected_pattern = {"float", "12.345e+12", NULL},
-    },
-    {
-      .node_to_insert = {"@FLOAT:float@", NULL},
-      .key = "-12.345E12 hihihi",
-      .expected_pattern = {"float", "-12.345E12", NULL},
-    },
-    {
-      .node_to_insert = {"@FLOAT:float@", NULL},
-      .key = "-12.345E-12 hihihi",
-      .expected_pattern = {"float", "-12.345E-12", NULL},
-    },
-    {
-      .node_to_insert = {"@FLOAT:float@", NULL},
-      .key = "+12.345E12 hihihi",
-      .expected_pattern = {"float", "+12.345E12", NULL},
-    },
-    {
-      .node_to_insert = {"@FLOAT:float@", NULL},
-      .key = "+12.345E+12 hihihi",
-      .expected_pattern = {"float", "+12.345E+12", NULL},
-    },
-    {
-      .node_to_insert = {"@FLOAT:float@", NULL},
-      .key = "12.345E12 hihihi",
-      .expected_pattern = {"float", "12.345E12", NULL},
-    },
-    {
-      .node_to_insert = {"@FLOAT:float@", NULL},
-      .key = "12.345E-12 hihihi",
-      .expected_pattern = {"float", "12.345E-12", NULL},
-    },
-    {
-      .node_to_insert = {"@FLOAT:float@", NULL},
-      .key = "v12345",
-      .expected_pattern = {NULL},
-    },
-    {
-      .node_to_insert = {"@FLOAT:float@", NULL},
-      .key = "12345.hihihi",
-      .expected_pattern = {"float", "12345.", NULL},
-    },
-    /* test_set_matches */
-    {
-      .node_to_insert = {"@SET:set:  @", NULL},
-      .key = " aaa",
-      .expected_pattern = {"set", " ", NULL},
-    },
-    {
-      .node_to_insert = {"@SET:set:  @", NULL},
-      .key = "  aaa",
-      .expected_pattern = {"set", "  ", NULL},
-    },
-    {
-      .node_to_insert = {"@SET:set:  @", NULL},
-      .key = "  ",
-      .expected_pattern = {"set", "  ", NULL},
-    },
-    /* test_optional_set_matches */
-    {
-      .node_to_insert = {"@OPTIONALSET:set:  @", NULL},
-      .key = " aaa",
-      .expected_pattern = {"set", " ", NULL},
-    },
-    {
-      .node_to_insert = {"@OPTIONALSET:set:  @", NULL},
-      .key = "  aaa",
-      .expected_pattern = {"set", "  ", NULL},
-    },
-    {
-      .node_to_insert = {"@OPTIONALSET:set:  @", NULL},
-      .key = "aaa",
-      .expected_pattern = {"set", "", NULL},
-    },
-    {
-      .node_to_insert = {"@OPTIONALSET:set:  @", NULL},
-      .key = "  ",
-      .expected_pattern = {"set", "  ", NULL},
-    },
-    /* test_optional_set_matches at the end */
-    {
-      .node_to_insert = {"@QSTRING:q:[]@@OPTIONALSET:s: @", NULL},
-      .key = "[AAA]  ",
-      .expected_pattern = {"q", "AAA", "s", "  ", NULL},
-    },
-    {
-      .node_to_insert = {"@QSTRING:q:[]@@OPTIONALSET:s: @", NULL},
-      .key = "[AAA]",
-      .expected_pattern = {"q", "AAA", "s", "", NULL},
-    },
-    /* test_mcaddr_matches */
-    {
-      .node_to_insert = {"@MACADDR:macaddr@", NULL},
-      .key = "82:63:25:93:eb:51.iii",
-      .expected_pattern = {"macaddr", "82:63:25:93:eb:51", NULL},
-    },
-    {
-      .node_to_insert = {"@MACADDR:macaddr@", NULL},
-      .key = "82:63:25:93:EB:51.iii",
-      .expected_pattern = {"macaddr", "82:63:25:93:EB:51", NULL},
-    },
-    /* test_email_matches */
-    {
-      .node_to_insert = {"@EMAIL:email:[<]>@", NULL },
-      .key = "blint@balabit.hu",
-      .expected_pattern = {"email", "blint@balabit.hu", NULL},
-    },
-    {
-      .node_to_insert = {"@EMAIL:email:[<]>@", NULL },
-      .key = "<blint@balabit.hu>",
-      .expected_pattern = {"email", "blint@balabit.hu", NULL},
-    },
-    {
-      .node_to_insert = {"@EMAIL:email:[<]>@", NULL },
-      .key = "[blint@balabit.hu]",
-      .expected_pattern = {"email", "blint@balabit.hu", NULL},
-    },
-    {
-      .node_to_insert = {"@EMAIL:email:[<]>@", NULL },
-      .key = "a@b.c",
-      .expected_pattern = {"email", "a@b.c", NULL},
-    },
-    {
-      .node_to_insert = {"@EMAIL:email:[<]>@", NULL },
-      .key = "<a@b.c>",
-      .expected_pattern = {"email", "a@b.c", NULL},
-    },
-    /* test_hostname_matches */
-    {
-      .node_to_insert = {"@HOSTNAME:hostname@", NULL},
-      .key = "www.example.org",
-      .expected_pattern = {"hostname", "www.example.org", NULL},
-    },
-    {
-      .node_to_insert = {"@HOSTNAME:hostname@", NULL},
-      .key = "www.example.org. kkk",
-      .expected_pattern = {"hostname", "www.example.org.", NULL},
-    },
-    /* test_lladdr_matches */
-    {
-      .node_to_insert = {"@LLADDR:lladdr6:6@", NULL},
-      .key = "83:63:25:93:eb:51:aa:bb.iii",
-      .expected_pattern = {"lladdr6", "83:63:25:93:eb:51", NULL},
-    },
-    {
-      .node_to_insert = {"@LLADDR:lladdr6:6@", NULL},
-      .key = "83:63:25:93:EB:51:aa:bb.iii",
-      .expected_pattern = {"lladdr6", "83:63:25:93:EB:51", NULL},
-    },
-    /* test_pcre_matches */
-    {
-      .node_to_insert = {"jjj @PCRE:regexp:[abc]+@", "jjjj @PCRE:regexp:[abc]+@d foobar", NULL},
-      .key = "jjj abcabcd",
-      .expected_pattern = {"regexp", "abcabc", NULL},
-    },
-    {
-      .node_to_insert = {"jjj @PCRE:regexp:[abc]+@", "jjjj @PCRE:regexp:[abc]+@d foobar", NULL},
-      .key = "jjjj abcabcd foobar",
-      .expected_pattern = {"regexp", "abcabc", NULL},
-    },
-    {
-      .node_to_insert = {"@PCRE:regexp:(foo|bar)@", NULL},
-      .key = "foo",
-      .expected_pattern = {"regexp", "foo", NULL},
-    },
-    {
-      .node_to_insert = {"@PCRE:regexp:(?:foo|bar)@", NULL},
-      .key = "foo",
-      .expected_pattern = {"regexp", "foo", NULL},
-    },
-    /* test_nlstring_matches */
-    {
-      .node_to_insert = {"@NLSTRING:nlstring@", NULL},
-      .key = "foobar\r\nbaz",
-      .expected_pattern = {"nlstring", "foobar", NULL},
-    },
-    {
-      .node_to_insert = {"@NLSTRING:nlstring@", NULL},
-      .key = "foobar\nbaz",
-      .expected_pattern = {"nlstring", "foobar", NULL},
-    },
-    {
-      .node_to_insert = {"@NLSTRING:nlstring@", NULL},
-      .key = "\nbaz",
-      .expected_pattern = {"nlstring", "", NULL},
-    },
-    {
-      .node_to_insert = {"@NLSTRING:nlstring@", NULL},
-      .key = "\r\nbaz",
-      .expected_pattern = {"nlstring", "", NULL},
-    },
-    {
-      .node_to_insert = {"@NLSTRING:nlstring@", NULL},
-      .key = "foobar\r\n",
-      .expected_pattern = {"nlstring", "foobar", NULL},
-    },
-    {
-      .node_to_insert = {"@NLSTRING:nlstring@", NULL},
-      .key = "foobar\n",
-      .expected_pattern = {"nlstring", "foobar", NULL},
-    },
-    {
-      .node_to_insert = {"@NLSTRING:nlstring@", NULL},
-      .key = "foobar",
-      .expected_pattern = {"nlstring", "foobar", NULL},
-    }
-  };
-  return cr_make_param_array(RadixTestParam, parser_params, G_N_ELEMENTS(parser_params));
-}
+    .node_to_insert = {"@IPvANY:ip@", NULL},
+    .key = "192.168.1.1 huhuhu",
+    .expected_pattern = {"ip", "192.168.1.1", NULL}
+  },
+  {
+    .node_to_insert = {"@IPvANY:ip@", NULL},
+    .key = "192.168.1.1. huhuhu",
+    .expected_pattern = {"ip", "192.168.1.1", NULL}
+  },
+  {
+    .node_to_insert = {"@IPvANY:ip@", NULL},
+    .key = "192.168.1huhuhu",
+    .expected_pattern = {NULL}
+  },
+  {
+    .node_to_insert = {"@IPvANY:ip@", NULL},
+    .key = "192.168.1.huhuhu",
+    .expected_pattern = {NULL}
+  },
+  {
+    .node_to_insert = {"@IPvANY:ip@", NULL},
+    .key = "192.168.1 huhuhu",
+    .expected_pattern = {NULL}
+  },
+  {
+    .node_to_insert = {"@IPvANY:ip@", NULL},
+    .key = "192.168.1. huhuhu",
+    .expected_pattern = {NULL}
+  },
+  {
+    .node_to_insert = {"@IPvANY:ip@", NULL},
+    .key = "192.168.1.1huhuhu",
+    .expected_pattern = {"ip", "192.168.1.1", NULL}
+  },
+  {
+    .node_to_insert = {"@IPvANY:ip@", NULL},
+    .key ="ABCD:EF01:2345:6789:ABCD:EF01:2345:6789 huhuhu",
+    .expected_pattern = {"ip", "ABCD:EF01:2345:6789:ABCD:EF01:2345:6789", NULL}
+  },
+  {
+    .node_to_insert = {"@IPvANY:ip@", NULL},
+    .key ="abcd:ef01:2345:6789:abcd:ef01:2345:6789 huhuhu",
+    .expected_pattern = {"ip", "abcd:ef01:2345:6789:abcd:ef01:2345:6789", NULL}
+  },
+  {
+    .node_to_insert = {"@IPvANY:ip@", NULL},
+    .key =":: huhuhu",
+    .expected_pattern = {"ip", "::", NULL}
+  },
+  {
+    .node_to_insert = {"@IPvANY:ip@", NULL},
+    .key ="0:0:0:0:0:0:13.1.68.3 huhuhu",
+    .expected_pattern = {"ip", "0:0:0:0:0:0:13.1.68.3", NULL}
+  },
+  {
+    .node_to_insert = {"@IPvANY:ip@", NULL},
+    .key ="::202.1.68.3 huhuhu",
+    .expected_pattern = {"ip", "::202.1.68.3", NULL}
+  },
+  {
+    .node_to_insert = {"@IPvANY:ip@", NULL},
+    .key ="2001:0DB8:0:CD30:: huhuhu",
+    .expected_pattern = {"ip", "2001:0DB8:0:CD30::", NULL}
+  },
+  {
+    .node_to_insert = {"@IPvANY:ip@", NULL},
+    .key ="ABCD:EF01:2345:6789:ABCD:EF01:2345:6789.huhuhu",
+    .expected_pattern = {"ip", "ABCD:EF01:2345:6789:ABCD:EF01:2345:6789", NULL}
+  },
+  {
+    .node_to_insert = {"@IPvANY:ip@", NULL},
+    .key ="abcd:ef01:2345:6789:abcd:ef01:2345:6789.huhuhu",
+    .expected_pattern = {"ip", "abcd:ef01:2345:6789:abcd:ef01:2345:6789", NULL}
+  },
+  {
+    .node_to_insert = {"@IPvANY:ip@", NULL},
+    .key ="::.huhuhu",
+    .expected_pattern = {"ip", "::", NULL}
+  },
+  {
+    .node_to_insert = {"@IPvANY:ip@", NULL},
+    .key ="0:0:0:0:0:0:13.1.68.3.huhuhu",
+    .expected_pattern = {"ip", "0:0:0:0:0:0:13.1.68.3", NULL}
+  },
+  {
+    .node_to_insert = {"@IPvANY:ip@", NULL},
+    .key ="::202.1.68.3.huhuhu",
+    .expected_pattern = {"ip", "::202.1.68.3", NULL}
+  },
+  {
+    .node_to_insert = {"@IPvANY:ip@", NULL},
+    .key ="2001:0DB8:0:CD30::.huhuhu",
+    .expected_pattern = {"ip", "2001:0DB8:0:CD30::", NULL}
+  },
+  {
+    .node_to_insert = {"@IPvANY:ip@", NULL},
+    .key ="1:2:3:4:5:6:7:8.huhuhu",
+    .expected_pattern = {"ip", "1:2:3:4:5:6:7:8", NULL}
+  },
+  {
+    .node_to_insert = {"@IPvANY:ip@", NULL},
+    .key ="1:2:3:4:5:6:7:8 huhuhu",
+    .expected_pattern = {"ip", "1:2:3:4:5:6:7:8", NULL}
+  },
+  {
+    .node_to_insert = {"@IPvANY:ip@", NULL},
+    .key ="1:2:3:4:5:6:7:8:huhuhu",
+    .expected_pattern = {"ip", "1:2:3:4:5:6:7:8", NULL}
+  },
+  {
+    .node_to_insert = {"@IPvANY:ip@", NULL},
+    .key ="1:2:3:4:5:6:7 huhu",
+    .expected_pattern = {NULL}
+  },
+  {
+    .node_to_insert = {"@IPvANY:ip@", NULL},
+    .key ="1:2:3:4:5:6:7.huhu",
+    .expected_pattern = {NULL}
+  },
+  {
+    .node_to_insert = {"@IPvANY:ip@", NULL},
+    .key ="1:2:3:4:5:6:7:huhu",
+    .expected_pattern = {NULL}
+  },
+  {
+    .node_to_insert = {"@IPvANY:ip@", NULL},
+    .key ="1:2:3:4:5:6:77777:8 huhu",
+    .expected_pattern = {NULL}
+  },
+  {
+    .node_to_insert = {"@IPvANY:ip@", NULL},
+    .key ="1:2:3:4:5:6:1.2.333.4 huhu",
+    .expected_pattern = {NULL}
+  },
+  {
+    .node_to_insert = {"@IPvANY:ip@", NULL},
+    .key ="v12345",
+    .expected_pattern = {NULL}
+  },
+  /* test_ipv4_matches */
+  {
+    .node_to_insert = {"@IPv4:ipv4@", NULL},
+    .key = "192.168.1.1 huhuhu",
+    .expected_pattern = {"ipv4", "192.168.1.1", NULL}
+  },
+  {
+    .node_to_insert = {"@IPv4:ipv4@", NULL},
+    .key = "192.168.1.1. huhuhu",
+    .expected_pattern = {"ipv4", "192.168.1.1", NULL}
+  },
+  {
+    .node_to_insert = {"@IPv4:ipv4@", NULL},
+    .key = "192.168.1.1.huhuhu",
+    .expected_pattern = {"ipv4", "192.168.1.1", NULL}
+  },
+  {
+    .node_to_insert = {"@IPv4:ipv4@", NULL},
+    .key = "192.168.1.1.. huhuhu",
+    .expected_pattern = {"ipv4", "192.168.1.1", NULL}
+  },
+  {
+    .node_to_insert = {"@IPv4:ipv4@", NULL},
+    .key = "192.168.1.1.2 huhuhu",
+    .expected_pattern = {"ipv4", "192.168.1.1", NULL}
+  },
+  {
+    .node_to_insert = {"@IPv4:ipv4@", NULL},
+    .key = "192.168.1.1..huhuhu",
+    .expected_pattern = {"ipv4", "192.168.1.1", NULL}
+  },
+  {
+    .node_to_insert = {"@IPv4:ipv4@", NULL},
+    .key = "192.168.1.1huhuhu",
+    .expected_pattern = {"ipv4", "192.168.1.1", NULL}
+  },
+  {
+    .node_to_insert = {"@IPv4:ipv4@", NULL},
+    .key = "192.168.1huhuhu",
+    .expected_pattern = {NULL}
+  },
+  {
+    .node_to_insert = {"@IPv4:ipv4@", NULL},
+    .key = "192.168.1.huhuhu",
+    .expected_pattern = {NULL}
+  },
+  {
+    .node_to_insert = {"@IPv4:ipv4@", NULL},
+    .key = "192.168.1 huhuhu",
+    .expected_pattern = {NULL}
+  },
+  {
+    .node_to_insert = {"@IPv4:ipv4@", NULL},
+    .key = "192.168.1. huhuhu",
+    .expected_pattern = {NULL}
+  },
+  {
+    .node_to_insert = {"@IPv4:ipv4@", NULL},
+    .key = "v12345",
+    .expected_pattern = {NULL}
+  },
+  /* test_ipv6_matches */
+  {
+    .node_to_insert = {"@IPv6:ipv6@", NULL},
+    .key = "1:2:3:4:5:6:7 huhu",
+    .expected_pattern = {NULL}
+  },
+  {
+    .node_to_insert = {"@IPv6:ipv6@", NULL},
+    .key = "1:2:3:4:5:6:7.huhu",
+    .expected_pattern = {NULL}
+  },
+  {
+    .node_to_insert = {"@IPv6:ipv6@", NULL},
+    .key = "1:2:3:4:5:6:7:huhu",
+    .expected_pattern = {NULL},
+  },
+  {
+    .node_to_insert = {"@IPv6:ipv6@", NULL},
+    .key = "v12345",
+    .expected_pattern = {NULL},
+  },
+  {
+    .node_to_insert = {"@IPv6:ipv6@", NULL},
+    .key = "ABCD:EF01:2345:6789:ABCD:EF01:2345:6789 huhuhu",
+    .expected_pattern = {"ipv6", "ABCD:EF01:2345:6789:ABCD:EF01:2345:6789", NULL}
+  },
+  {
+    .node_to_insert = {"@IPv6:ipv6@", NULL},
+    .key = "abcd:ef01:2345:6789:abcd:ef01:2345:6789 huhuhu",
+    .expected_pattern = {"ipv6", "abcd:ef01:2345:6789:abcd:ef01:2345:6789", NULL}
+  },
+  {
+    .node_to_insert = {"@IPv6:ipv6@", NULL},
+    .key = "0:0:0:0:0:0:0:0 huhuhu",
+    .expected_pattern = {"ipv6", "0:0:0:0:0:0:0:0", NULL}
+  },
+  {
+    .node_to_insert = {"@IPv6:ipv6@", NULL},
+    .key = "2001:DB8::8:800:200C:417A huhuhu",
+    .expected_pattern = {"ipv6", "2001:DB8::8:800:200C:417A", NULL}
+  },
+  {
+    .node_to_insert = {"@IPv6:ipv6@", NULL},
+    .key = "FF01::101 huhuhu",
+    .expected_pattern = {"ipv6", "FF01::101", NULL}
+  },
+  {
+    .node_to_insert = {"@IPv6:ipv6@", NULL},
+    .key = "::1 huhuhu",
+    .expected_pattern = {"ipv6", "::1", NULL}
+  },
+  {
+    .node_to_insert = {"@IPv6:ipv6@", NULL},
+    .key = ":: huhuhu",
+    .expected_pattern = {"ipv6", "::", NULL}
+  },
+  {
+    .node_to_insert = {"@IPv6:ipv6@", NULL},
+    .key = "0:0:0:0:0:0:13.1.68.3 huhuhu",
+    .expected_pattern = {"ipv6", "0:0:0:0:0:0:13.1.68.3", NULL}
+  },
+  {
+    .node_to_insert = {"@IPv6:ipv6@", NULL},
+    .key = "::202.1.68.3 huhuhu",
+    .expected_pattern = {"ipv6", "::202.1.68.3", NULL}
+  },
+  {
+    .node_to_insert = {"@IPv6:ipv6@", NULL},
+    .key = "2001:0DB8:0:CD30:: huhuhu",
+    .expected_pattern = {"ipv6", "2001:0DB8:0:CD30::", NULL}
+  },
+  {
+    .node_to_insert = {"@IPv6:ipv6@", NULL},
+    .key = "2001:0DB8:0:CD30::huhuhu",
+    .expected_pattern = {"ipv6", "2001:0DB8:0:CD30::", NULL}
+  },
+  {
+    .node_to_insert = {"@IPv6:ipv6@", NULL},
+    .key = "::ffff:200.200.200.200huhuhu",
+    .expected_pattern = {"ipv6", "::ffff:200.200.200.200", NULL}
+  },
+  {
+    .node_to_insert = {"@IPv6:ipv6@", NULL},
+    .key = "2001:0DB8:0:CD30::huhuhu",
+    .expected_pattern = {"ipv6", "2001:0DB8:0:CD30::", NULL}
+  },
+  {
+    .node_to_insert = {"@IPv6:ipv6@", NULL},
+    .key = "::ffff:200.200.200.200 :huhuhu",
+    .expected_pattern = {"ipv6", "::ffff:200.200.200.200", NULL}
+  },
+  {
+    .node_to_insert = {"@IPv6:ipv6@", NULL},
+    .key = "::ffff:200.200.200.200: huhuhu",
+    .expected_pattern = {"ipv6", "::ffff:200.200.200.200", NULL}
+  },
+  {
+    .node_to_insert = {"@IPv6:ipv6@", NULL},
+    .key = "::ffff:200.200.200.200. :huhuhu",
+    .expected_pattern = {"ipv6", "::ffff:200.200.200.200", NULL}
+  },
+  {
+    .node_to_insert = {"@IPv6:ipv6@", NULL},
+    .key = "::ffff:200.200.200.200.:huhuhu",
+    .expected_pattern = {"ipv6", "::ffff:200.200.200.200", NULL}
+  },
+  {
+    .node_to_insert = {"@IPv6:ipv6@", NULL},
+    .key = "::ffff:200.200.200.200.2:huhuhu",
+    .expected_pattern = {"ipv6", "::ffff:200.200.200.200", NULL}
+  },
+  {
+    .node_to_insert = {"@IPv6:ipv6@", NULL},
+    .key = "::0: huhuhu",
+    .expected_pattern = {"ipv6", "::0", NULL}
+  },
+  {
+    .node_to_insert = {"@IPv6:ipv6@", NULL},
+    .key = "0:0:0:0:0:0:0:0: huhuhu",
+    .expected_pattern = {"ipv6", "0:0:0:0:0:0:0:0", NULL}
+  },
+  {
+    .node_to_insert = {"@IPv6:ipv6@", NULL},
+    .key = "::129.144.52.38: huhuhu",
+    .expected_pattern = {"ipv6", "::129.144.52.38", NULL}
+  },
+  {
+    .node_to_insert = {"@IPv6:ipv6@", NULL},
+    .key = "::ffff:129.144.52.38: huhuhu",
+    .expected_pattern = {"ipv6", "::ffff:129.144.52.38", NULL}
+  },
+  {
+    .node_to_insert = {"@IPv6:ipv6@", NULL},
+    .key = "ABCD:EF01:2345:6789:ABCD:EF01:2345:6789.huhuhu",
+    .expected_pattern = {"ipv6", "ABCD:EF01:2345:6789:ABCD:EF01:2345:6789", NULL}
+  },
+  {
+    .node_to_insert = {"@IPv6:ipv6@", NULL},
+    .key = "abcd:ef01:2345:6789:abcd:ef01:2345:6789.huhuhu",
+    .expected_pattern = {"ipv6", "abcd:ef01:2345:6789:abcd:ef01:2345:6789", NULL}
+  },
+  {
+    .node_to_insert = {"@IPv6:ipv6@", NULL},
+    .key = "0:0:0:0:0:0:0:0.huhuhu",
+    .expected_pattern = {"ipv6", "0:0:0:0:0:0:0:0", NULL}
+  },
+  {
+    .node_to_insert = {"@IPv6:ipv6@", NULL},
+    .key = "2001:DB8::8:800:200C:417A.huhuhu",
+    .expected_pattern = {"ipv6", "2001:DB8::8:800:200C:417A", NULL}
+  },
+  {
+    .node_to_insert = {"@IPv6:ipv6@", NULL},
+    .key = "FF01::101.huhuhu",
+    .expected_pattern = {"ipv6", "FF01::101", NULL}
+  },
+  {
+    .node_to_insert = {"@IPv6:ipv6@", NULL},
+    .key = "::1.huhuhu",
+    .expected_pattern = {"ipv6", "::1", NULL}
+  },
+  {
+    .node_to_insert = {"@IPv6:ipv6@", NULL},
+    .key = "::.huhuhu",
+    .expected_pattern = {"ipv6", "::", NULL}
+  },
+  {
+    .node_to_insert = {"@IPv6:ipv6@", NULL},
+    .key = "0:0:0:0:0:0:13.1.68.3.huhuhu",
+    .expected_pattern = {"ipv6", "0:0:0:0:0:0:13.1.68.3", NULL}
+  },
+  {
+    .node_to_insert = {"@IPv6:ipv6@", NULL},
+    .key = "::202.1.68.3.huhuhu",
+    .expected_pattern = {"ipv6", "::202.1.68.3", NULL}
+  },
+  {
+    .node_to_insert = {"@IPv6:ipv6@", NULL},
+    .key = "2001:0DB8:0:CD30::.huhuhu",
+    .expected_pattern = {"ipv6", "2001:0DB8:0:CD30::", NULL}
+  },
+  /* test_number_matches */
+  {
+    .node_to_insert = {"@NUMBER:number@", NULL},
+    .key = "12345 hihihi",
+    .expected_pattern = {"number", "12345", NULL}
+  },
+  {
+    .node_to_insert = {"@NUMBER:number@", NULL},
+    .key = "12345 hihihi",
+    .expected_pattern = {"number", "12345", NULL}
+  },
+  {
+    .node_to_insert = {"@NUMBER:number@", NULL},
+    .key = "0xaf12345 hihihi",
+    .expected_pattern = {"number", "0xaf12345", NULL}
+  },
+  {
+    .node_to_insert = {"@NUMBER:number@", NULL},
+    .key = "0xAF12345 hihihi",
+    .expected_pattern = {"number", "0xAF12345", NULL}
+  },
+  {
+    .node_to_insert = {"@NUMBER:number@", NULL},
+    .key = "+0xAF12345 hihihi",
+    .expected_pattern = {"number", "+0xAF12345", NULL}
+  },
+  {
+    .node_to_insert = {"@NUMBER:number@", NULL},
+    .key = "-0xAF12345 hihihi",
+    .expected_pattern = {"number", "-0xAF12345", NULL}
+  },
+  {
+    .node_to_insert = {"@NUMBER:number@", NULL},
+    .key = "0x12345 hihihi",
+    .expected_pattern = {"number", "0x12345", NULL}
+  },
+  {
+    .node_to_insert = {"@NUMBER:number@", NULL},
+    .key = "0XABCDEF12345ABCDEF hihihi",
+    .expected_pattern = {"number", "0XABCDEF12345ABCDEF", NULL}
+  },
+  {
+    .node_to_insert = {"@NUMBER:number@", NULL},
+    .key = "-12345 hihihi",
+    .expected_pattern = {"number", "-12345", NULL}
+  },
+  {
+    .node_to_insert = {"@NUMBER:number@", NULL},
+    .key = "+12345 hihihi",
+    .expected_pattern = {"number", "+12345", NULL}
+  },
+  {
+    .node_to_insert = {"@NUMBER:number@", NULL},
+    .key = "v12345",
+    .expected_pattern = {NULL}
+  },
+  /* test_qstring_matches */
+  {
+    .node_to_insert = {"@QSTRING:qstring:'@", NULL},
+    .key = "'quoted string' hehehe",
+    .expected_pattern = {"qstring", "quoted string", NULL}
+  },
+  {
+    .node_to_insert = {"@QSTRING:qstring:()@", NULL},
+    .key = "(quoted string) hehehe",
+    .expected_pattern = {"qstring", "quoted string", NULL}
+  },
+  {
+    .node_to_insert = {"@QSTRING:qstring:()@", NULL},
+    .key = "(nested (quoted string())) hehehe",
+    .expected_pattern = {"qstring", "nested (quoted string())", NULL}
+  },
+  {
+    .node_to_insert = {"@QSTRING:qstring:()@", NULL},
+    .key = "(unbalanced (nested (quoted string())) hehehe",
+    .expected_pattern = {NULL}
+  },
+  {
+    .node_to_insert = {"@QSTRING:qstring:'@", NULL},
+    .key = "v12345",
+    .expected_pattern = {NULL}
+  },
+  /* test_estring_matches */
+  {
+    .node_to_insert = {"ddd @ESTRING:estring::@",
+      "dddd @ESTRING:estring::*@",
+      "dddd2 @ESTRING:estring::*@ d",
+      "zzz @ESTRING:test:gép@",
+      NULL
+    },
+    .key = "ddd estring: hehehe",
+    .expected_pattern = {"estring", "estring", NULL},
+  },
+  {
+    .node_to_insert = {"ddd @ESTRING:estring::@",
+      "dddd @ESTRING:estring::*@",
+      "dddd2 @ESTRING:estring::*@ d",
+      "zzz @ESTRING:test:gép@",
+      NULL
+    },
+    .key = "ddd v12345",
+    .expected_pattern = {NULL},
+  },
+  {
+    .node_to_insert = {"ddd @ESTRING:estring::@",
+      "dddd @ESTRING:estring::*@",
+      "dddd2 @ESTRING:estring::*@ d",
+      "zzz @ESTRING:test:gép@",
+      NULL
+    },
+    .key = "dddd estring:* hehehe",
+    .expected_pattern = {"estring", "estring", NULL},
+  },
+  {
+    .node_to_insert = {"ddd @ESTRING:estring::@",
+      "dddd @ESTRING:estring::*@",
+      "dddd2 @ESTRING:estring::*@ d",
+      "zzz @ESTRING:test:gép@",
+      NULL
+    },
+    .key = "dddd estring:estring:* hehehe",
+    .expected_pattern = {"estring", "estring:estring", NULL},
+  },
+  {
+    .node_to_insert = {"ddd @ESTRING:estring::@",
+      "dddd @ESTRING:estring::*@",
+      "dddd2 @ESTRING:estring::*@ d",
+      "zzz @ESTRING:test:gép@",
+      NULL
+    },
+    .key = "dddd estring:estring::* hehehe",
+    .expected_pattern = {"estring", "estring:estring:", NULL},
+  },
+  {
+    .node_to_insert = {"ddd @ESTRING:estring::@",
+      "dddd @ESTRING:estring::*@",
+      "dddd2 @ESTRING:estring::*@ d",
+      "zzz @ESTRING:test:gép@",
+      NULL
+    },
+    .key = "dddd2 estring:estring::* d",
+    .expected_pattern = {"estring", "estring:estring:", NULL}
+  },
+  {
+    .node_to_insert = {"ddd @ESTRING:estring::@",
+      "dddd @ESTRING:estring::*@",
+      "dddd2 @ESTRING:estring::*@ d",
+      "zzz @ESTRING:test:gép@",
+      NULL
+    },
+    .key = "dddd2 estring:estring::* ",
+    .expected_pattern = {NULL},
+  },
+  {
+    .node_to_insert = {"ddd @ESTRING:estring::@",
+      "dddd @ESTRING:estring::*@",
+      "dddd2 @ESTRING:estring::*@ d",
+      "zzz @ESTRING:test:gép@",
+      NULL
+    },
+    .key = "dddd2 estring:estring::*",
+    .expected_pattern = {NULL},
+  },
+  {
+    .node_to_insert = {"ddd @ESTRING:estring::@",
+      "dddd @ESTRING:estring::*@",
+      "dddd2 @ESTRING:estring::*@ d",
+      "zzz @ESTRING:test:gép@",
+      NULL
+    },
+    .key = "dddd2 estring:estring:*",
+    .expected_pattern = {NULL}
+  },
+  {
+    .node_to_insert = {"ddd @ESTRING:estring::@",
+      "dddd @ESTRING:estring::*@",
+      "dddd2 @ESTRING:estring::*@ d",
+      "zzz @ESTRING:test:gép@",
+      NULL
+    },
+    .key = "dddd2 estring:estring",
+    .expected_pattern = {NULL},
+  },
+  {
+    .node_to_insert = {"ddd @ESTRING:estring::@",
+      "dddd @ESTRING:estring::*@",
+      "dddd2 @ESTRING:estring::*@ d",
+      "zzz @ESTRING:test:gép@",
+      NULL
+    },
+    .key = "dddd v12345",
+    .expected_pattern = {NULL},
+  },
+  {
+    .node_to_insert = {"ddd @ESTRING:estring::@",
+      "dddd @ESTRING:estring::*@",
+      "dddd2 @ESTRING:estring::*@ d",
+      "zzz @ESTRING:test:gép@",
+      NULL
+    },
+    .key = "zzz árvíztűrőtükörfúrógép",
+    .expected_pattern = {"test", "árvíztűrőtükörfúró", NULL},
+  },
+  /* test_string_matches */
+  {
+    .node_to_insert = {"@STRING:string@", NULL},
+    .key = "string hehehe",
+    .expected_pattern = {"string", "string", NULL},
+  },
+  /* test_float_matches */
+  {
+    .node_to_insert = {"@FLOAT:float@", NULL},
+    .key = "12345 hihihi",
+    .expected_pattern = {"float", "12345", NULL},
+  },
+  {
+    .node_to_insert = {"@FLOAT:float@", NULL},
+    .key = "12345hihihi",
+    .expected_pattern = {"float", "12345", NULL},
+  },
+  {
+    .node_to_insert = {"@FLOAT:float@", NULL},
+    .key = "12.345hihihi",
+    .expected_pattern = {"float", "12.345", NULL},
+  },
+  {
+    .node_to_insert = {"@FLOAT:float@", NULL},
+    .key = "12.345.hihihi",
+    .expected_pattern = {"float", "12.345", NULL},
+  },
+  {
+    .node_to_insert = {"@FLOAT:float@", NULL},
+    .key = "12.345.6hihihi",
+    .expected_pattern = {"float", "12.345", NULL},
+  },
+  {
+    .node_to_insert = {"@FLOAT:float@", NULL},
+    .key = "12345.hihihi",
+    .expected_pattern = {"float", "12345.", NULL}
+  },
+  {
+    .node_to_insert = {"@FLOAT:float@", NULL},
+    .key = "-12.345 hihihi",
+    .expected_pattern = {"float", "-12.345", NULL},
+  },
+  {
+    .node_to_insert = {"@FLOAT:float@", NULL},
+    .key = "-12.345e12 hihihi",
+    .expected_pattern = {"float", "-12.345e12", NULL},
+  },
+  {
+    .node_to_insert = {"@FLOAT:float@", NULL},
+    .key = "-12.345e-12 hihihi",
+    .expected_pattern = {"float", "-12.345e-12", NULL},
+  },
+  {
+    .node_to_insert = {"@FLOAT:float@", NULL},
+    .key = "12.345e12 hihihi",
+    .expected_pattern = {"float", "12.345e12", NULL}
+  },
+  {
+    .node_to_insert = {"@FLOAT:float@", NULL},
+    .key = "12.345e-12 hihihi",
+    .expected_pattern = {"float", "12.345e-12", NULL},
+  },
+  {
+    .node_to_insert = {"@FLOAT:float@", NULL},
+    .key = "12.345e+12 hihihi",
+    .expected_pattern = {"float", "12.345e+12", NULL},
+  },
+  {
+    .node_to_insert = {"@FLOAT:float@", NULL},
+    .key = "-12.345E12 hihihi",
+    .expected_pattern = {"float", "-12.345E12", NULL},
+  },
+  {
+    .node_to_insert = {"@FLOAT:float@", NULL},
+    .key = "-12.345E-12 hihihi",
+    .expected_pattern = {"float", "-12.345E-12", NULL},
+  },
+  {
+    .node_to_insert = {"@FLOAT:float@", NULL},
+    .key = "+12.345E12 hihihi",
+    .expected_pattern = {"float", "+12.345E12", NULL},
+  },
+  {
+    .node_to_insert = {"@FLOAT:float@", NULL},
+    .key = "+12.345E+12 hihihi",
+    .expected_pattern = {"float", "+12.345E+12", NULL},
+  },
+  {
+    .node_to_insert = {"@FLOAT:float@", NULL},
+    .key = "12.345E12 hihihi",
+    .expected_pattern = {"float", "12.345E12", NULL},
+  },
+  {
+    .node_to_insert = {"@FLOAT:float@", NULL},
+    .key = "12.345E-12 hihihi",
+    .expected_pattern = {"float", "12.345E-12", NULL},
+  },
+  {
+    .node_to_insert = {"@FLOAT:float@", NULL},
+    .key = "v12345",
+    .expected_pattern = {NULL},
+  },
+  {
+    .node_to_insert = {"@FLOAT:float@", NULL},
+    .key = "12345.hihihi",
+    .expected_pattern = {"float", "12345.", NULL},
+  },
+  /* test_set_matches */
+  {
+    .node_to_insert = {"@SET:set:  @", NULL},
+    .key = " aaa",
+    .expected_pattern = {"set", " ", NULL},
+  },
+  {
+    .node_to_insert = {"@SET:set:  @", NULL},
+    .key = "  aaa",
+    .expected_pattern = {"set", "  ", NULL},
+  },
+  {
+    .node_to_insert = {"@SET:set:  @", NULL},
+    .key = "  ",
+    .expected_pattern = {"set", "  ", NULL},
+  },
+  /* test_optional_set_matches */
+  {
+    .node_to_insert = {"@OPTIONALSET:set:  @", NULL},
+    .key = " aaa",
+    .expected_pattern = {"set", " ", NULL},
+  },
+  {
+    .node_to_insert = {"@OPTIONALSET:set:  @", NULL},
+    .key = "  aaa",
+    .expected_pattern = {"set", "  ", NULL},
+  },
+  {
+    .node_to_insert = {"@OPTIONALSET:set:  @", NULL},
+    .key = "aaa",
+    .expected_pattern = {"set", "", NULL},
+  },
+  {
+    .node_to_insert = {"@OPTIONALSET:set:  @", NULL},
+    .key = "  ",
+    .expected_pattern = {"set", "  ", NULL},
+  },
+  /* test_optional_set_matches at the end */
+  {
+    .node_to_insert = {"@QSTRING:q:[]@@OPTIONALSET:s: @", NULL},
+    .key = "[AAA]  ",
+    .expected_pattern = {"q", "AAA", "s", "  ", NULL},
+  },
+  {
+    .node_to_insert = {"@QSTRING:q:[]@@OPTIONALSET:s: @", NULL},
+    .key = "[AAA]",
+    .expected_pattern = {"q", "AAA", "s", "", NULL},
+  },
+  /* test_mcaddr_matches */
+  {
+    .node_to_insert = {"@MACADDR:macaddr@", NULL},
+    .key = "82:63:25:93:eb:51.iii",
+    .expected_pattern = {"macaddr", "82:63:25:93:eb:51", NULL},
+  },
+  {
+    .node_to_insert = {"@MACADDR:macaddr@", NULL},
+    .key = "82:63:25:93:EB:51.iii",
+    .expected_pattern = {"macaddr", "82:63:25:93:EB:51", NULL},
+  },
+  /* test_email_matches */
+  {
+    .node_to_insert = {"@EMAIL:email:[<]>@", NULL },
+    .key = "blint@balabit.hu",
+    .expected_pattern = {"email", "blint@balabit.hu", NULL},
+  },
+  {
+    .node_to_insert = {"@EMAIL:email:[<]>@", NULL },
+    .key = "<blint@balabit.hu>",
+    .expected_pattern = {"email", "blint@balabit.hu", NULL},
+  },
+  {
+    .node_to_insert = {"@EMAIL:email:[<]>@", NULL },
+    .key = "[blint@balabit.hu]",
+    .expected_pattern = {"email", "blint@balabit.hu", NULL},
+  },
+  {
+    .node_to_insert = {"@EMAIL:email:[<]>@", NULL },
+    .key = "a@b.c",
+    .expected_pattern = {"email", "a@b.c", NULL},
+  },
+  {
+    .node_to_insert = {"@EMAIL:email:[<]>@", NULL },
+    .key = "<a@b.c>",
+    .expected_pattern = {"email", "a@b.c", NULL},
+  },
+  /* test_hostname_matches */
+  {
+    .node_to_insert = {"@HOSTNAME:hostname@", NULL},
+    .key = "www.example.org",
+    .expected_pattern = {"hostname", "www.example.org", NULL},
+  },
+  {
+    .node_to_insert = {"@HOSTNAME:hostname@", NULL},
+    .key = "www.example.org. kkk",
+    .expected_pattern = {"hostname", "www.example.org.", NULL},
+  },
+  /* test_lladdr_matches */
+  {
+    .node_to_insert = {"@LLADDR:lladdr6:6@", NULL},
+    .key = "83:63:25:93:eb:51:aa:bb.iii",
+    .expected_pattern = {"lladdr6", "83:63:25:93:eb:51", NULL},
+  },
+  {
+    .node_to_insert = {"@LLADDR:lladdr6:6@", NULL},
+    .key = "83:63:25:93:EB:51:aa:bb.iii",
+    .expected_pattern = {"lladdr6", "83:63:25:93:EB:51", NULL},
+  },
+  /* test_pcre_matches */
+  {
+    .node_to_insert = {"jjj @PCRE:regexp:[abc]+@", "jjjj @PCRE:regexp:[abc]+@d foobar", NULL},
+    .key = "jjj abcabcd",
+    .expected_pattern = {"regexp", "abcabc", NULL},
+  },
+  {
+    .node_to_insert = {"jjj @PCRE:regexp:[abc]+@", "jjjj @PCRE:regexp:[abc]+@d foobar", NULL},
+    .key = "jjjj abcabcd foobar",
+    .expected_pattern = {"regexp", "abcabc", NULL},
+  },
+  {
+    .node_to_insert = {"@PCRE:regexp:(foo|bar)@", NULL},
+    .key = "foo",
+    .expected_pattern = {"regexp", "foo", NULL},
+  },
+  {
+    .node_to_insert = {"@PCRE:regexp:(?:foo|bar)@", NULL},
+    .key = "foo",
+    .expected_pattern = {"regexp", "foo", NULL},
+  },
+  /* test_nlstring_matches */
+  {
+    .node_to_insert = {"@NLSTRING:nlstring@", NULL},
+    .key = "foobar\r\nbaz",
+    .expected_pattern = {"nlstring", "foobar", NULL},
+  },
+  {
+    .node_to_insert = {"@NLSTRING:nlstring@", NULL},
+    .key = "foobar\nbaz",
+    .expected_pattern = {"nlstring", "foobar", NULL},
+  },
+  {
+    .node_to_insert = {"@NLSTRING:nlstring@", NULL},
+    .key = "\nbaz",
+    .expected_pattern = {"nlstring", "", NULL},
+  },
+  {
+    .node_to_insert = {"@NLSTRING:nlstring@", NULL},
+    .key = "\r\nbaz",
+    .expected_pattern = {"nlstring", "", NULL},
+  },
+  {
+    .node_to_insert = {"@NLSTRING:nlstring@", NULL},
+    .key = "foobar\r\n",
+    .expected_pattern = {"nlstring", "foobar", NULL},
+  },
+  {
+    .node_to_insert = {"@NLSTRING:nlstring@", NULL},
+    .key = "foobar\n",
+    .expected_pattern = {"nlstring", "foobar", NULL},
+  },
+  {
+    .node_to_insert = {"@NLSTRING:nlstring@", NULL},
+    .key = "foobar",
+    .expected_pattern = {"nlstring", "foobar", NULL},
+  }
+};
 
-ParameterizedTest(RadixTestParam *param, dbparser, test_radix_search_matches, .init = test_setup, .fini = test_teardown)
+StaticParameterizedTest(RadixTestParam *param, parser_params, dbparser, test_radix_search_matches, .init = test_setup,
+                        .fini = test_teardown)
 {
   RNode *root = r_new_node("", NULL);
 

@@ -22,7 +22,7 @@
  */
 
 #include <criterion/criterion.h>
-#include <criterion/parameterized.h>
+#include "libtest/parameterized.h"
 
 #include "patternize.h"
 #include "logmsg/logmsg.h"
@@ -97,62 +97,58 @@ typedef struct _patternize_params
   const gchar *expected;
 } PatternizeParams;
 
-ParameterizedTestParameters(dbparser, test_frequent_words)
+static PatternizeParams test_frequent_words_params[] =
 {
-  static PatternizeParams parser_params[] =
   {
-    {
-      .logs = "a\n",
-      .support = 0,
-      .expected = "0 a:1"
-    },
-    {
-      .logs = "a b\n",
-      .support = 0,
-      .expected = "0 a:1,1 b:1",
-    },
-    {
-      .logs = "a a\nb b",
-      .support = 0,
-      .expected = "0 a:1,1 a:1,0 b:1,1 b:1",
-    },
-    {
-      .logs = "a b\nb a",
-      .support = 0,
-      .expected = "0 a:1,1 a:1,0 b:1,1 b:1",
-    },
-    {
-      .logs = "a b\na b",
-      .support = 0,
-      .expected = "0 a:2,1 b:2",
-    },
-    /* support threshold tests */
-    {
-      .logs = "a\n",
-      .support = 1,
-      .expected = "",
-    },
-    {
-      .logs = "a b\n",
-      .support = 1,
-      .expected = "",
-    },
-    {
-      .logs = "a b\nb a",
-      .support = 1,
-      .expected = "0 a:1,1 a:1,0 b:1,1 b:1",
-    },
-    {
-      .logs = "a b\nb a\na c",
-      .support = 2,
-      .expected = "0 a:2",
-    }
-  };
+    .logs = "a\n",
+    .support = 0,
+    .expected = "0 a:1"
+  },
+  {
+    .logs = "a b\n",
+    .support = 0,
+    .expected = "0 a:1,1 b:1",
+  },
+  {
+    .logs = "a a\nb b",
+    .support = 0,
+    .expected = "0 a:1,1 a:1,0 b:1,1 b:1",
+  },
+  {
+    .logs = "a b\nb a",
+    .support = 0,
+    .expected = "0 a:1,1 a:1,0 b:1,1 b:1",
+  },
+  {
+    .logs = "a b\na b",
+    .support = 0,
+    .expected = "0 a:2,1 b:2",
+  },
+  /* support threshold tests */
+  {
+    .logs = "a\n",
+    .support = 1,
+    .expected = "",
+  },
+  {
+    .logs = "a b\n",
+    .support = 1,
+    .expected = "",
+  },
+  {
+    .logs = "a b\nb a",
+    .support = 1,
+    .expected = "0 a:1,1 a:1,0 b:1,1 b:1",
+  },
+  {
+    .logs = "a b\nb a\na c",
+    .support = 2,
+    .expected = "0 a:2",
+  }
+};
 
-  return cr_make_param_array(PatternizeParams, parser_params, G_N_ELEMENTS(parser_params));
-}
-
-ParameterizedTest(PatternizeParams *param, dbparser, test_frequent_words, .init = setup, .fini = teardown)
+StaticParameterizedTest(PatternizeParams *param, test_frequent_words_params, dbparser, test_frequent_words,
+                        .init = setup, .fini = teardown)
 {
   int i, twopass;
   gchar **expecteds;
@@ -295,74 +291,70 @@ _clusters_find(gpointer key, gpointer value, gpointer user_data)
     return FALSE;
 }
 
-ParameterizedTestParameters(dbparser, test_find_clusters_slct)
+static PatternizeParams test_find_clusters_slct_params[] =
 {
-  static PatternizeParams parser_params[] =
   {
-    {
-      .logs = "a\n",
-      .support = 0,
-      .expected = "0:1",
-    },
-    {
-      .logs = "a\nb\n",
-      .support = 0,
-      .expected = "0:1|1:1",
-    },
-    {
-      .logs = "a\nb\na\nb\n",
-      .support = 2,
-      .expected = "0,2:2|1,3:2",
-    },
-    {
-      .logs = "alma korte korte alma\nalma korte\nbela korte\nalma\n",
-      .support = 1,
-      .expected = "0:1|1:1|2:1|3:1",
-    },
-    {
-      .logs = "alma korte\n"
-              "alma korte\n"
-              "alma korte\n"
-              "alma korte\n"
-              "bela korte\n"
-              "bela korte\n"
-              "alma\n",
-      .support = 2,
-      .expected = "0,1,2,3:4|4,5:2",
-    },
-    {
-      .logs = "alma korte\n"
-              "alma korte\n"
-              "alma korte\n"
-              "alma korte\n"
-              "bela korte\n"
-              "bela korte\n"
-              "alma\n",
-      .support = 3,
-      .expected = "0,1,2,3:4",
-    },
-    {
-      .logs = "alma korte asdf1 labda\n"
-              "alma korte asdf2 labda\n"
-              "alma korte asdf3 labda\n"
-              "sallala\n",
-      .support = 3,
-      .expected = "0,1,2:3",
-    },
-    {
-      .logs = "alma korte asdf1 labda qwe1\n"
-              "alma korte asdf2 labda qwe2\n"
-              "alma korte asdf3 labda qwe3\n"
-              "sallala\n",
-      .support = 3,
-      .expected = "0,1,2:3",
-    }
-  };
+    .logs = "a\n",
+    .support = 0,
+    .expected = "0:1",
+  },
+  {
+    .logs = "a\nb\n",
+    .support = 0,
+    .expected = "0:1|1:1",
+  },
+  {
+    .logs = "a\nb\na\nb\n",
+    .support = 2,
+    .expected = "0,2:2|1,3:2",
+  },
+  {
+    .logs = "alma korte korte alma\nalma korte\nbela korte\nalma\n",
+    .support = 1,
+    .expected = "0:1|1:1|2:1|3:1",
+  },
+  {
+    .logs = "alma korte\n"
+            "alma korte\n"
+            "alma korte\n"
+            "alma korte\n"
+            "bela korte\n"
+            "bela korte\n"
+            "alma\n",
+    .support = 2,
+    .expected = "0,1,2,3:4|4,5:2",
+  },
+  {
+    .logs = "alma korte\n"
+            "alma korte\n"
+            "alma korte\n"
+            "alma korte\n"
+            "bela korte\n"
+            "bela korte\n"
+            "alma\n",
+    .support = 3,
+    .expected = "0,1,2,3:4",
+  },
+  {
+    .logs = "alma korte asdf1 labda\n"
+            "alma korte asdf2 labda\n"
+            "alma korte asdf3 labda\n"
+            "sallala\n",
+    .support = 3,
+    .expected = "0,1,2:3",
+  },
+  {
+    .logs = "alma korte asdf1 labda qwe1\n"
+            "alma korte asdf2 labda qwe2\n"
+            "alma korte asdf3 labda qwe3\n"
+            "sallala\n",
+    .support = 3,
+    .expected = "0,1,2:3",
+  }
+};
 
-  return cr_make_param_array(PatternizeParams, parser_params, G_N_ELEMENTS(parser_params));
-}
-
-ParameterizedTest(PatternizeParams *param, dbparser, test_find_clusters_slct, .init = setup, .fini = teardown)
+StaticParameterizedTest(PatternizeParams *param, test_find_clusters_slct_params, dbparser, test_find_clusters_slct,
+                        .init = setup, .fini = teardown)
 {
   int i, j;
   gchar **expecteds;

@@ -21,7 +21,7 @@
 
 
 #include <criterion/criterion.h>
-#include <criterion/parameterized.h>
+#include "libtest/parameterized.h"
 
 #include "xml.h"
 #include "scanner/xml-scanner/xml-scanner.h"
@@ -79,28 +79,23 @@ typedef struct
   const gchar *input;
 } XMLFailTestCase;
 
-ParameterizedTestParameters(xmlparser, invalid_inputs)
+static XMLFailTestCase invalid_inputs_params[] =
 {
-  static XMLFailTestCase test_cases[] =
-  {
-    {"simple string"},
-    {"<tag></missingtag>"},
-    {"<tag></tag></extraclosetag>"},
-    {"<tag><tag></tag>"},
-    {"<tag1><tag2>closewrongorder</tag1></tag2>"},
-    {"<tag id=\"missingquote></tag>"},
-    {"<tag id='missingquote></tag>"},
-    {"<tag id=missingquote\"></tag>"},
-    {"<tag id=missingquote'></tag>"},
-    {"<space in tag/>"},
-    {"</>"},
-    {"<tag></tag>>"},
-  };
+  {"simple string"},
+  {"<tag></missingtag>"},
+  {"<tag></tag></extraclosetag>"},
+  {"<tag><tag></tag>"},
+  {"<tag1><tag2>closewrongorder</tag1></tag2>"},
+  {"<tag id=\"missingquote></tag>"},
+  {"<tag id='missingquote></tag>"},
+  {"<tag id=missingquote\"></tag>"},
+  {"<tag id=missingquote'></tag>"},
+  {"<space in tag/>"},
+  {"</>"},
+  {"<tag></tag>>"},
+};
 
-  return cr_make_param_array(XMLFailTestCase, test_cases, sizeof(test_cases) / sizeof(test_cases[0]));
-}
-
-ParameterizedTest(XMLFailTestCase *test_case, xmlparser, invalid_inputs)
+StaticParameterizedTest(XMLFailTestCase *test_case, invalid_inputs_params, xmlparser, invalid_inputs)
 {
   LogParser *xml_parser = _construct_xml_parser((XMLParserTestOptions) {});
 
@@ -122,24 +117,19 @@ typedef struct
   const gchar *value;
 } ValidXMLTestCase;
 
-ParameterizedTestParameters(xmlparser, valid_inputs)
+static ValidXMLTestCase valid_inputs_params[] =
 {
-  static ValidXMLTestCase test_cases[] =
-  {
-    {"<tag1>value1</tag1>", ".xml.tag1", "value1"},
-    {"<tag1 attr='attr_value'>value1</tag1>", ".xml.tag1._attr", "attr_value"},
-    {"<tag1><tag2>value2</tag2></tag1>", ".xml.tag1.tag2", "value2"},
-    {"<tag1>part1<tag2>value2</tag2>part2</tag1>", ".xml.tag1", "part1part2"},
-    {"<tag1><tag11></tag11><tag12><tag121>value</tag121></tag12></tag1>", ".xml.tag1.tag12.tag121", "value"},
-    {"<tag1><tag11></tag11><tag12><tag121 attr1='1' attr2='2'>value</tag121></tag12></tag1>", ".xml.tag1.tag12.tag121._attr1", "1"},
-    {"<tag1><tag11></tag11><tag12><tag121 attr1='1' attr2='2'>value</tag121></tag12></tag1>", ".xml.tag1.tag12.tag121._attr2", "2"},
-    {"<tag1><tag1>t11.1</tag1><tag1>t11.2</tag1></tag1>", ".xml.tag1.tag1", "t11.1,t11.2"},
-  };
+  {"<tag1>value1</tag1>", ".xml.tag1", "value1"},
+  {"<tag1 attr='attr_value'>value1</tag1>", ".xml.tag1._attr", "attr_value"},
+  {"<tag1><tag2>value2</tag2></tag1>", ".xml.tag1.tag2", "value2"},
+  {"<tag1>part1<tag2>value2</tag2>part2</tag1>", ".xml.tag1", "part1part2"},
+  {"<tag1><tag11></tag11><tag12><tag121>value</tag121></tag12></tag1>", ".xml.tag1.tag12.tag121", "value"},
+  {"<tag1><tag11></tag11><tag12><tag121 attr1='1' attr2='2'>value</tag121></tag12></tag1>", ".xml.tag1.tag12.tag121._attr1", "1"},
+  {"<tag1><tag11></tag11><tag12><tag121 attr1='1' attr2='2'>value</tag121></tag12></tag1>", ".xml.tag1.tag12.tag121._attr2", "2"},
+  {"<tag1><tag1>t11.1</tag1><tag1>t11.2</tag1></tag1>", ".xml.tag1.tag1", "t11.1,t11.2"},
+};
 
-  return cr_make_param_array(ValidXMLTestCase, test_cases, sizeof(test_cases) / sizeof(test_cases[0]));
-}
-
-ParameterizedTest(ValidXMLTestCase *test_cases, xmlparser, valid_inputs)
+StaticParameterizedTest(ValidXMLTestCase *test_cases, valid_inputs_params, xmlparser, valid_inputs)
 {
   LogParser *xml_parser = _construct_xml_parser((XMLParserTestOptions) {});
 
@@ -167,58 +157,54 @@ typedef struct
   const gchar *value;
 } ListCreateTestCase;
 
-ParameterizedTestParameters(xmlparser, list_quoting_array_elements)
+static ListCreateTestCase list_quoting_array_elements_params[] =
 {
-  static ListCreateTestCase test_cases[] =
   {
-    {
-      "<tag1><simple_namevalue> value,2 </simple_namevalue></tag1>", .create_lists = FALSE,
-      ".xml.tag1.simple_namevalue", " value,2 "
-    },
-    {
-      "<tag1><simple_namevalue> value,2 </simple_namevalue></tag1>", .create_lists = TRUE,
-      ".xml.tag1.simple_namevalue", "\" value,2 \""
-    },
-    {
-      "<events><data>1</data><data> 2 </data></events>", .create_lists = TRUE,
-      ".xml.events.data", "1,\" 2 \""
-    },
-    {
-      "<events><data>1</data><data> 2 </data><data>3,</data><data>4</data></events>", .create_lists = TRUE,
-      ".xml.events.data", "1,\" 2 \",\"3,\",4"
-    },
-    {
-      "<noquotes><data>one</data><data>two</data><data>three</data></noquotes>", .create_lists = TRUE,
-      ".xml.noquotes.data", "one,two,three"
-    },
-    {
-      "<array><data>,first element</data><data>second element</data><data>Third element</data></array>",
-      .create_lists = TRUE,
-      ".xml.array.data", "\",first element\",\"second element\",\"Third element\""
-    },
-    {
-      "<array><data>\"Quoted elements escaped with single-quote\"</data><data>unquoted with double-quotes</data></array>",
-      .create_lists = TRUE,
-      ".xml.array.data", "'\"Quoted elements escaped with single-quote\"',\"unquoted with double-quotes\""
-    },
-    {
-      "<array><data>\'Single quoted becomes quoted\'</data><data>simple</data></array>", .create_lists = TRUE,
-      ".xml.array.data", "\"'Single quoted becomes quoted'\",simple"
-    },
-    {
-      "<events><data>first</data><data>second</data></events>", .create_lists = FALSE,
-      ".xml.events.data", "firstsecond"
-    },
-    {
-      "<events><data>first</data><data>second, long entry</data></events>", .create_lists = FALSE,
-      ".xml.events.data", "firstsecond, long entry"
-    },
-  };
+    "<tag1><simple_namevalue> value,2 </simple_namevalue></tag1>", .create_lists = FALSE,
+    ".xml.tag1.simple_namevalue", " value,2 "
+  },
+  {
+    "<tag1><simple_namevalue> value,2 </simple_namevalue></tag1>", .create_lists = TRUE,
+    ".xml.tag1.simple_namevalue", "\" value,2 \""
+  },
+  {
+    "<events><data>1</data><data> 2 </data></events>", .create_lists = TRUE,
+    ".xml.events.data", "1,\" 2 \""
+  },
+  {
+    "<events><data>1</data><data> 2 </data><data>3,</data><data>4</data></events>", .create_lists = TRUE,
+    ".xml.events.data", "1,\" 2 \",\"3,\",4"
+  },
+  {
+    "<noquotes><data>one</data><data>two</data><data>three</data></noquotes>", .create_lists = TRUE,
+    ".xml.noquotes.data", "one,two,three"
+  },
+  {
+    "<array><data>,first element</data><data>second element</data><data>Third element</data></array>",
+    .create_lists = TRUE,
+    ".xml.array.data", "\",first element\",\"second element\",\"Third element\""
+  },
+  {
+    "<array><data>\"Quoted elements escaped with single-quote\"</data><data>unquoted with double-quotes</data></array>",
+    .create_lists = TRUE,
+    ".xml.array.data", "'\"Quoted elements escaped with single-quote\"',\"unquoted with double-quotes\""
+  },
+  {
+    "<array><data>\'Single quoted becomes quoted\'</data><data>simple</data></array>", .create_lists = TRUE,
+    ".xml.array.data", "\"'Single quoted becomes quoted'\",simple"
+  },
+  {
+    "<events><data>first</data><data>second</data></events>", .create_lists = FALSE,
+    ".xml.events.data", "firstsecond"
+  },
+  {
+    "<events><data>first</data><data>second, long entry</data></events>", .create_lists = FALSE,
+    ".xml.events.data", "firstsecond, long entry"
+  },
+};
 
-  return cr_make_param_array(ListCreateTestCase, test_cases, sizeof(test_cases) / sizeof(test_cases[0]));
-}
-
-ParameterizedTest(ListCreateTestCase *test_cases, xmlparser, list_quoting_array_elements)
+StaticParameterizedTest(ListCreateTestCase *test_cases, list_quoting_array_elements_params, xmlparser,
+                        list_quoting_array_elements)
 {
   LogParser *xml_parser = _construct_xml_parser((XMLParserTestOptions)
   {
@@ -268,56 +254,52 @@ typedef struct
   const gchar *value;
 } SingleExcludeTagTestCase;
 
-ParameterizedTestParameters(xmlparser, single_exclude_tags)
+static SingleExcludeTagTestCase single_exclude_tags_params[] =
 {
-  static SingleExcludeTagTestCase test_cases[] =
+  /* Negative */
+  {"<longtag>Text</longtag>", "longtag", ".xml.longtag", ""},
+  {"<longtag>Text</longtag>", "longt?g", ".xml.longtag", ""},
+  {"<longtag>Text</longtag>", "?ongtag", ".xml.longtag", ""},
+  {"<longtag>Text</longtag>", "longta?", ".xml.longtag", ""},
+  {"<longtag>Text</longtag>", "lon?ta?", ".xml.longtag", ""},
+  {"<longtag>Text</longtag>", "longt*", ".xml.longtag", ""},
+  {"<longtag>Text</longtag>", "*tag", ".xml.longtag", ""},
+  {"<longtag>Text</longtag>", "lo*gtag", ".xml.longtag", ""},
+  {"<longtag>Text</longtag>", "long*ag", ".xml.longtag", ""},
+  {"<longtag>Text</longtag>", "*", ".xml.longtag", ""},
+  /* Positive */
+  {"<longtag>Text</longtag>", "longtag_break", ".xml.longtag", "Text"},
+  {"<longtag>Text</longtag>", "longt?g_break", ".xml.longtag", "Text"},
+  {"<longtag>Text</longtag>", "?ongtag_break", ".xml.longtag", "Text"},
+  {"<longtag>Text</longtag>", "longta?_break", ".xml.longtag", "Text"},
+  {"<longtag>Text</longtag>", "lon?ta?_break", ".xml.longtag", "Text"},
+  {"<longtag>Text</longtag>", "break_longt*", ".xml.longtag", "Text"},
+  {"<longtag>Text</longtag>", "lo*gtag_break", ".xml.longtag", "Text"},
+  {"<longtag>Text</longtag>", "break_long*ag", ".xml.longtag", "Text"},
+  {"<longtag>Text</longtag>", "*tag_break", ".xml.longtag", "Text"},
+  /* Complex */
+  {"<longtag>Outer<inner>Inner</inner></longtag>", "inner", ".xml.longtag", "Outer"},
+  {"<longtag>Outer<inner>Inner</inner></longtag>", "inner", ".xml.longtag.inner", ""},
   {
-    /* Negative */
-    {"<longtag>Text</longtag>", "longtag", ".xml.longtag", ""},
-    {"<longtag>Text</longtag>", "longt?g", ".xml.longtag", ""},
-    {"<longtag>Text</longtag>", "?ongtag", ".xml.longtag", ""},
-    {"<longtag>Text</longtag>", "longta?", ".xml.longtag", ""},
-    {"<longtag>Text</longtag>", "lon?ta?", ".xml.longtag", ""},
-    {"<longtag>Text</longtag>", "longt*", ".xml.longtag", ""},
-    {"<longtag>Text</longtag>", "*tag", ".xml.longtag", ""},
-    {"<longtag>Text</longtag>", "lo*gtag", ".xml.longtag", ""},
-    {"<longtag>Text</longtag>", "long*ag", ".xml.longtag", ""},
-    {"<longtag>Text</longtag>", "*", ".xml.longtag", ""},
-    /* Positive */
-    {"<longtag>Text</longtag>", "longtag_break", ".xml.longtag", "Text"},
-    {"<longtag>Text</longtag>", "longt?g_break", ".xml.longtag", "Text"},
-    {"<longtag>Text</longtag>", "?ongtag_break", ".xml.longtag", "Text"},
-    {"<longtag>Text</longtag>", "longta?_break", ".xml.longtag", "Text"},
-    {"<longtag>Text</longtag>", "lon?ta?_break", ".xml.longtag", "Text"},
-    {"<longtag>Text</longtag>", "break_longt*", ".xml.longtag", "Text"},
-    {"<longtag>Text</longtag>", "lo*gtag_break", ".xml.longtag", "Text"},
-    {"<longtag>Text</longtag>", "break_long*ag", ".xml.longtag", "Text"},
-    {"<longtag>Text</longtag>", "*tag_break", ".xml.longtag", "Text"},
-    /* Complex */
-    {"<longtag>Outer<inner>Inner</inner></longtag>", "inner", ".xml.longtag", "Outer"},
-    {"<longtag>Outer<inner>Inner</inner></longtag>", "inner", ".xml.longtag.inner", ""},
-    {
-      "<exclude>excude1Text</exclude><notexclude>notexcludeText<exclude>excude2Text</exclude></notexclude>",
-      "exclude", ".xml.exclude", ""
-    },
-    {
-      "<exclude>excude1Text</exclude><notexclude>notexcludeText<exclude>excude2Text</exclude></notexclude>",
-      "exclude", ".xml.exclude", ""
-    },
-    {
-      "<exclude>excude1Text</exclude><notexclude>notexcludeText<exclude>excude2Text</exclude></notexclude>",
-      "exclude", ".xml.notexclude.exclude", ""
-    },
-    {
-      "<exclude>excude1Text</exclude><notexclude>notexcludeText<exclude>excude2Text</exclude></notexclude>",
-      "exclude", ".xml.notexclude", "notexcludeText"
-    },
-  };
+    "<exclude>excude1Text</exclude><notexclude>notexcludeText<exclude>excude2Text</exclude></notexclude>",
+    "exclude", ".xml.exclude", ""
+  },
+  {
+    "<exclude>excude1Text</exclude><notexclude>notexcludeText<exclude>excude2Text</exclude></notexclude>",
+    "exclude", ".xml.exclude", ""
+  },
+  {
+    "<exclude>excude1Text</exclude><notexclude>notexcludeText<exclude>excude2Text</exclude></notexclude>",
+    "exclude", ".xml.notexclude.exclude", ""
+  },
+  {
+    "<exclude>excude1Text</exclude><notexclude>notexcludeText<exclude>excude2Text</exclude></notexclude>",
+    "exclude", ".xml.notexclude", "notexcludeText"
+  },
+};
 
-  return cr_make_param_array(SingleExcludeTagTestCase, test_cases, sizeof(test_cases) / sizeof(test_cases[0]));
-}
-
-ParameterizedTest(SingleExcludeTagTestCase *test_cases, xmlparser, single_exclude_tags)
+StaticParameterizedTest(SingleExcludeTagTestCase *test_cases, single_exclude_tags_params, xmlparser,
+                        single_exclude_tags)
 {
   GList *exclude_tags = NULL;
   exclude_tags = g_list_append(exclude_tags, test_cases->pattern);
@@ -411,22 +393,18 @@ typedef struct
   const gchar *value;
 } PrefixTestCase;
 
-ParameterizedTestParameters(xmlparser, test_prefix)
+static PrefixTestCase test_prefix_params[] =
 {
-  static PrefixTestCase test_cases[] =
-  {
-    {"<tag>default_prefix</tag>", NULL, ".xml.tag", "default_prefix"},
-    {"<tag>foo</tag>", "", "tag", "foo"},
-    {"<tag>foobar</tag>", ".xmlparser", ".xmlparser.tag", "foobar"},
-    {"<tag>baz</tag>", ".meta.", ".meta.tag", "baz"},
-    {"<top><t1>asd</t1><t2>jkl</t2></top>", "", "top.t2", "jkl"},
-    {"<top><t1>1</t1><t2><t3>3</t3></t2></top>", "", "top.t2.t3", "3"},
-    {"<top><t1>1</t1><t2><t3>3</t3></t2><misc>value</misc></top>", "", "top.misc", "value"},
-  };
-  return cr_make_param_array(PrefixTestCase, test_cases, sizeof(test_cases)/sizeof(test_cases[0]));
-}
+  {"<tag>default_prefix</tag>", NULL, ".xml.tag", "default_prefix"},
+  {"<tag>foo</tag>", "", "tag", "foo"},
+  {"<tag>foobar</tag>", ".xmlparser", ".xmlparser.tag", "foobar"},
+  {"<tag>baz</tag>", ".meta.", ".meta.tag", "baz"},
+  {"<top><t1>asd</t1><t2>jkl</t2></top>", "", "top.t2", "jkl"},
+  {"<top><t1>1</t1><t2><t3>3</t3></t2></top>", "", "top.t2.t3", "3"},
+  {"<top><t1>1</t1><t2><t3>3</t3></t2><misc>value</misc></top>", "", "top.misc", "value"},
+};
 
-ParameterizedTest(PrefixTestCase *test_cases, xmlparser, test_prefix)
+StaticParameterizedTest(PrefixTestCase *test_cases, test_prefix_params, xmlparser, test_prefix)
 {
   LogParser *xml_parser = _construct_xml_parser((XMLParserTestOptions)
   {

@@ -21,7 +21,7 @@
  */
 
 #include <criterion/criterion.h>
-#include <criterion/parameterized.h>
+#include "libtest/parameterized.h"
 
 #include "apphook.h"
 #include "logmsg/logmsg.h"
@@ -214,18 +214,14 @@ Test(cluster_query_key, test_global_key)
 
 TestSuite(stats_query, .init = _initialize_counter_hash, .fini = app_shutdown);
 
-ParameterizedTestParameters(stats_query, test_stats_query_get_log_msg_out)
+static QueryTestCase test_stats_query_get_log_msg_out_params[] =
 {
-  static QueryTestCase test_cases[] =
-  {
-    {"dst.tcp.guba.labda.received.dropped", "0"},
-    {"src.pipe.guba.gumi.disz.frozen.suppressed", "0"},
-  };
+  {"dst.tcp.guba.labda.received.dropped", "0"},
+  {"src.pipe.guba.gumi.disz.frozen.suppressed", "0"},
+};
 
-  return cr_make_param_array(QueryTestCase, test_cases, sizeof(test_cases) / sizeof(test_cases[0]));
-}
-
-ParameterizedTest(QueryTestCase *test_cases, stats_query, test_stats_query_get_log_msg_out)
+StaticParameterizedTest(QueryTestCase *test_cases, test_stats_query_get_log_msg_out_params, stats_query,
+                        test_stats_query_get_log_msg_out)
 {
   const gchar *actual;
   LogMessage *msg = log_msg_new_empty();
@@ -239,28 +235,24 @@ ParameterizedTest(QueryTestCase *test_cases, stats_query, test_stats_query_get_l
 }
 
 
-ParameterizedTestParameters(stats_query, test_stats_query_get_str_out)
+static QueryTestCase test_stats_query_get_str_out_params[] =
 {
-  static QueryTestCase test_cases[] =
-  {
-    {"center.*.*", "center.guba.polo.frozen.suppressed: 12\n"},
-    {"cent*", "center.guba.polo.frozen.suppressed: 12\n"},
-    {"src.pipe.guba.gumi.disz.*.*", "src.pipe.guba.gumi.disz.frozen.suppressed: 0\n"},
-    {"src.pipe.guba.gumi.*.*", "src.pipe.guba.gumi.disz.frozen.suppressed: 0\n"},
-    {"src.pipe.guba.*.*", "src.pipe.guba.gumi.disz.frozen.suppressed: 0\n"},
-    {"src.pipe.*.*", "src.pipe.guba.gumi.disz.frozen.suppressed: 0\n"},
-    {"dst.*.*", "dst.tcp.guba.labda.received.dropped: 0\n"},
-    {"dst.*.*.*", "dst.tcp.guba.labda.received.dropped: 0\n"},
-    {"dst.*.*.*.*", "dst.tcp.guba.labda.received.dropped: 0\n"},
-    {"src.java.*.*", ""},
-    {"src.ja*.*.*", ""},
-    {"global.id.instance.name", "global.id.instance.name: 0\n"},
-  };
+  {"center.*.*", "center.guba.polo.frozen.suppressed: 12\n"},
+  {"cent*", "center.guba.polo.frozen.suppressed: 12\n"},
+  {"src.pipe.guba.gumi.disz.*.*", "src.pipe.guba.gumi.disz.frozen.suppressed: 0\n"},
+  {"src.pipe.guba.gumi.*.*", "src.pipe.guba.gumi.disz.frozen.suppressed: 0\n"},
+  {"src.pipe.guba.*.*", "src.pipe.guba.gumi.disz.frozen.suppressed: 0\n"},
+  {"src.pipe.*.*", "src.pipe.guba.gumi.disz.frozen.suppressed: 0\n"},
+  {"dst.*.*", "dst.tcp.guba.labda.received.dropped: 0\n"},
+  {"dst.*.*.*", "dst.tcp.guba.labda.received.dropped: 0\n"},
+  {"dst.*.*.*.*", "dst.tcp.guba.labda.received.dropped: 0\n"},
+  {"src.java.*.*", ""},
+  {"src.ja*.*.*", ""},
+  {"global.id.instance.name", "global.id.instance.name: 0\n"},
+};
 
-  return cr_make_param_array(QueryTestCase, test_cases, sizeof(test_cases) / sizeof(test_cases[0]));
-}
-
-ParameterizedTest(QueryTestCase *test_cases, stats_query, test_stats_query_get_str_out)
+StaticParameterizedTest(QueryTestCase *test_cases, test_stats_query_get_str_out_params, stats_query,
+                        test_stats_query_get_str_out)
 {
   GString *result = g_string_new("");
 
@@ -271,18 +263,14 @@ ParameterizedTest(QueryTestCase *test_cases, stats_query, test_stats_query_get_s
   g_string_free(result, TRUE);
 }
 
-ParameterizedTestParameters(stats_query, test_stats_query_get_sum_log_msg_out)
+static QueryTestCase test_stats_query_get_sum_log_msg_out_params[] =
 {
-  static QueryTestCase test_cases[] =
-  {
-    {"dst.tcp.guba.labda.received.dropped", "0"},
-    {"src.pipe.guba.gumi.disz.frozen.suppressed", "0"},
-  };
+  {"dst.tcp.guba.labda.received.dropped", "0"},
+  {"src.pipe.guba.gumi.disz.frozen.suppressed", "0"},
+};
 
-  return cr_make_param_array(QueryTestCase, test_cases, sizeof(test_cases) / sizeof(test_cases[0]));
-}
-
-ParameterizedTest(QueryTestCase *test_cases, stats_query, test_stats_query_get_sum_log_msg_out)
+StaticParameterizedTest(QueryTestCase *test_cases, test_stats_query_get_sum_log_msg_out_params, stats_query,
+                        test_stats_query_get_sum_log_msg_out)
 {
   const gchar *actual;
   LogMessage *msg = log_msg_new_empty();
@@ -295,24 +283,20 @@ ParameterizedTest(QueryTestCase *test_cases, stats_query, test_stats_query_get_s
   log_msg_unref(msg);
 }
 
-ParameterizedTestParameters(stats_query, test_stats_query_get_sum_str_out)
+static QueryTestCase test_stats_query_get_sum_str_out_params[] =
 {
-  static QueryTestCase test_cases[] =
-  {
-    {"*", "12"},
-    {"center.*.*", "12"},
-    {"cent*", "12"},
-    {"src.pipe.guba.gumi.disz.*.*", "0"},
-    {"*.tcp.guba.*.*", "0"},
-    {"*.guba.*i.*.*", "0"},
-    {"*.guba.gum?.*.*", "0"},
-    {"src.ja*.*.*", ""},
-  };
+  {"*", "12"},
+  {"center.*.*", "12"},
+  {"cent*", "12"},
+  {"src.pipe.guba.gumi.disz.*.*", "0"},
+  {"*.tcp.guba.*.*", "0"},
+  {"*.guba.*i.*.*", "0"},
+  {"*.guba.gum?.*.*", "0"},
+  {"src.ja*.*.*", ""},
+};
 
-  return cr_make_param_array(QueryTestCase, test_cases, sizeof(test_cases) / sizeof(test_cases[0]));
-}
-
-ParameterizedTest(QueryTestCase *test_cases, stats_query, test_stats_query_get_sum_str_out)
+StaticParameterizedTest(QueryTestCase *test_cases, test_stats_query_get_sum_str_out_params, stats_query,
+                        test_stats_query_get_sum_str_out)
 {
   GString *result = g_string_new("");
 
@@ -323,22 +307,17 @@ ParameterizedTest(QueryTestCase *test_cases, stats_query, test_stats_query_get_s
   g_string_free(result, TRUE);
 }
 
-ParameterizedTestParameters(stats_query, test_stats_query_list)
+static QueryTestCase test_stats_query_list_params[] =
 {
-  static QueryTestCase test_cases[] =
-  {
-    {"center.*.*", "center.guba.polo.frozen.suppressed\n"},
-    {"cent*", "center.guba.polo.frozen.suppressed\n"},
-    {"src.pipe.guba.gumi.disz.*.*", "src.pipe.guba.gumi.disz.frozen.suppressed\n"},
-    {"src.pipe.*.*", "src.pipe.guba.gumi.disz.frozen.suppressed\n"},
-    {"src.java.*.*", ""},
-    {"src.ja*.*.*", ""},
-  };
+  {"center.*.*", "center.guba.polo.frozen.suppressed\n"},
+  {"cent*", "center.guba.polo.frozen.suppressed\n"},
+  {"src.pipe.guba.gumi.disz.*.*", "src.pipe.guba.gumi.disz.frozen.suppressed\n"},
+  {"src.pipe.*.*", "src.pipe.guba.gumi.disz.frozen.suppressed\n"},
+  {"src.java.*.*", ""},
+  {"src.ja*.*.*", ""},
+};
 
-  return cr_make_param_array(QueryTestCase, test_cases, sizeof(test_cases) / sizeof(test_cases[0]));
-}
-
-ParameterizedTest(QueryTestCase *test_cases, stats_query, test_stats_query_list)
+StaticParameterizedTest(QueryTestCase *test_cases, test_stats_query_list_params, stats_query, test_stats_query_list)
 {
   GString *result = g_string_new("");
 

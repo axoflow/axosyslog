@@ -21,7 +21,7 @@
  */
 
 #include <criterion/criterion.h>
-#include <criterion/parameterized.h>
+#include "libtest/parameterized.h"
 #include "libtest/cr_template.h"
 
 #include "context-info-db.h"
@@ -363,45 +363,40 @@ struct TestNVPairPrefix
   const gchar *prefix;
 };
 
-ParameterizedTestParameters(add_contextual_data, test_import_with_prefix)
+static struct TestNVPairPrefix params[] =
 {
-  static struct TestNVPairPrefix params[] =
   {
-    {
-      .expected = {.name = "name1", .value = "value1"},
-      .prefix = NULL
-    },
-    {
-      .expected = {.name = "name1", .value = "value1"},
-      .prefix = ""
-    },
-    {
-      .expected = {.name = "aaaname1", .value = "value1"},
-      .prefix = "aaa"
-    },
-    {
-      .expected = {.name = "aaa.name1", .value = "value1"},
-      .prefix = "aaa."
-    },
-    {
-      .expected = {.name = ".aaa.name1", .value = "value1"},
-      .prefix = ".aaa."
-    },
-    {
-      .expected = {.name = ".name1", .value = "value1"},
-      .prefix = "."
-    },
-    {
-      .expected = {.name = "....name1", .value = "value1"},
-      .prefix = "...."
-    }
-  };
-  size_t nb_params = sizeof (params) / sizeof (struct TestNVPairPrefix);
-  return cr_make_param_array(struct TestNVPairPrefix, params, nb_params);
-}
+    .expected = {.name = "name1", .value = "value1"},
+    .prefix = NULL
+  },
+  {
+    .expected = {.name = "name1", .value = "value1"},
+    .prefix = ""
+  },
+  {
+    .expected = {.name = "aaaname1", .value = "value1"},
+    .prefix = "aaa"
+  },
+  {
+    .expected = {.name = "aaa.name1", .value = "value1"},
+    .prefix = "aaa."
+  },
+  {
+    .expected = {.name = ".aaa.name1", .value = "value1"},
+    .prefix = ".aaa."
+  },
+  {
+    .expected = {.name = ".name1", .value = "value1"},
+    .prefix = "."
+  },
+  {
+    .expected = {.name = "....name1", .value = "value1"},
+    .prefix = "...."
+  }
+};
 
 
-ParameterizedTest(struct TestNVPairPrefix *param, add_contextual_data, test_import_with_prefix)
+StaticParameterizedTest(struct TestNVPairPrefix *param, params, add_contextual_data, test_import_with_prefix)
 {
   gchar csv_content[] = "selector1,name1,value1";
 

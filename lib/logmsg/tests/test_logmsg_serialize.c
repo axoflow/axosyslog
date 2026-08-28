@@ -22,7 +22,7 @@
  */
 
 #include <criterion/criterion.h>
-#include <criterion/parameterized.h>
+#include "libtest/parameterized.h"
 #include "libtest/msg_parse_lib.h"
 #include "libtest/cr_template.h"
 #include "libtest/stopwatch.h"
@@ -314,23 +314,18 @@ Test(logmsg_serialize, existing_and_given_ts_processed)
 #include "messages/axosyslog-4.23.0-msg.h"
 
 
-ParameterizedTestParameters(logmsg_serialize, test_deserialization_of_legacy_messages)
+static struct iovec test_deserialization_of_legacy_messages_params[] =
 {
-  static struct iovec messages[] =
-  {
-    { serialized_message_axosyslog_4_23_0, sizeof(serialized_message_axosyslog_4_23_0) },
-    { serialized_message_3_17_1, sizeof(serialized_message_3_17_1) },
-    { serialized_message_3_18_1, sizeof(serialized_message_3_18_1) },
-    { serialized_message_3_21_1, sizeof(serialized_message_3_21_1) },
-    { serialized_message_3_25_1, sizeof(serialized_message_3_25_1) },
-    { serialized_message_3_26_1, sizeof(serialized_message_3_26_1) },
-    { serialized_message_3_28_1, sizeof(serialized_message_3_28_1) },
-    { serialized_message_3_29_1, sizeof(serialized_message_3_29_1) },
-    { serialized_message_3_30_1, sizeof(serialized_message_3_30_1) },
-  };
-
-  return cr_make_param_array(struct iovec, messages, G_N_ELEMENTS(messages));
-}
+  { serialized_message_axosyslog_4_23_0, sizeof(serialized_message_axosyslog_4_23_0) },
+  { serialized_message_3_17_1, sizeof(serialized_message_3_17_1) },
+  { serialized_message_3_18_1, sizeof(serialized_message_3_18_1) },
+  { serialized_message_3_21_1, sizeof(serialized_message_3_21_1) },
+  { serialized_message_3_25_1, sizeof(serialized_message_3_25_1) },
+  { serialized_message_3_26_1, sizeof(serialized_message_3_26_1) },
+  { serialized_message_3_28_1, sizeof(serialized_message_3_28_1) },
+  { serialized_message_3_29_1, sizeof(serialized_message_3_29_1) },
+  { serialized_message_3_30_1, sizeof(serialized_message_3_30_1) },
+};
 
 
 Test(logmsg_serialize, test_deserialization_of_pe_message)
@@ -340,7 +335,8 @@ Test(logmsg_serialize, test_deserialization_of_pe_message)
   log_msg_unref(msg);
 }
 
-ParameterizedTest(struct iovec *param, logmsg_serialize, test_deserialization_of_legacy_messages)
+StaticParameterizedTest(struct iovec *param, test_deserialization_of_legacy_messages_params, logmsg_serialize,
+                        test_deserialization_of_legacy_messages)
 {
   LogMessage *msg = _deserialize_message_from_string(param->iov_base, param->iov_len);
   _check_deserialized_message_all_fields(msg);

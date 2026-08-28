@@ -22,7 +22,7 @@
 
 #include <criterion/criterion.h>
 #include <evtlog.h>
-#include <criterion/parameterized.h>
+#include "libtest/parameterized.h"
 
 struct evt_tag_mem_params
 {
@@ -31,21 +31,16 @@ struct evt_tag_mem_params
   gchar *new_value;
 };
 
-ParameterizedTestParameters(evt_tag_mem, test)
+static struct evt_tag_mem_params test_params[] =
 {
-  static struct evt_tag_mem_params params[] =
-  {
-    {"", 1, "."},
-    {"\0", 2, ".."},
-    {"foo", 4, "foo."},
-    {"\0\0foo", 6, "..foo."},
-    {"\0a\0b\0c", 7, ".a.b.c."},
-  };
+  {"", 1, "."},
+  {"\0", 2, ".."},
+  {"foo", 4, "foo."},
+  {"\0\0foo", 6, "..foo."},
+  {"\0a\0b\0c", 7, ".a.b.c."},
+};
 
-  return cr_make_param_array(struct evt_tag_mem_params, params, sizeof (params) / sizeof(struct evt_tag_mem_params));
-}
-
-ParameterizedTest(struct evt_tag_mem_params *params, evt_tag_mem, test)
+StaticParameterizedTest(struct evt_tag_mem_params *params, test_params, evt_tag_mem, test)
 {
   gchar *key = "test:evt_tag_mem";
   EVTCONTEXT *ctx = evt_ctx_init("evt_tag_mem", LOG_AUTH);

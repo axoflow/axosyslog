@@ -20,7 +20,7 @@
  *
  */
 #include <criterion/criterion.h>
-#include <criterion/parameterized.h>
+#include "libtest/parameterized.h"
 #include "logmsg/logmsg.h"
 #include "apphook.h"
 #include "logpipe.h"
@@ -133,25 +133,19 @@ struct nv_pair
   const gchar *value;
 };
 
-ParameterizedTestParameters(msg_ack, test_cloned_clone)
+static struct nv_pair params[] =
 {
-  static struct nv_pair params[] =
-  {
-    /* This ensures, that the clone message has own payload */
-    {"test", "value"},
-    /* Using these parameters the clone message won't has own payload */
-    {"", ""}
-  };
-
-  size_t nb_params = sizeof (params) / sizeof (struct nv_pair);
-  return cr_make_param_array(struct nv_pair, params, nb_params);
-}
+  /* This ensures, that the clone message has own payload */
+  {"test", "value"},
+  /* Using these parameters the clone message won't has own payload */
+  {"", ""}
+};
 
 /*
  * This tests that the clone does not break the acknowledgement or the reference counting,
  * whether the cloned message has own payload or not
  */
-ParameterizedTest(struct nv_pair *param, msg_ack, test_cloned_clone)
+StaticParameterizedTest(struct nv_pair *param, params, msg_ack, test_cloned_clone)
 {
   AckRecord *t = ack_record_new();
   t->init(t);

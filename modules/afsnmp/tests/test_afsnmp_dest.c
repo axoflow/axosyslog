@@ -21,7 +21,7 @@
  */
 
 #include <criterion/criterion.h>
-#include <criterion/parameterized.h>
+#include "libtest/parameterized.h"
 
 #include "apphook.h"
 #include "afsnmpdest.h"
@@ -190,57 +190,53 @@ typedef struct _snmp_obj_test_param
   gboolean  expected_result;
 } SnmpObjTestParam;
 
-ParameterizedTestParameters(test_snmp_dest, test_set_snmp_obj)
+static SnmpObjTestParam parser_params[] =
 {
-  static SnmpObjTestParam parser_params[] =
   {
-    {
-      .objectid = ".1.3.6.1.4.1.18372.3.1.1.1.1.3.0",
-      .type = "integer",
-      .value = "123",
-      .expected_result = TRUE
-    },
-    {
-      .objectid = ".1.3.6.1.4.1.18372.3.1.1.1.1.3.0",
-      .type = "timeticks",
-      .value = "0",
-      .expected_result = TRUE
-    },
-    {
-      .objectid = ".1.3.6.1.4.1.18372.3.1.1.1.1.1.0",
-      .type = "octetstring",
-      .value = "Test SNMP trap",
-      .expected_result = TRUE
-    },
-    {
-      .objectid = ".1.3.6.1.4.1.18372.3.1.1.1.1.3.0",
-      .type = "counter32",
-      .value = "1234567",
-      .expected_result = TRUE
-    },
-    {
-      .objectid = ".1.3.6.1.4.1.18372.3.1.1.1.1.3.0",
-      .type = "ipaddress",
-      .value = "127.0.0.1",
-      .expected_result = TRUE
-    },
-    {
-      .objectid = ".1.3.6.1.6.3.1.1.4.1.0",
-      .type = "objectid",
-      .value = ".1.3.6.1.4.1.18372.3.1.1.1.2.1",
-      .expected_result = TRUE
-    },
-    {
-      .objectid = "my_object_id",
-      .type = "pacalporkolt",
-      .value = "krumpli",
-      .expected_result = FALSE
-    },
-  };
-  return cr_make_param_array(SnmpObjTestParam, parser_params, G_N_ELEMENTS(parser_params));
-}
+    .objectid = ".1.3.6.1.4.1.18372.3.1.1.1.1.3.0",
+    .type = "integer",
+    .value = "123",
+    .expected_result = TRUE
+  },
+  {
+    .objectid = ".1.3.6.1.4.1.18372.3.1.1.1.1.3.0",
+    .type = "timeticks",
+    .value = "0",
+    .expected_result = TRUE
+  },
+  {
+    .objectid = ".1.3.6.1.4.1.18372.3.1.1.1.1.1.0",
+    .type = "octetstring",
+    .value = "Test SNMP trap",
+    .expected_result = TRUE
+  },
+  {
+    .objectid = ".1.3.6.1.4.1.18372.3.1.1.1.1.3.0",
+    .type = "counter32",
+    .value = "1234567",
+    .expected_result = TRUE
+  },
+  {
+    .objectid = ".1.3.6.1.4.1.18372.3.1.1.1.1.3.0",
+    .type = "ipaddress",
+    .value = "127.0.0.1",
+    .expected_result = TRUE
+  },
+  {
+    .objectid = ".1.3.6.1.6.3.1.1.4.1.0",
+    .type = "objectid",
+    .value = ".1.3.6.1.4.1.18372.3.1.1.1.2.1",
+    .expected_result = TRUE
+  },
+  {
+    .objectid = "my_object_id",
+    .type = "pacalporkolt",
+    .value = "krumpli",
+    .expected_result = FALSE
+  },
+};
 
-ParameterizedTest(SnmpObjTestParam *param, test_snmp_dest, test_set_snmp_obj)
+StaticParameterizedTest(SnmpObjTestParam *param, parser_params, test_snmp_dest, test_set_snmp_obj)
 {
   LogDriver *driver = (LogDriver *)snmp_driver;
 

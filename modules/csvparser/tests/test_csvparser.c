@@ -22,7 +22,7 @@
  */
 
 #include <criterion/criterion.h>
-#include <criterion/parameterized.h>
+#include "libtest/parameterized.h"
 
 #include "csvparser.h"
 #include "logmsg/logmsg.h"
@@ -54,722 +54,717 @@ typedef struct _csvparser_test_param
   const gchar *expected_values[13];
 } CsvParserTestParam;
 
-ParameterizedTestParameters(parser, test_csv_parser)
+static CsvParserTestParam parser_params[] =
 {
-  static CsvParserTestParam parser_params[] =
+  // string delim & single char & a char is in the string
   {
-    // string delim & single char & a char is in the string
-    {
-      .msg = "PTHREAD support :initialized",
-      .max_columns = -1,
-      .drop_invalid = FALSE,
-      .dialect = CSV_SCANNER_ESCAPE_NONE,
-      .flags = 0,
-      .delimiters = " ",
-      .quotes = NULL,
-      .null_value = NULL,
-      .string_delims = {" :", NULL},
-      .expected_values = {"PTHREAD", "support", "initialized", NULL}
-    },
+    .msg = "PTHREAD support :initialized",
+    .max_columns = -1,
+    .drop_invalid = FALSE,
+    .dialect = CSV_SCANNER_ESCAPE_NONE,
+    .flags = 0,
+    .delimiters = " ",
+    .quotes = NULL,
+    .null_value = NULL,
+    .string_delims = {" :", NULL},
+    .expected_values = {"PTHREAD", "support", "initialized", NULL}
+  },
 
-    // empty message
-    {
-      .msg = "",
-      .max_columns = -1,
-      .drop_invalid = TRUE,
-      .dialect = CSV_SCANNER_ESCAPE_NONE,
-      .flags = 0,
-      .delimiters = " ",
-      .quotes = NULL,
-      .null_value = NULL,
-      .string_delims = {" :", NULL},
-      .expected_values = {NULL}
-    },
+  // empty message
+  {
+    .msg = "",
+    .max_columns = -1,
+    .drop_invalid = TRUE,
+    .dialect = CSV_SCANNER_ESCAPE_NONE,
+    .flags = 0,
+    .delimiters = " ",
+    .quotes = NULL,
+    .null_value = NULL,
+    .string_delims = {" :", NULL},
+    .expected_values = {NULL}
+  },
 
-    // string delim & single char & a char not in the string
-    {
-      .msg = "PTHREAD,support :initialized",
-      .max_columns = -1,
-      .drop_invalid = FALSE,
-      .dialect = CSV_SCANNER_ESCAPE_NONE,
-      .flags = 0,
-      .delimiters = ",",
-      .quotes = NULL,
-      .null_value = NULL,
-      .string_delims = {" :", NULL},
-      .expected_values = {"PTHREAD", "support", "initialized", NULL}
-    },
+  // string delim & single char & a char not in the string
+  {
+    .msg = "PTHREAD,support :initialized",
+    .max_columns = -1,
+    .drop_invalid = FALSE,
+    .dialect = CSV_SCANNER_ESCAPE_NONE,
+    .flags = 0,
+    .delimiters = ",",
+    .quotes = NULL,
+    .null_value = NULL,
+    .string_delims = {" :", NULL},
+    .expected_values = {"PTHREAD", "support", "initialized", NULL}
+  },
 
-    // string delim & multi char & a char is in the string
-    {
-      .msg = "PTHREAD support :initialized",
-      .max_columns = -1,
-      .drop_invalid = FALSE,
-      .dialect = CSV_SCANNER_ESCAPE_NONE,
-      .flags = 0,
-      .delimiters = " :",
-      .quotes = NULL,
-      .null_value = NULL,
-      .string_delims = {" :", NULL},
-      .expected_values = {"PTHREAD", "support", "initialized", NULL}
-    },
+  // string delim & multi char & a char is in the string
+  {
+    .msg = "PTHREAD support :initialized",
+    .max_columns = -1,
+    .drop_invalid = FALSE,
+    .dialect = CSV_SCANNER_ESCAPE_NONE,
+    .flags = 0,
+    .delimiters = " :",
+    .quotes = NULL,
+    .null_value = NULL,
+    .string_delims = {" :", NULL},
+    .expected_values = {"PTHREAD", "support", "initialized", NULL}
+  },
 
-    // string delim & multi char & a char not in the string
-    {
-      .msg = "PTHREAD,support :initialized",
-      .max_columns = -1,
-      .drop_invalid = FALSE,
-      .dialect = CSV_SCANNER_ESCAPE_NONE,
-      .flags = 0,
-      .delimiters = ";,",
-      .quotes = NULL,
-      .null_value = NULL,
-      .string_delims = {" :", NULL},
-      .expected_values = {"PTHREAD", "support", "initialized", NULL}
-    },
+  // string delim & multi char & a char not in the string
+  {
+    .msg = "PTHREAD,support :initialized",
+    .max_columns = -1,
+    .drop_invalid = FALSE,
+    .dialect = CSV_SCANNER_ESCAPE_NONE,
+    .flags = 0,
+    .delimiters = ";,",
+    .quotes = NULL,
+    .null_value = NULL,
+    .string_delims = {" :", NULL},
+    .expected_values = {"PTHREAD", "support", "initialized", NULL}
+  },
 
-    // quote + string delim & multi char & char is in the string too
-    {
-      .msg = "'PTHREAD' 'support' :'initialized'",
-      .max_columns = -1,
-      .drop_invalid = FALSE,
-      .dialect = CSV_SCANNER_ESCAPE_NONE,
-      .flags = 0,
-      .delimiters = " :",
-      .quotes = "''",
-      .null_value = NULL,
-      .string_delims = {" :", NULL},
-      .expected_values = {"PTHREAD", "support", "initialized", NULL}
-    },
+  // quote + string delim & multi char & char is in the string too
+  {
+    .msg = "'PTHREAD' 'support' :'initialized'",
+    .max_columns = -1,
+    .drop_invalid = FALSE,
+    .dialect = CSV_SCANNER_ESCAPE_NONE,
+    .flags = 0,
+    .delimiters = " :",
+    .quotes = "''",
+    .null_value = NULL,
+    .string_delims = {" :", NULL},
+    .expected_values = {"PTHREAD", "support", "initialized", NULL}
+  },
 
-    // BE + quote + string delim & multi char & char is in the string too
-    {
-      .msg = "'PTHRE\\\'AD' 'support' :'initialized'",
-      .max_columns = -1,
-      .drop_invalid = FALSE,
-      .dialect = CSV_SCANNER_ESCAPE_BACKSLASH,
-      .flags = 0,
-      .delimiters = " :",
-      .quotes = "''",
-      .null_value = NULL,
-      .string_delims = {" :", NULL},
-      .expected_values = {"PTHRE'AD", "support", "initialized", NULL}
-    },
+  // BE + quote + string delim & multi char & char is in the string too
+  {
+    .msg = "'PTHRE\\\'AD' 'support' :'initialized'",
+    .max_columns = -1,
+    .drop_invalid = FALSE,
+    .dialect = CSV_SCANNER_ESCAPE_BACKSLASH,
+    .flags = 0,
+    .delimiters = " :",
+    .quotes = "''",
+    .null_value = NULL,
+    .string_delims = {" :", NULL},
+    .expected_values = {"PTHRE'AD", "support", "initialized", NULL}
+  },
 
-    // DCE + quote + string delim & multi char & char not in the string
-    {
-      .msg = "'PTHREAD','sup''port' :'initialized'",
-      .max_columns = -1,
-      .drop_invalid = FALSE,
-      .dialect = CSV_SCANNER_ESCAPE_DOUBLE_CHAR,
-      .flags = 0,
-      .delimiters = ";,",
-      .quotes = "''",
-      .null_value = NULL,
-      .string_delims = {" :", NULL},
-      .expected_values = {"PTHREAD", "sup'port", "initialized", NULL}
-    },
+  // DCE + quote + string delim & multi char & char not in the string
+  {
+    .msg = "'PTHREAD','sup''port' :'initialized'",
+    .max_columns = -1,
+    .drop_invalid = FALSE,
+    .dialect = CSV_SCANNER_ESCAPE_DOUBLE_CHAR,
+    .flags = 0,
+    .delimiters = ";,",
+    .quotes = "''",
+    .null_value = NULL,
+    .string_delims = {" :", NULL},
+    .expected_values = {"PTHREAD", "sup'port", "initialized", NULL}
+  },
 
-    {
-      .msg = "PTHREAD support initialized",
-      .max_columns = 3,
-      .drop_invalid = FALSE,
-      .dialect = CSV_SCANNER_ESCAPE_NONE,
-      .flags = 0,
-      .delimiters = " ",
-      .quotes = NULL,
-      .null_value = NULL,
-      .string_delims = {NULL},
-      .expected_values = {"PTHREAD", "support", "initialized", NULL}
-    },
+  {
+    .msg = "PTHREAD support initialized",
+    .max_columns = 3,
+    .drop_invalid = FALSE,
+    .dialect = CSV_SCANNER_ESCAPE_NONE,
+    .flags = 0,
+    .delimiters = " ",
+    .quotes = NULL,
+    .null_value = NULL,
+    .string_delims = {NULL},
+    .expected_values = {"PTHREAD", "support", "initialized", NULL}
+  },
 
-    {
-      .msg = "PTHREAD support initialized",
-      .max_columns = 2,
-      .drop_invalid = TRUE,
-      .dialect = CSV_SCANNER_ESCAPE_NONE,
-      .flags = 0,
-      .delimiters = " ",
-      .quotes = NULL,
-      .null_value = NULL,
-      .string_delims = {NULL},
-      .expected_values = {NULL}
-    },
+  {
+    .msg = "PTHREAD support initialized",
+    .max_columns = 2,
+    .drop_invalid = TRUE,
+    .dialect = CSV_SCANNER_ESCAPE_NONE,
+    .flags = 0,
+    .delimiters = " ",
+    .quotes = NULL,
+    .null_value = NULL,
+    .string_delims = {NULL},
+    .expected_values = {NULL}
+  },
 
-    {
-      .msg = "PTHREAD support initialized",
-      .max_columns = 2,
-      .drop_invalid = FALSE,
-      .dialect = CSV_SCANNER_ESCAPE_NONE,
-      .flags = CSV_SCANNER_GREEDY,
-      .delimiters = " ",
-      .quotes = NULL,
-      .null_value = NULL,
-      .string_delims = {NULL},
-      .expected_values = {"PTHREAD", "support initialized", NULL}
-    },
+  {
+    .msg = "PTHREAD support initialized",
+    .max_columns = 2,
+    .drop_invalid = FALSE,
+    .dialect = CSV_SCANNER_ESCAPE_NONE,
+    .flags = CSV_SCANNER_GREEDY,
+    .delimiters = " ",
+    .quotes = NULL,
+    .null_value = NULL,
+    .string_delims = {NULL},
+    .expected_values = {"PTHREAD", "support initialized", NULL}
+  },
 
-    {
-      .msg = "PTHREAD support initialized",
-      .max_columns = -1,
-      .drop_invalid = FALSE,
-      .dialect = CSV_SCANNER_ESCAPE_NONE,
-      .flags = 0,
-      .delimiters = " ,;",
-      .quotes = NULL,
-      .null_value = NULL,
-      .string_delims = {NULL},
-      .expected_values = {"PTHREAD", "support", "initialized", NULL}
-    },
+  {
+    .msg = "PTHREAD support initialized",
+    .max_columns = -1,
+    .drop_invalid = FALSE,
+    .dialect = CSV_SCANNER_ESCAPE_NONE,
+    .flags = 0,
+    .delimiters = " ,;",
+    .quotes = NULL,
+    .null_value = NULL,
+    .string_delims = {NULL},
+    .expected_values = {"PTHREAD", "support", "initialized", NULL}
+  },
 
-    {
-      .msg = "PTHREAD support initialized",
-      .max_columns = -1,
-      .drop_invalid = FALSE,
-      .dialect = CSV_SCANNER_ESCAPE_NONE,
-      .flags = 0,
-      .delimiters = " ,;",
-      .quotes = NULL,
-      .null_value = "support",
-      .string_delims = {NULL},
-      .expected_values = {"PTHREAD", "", "initialized", NULL}
-    },
+  {
+    .msg = "PTHREAD support initialized",
+    .max_columns = -1,
+    .drop_invalid = FALSE,
+    .dialect = CSV_SCANNER_ESCAPE_NONE,
+    .flags = 0,
+    .delimiters = " ,;",
+    .quotes = NULL,
+    .null_value = "support",
+    .string_delims = {NULL},
+    .expected_values = {"PTHREAD", "", "initialized", NULL}
+  },
 
-    {
-      .msg = "\"PTHREAD\" \"support\" \"initialized\"",
-      .max_columns = -1,
-      .drop_invalid = FALSE,
-      .dialect = CSV_SCANNER_ESCAPE_NONE,
-      .flags = 0,
-      .delimiters = " ",
-      .quotes = NULL,
-      .null_value = NULL,
-      .string_delims = {NULL},
-      .expected_values = {"PTHREAD", "support", "initialized", NULL}
-    },
+  {
+    .msg = "\"PTHREAD\" \"support\" \"initialized\"",
+    .max_columns = -1,
+    .drop_invalid = FALSE,
+    .dialect = CSV_SCANNER_ESCAPE_NONE,
+    .flags = 0,
+    .delimiters = " ",
+    .quotes = NULL,
+    .null_value = NULL,
+    .string_delims = {NULL},
+    .expected_values = {"PTHREAD", "support", "initialized", NULL}
+  },
 
-    {
-      .msg = "\"  PTHREAD  \" \" support\" \"initialized \"",
-      .max_columns = -1,
-      .drop_invalid = FALSE,
-      .dialect = CSV_SCANNER_ESCAPE_NONE,
-      .flags = CSV_SCANNER_STRIP_WHITESPACE,
-      .delimiters = " ",
-      .quotes = NULL,
-      .null_value = NULL,
-      .string_delims = {NULL},
-      .expected_values = {"PTHREAD", "support", "initialized", NULL}
-    },
+  {
+    .msg = "\"  PTHREAD  \" \" support\" \"initialized \"",
+    .max_columns = -1,
+    .drop_invalid = FALSE,
+    .dialect = CSV_SCANNER_ESCAPE_NONE,
+    .flags = CSV_SCANNER_STRIP_WHITESPACE,
+    .delimiters = " ",
+    .quotes = NULL,
+    .null_value = NULL,
+    .string_delims = {NULL},
+    .expected_values = {"PTHREAD", "support", "initialized", NULL}
+  },
 
-    {
-      .msg = "\"PTHREAD support\" \"initialized\"",
-      .max_columns = -1,
-      .drop_invalid = FALSE,
-      .dialect = CSV_SCANNER_ESCAPE_NONE,
-      .flags = 0,
-      .delimiters = " ",
-      .quotes = NULL,
-      .null_value = NULL,
-      .string_delims = {NULL},
-      .expected_values = {"PTHREAD support", "initialized", NULL}
-    },
+  {
+    .msg = "\"PTHREAD support\" \"initialized\"",
+    .max_columns = -1,
+    .drop_invalid = FALSE,
+    .dialect = CSV_SCANNER_ESCAPE_NONE,
+    .flags = 0,
+    .delimiters = " ",
+    .quotes = NULL,
+    .null_value = NULL,
+    .string_delims = {NULL},
+    .expected_values = {"PTHREAD support", "initialized", NULL}
+  },
 
-    {
-      .msg = "\"PTHREAD support initialized\"",
-      .max_columns = -1,
-      .drop_invalid = FALSE,
-      .dialect = CSV_SCANNER_ESCAPE_NONE,
-      .flags = 0,
-      .delimiters = " ",
-      .quotes = NULL,
-      .null_value = NULL,
-      .string_delims = {NULL},
-      .expected_values = {"PTHREAD support initialized", NULL}
-    },
+  {
+    .msg = "\"PTHREAD support initialized\"",
+    .max_columns = -1,
+    .drop_invalid = FALSE,
+    .dialect = CSV_SCANNER_ESCAPE_NONE,
+    .flags = 0,
+    .delimiters = " ",
+    .quotes = NULL,
+    .null_value = NULL,
+    .string_delims = {NULL},
+    .expected_values = {"PTHREAD support initialized", NULL}
+  },
 
-    {
-      .msg = "\"PTHREAD support initialized",
-      .max_columns = -1,
-      .drop_invalid = FALSE,
-      .dialect = CSV_SCANNER_ESCAPE_NONE,
-      .flags = 0,
-      .delimiters = " ",
-      .quotes = NULL,
-      .null_value = NULL,
-      .string_delims = {NULL},
-      .expected_values = {"PTHREAD support initialized", NULL}
-    },
+  {
+    .msg = "\"PTHREAD support initialized",
+    .max_columns = -1,
+    .drop_invalid = FALSE,
+    .dialect = CSV_SCANNER_ESCAPE_NONE,
+    .flags = 0,
+    .delimiters = " ",
+    .quotes = NULL,
+    .null_value = NULL,
+    .string_delims = {NULL},
+    .expected_values = {"PTHREAD support initialized", NULL}
+  },
 
-    {
-      .msg = "PTHREAD support initialized",
-      .max_columns = -1,
-      .drop_invalid = FALSE,
-      .dialect = CSV_SCANNER_ESCAPE_BACKSLASH,
-      .flags = 0,
-      .delimiters = " ",
-      .quotes = NULL,
-      .null_value = NULL,
-      .string_delims = {NULL},
-      .expected_values = {"PTHREAD", "support", "initialized", NULL}
-    },
+  {
+    .msg = "PTHREAD support initialized",
+    .max_columns = -1,
+    .drop_invalid = FALSE,
+    .dialect = CSV_SCANNER_ESCAPE_BACKSLASH,
+    .flags = 0,
+    .delimiters = " ",
+    .quotes = NULL,
+    .null_value = NULL,
+    .string_delims = {NULL},
+    .expected_values = {"PTHREAD", "support", "initialized", NULL}
+  },
 
-    {
-      .msg = "PTHREAD support initialized",
-      .max_columns = 2,
-      .drop_invalid = FALSE,
-      .dialect = CSV_SCANNER_ESCAPE_BACKSLASH,
-      .flags = CSV_SCANNER_GREEDY,
-      .delimiters = " ",
-      .quotes = NULL,
-      .null_value = NULL,
-      .string_delims = {NULL},
-      .expected_values = {"PTHREAD", "support initialized", NULL}
-    },
+  {
+    .msg = "PTHREAD support initialized",
+    .max_columns = 2,
+    .drop_invalid = FALSE,
+    .dialect = CSV_SCANNER_ESCAPE_BACKSLASH,
+    .flags = CSV_SCANNER_GREEDY,
+    .delimiters = " ",
+    .quotes = NULL,
+    .null_value = NULL,
+    .string_delims = {NULL},
+    .expected_values = {"PTHREAD", "support initialized", NULL}
+  },
 
-    {
-      .msg = "PTHREAD support initialized",
-      .max_columns = -1,
-      .drop_invalid = FALSE,
-      .dialect = CSV_SCANNER_ESCAPE_BACKSLASH,
-      .flags = 0,
-      .delimiters = " ;,",
-      .quotes = NULL,
-      .null_value = NULL,
-      .string_delims = {NULL},
-      .expected_values = {"PTHREAD", "support", "initialized", NULL}
-    },
+  {
+    .msg = "PTHREAD support initialized",
+    .max_columns = -1,
+    .drop_invalid = FALSE,
+    .dialect = CSV_SCANNER_ESCAPE_BACKSLASH,
+    .flags = 0,
+    .delimiters = " ;,",
+    .quotes = NULL,
+    .null_value = NULL,
+    .string_delims = {NULL},
+    .expected_values = {"PTHREAD", "support", "initialized", NULL}
+  },
 
-    {
-      .msg = "\"PTHREAD\" \"support\" \"initialized\"",
-      .max_columns = -1,
-      .drop_invalid = FALSE,
-      .dialect = CSV_SCANNER_ESCAPE_BACKSLASH,
-      .flags = 0,
-      .delimiters = " ",
-      .quotes = NULL,
-      .null_value = NULL,
-      .string_delims = {NULL},
-      .expected_values = {"PTHREAD", "support", "initialized", NULL}
-    },
+  {
+    .msg = "\"PTHREAD\" \"support\" \"initialized\"",
+    .max_columns = -1,
+    .drop_invalid = FALSE,
+    .dialect = CSV_SCANNER_ESCAPE_BACKSLASH,
+    .flags = 0,
+    .delimiters = " ",
+    .quotes = NULL,
+    .null_value = NULL,
+    .string_delims = {NULL},
+    .expected_values = {"PTHREAD", "support", "initialized", NULL}
+  },
 
-    {
-      .msg = "\"PTHREAD\" \"support\" \"initialized\"",
-      .max_columns = 2,
-      .drop_invalid = FALSE,
-      .dialect = CSV_SCANNER_ESCAPE_BACKSLASH,
-      .flags = CSV_SCANNER_GREEDY,
-      .delimiters = " ",
-      .quotes = NULL,
-      .null_value = NULL,
-      .string_delims = {NULL},
-      .expected_values = {"PTHREAD", "\"support\" \"initialized\"", NULL}
-    },
+  {
+    .msg = "\"PTHREAD\" \"support\" \"initialized\"",
+    .max_columns = 2,
+    .drop_invalid = FALSE,
+    .dialect = CSV_SCANNER_ESCAPE_BACKSLASH,
+    .flags = CSV_SCANNER_GREEDY,
+    .delimiters = " ",
+    .quotes = NULL,
+    .null_value = NULL,
+    .string_delims = {NULL},
+    .expected_values = {"PTHREAD", "\"support\" \"initialized\"", NULL}
+  },
 
-    {
-      .msg = "\"  PTHREAD \" \"  support\" \"initialized  \"",
-      .max_columns = -1,
-      .drop_invalid = FALSE,
-      .dialect = CSV_SCANNER_ESCAPE_BACKSLASH,
-      .flags = CSV_SCANNER_STRIP_WHITESPACE,
-      .delimiters = " ",
-      .quotes = NULL,
-      .null_value = NULL,
-      .string_delims = {NULL},
-      .expected_values = {"PTHREAD", "support", "initialized", NULL}
-    },
+  {
+    .msg = "\"  PTHREAD \" \"  support\" \"initialized  \"",
+    .max_columns = -1,
+    .drop_invalid = FALSE,
+    .dialect = CSV_SCANNER_ESCAPE_BACKSLASH,
+    .flags = CSV_SCANNER_STRIP_WHITESPACE,
+    .delimiters = " ",
+    .quotes = NULL,
+    .null_value = NULL,
+    .string_delims = {NULL},
+    .expected_values = {"PTHREAD", "support", "initialized", NULL}
+  },
 
-    {
-      .msg = "\"PTHREAD support\" \"initialized\"",
-      .max_columns = -1,
-      .drop_invalid = FALSE,
-      .dialect = CSV_SCANNER_ESCAPE_BACKSLASH,
-      .flags = 0,
-      .delimiters = " ",
-      .quotes = NULL,
-      .null_value = NULL,
-      .string_delims = {NULL},
-      .expected_values = {"PTHREAD support", "initialized", NULL}
-    },
+  {
+    .msg = "\"PTHREAD support\" \"initialized\"",
+    .max_columns = -1,
+    .drop_invalid = FALSE,
+    .dialect = CSV_SCANNER_ESCAPE_BACKSLASH,
+    .flags = 0,
+    .delimiters = " ",
+    .quotes = NULL,
+    .null_value = NULL,
+    .string_delims = {NULL},
+    .expected_values = {"PTHREAD support", "initialized", NULL}
+  },
 
-    {
-      .msg = "\"PTHREAD \\\"support initialized\"",
-      .max_columns = -1,
-      .drop_invalid = FALSE,
-      .dialect = CSV_SCANNER_ESCAPE_BACKSLASH,
-      .flags = 0,
-      .delimiters = " ",
-      .quotes = NULL,
-      .null_value = NULL,
-      .string_delims = {NULL},
-      .expected_values = {"PTHREAD \"support initialized", NULL}
-    },
+  {
+    .msg = "\"PTHREAD \\\"support initialized\"",
+    .max_columns = -1,
+    .drop_invalid = FALSE,
+    .dialect = CSV_SCANNER_ESCAPE_BACKSLASH,
+    .flags = 0,
+    .delimiters = " ",
+    .quotes = NULL,
+    .null_value = NULL,
+    .string_delims = {NULL},
+    .expected_values = {"PTHREAD \"support initialized", NULL}
+  },
 
-    {
-      .msg = "\"PTHREAD support initialized",
-      .max_columns = -1,
-      .drop_invalid = FALSE,
-      .dialect = CSV_SCANNER_ESCAPE_BACKSLASH,
-      .flags = 0,
-      .delimiters = " ",
-      .quotes = NULL,
-      .null_value = NULL,
-      .string_delims = {NULL},
-      .expected_values = {"PTHREAD support initialized", NULL}
-    },
+  {
+    .msg = "\"PTHREAD support initialized",
+    .max_columns = -1,
+    .drop_invalid = FALSE,
+    .dialect = CSV_SCANNER_ESCAPE_BACKSLASH,
+    .flags = 0,
+    .delimiters = " ",
+    .quotes = NULL,
+    .null_value = NULL,
+    .string_delims = {NULL},
+    .expected_values = {"PTHREAD support initialized", NULL}
+  },
 
-    {
-      .msg = "PTHREAD support initialized",
-      .max_columns = -1,
-      .drop_invalid = FALSE,
-      .dialect = CSV_SCANNER_ESCAPE_DOUBLE_CHAR,
-      .flags = 0,
-      .delimiters = " ",
-      .quotes = NULL,
-      .null_value = NULL,
-      .string_delims = {NULL},
-      .expected_values = {"PTHREAD", "support", "initialized", NULL}
-    },
+  {
+    .msg = "PTHREAD support initialized",
+    .max_columns = -1,
+    .drop_invalid = FALSE,
+    .dialect = CSV_SCANNER_ESCAPE_DOUBLE_CHAR,
+    .flags = 0,
+    .delimiters = " ",
+    .quotes = NULL,
+    .null_value = NULL,
+    .string_delims = {NULL},
+    .expected_values = {"PTHREAD", "support", "initialized", NULL}
+  },
 
-    {
-      .msg = "\"PTHREAD\" \"support\" \"initialized\"",
-      .max_columns = -1,
-      .drop_invalid = FALSE,
-      .dialect = CSV_SCANNER_ESCAPE_DOUBLE_CHAR,
-      .flags = 0,
-      .delimiters = " ",
-      .quotes = NULL,
-      .null_value = NULL,
-      .string_delims = {NULL},
-      .expected_values = {"PTHREAD", "support", "initialized", NULL}
-    },
+  {
+    .msg = "\"PTHREAD\" \"support\" \"initialized\"",
+    .max_columns = -1,
+    .drop_invalid = FALSE,
+    .dialect = CSV_SCANNER_ESCAPE_DOUBLE_CHAR,
+    .flags = 0,
+    .delimiters = " ",
+    .quotes = NULL,
+    .null_value = NULL,
+    .string_delims = {NULL},
+    .expected_values = {"PTHREAD", "support", "initialized", NULL}
+  },
 
-    {
-      .msg = "\"PTHREAD\" \"support\" \"initialized\"",
-      .max_columns = 2,
-      .drop_invalid = FALSE,
-      .dialect = CSV_SCANNER_ESCAPE_DOUBLE_CHAR,
-      .flags = CSV_SCANNER_GREEDY,
-      .delimiters = " ",
-      .quotes = NULL,
-      .null_value = NULL,
-      .string_delims = {NULL},
-      .expected_values = {"PTHREAD", "\"support\" \"initialized\"", NULL}
-    },
+  {
+    .msg = "\"PTHREAD\" \"support\" \"initialized\"",
+    .max_columns = 2,
+    .drop_invalid = FALSE,
+    .dialect = CSV_SCANNER_ESCAPE_DOUBLE_CHAR,
+    .flags = CSV_SCANNER_GREEDY,
+    .delimiters = " ",
+    .quotes = NULL,
+    .null_value = NULL,
+    .string_delims = {NULL},
+    .expected_values = {"PTHREAD", "\"support\" \"initialized\"", NULL}
+  },
 
-    {
-      .msg = "\"  PTHREAD \" \"  support\" \"initialized  \"",
-      .max_columns = -1,
-      .drop_invalid = FALSE,
-      .dialect = CSV_SCANNER_ESCAPE_DOUBLE_CHAR,
-      .flags = CSV_SCANNER_STRIP_WHITESPACE,
-      .delimiters = " ",
-      .quotes = NULL,
-      .null_value = NULL,
-      .string_delims = {NULL},
-      .expected_values = {"PTHREAD", "support", "initialized", NULL}
-    },
+  {
+    .msg = "\"  PTHREAD \" \"  support\" \"initialized  \"",
+    .max_columns = -1,
+    .drop_invalid = FALSE,
+    .dialect = CSV_SCANNER_ESCAPE_DOUBLE_CHAR,
+    .flags = CSV_SCANNER_STRIP_WHITESPACE,
+    .delimiters = " ",
+    .quotes = NULL,
+    .null_value = NULL,
+    .string_delims = {NULL},
+    .expected_values = {"PTHREAD", "support", "initialized", NULL}
+  },
 
-    {
-      .msg = "\"  PTHREAD \" \"  support\" \"initialized  \"",
-      .max_columns = 2,
-      .drop_invalid = FALSE,
-      .dialect = CSV_SCANNER_ESCAPE_DOUBLE_CHAR,
-      .flags = CSV_SCANNER_GREEDY + CSV_SCANNER_STRIP_WHITESPACE,
-      .delimiters = " ",
-      .quotes = NULL,
-      .null_value = NULL,
-      .string_delims = {NULL},
-      .expected_values = {"PTHREAD", "\"  support\" \"initialized  \"", NULL}
-    },
+  {
+    .msg = "\"  PTHREAD \" \"  support\" \"initialized  \"",
+    .max_columns = 2,
+    .drop_invalid = FALSE,
+    .dialect = CSV_SCANNER_ESCAPE_DOUBLE_CHAR,
+    .flags = CSV_SCANNER_GREEDY + CSV_SCANNER_STRIP_WHITESPACE,
+    .delimiters = " ",
+    .quotes = NULL,
+    .null_value = NULL,
+    .string_delims = {NULL},
+    .expected_values = {"PTHREAD", "\"  support\" \"initialized  \"", NULL}
+  },
 
-    {
-      .msg = "\"PTHREAD support\" \"initialized\"",
-      .max_columns = -1,
-      .drop_invalid = FALSE,
-      .dialect = CSV_SCANNER_ESCAPE_DOUBLE_CHAR,
-      .flags = 0,
-      .delimiters = " ",
-      .quotes = NULL,
-      .null_value = NULL,
-      .string_delims = {NULL},
-      .expected_values = {"PTHREAD support", "initialized", NULL}
-    },
+  {
+    .msg = "\"PTHREAD support\" \"initialized\"",
+    .max_columns = -1,
+    .drop_invalid = FALSE,
+    .dialect = CSV_SCANNER_ESCAPE_DOUBLE_CHAR,
+    .flags = 0,
+    .delimiters = " ",
+    .quotes = NULL,
+    .null_value = NULL,
+    .string_delims = {NULL},
+    .expected_values = {"PTHREAD support", "initialized", NULL}
+  },
 
-    {
-      .msg = "\"PTHREAD \"\"support initialized\"",
-      .max_columns = -1,
-      .drop_invalid = FALSE,
-      .dialect = CSV_SCANNER_ESCAPE_DOUBLE_CHAR,
-      .flags = 0,
-      .delimiters = " ",
-      .quotes = NULL,
-      .null_value = NULL,
-      .string_delims = {NULL},
-      .expected_values = {"PTHREAD \"support initialized", NULL}
-    },
+  {
+    .msg = "\"PTHREAD \"\"support initialized\"",
+    .max_columns = -1,
+    .drop_invalid = FALSE,
+    .dialect = CSV_SCANNER_ESCAPE_DOUBLE_CHAR,
+    .flags = 0,
+    .delimiters = " ",
+    .quotes = NULL,
+    .null_value = NULL,
+    .string_delims = {NULL},
+    .expected_values = {"PTHREAD \"support initialized", NULL}
+  },
 
-    {
-      .msg = "\"PTHREAD support initialized",
-      .max_columns = -1,
-      .drop_invalid = FALSE,
-      .dialect = CSV_SCANNER_ESCAPE_DOUBLE_CHAR,
-      .flags = 0,
-      .delimiters = " ",
-      .quotes = NULL,
-      .null_value = NULL,
-      .string_delims = {NULL},
-      .expected_values = {"PTHREAD support initialized", NULL}
-    },
+  {
+    .msg = "\"PTHREAD support initialized",
+    .max_columns = -1,
+    .drop_invalid = FALSE,
+    .dialect = CSV_SCANNER_ESCAPE_DOUBLE_CHAR,
+    .flags = 0,
+    .delimiters = " ",
+    .quotes = NULL,
+    .null_value = NULL,
+    .string_delims = {NULL},
+    .expected_values = {"PTHREAD support initialized", NULL}
+  },
 
-    {
-      .msg = "postfix/smtpd",
-      .max_columns = 2,
-      .drop_invalid = TRUE,
-      .dialect = CSV_SCANNER_ESCAPE_NONE,
-      .flags = CSV_SCANNER_GREEDY,
-      .delimiters = "/",
-      .quotes = NULL,
-      .null_value = NULL,
-      .string_delims = {NULL},
-      .expected_values = {"postfix", "smtpd", NULL}
-    },
+  {
+    .msg = "postfix/smtpd",
+    .max_columns = 2,
+    .drop_invalid = TRUE,
+    .dialect = CSV_SCANNER_ESCAPE_NONE,
+    .flags = CSV_SCANNER_GREEDY,
+    .delimiters = "/",
+    .quotes = NULL,
+    .null_value = NULL,
+    .string_delims = {NULL},
+    .expected_values = {"postfix", "smtpd", NULL}
+  },
 
-    {
-      .msg = "postfix",
-      .max_columns = 3,
-      .drop_invalid = TRUE,
-      .dialect = CSV_SCANNER_ESCAPE_NONE,
-      .flags = CSV_SCANNER_GREEDY,
-      .delimiters = "/",
-      .quotes = NULL,
-      .null_value = NULL,
-      .string_delims = {NULL},
-      .expected_values = {NULL}
-    },
+  {
+    .msg = "postfix",
+    .max_columns = 3,
+    .drop_invalid = TRUE,
+    .dialect = CSV_SCANNER_ESCAPE_NONE,
+    .flags = CSV_SCANNER_GREEDY,
+    .delimiters = "/",
+    .quotes = NULL,
+    .null_value = NULL,
+    .string_delims = {NULL},
+    .expected_values = {NULL}
+  },
 
-    {
-      .msg = "postfix/smtpd/ququ",
-      .max_columns = 2,
-      .drop_invalid = TRUE,
-      .dialect = CSV_SCANNER_ESCAPE_NONE,
-      .flags = CSV_SCANNER_GREEDY,
-      .delimiters = "/",
-      .quotes = NULL,
-      .null_value = NULL,
-      .string_delims = {NULL},
-      .expected_values = {"postfix", "smtpd/ququ", NULL}
-    },
+  {
+    .msg = "postfix/smtpd/ququ",
+    .max_columns = 2,
+    .drop_invalid = TRUE,
+    .dialect = CSV_SCANNER_ESCAPE_NONE,
+    .flags = CSV_SCANNER_GREEDY,
+    .delimiters = "/",
+    .quotes = NULL,
+    .null_value = NULL,
+    .string_delims = {NULL},
+    .expected_values = {"postfix", "smtpd/ququ", NULL}
+  },
 
-    {
-      .msg = "ZabbixConnector.log : 19:55:32,782 INFO  [Thread-2834]     - [ZabbixEventSyncCommand] Processing   message <?xml version=\"1.0\" encoding=\"UTF-8\"?>",
-      .max_columns = 2,
-      .drop_invalid = FALSE,
-      .dialect = CSV_SCANNER_ESCAPE_NONE,
-      .flags = CSV_SCANNER_GREEDY,
-      .delimiters = " ",
-      .quotes = NULL,
-      .null_value = NULL,
-      .string_delims = {NULL},
-      .expected_values = {"ZabbixConnector.log",
-        ": 19:55:32,782 INFO  [Thread-2834]     - [ZabbixEventSyncCommand] Processing   message <?xml version=\"1.0\" encoding=\"UTF-8\"?>", NULL
-      }
-    },
+  {
+    .msg = "ZabbixConnector.log : 19:55:32,782 INFO  [Thread-2834]     - [ZabbixEventSyncCommand] Processing   message <?xml version=\"1.0\" encoding=\"UTF-8\"?>",
+    .max_columns = 2,
+    .drop_invalid = FALSE,
+    .dialect = CSV_SCANNER_ESCAPE_NONE,
+    .flags = CSV_SCANNER_GREEDY,
+    .delimiters = " ",
+    .quotes = NULL,
+    .null_value = NULL,
+    .string_delims = {NULL},
+    .expected_values = {"ZabbixConnector.log",
+      ": 19:55:32,782 INFO  [Thread-2834]     - [ZabbixEventSyncCommand] Processing   message <?xml version=\"1.0\" encoding=\"UTF-8\"?>", NULL
+    }
+  },
 
-    {
-      .msg = "10.100.20.1 - - [31/Dec/2007:00:17:10 +0100] \"GET /cgi-bin/bugzilla/buglist.cgi?keywords_type=allwords&keywords=public&format=simple HTTP/1.1\" 200 2708 \"-\" \"curl/7.15.5 (i4 86-pc-linux-gnu) libcurl/7.15.5 OpenSSL/0.9.8c zlib/1.2.3 libidn/0.6.5\" 2 bugzilla.balabit",
-      .max_columns = -1,
-      .drop_invalid = FALSE,
-      .dialect = CSV_SCANNER_ESCAPE_BACKSLASH,
-      .flags = 0,
-      .delimiters = " ",
-      .quotes = "\"\"[]",
-      .null_value = "-",
-      .string_delims = {NULL},
-      .expected_values = {"10.100.20.1",
-        "",
-        "",
-        "31/Dec/2007:00:17:10 +0100",
-        "GET /cgi-bin/bugzilla/buglist.cgi?keywords_type=allwords&keywords=public&format=simple HTTP/1.1",
-        "200",
-        "2708",
-        "",
-        "curl/7.15.5 (i4 86-pc-linux-gnu) libcurl/7.15.5 OpenSSL/0.9.8c zlib/1.2.3 libidn/0.6.5",
-        "2",
-        "bugzilla.balabit",
-        NULL
-      }
-    },
+  {
+    .msg = "10.100.20.1 - - [31/Dec/2007:00:17:10 +0100] \"GET /cgi-bin/bugzilla/buglist.cgi?keywords_type=allwords&keywords=public&format=simple HTTP/1.1\" 200 2708 \"-\" \"curl/7.15.5 (i4 86-pc-linux-gnu) libcurl/7.15.5 OpenSSL/0.9.8c zlib/1.2.3 libidn/0.6.5\" 2 bugzilla.balabit",
+    .max_columns = -1,
+    .drop_invalid = FALSE,
+    .dialect = CSV_SCANNER_ESCAPE_BACKSLASH,
+    .flags = 0,
+    .delimiters = " ",
+    .quotes = "\"\"[]",
+    .null_value = "-",
+    .string_delims = {NULL},
+    .expected_values = {"10.100.20.1",
+      "",
+      "",
+      "31/Dec/2007:00:17:10 +0100",
+      "GET /cgi-bin/bugzilla/buglist.cgi?keywords_type=allwords&keywords=public&format=simple HTTP/1.1",
+      "200",
+      "2708",
+      "",
+      "curl/7.15.5 (i4 86-pc-linux-gnu) libcurl/7.15.5 OpenSSL/0.9.8c zlib/1.2.3 libidn/0.6.5",
+      "2",
+      "bugzilla.balabit",
+      NULL
+    }
+  },
 
-    {
-      .msg = "10.100.20.1 - - [31/Dec/2007:00:17:10 +0100] \"GET /cgi-bin/bugzilla/buglist.cgi?keywords_type=allwords&keywords=public&format=simple HTTP/1.1\" 200 2708 \"-\" \"curl/7.15.5 (i4 86-pc-linux-gnu) libcurl/7.15.5 OpenSSL/0.9.8c zlib/1.2.3 libidn/0.6.5\" 2 bugzilla.balabit",
-      .max_columns = 11,
-      .drop_invalid = FALSE,
-      .dialect = CSV_SCANNER_ESCAPE_BACKSLASH,
-      .flags = 0,
-      .delimiters = " ",
-      .quotes = "\"\"[]",
-      .null_value = "-",
-      .string_delims = {NULL},
-      .expected_values = {"10.100.20.1",
-        "",
-        "",
-        "31/Dec/2007:00:17:10 +0100",
-        "GET /cgi-bin/bugzilla/buglist.cgi?keywords_type=allwords&keywords=public&format=simple HTTP/1.1",
-        "200",
-        "2708",
-        "",
-        "curl/7.15.5 (i4 86-pc-linux-gnu) libcurl/7.15.5 OpenSSL/0.9.8c zlib/1.2.3 libidn/0.6.5", "2", "bugzilla.balabit",
-        NULL
-      }
-    },
+  {
+    .msg = "10.100.20.1 - - [31/Dec/2007:00:17:10 +0100] \"GET /cgi-bin/bugzilla/buglist.cgi?keywords_type=allwords&keywords=public&format=simple HTTP/1.1\" 200 2708 \"-\" \"curl/7.15.5 (i4 86-pc-linux-gnu) libcurl/7.15.5 OpenSSL/0.9.8c zlib/1.2.3 libidn/0.6.5\" 2 bugzilla.balabit",
+    .max_columns = 11,
+    .drop_invalid = FALSE,
+    .dialect = CSV_SCANNER_ESCAPE_BACKSLASH,
+    .flags = 0,
+    .delimiters = " ",
+    .quotes = "\"\"[]",
+    .null_value = "-",
+    .string_delims = {NULL},
+    .expected_values = {"10.100.20.1",
+      "",
+      "",
+      "31/Dec/2007:00:17:10 +0100",
+      "GET /cgi-bin/bugzilla/buglist.cgi?keywords_type=allwords&keywords=public&format=simple HTTP/1.1",
+      "200",
+      "2708",
+      "",
+      "curl/7.15.5 (i4 86-pc-linux-gnu) libcurl/7.15.5 OpenSSL/0.9.8c zlib/1.2.3 libidn/0.6.5", "2", "bugzilla.balabit",
+      NULL
+    }
+  },
 
-    {
-      .msg = "10.100.20.1 - - [31/Dec/2007:00:17:10 +0100] \"GET /cgi-bin/bugzilla/buglist.cgi?keywords_type=allwords&keywords=public&format=simple HTTP/1.1\" 200 2708 \"-\" \"curl/7.15.5 (i4 86-pc-linux-gnu) libcurl/7.15.5 OpenSSL/0.9.8c zlib/1.2.3 libidn/0.6.5\" 2 bugzilla.balabit",
-      .max_columns = 10,
-      .drop_invalid = FALSE,
-      .dialect = CSV_SCANNER_ESCAPE_BACKSLASH,
-      .flags = 0,
-      .delimiters = " ",
-      .quotes = "\"\"[]",
-      .null_value = "-",
-      .string_delims = {NULL},
-      .expected_values = {"10.100.20.1",
-        "",
-        "",
-        "31/Dec/2007:00:17:10 +0100",
-        "GET /cgi-bin/bugzilla/buglist.cgi?keywords_type=allwords&keywords=public&format=simple HTTP/1.1",
-        "200",
-        "2708",
-        "",
-        "curl/7.15.5 (i4 86-pc-linux-gnu) libcurl/7.15.5 OpenSSL/0.9.8c zlib/1.2.3 libidn/0.6.5",
-        "2",
-        NULL
-      }
-    },
+  {
+    .msg = "10.100.20.1 - - [31/Dec/2007:00:17:10 +0100] \"GET /cgi-bin/bugzilla/buglist.cgi?keywords_type=allwords&keywords=public&format=simple HTTP/1.1\" 200 2708 \"-\" \"curl/7.15.5 (i4 86-pc-linux-gnu) libcurl/7.15.5 OpenSSL/0.9.8c zlib/1.2.3 libidn/0.6.5\" 2 bugzilla.balabit",
+    .max_columns = 10,
+    .drop_invalid = FALSE,
+    .dialect = CSV_SCANNER_ESCAPE_BACKSLASH,
+    .flags = 0,
+    .delimiters = " ",
+    .quotes = "\"\"[]",
+    .null_value = "-",
+    .string_delims = {NULL},
+    .expected_values = {"10.100.20.1",
+      "",
+      "",
+      "31/Dec/2007:00:17:10 +0100",
+      "GET /cgi-bin/bugzilla/buglist.cgi?keywords_type=allwords&keywords=public&format=simple HTTP/1.1",
+      "200",
+      "2708",
+      "",
+      "curl/7.15.5 (i4 86-pc-linux-gnu) libcurl/7.15.5 OpenSSL/0.9.8c zlib/1.2.3 libidn/0.6.5",
+      "2",
+      NULL
+    }
+  },
 
-    {
-      .msg = "10.100.20.1 - - [31/Dec/2007:00:17:10 +0100] \"GET /cgi-bin/bugzilla/buglist.cgi?keywords_type=allwords&keywords=public&format=simple HTTP/1.1\" 200 2708 \"-\" \"curl/7.15.5 (i4 86-pc-linux-gnu) libcurl/7.15.5 OpenSSL/0.9.8c zlib/1.2.3 libidn/0.6.5\" 2 bugzilla.balabit",
-      .max_columns = 12,
-      .drop_invalid = FALSE,
-      .dialect = CSV_SCANNER_ESCAPE_BACKSLASH,
-      .flags = 0,
-      .delimiters = " ",
-      .quotes = "\"\"[]",
-      .null_value = "-",
-      .string_delims = {NULL},
-      .expected_values = {"10.100.20.1",
-        "",
-        "",
-        "31/Dec/2007:00:17:10 +0100",
-        "GET /cgi-bin/bugzilla/buglist.cgi?keywords_type=allwords&keywords=public&format=simple HTTP/1.1",
-        "200",
-        "2708",
-        "",
-        "curl/7.15.5 (i4 86-pc-linux-gnu) libcurl/7.15.5 OpenSSL/0.9.8c zlib/1.2.3 libidn/0.6.5",
-        "2",
-        "bugzilla.balabit",
-        "",
-        NULL
-      }
-    },
+  {
+    .msg = "10.100.20.1 - - [31/Dec/2007:00:17:10 +0100] \"GET /cgi-bin/bugzilla/buglist.cgi?keywords_type=allwords&keywords=public&format=simple HTTP/1.1\" 200 2708 \"-\" \"curl/7.15.5 (i4 86-pc-linux-gnu) libcurl/7.15.5 OpenSSL/0.9.8c zlib/1.2.3 libidn/0.6.5\" 2 bugzilla.balabit",
+    .max_columns = 12,
+    .drop_invalid = FALSE,
+    .dialect = CSV_SCANNER_ESCAPE_BACKSLASH,
+    .flags = 0,
+    .delimiters = " ",
+    .quotes = "\"\"[]",
+    .null_value = "-",
+    .string_delims = {NULL},
+    .expected_values = {"10.100.20.1",
+      "",
+      "",
+      "31/Dec/2007:00:17:10 +0100",
+      "GET /cgi-bin/bugzilla/buglist.cgi?keywords_type=allwords&keywords=public&format=simple HTTP/1.1",
+      "200",
+      "2708",
+      "",
+      "curl/7.15.5 (i4 86-pc-linux-gnu) libcurl/7.15.5 OpenSSL/0.9.8c zlib/1.2.3 libidn/0.6.5",
+      "2",
+      "bugzilla.balabit",
+      "",
+      NULL
+    }
+  },
 
-    {
-      .msg = "10.100.20.1 - - [31/Dec/2007:00:17:10 +0100] \"GET /cgi-bin/bugzilla/buglist.cgi?keywords_type=allwords&keywords=public&format=simple HTTP/1.1\" 200 2708 \"-\" \"curl/7.15.5 (i4 86-pc-linux-gnu) libcurl/7.15.5 OpenSSL/0.9.8c zlib/1.2.3 libidn/0.6.5\" 2 bugzilla.balabit almafa",
-      .max_columns = 11,
-      .drop_invalid = TRUE,
-      .dialect = CSV_SCANNER_ESCAPE_BACKSLASH,
-      .flags = 0,
-      .delimiters = " ",
-      .quotes = "\"\"[]",
-      .null_value = "-",
-      .string_delims = {NULL},
-      .expected_values = {NULL}
-    },
+  {
+    .msg = "10.100.20.1 - - [31/Dec/2007:00:17:10 +0100] \"GET /cgi-bin/bugzilla/buglist.cgi?keywords_type=allwords&keywords=public&format=simple HTTP/1.1\" 200 2708 \"-\" \"curl/7.15.5 (i4 86-pc-linux-gnu) libcurl/7.15.5 OpenSSL/0.9.8c zlib/1.2.3 libidn/0.6.5\" 2 bugzilla.balabit almafa",
+    .max_columns = 11,
+    .drop_invalid = TRUE,
+    .dialect = CSV_SCANNER_ESCAPE_BACKSLASH,
+    .flags = 0,
+    .delimiters = " ",
+    .quotes = "\"\"[]",
+    .null_value = "-",
+    .string_delims = {NULL},
+    .expected_values = {NULL}
+  },
 
-    {
-      .msg = "random.vhost 10.0.0.1 - \"GET /index.html HTTP/1.1\" 200",
-      .max_columns = 5,
-      .drop_invalid = TRUE,
-      .dialect = CSV_SCANNER_ESCAPE_NONE,
-      .flags = 0,
-      .delimiters = " ",
-      .quotes = "\"\"[]",
-      .null_value = "-",
-      .string_delims = {NULL},
-      .expected_values = {"random.vhost", "10.0.0.1", "", "GET /index.html HTTP/1.1", "200", NULL}
-    },
+  {
+    .msg = "random.vhost 10.0.0.1 - \"GET /index.html HTTP/1.1\" 200",
+    .max_columns = 5,
+    .drop_invalid = TRUE,
+    .dialect = CSV_SCANNER_ESCAPE_NONE,
+    .flags = 0,
+    .delimiters = " ",
+    .quotes = "\"\"[]",
+    .null_value = "-",
+    .string_delims = {NULL},
+    .expected_values = {"random.vhost", "10.0.0.1", "", "GET /index.html HTTP/1.1", "200", NULL}
+  },
 
-    {
-      .msg = "random.vhost 10.0.0.1 - \"GET /index.html HTTP/1.1\" 200",
-      .max_columns = 5,
-      .drop_invalid = TRUE,
-      .dialect = CSV_SCANNER_ESCAPE_BACKSLASH,
-      .flags = 0,
-      .delimiters = " ",
-      .quotes = "\"\"[]",
-      .null_value = "-",
-      .string_delims = {NULL},
-      .expected_values = {"random.vhost", "10.0.0.1", "", "GET /index.html HTTP/1.1", "200", NULL}
-    },
+  {
+    .msg = "random.vhost 10.0.0.1 - \"GET /index.html HTTP/1.1\" 200",
+    .max_columns = 5,
+    .drop_invalid = TRUE,
+    .dialect = CSV_SCANNER_ESCAPE_BACKSLASH,
+    .flags = 0,
+    .delimiters = " ",
+    .quotes = "\"\"[]",
+    .null_value = "-",
+    .string_delims = {NULL},
+    .expected_values = {"random.vhost", "10.0.0.1", "", "GET /index.html HTTP/1.1", "200", NULL}
+  },
 
-    /* greedy column can be empty */
-    {
-      .msg = "random.vhost 10.0.0.1 - \"GET /index.html HTTP/1.1\" 200",
-      .max_columns = 6,
-      .drop_invalid = TRUE,
-      .dialect = CSV_SCANNER_ESCAPE_NONE,
-      .flags = CSV_SCANNER_GREEDY,
-      .delimiters = " ",
-      .quotes = "\"\"[]",
-      .null_value = "-",
-      .string_delims = {NULL},
-      .expected_values = {"random.vhost", "10.0.0.1", "", "GET /index.html HTTP/1.1", "200", "", NULL}
-    },
+  /* greedy column can be empty */
+  {
+    .msg = "random.vhost 10.0.0.1 - \"GET /index.html HTTP/1.1\" 200",
+    .max_columns = 6,
+    .drop_invalid = TRUE,
+    .dialect = CSV_SCANNER_ESCAPE_NONE,
+    .flags = CSV_SCANNER_GREEDY,
+    .delimiters = " ",
+    .quotes = "\"\"[]",
+    .null_value = "-",
+    .string_delims = {NULL},
+    .expected_values = {"random.vhost", "10.0.0.1", "", "GET /index.html HTTP/1.1", "200", "", NULL}
+  },
 
-    {
-      .msg = "random.vhost 10.0.0.1 - \"GET /index.html HTTP/1.1\" 200",
-      .max_columns = 6,
-      .drop_invalid = TRUE,
-      .dialect = CSV_SCANNER_ESCAPE_BACKSLASH,
-      .flags = CSV_SCANNER_GREEDY,
-      .delimiters = " ",
-      .quotes = "\"\"[]",
-      .null_value = "-",
-      .string_delims = {NULL},
-      .expected_values = {"random.vhost", "10.0.0.1", "", "GET /index.html HTTP/1.1", "200", "", NULL}
-    },
+  {
+    .msg = "random.vhost 10.0.0.1 - \"GET /index.html HTTP/1.1\" 200",
+    .max_columns = 6,
+    .drop_invalid = TRUE,
+    .dialect = CSV_SCANNER_ESCAPE_BACKSLASH,
+    .flags = CSV_SCANNER_GREEDY,
+    .delimiters = " ",
+    .quotes = "\"\"[]",
+    .null_value = "-",
+    .string_delims = {NULL},
+    .expected_values = {"random.vhost", "10.0.0.1", "", "GET /index.html HTTP/1.1", "200", "", NULL}
+  },
 
-    {
-      .msg = "random.vhost\t10.0.0.1\t-\t\"GET /index.html HTTP/1.1\"\t200",
-      .max_columns = 6,
-      .drop_invalid = FALSE,
-      .dialect = CSV_SCANNER_ESCAPE_BACKSLASH,
-      .flags = 0,
-      .delimiters = "\t",
-      .quotes = "\"\"",
-      .null_value = "-",
-      .string_delims = {NULL},
-      .expected_values = {"random.vhost", "10.0.0.1", "", "GET /index.html HTTP/1.1", "200", "", NULL}
-    },
+  {
+    .msg = "random.vhost\t10.0.0.1\t-\t\"GET /index.html HTTP/1.1\"\t200",
+    .max_columns = 6,
+    .drop_invalid = FALSE,
+    .dialect = CSV_SCANNER_ESCAPE_BACKSLASH,
+    .flags = 0,
+    .delimiters = "\t",
+    .quotes = "\"\"",
+    .null_value = "-",
+    .string_delims = {NULL},
+    .expected_values = {"random.vhost", "10.0.0.1", "", "GET /index.html HTTP/1.1", "200", "", NULL}
+  },
 
-    {
-      .msg = "random.vhost\t10.0.0.1\t-\t\"GET /index.html HTTP/1.1\"\t\t200",
-      .max_columns = 7,
-      .drop_invalid = FALSE,
-      .dialect = CSV_SCANNER_ESCAPE_BACKSLASH,
-      .flags = 0,
-      .delimiters = "\t",
-      .quotes = "\"\"",
-      .null_value = "-",
-      .string_delims = {NULL},
-      .expected_values = {"random.vhost", "10.0.0.1", "", "GET /index.html HTTP/1.1", "", "200", "", NULL}
-    },
-  };
+  {
+    .msg = "random.vhost\t10.0.0.1\t-\t\"GET /index.html HTTP/1.1\"\t\t200",
+    .max_columns = 7,
+    .drop_invalid = FALSE,
+    .dialect = CSV_SCANNER_ESCAPE_BACKSLASH,
+    .flags = 0,
+    .delimiters = "\t",
+    .quotes = "\"\"",
+    .null_value = "-",
+    .string_delims = {NULL},
+    .expected_values = {"random.vhost", "10.0.0.1", "", "GET /index.html HTTP/1.1", "", "200", "", NULL}
+  },
+};
 
-  return cr_make_param_array(CsvParserTestParam, parser_params, G_N_ELEMENTS(parser_params));
-}
-
-ParameterizedTest(CsvParserTestParam *param, parser, test_csv_parser)
+StaticParameterizedTest(CsvParserTestParam *param, parser_params, parser, test_csv_parser)
 {
   LogMessage *logmsg;
   LogParser *p, *pclone;
