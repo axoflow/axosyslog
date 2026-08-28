@@ -21,7 +21,7 @@
  */
 
 #include <criterion/criterion.h>
-#include <criterion/parameterized.h>
+#include "libtest/parameterized.h"
 
 #include "syslog-ng.h"
 #include <string.h>
@@ -100,25 +100,20 @@ struct strtok_params
   char *expected;
 };
 
-ParameterizedTestParameters(strtok, with_literals)
+static struct strtok_params strtok_test_params[] =
 {
-  static struct strtok_params params[] =
-  {
-    { ".",       "token1.token2", "token1token2" },
-    { ".",       ".token", "token" },
-    { ".",       "token.", "token" },
-    { ".",       ".", NULL },
-    { "...",     ".", NULL },
-    { "... ",    "      ", NULL },
-    { "..*,;-",  ";-*token1...*****token2**,;;;.", "token1token2" },
-    { "..*,;- ", ";-*token1...*****token2**,;;;.token3", "token1token2token3" },
-    { "..*,;- ", ";-*token1...*****token2**,;;;.token3 ", "token1token2token3" }
-  };
+  { ".",       "token1.token2", "token1token2" },
+  { ".",       ".token", "token" },
+  { ".",       "token.", "token" },
+  { ".",       ".", NULL },
+  { "...",     ".", NULL },
+  { "... ",    "      ", NULL },
+  { "..*,;-",  ";-*token1...*****token2**,;;;.", "token1token2" },
+  { "..*,;- ", ";-*token1...*****token2**,;;;.token3", "token1token2token3" },
+  { "..*,;- ", ";-*token1...*****token2**,;;;.token3 ", "token1token2token3" }
+};
 
-  return cr_make_param_array(struct strtok_params, params, sizeof(params)/sizeof(params[0]));
-}
-
-ParameterizedTest(struct strtok_params *param, strtok, with_literals)
+StaticParameterizedTest(struct strtok_params *param, strtok_test_params, strtok, with_literals)
 {
   assert_if_tokenizer_concatenated_result_not_match(__test_strtok_r, param->delim, param->input, param->expected);
 }
