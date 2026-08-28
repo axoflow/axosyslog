@@ -166,7 +166,7 @@ http_sd_init_method(LogPipe *s)
   if (proto_options->init_buffer_size == -1)
     {
       gint max_msg_size = proto_options->max_msg_size != -1 ? proto_options->max_msg_size : cfg->log_msg_size;
-      proto_options->init_buffer_size = max_msg_size * 1000;
+      proto_options->init_buffer_size = HTTP_BUFFER_SIZE(max_msg_size);
     }
 
   if (self->super.reader_options.super.init_window_size == -1)

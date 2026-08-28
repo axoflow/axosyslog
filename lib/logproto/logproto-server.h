@@ -50,8 +50,8 @@ struct _LogProtoServerOptions
   /* maximum message length in bytes */
   gint max_msg_size;
   gboolean trim_large_messages;
-  gint max_buffer_size;
-  gint init_buffer_size;
+  gint64 max_buffer_size;
+  gint64 init_buffer_size;
   gint idle_timeout;
   AckTrackerFactory *ack_tracker_factory;
 };

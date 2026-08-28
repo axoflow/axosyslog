@@ -36,9 +36,11 @@ Test(log_proto, test_log_proto_server_options_limits)
   cr_assert_gt(opts.max_msg_size, 0, "LogProtoServerOptions.max_msg_size is not initialized properly, max_msg_size=%d",
                opts.max_msg_size);
   cr_assert_gt(opts.init_buffer_size, 0,
-               "LogProtoServerOptions.init_buffer_size is not initialized properly, init_buffer_size=%d", opts.init_buffer_size);
+               "LogProtoServerOptions.init_buffer_size is not initialized properly, init_buffer_size=%"G_GINT64_FORMAT,
+               opts.init_buffer_size);
   cr_assert_gt(opts.max_buffer_size, 0,
-               "LogProtoServerOptions.max_buffer_size is not initialized properly, max_buffer_size=%d", opts.max_buffer_size);
+               "LogProtoServerOptions.max_buffer_size is not initialized properly, max_buffer_size=%"G_GINT64_FORMAT,
+               opts.max_buffer_size);
   log_proto_server_options_destroy(&opts);
 }
 
