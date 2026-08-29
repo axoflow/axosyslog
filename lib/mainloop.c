@@ -27,6 +27,7 @@
 #include "mainloop-control.h"
 #include "apphook.h"
 #include "cfg.h"
+#include "cfg-ast.h"
 #include "stats/stats-registry.h"
 #include "stats/stats-counter.h"
 #include "stats/stats-cluster-single.h"
@@ -47,6 +48,7 @@
 #include "healthcheck/healthcheck-control.h"
 #include "signal-handler.h"
 #include "file-monitor.h"
+#include "filterx/filterx-parser.h"
 
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -686,6 +688,28 @@ _init_reload_metrics(MainLoop *self)
 }
 
 /*
+ * Returns: 0 when filterx compilation is successful.
+ */
+static int
+_compile_filterx_script(MainLoop *self)
+{
+  GString *ast = NULL;
+
+  if (!filterx_compile_script_file(self->current_configuration, resolved_configurable_paths.cfgfilename,
+                                   self->options->print_ast ? &ast : NULL))
+    return 1;
+
+  /* @ast is only filled in if the script compiled and --print-ast was given */
+  if (ast)
+    {
+      fprintf(stdout, "%s\n", ast->str);
+      g_string_free(ast, TRUE);
+    }
+
+  return 0;
+}
+
+/*
  * Returns: exit code to be returned to the calling process, 0 on success.
  */
 int
@@ -694,6 +718,9 @@ main_loop_read_and_init_config(MainLoop *self)
   MainLoopOptions *options = self->options;
 
   _init_reload_metrics(self);
+
+  if (options->filterx_only)
+    return _compile_filterx_script(self);
 
   if (!cfg_read_config(self->current_configuration, resolved_configurable_paths.cfgfilename, options->preprocess_into))
     {
@@ -706,6 +733,14 @@ main_loop_read_and_init_config(MainLoop *self)
       cfg_format_id(self->current_configuration, config_id);
       fprintf(stdout, "%s\n", config_id->str);
       g_string_free(config_id, TRUE);
+      return 0;
+    }
+
+  if (options->print_ast)
+    {
+      GString *ast = cfg_ast_format(self->current_configuration);
+      fprintf(stdout, "%s\n", ast->str);
+      g_string_free(ast, TRUE);
       return 0;
     }
 

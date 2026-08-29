@@ -31,6 +31,7 @@
 #include "atomic.h"
 
 const gchar *log_expr_node_get_content_name(gint content);
+const gchar *log_expr_node_get_layout_name(gint layout);
 
 #define LC_CATCHALL       1
 #define LC_FALLBACK       2

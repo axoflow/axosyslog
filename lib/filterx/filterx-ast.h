@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Balazs Scheidler <balazs.scheidler@axoflow.com>
+ * Copyright (c) 2026 Axoflow
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
@@ -20,22 +20,19 @@
  *
  */
 
-#ifndef FILTERX_EXPR_PARSER_H_INCLUDED
-#define FILTERX_EXPR_PARSER_H_INCLUDED
+#ifndef FILTERX_AST_H_INCLUDED
+#define FILTERX_AST_H_INCLUDED
 
-#include "cfg-parser.h"
 #include "filterx/filterx-expr.h"
+#include "compat/json.h"
 
-extern CfgParser filterx_parser;
+/* Format the abstract syntax tree of a filterx expression as JSON: each node
+ * reports its type, its verbatim source text, its location and the list of its
+ * children. */
+struct json_object *filterx_expr_format_ast(FilterXExpr *expr);
 
-CFG_PARSER_DECLARE_LEXER_BINDING(filterx_, FILTERX_, FilterXExpr **)
-
-/* Compile an entire input as filterx code, e.g. as if it were the body of a
- * filterx {} block, and throw away the result: this only validates that the code
- * compiles.  @lexer is consumed.  If @ast is not NULL, the abstract syntax tree
- * of the compiled script is returned there as JSON (owned by the caller), it is
- * left intact unless the script compiles. */
-gboolean filterx_compile_script(GlobalConfig *cfg, CfgLexer *lexer, GString **ast);
-gboolean filterx_compile_script_file(GlobalConfig *cfg, const gchar *fname, GString **ast);
+/* The pretty printed form of filterx_expr_format_ast(), the returned GString is
+ * owned by the caller. */
+GString *filterx_expr_format_ast_string(FilterXExpr *expr);
 
 #endif

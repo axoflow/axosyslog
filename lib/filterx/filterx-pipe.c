@@ -210,6 +210,15 @@ log_filterx_pipe_free(LogPipe *s)
   log_pipe_free_method(s);
 }
 
+FilterXExpr *
+log_filterx_pipe_get_block(LogPipe *s)
+{
+  if (!s || s->queue != log_filterx_pipe_queue)
+    return NULL;
+
+  return ((LogFilterXPipe *) s)->block;
+}
+
 LogPipe *
 log_filterx_pipe_new(FilterXExpr *block, GlobalConfig *cfg)
 {
