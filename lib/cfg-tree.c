@@ -937,21 +937,20 @@ cfg_tree_propagate_expr_node_properties_to_pipe(LogExprNode *node, LogPipe *pipe
       /* an ordered failover chain is branches tried in declared order,
        * stopping at the first one that accepts the message (sets *matched
        * to TRUE) -- this is exactly what PIF_BRANCH_FINAL already does in
-       * LogMultiplexer. */
-      pipe->flags |= PIF_BRANCH_FINAL;
-
-      /* for this to work, a destination's rejection (matched=FALSE) has to
-       * actually reach the enclosing junction -- but every multiplexer
-       * created along a destination branch (the per-reference wrapper, a
-       * named destination's own junction nested inside it, and anything
-       * further downstream for a destination with several levels of its
-       * own log statements) disables delivery propagation by default,
-       * since normally a destination dropping a message must not affect
-       * routing elsewhere. @pipe is the head pipe of exactly this branch,
-       * so re-enable propagation on it and everything reachable from it --
-       * the one place that already knows this branch is flagged
-       * destination-failover. */
-      log_multiplexer_enable_delivery_propagation_downstream(pipe);
+       * LogMultiplexer. PIF_BRANCH_DESTINATION_FAILOVER additionally makes
+       * LogMultiplexer.queue() set LogPathOptions.destination_failover on
+       * messages routed into this branch. That path option, not this pipe
+       * flag, is what actually gets a destination's rejection back up to
+       * the enclosing junction: every multiplexer along the way (the
+       * per-reference wrapper, a named destination's own nested junction,
+       * anything further downstream) still disables delivery propagation
+       * by default, but LogMultiplexer.queue() propagates anyway once it
+       * sees destination_failover set on the message it received -- see
+       * the comment there. destination_failover is inherited unchanged
+       * through arbitrarily many levels of nesting (LogPathOptions is
+       * copied wholesale by log_path_options_push_junction()), so no
+       * pipe-graph walk is needed here to make that happen. */
+      pipe->flags |= PIF_BRANCH_FINAL | PIF_BRANCH_DESTINATION_FAILOVER;
     }
 
   if (_is_log_path(node))
