@@ -36,12 +36,6 @@ log_multiplexer_disable_delivery_propagation(LogMultiplexer *self)
   self->delivery_propagation = FALSE;
 }
 
-void
-log_multiplexer_enable_delivery_propagation(LogMultiplexer *self)
-{
-  self->delivery_propagation = TRUE;
-}
-
 static gboolean
 log_multiplexer_init(LogPipe *s)
 {
@@ -116,6 +110,13 @@ log_multiplexer_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_op
             }
 
           matched = TRUE;
+          /* recompute from the untouched incoming path_options every
+           * iteration (not from local_path_options, which is reused
+           * across next_hops) -- otherwise a destination-failover branch
+           * would leak the flag onto its non-failover siblings in the
+           * same next_hops array. */
+          local_path_options.destination_failover = path_options->destination_failover
+                                                    || (next_hop->flags & PIF_BRANCH_DESTINATION_FAILOVER) != 0;
           log_msg_add_ack(msg, &local_path_options);
           log_pipe_queue(next_hop, log_msg_ref(msg), &local_path_options);
 
@@ -175,9 +176,18 @@ log_multiplexer_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_op
    * perform a filtering function, which means we need to push our filtering
    * responsibility to the next pipe element.
    *
+   * flags(destination-failover) is the one case where we *are* dispatching
+   * to destinations (self->delivery_propagation is FALSE, as set by
+   * cfg_tree_compile_reference()/cfg_tree_compile_junction()) but still
+   * need to propagate: path_options->destination_failover, set earlier in
+   * this function for a PIF_BRANCH_DESTINATION_FAILOVER next_hop and
+   * inherited unchanged through any further nesting (see
+   * log_path_options_push_junction()), tells us this message is on such a
+   * path without needing to know anything about the concrete pipe graph
+   * around us.
    */
 
-  if (self->delivery_propagation)
+  if (self->delivery_propagation || path_options->destination_failover)
     {
       if (!delivered && path_options->matched)
         *path_options->matched = FALSE;
@@ -205,34 +215,6 @@ log_multiplexer_walk(LogPipe *s, LogPathWalkFunc func, gpointer user_data)
         log_pipe_walk(next_hop, func, user_data);
     }
   return log_pipe_walk_method(s, func, user_data);
-}
-
-LogMultiplexer *
-log_multiplexer_check(LogPipe *pipe)
-{
-  if (pipe && pipe->queue == log_multiplexer_queue)
-    return (LogMultiplexer *) pipe;
-  return NULL;
-}
-
-static gboolean
-_enable_delivery_propagation_walk_func(LogPipe *from, LogPathConnectionType type, LogPipe *to, gpointer user_data)
-{
-  LogMultiplexer *mpx = log_multiplexer_check(to);
-
-  if (mpx)
-    log_multiplexer_enable_delivery_propagation(mpx);
-  return TRUE;
-}
-
-void
-log_multiplexer_enable_delivery_propagation_downstream(LogPipe *pipe)
-{
-  LogMultiplexer *mpx = log_multiplexer_check(pipe);
-
-  if (mpx)
-    log_multiplexer_enable_delivery_propagation(mpx);
-  log_pipe_walk(pipe, _enable_delivery_propagation_walk_func, NULL);
 }
 
 LogMultiplexer *

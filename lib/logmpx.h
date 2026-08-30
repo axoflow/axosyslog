@@ -45,20 +45,6 @@ typedef struct _LogMultiplexer
 
 void log_multiplexer_add_next_hop(LogMultiplexer *self, LogPipe *next_hop);
 void log_multiplexer_disable_delivery_propagation(LogMultiplexer *self);
-void log_multiplexer_enable_delivery_propagation(LogMultiplexer *self);
-
-/* safe downcast: returns @pipe as a LogMultiplexer if it really is one
- * (checked via its queue() vtable slot), NULL otherwise. Lets callers that
- * only have a generic LogPipe -- e.g. the head pipe of a compiled branch --
- * conditionally act on it without assuming its concrete type. */
-LogMultiplexer *log_multiplexer_check(LogPipe *pipe);
-
-/* enables delivery propagation on @pipe and everything reachable from it
- * (via log_pipe_walk(), so both next_hops fan-out and pipe_next
- * continuation are followed) that turns out to be a LogMultiplexer.
- * Harmless no-op wherever propagation was already enabled -- most pipes
- * never disable it in the first place. */
-void log_multiplexer_enable_delivery_propagation_downstream(LogPipe *pipe);
 
 LogMultiplexer *log_multiplexer_new(GlobalConfig *cfg);
 
