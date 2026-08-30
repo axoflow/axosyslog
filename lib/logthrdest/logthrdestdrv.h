@@ -100,6 +100,8 @@ struct _LogThreadedDestWorker
   gboolean suspended;
   time_t time_reopen;
 
+  gboolean counted_as_unreachable;
+
   struct
   {
     GString *last_key;
@@ -199,6 +201,8 @@ struct _LogThreadedDestDriver
   gint num_workers;
   gint created_workers;
   guint last_worker;
+
+  gint reachable_workers;
 
   gboolean flush_on_key_change;
   gboolean worker_partition_autoscaling;
