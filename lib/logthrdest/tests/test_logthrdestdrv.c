@@ -831,3 +831,185 @@ teardown(void)
 }
 
 TestSuite(logthrdestdrv, .init = setup, .fini = teardown);
+
+/* flags(destination-failover): two workers, the ones in
+ * failover_down_workers never connect */
+
+#define FAILOVER_NUM_WORKERS 2
+#define FAILOVER_UP_WORKER 0
+#define FAILOVER_DOWN_WORKER 1
+
+static gint failover_down_workers;
+static gint failover_connect_attempts[FAILOVER_NUM_WORKERS];
+static gint failover_inserts[FAILOVER_NUM_WORKERS];
+static TestThreadedDestDriver *fdd;
+
+static gboolean
+_failover_worker_connect(LogThreadedDestWorker *s)
+{
+  g_atomic_int_inc(&failover_connect_attempts[s->worker_index]);
+  return !(failover_down_workers & (1 << s->worker_index));
+}
+
+static LogThreadedResult
+_failover_worker_insert(LogThreadedDestWorker *s, LogMessage *msg)
+{
+  g_atomic_int_inc(&failover_inserts[s->worker_index]);
+  return LTR_SUCCESS;
+}
+
+static LogThreadedDestWorker *
+_failover_worker_construct(LogThreadedDestDriver *o, gint worker_index)
+{
+  LogThreadedDestWorker *self = g_new0(LogThreadedDestWorker, 1);
+
+  log_threaded_dest_worker_init_instance(self, o, worker_index);
+  self->connect = _failover_worker_connect;
+  self->insert = _failover_worker_insert;
+  return self;
+}
+
+static void
+_wait_for_connect_attempts(gint worker_index, gint expected_attempts)
+{
+  gint c = 0;
+
+  while (g_atomic_int_get(&failover_connect_attempts[worker_index]) < expected_attempts && c < MAX_SPIN_ITERATIONS)
+    {
+      _sleep_msec(1);
+      c++;
+    }
+  cr_assert(g_atomic_int_get(&failover_connect_attempts[worker_index]) >= expected_attempts,
+            "worker %d did not attempt to connect %d times", worker_index, expected_attempts);
+}
+
+static void
+_setup_failover_dd(gint down_workers, const gchar *partition_key)
+{
+  GlobalConfig *cfg = main_loop_get_current_config(main_loop);
+
+  failover_down_workers = down_workers;
+  memset(failover_connect_attempts, 0, sizeof(failover_connect_attempts));
+  memset(failover_inserts, 0, sizeof(failover_inserts));
+
+  fdd = test_threaded_dd_new(cfg);
+  fdd->super.worker.construct = _failover_worker_construct;
+  fdd->super.time_reopen = 1;
+  log_threaded_dest_driver_set_num_workers(&fdd->super.super.super, FAILOVER_NUM_WORKERS);
+  if (partition_key)
+    {
+      LogTemplate *template = log_template_new(cfg, NULL);
+      cr_assert(log_template_compile(template, partition_key, NULL));
+      log_threaded_dest_driver_set_worker_partition_key_ref(&fdd->super.super.super, template);
+    }
+
+  cr_assert(log_pipe_pre_config_init(&fdd->super.super.super.super));
+  cr_assert(log_pipe_init(&fdd->super.super.super.super));
+  cr_assert(log_pipe_post_config_init(&fdd->super.super.super.super));
+
+  /* a worker marks itself unreachable right after its failed connect
+   * attempt, the second attempt proves the first one was accounted for */
+  for (gint i = 0; i < FAILOVER_NUM_WORKERS; i++)
+    _wait_for_connect_attempts(i, (down_workers & (1 << i)) ? 2 : 1);
+}
+
+/* returns whether the destination accepted the message */
+static gboolean
+_queue_message(const gchar *pid, gboolean destination_failover)
+{
+  gboolean matched = TRUE;
+  LogPathOptions path_options = LOG_PATH_OPTIONS_INIT_NOACK;
+  LogMessage *msg = create_sample_message();
+
+  log_msg_set_value(msg, LM_V_PID, pid, -1);
+  path_options.destination_failover = destination_failover;
+  path_options.matched = &matched;
+  log_pipe_queue(&fdd->super.super.super.super, msg, &path_options);
+  return matched;
+}
+
+/* a $PID value that the "$PID" partition key maps to @worker_index */
+static const gchar *
+_pid_for_worker(gint worker_index)
+{
+  static gchar pid[16];
+
+  for (gint i = 0; ; i++)
+    {
+      g_snprintf(pid, sizeof(pid), "%d", i);
+      if (g_str_hash(pid) % FAILOVER_NUM_WORKERS == worker_index)
+        return pid;
+    }
+}
+
+static gint
+_queued_on_worker(gint worker_index)
+{
+  return log_queue_get_length(fdd->super.workers[worker_index]->queue);
+}
+
+Test(logthrdestdrv_failover, round_robin_skips_unreachable_workers)
+{
+  _setup_failover_dd(1 << FAILOVER_DOWN_WORKER, NULL);
+
+  for (gint i = 0; i < 10; i++)
+    cr_assert(_queue_message("1", TRUE));
+
+  _spin_for_counter_value(fdd->super.metrics.written_messages, 10);
+  cr_assert_eq(g_atomic_int_get(&failover_inserts[FAILOVER_UP_WORKER]), 10);
+  cr_assert_eq(_queued_on_worker(FAILOVER_DOWN_WORKER), 0);
+}
+
+Test(logthrdestdrv_failover, round_robin_rejects_when_no_worker_is_reachable)
+{
+  _setup_failover_dd((1 << FAILOVER_UP_WORKER) | (1 << FAILOVER_DOWN_WORKER), NULL);
+
+  cr_assert_not(_queue_message("1", TRUE));
+  cr_assert_eq(_queued_on_worker(FAILOVER_UP_WORKER), 0);
+  cr_assert_eq(_queued_on_worker(FAILOVER_DOWN_WORKER), 0);
+}
+
+Test(logthrdestdrv_failover, partitioned_message_of_an_unreachable_worker_is_rejected)
+{
+  _setup_failover_dd(1 << FAILOVER_DOWN_WORKER, "$PID");
+
+  cr_assert_not(_queue_message(_pid_for_worker(FAILOVER_DOWN_WORKER), TRUE));
+  cr_assert_eq(_queued_on_worker(FAILOVER_DOWN_WORKER), 0);
+
+  cr_assert(_queue_message(_pid_for_worker(FAILOVER_UP_WORKER), TRUE));
+  _spin_for_counter_value(fdd->super.metrics.written_messages, 1);
+  cr_assert_eq(g_atomic_int_get(&failover_inserts[FAILOVER_UP_WORKER]), 1);
+}
+
+Test(logthrdestdrv_failover, unreachable_worker_still_buffers_without_destination_failover)
+{
+  _setup_failover_dd(1 << FAILOVER_DOWN_WORKER, "$PID");
+
+  cr_assert(_queue_message(_pid_for_worker(FAILOVER_DOWN_WORKER), FALSE));
+  cr_assert_eq(_queued_on_worker(FAILOVER_DOWN_WORKER), 1);
+}
+
+static void
+failover_setup(void)
+{
+  app_startup();
+
+  main_loop = main_loop_get_instance();
+  main_loop_init(main_loop, &main_loop_options);
+  cfg_set_current_version(main_loop_get_current_config(main_loop));
+
+  main_loop_worker_allocate_thread_space(FAILOVER_NUM_WORKERS);
+  main_loop_worker_finalize_thread_space();
+}
+
+static void
+failover_teardown(void)
+{
+  main_loop_sync_worker_startup_and_teardown();
+  log_pipe_deinit(&fdd->super.super.super.super);
+  log_pipe_unref(&fdd->super.super.super.super);
+  main_loop_deinit(main_loop);
+  app_shutdown();
+}
+
+TestSuite(logthrdestdrv_failover, .init = failover_setup, .fini = failover_teardown);
