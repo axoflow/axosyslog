@@ -36,6 +36,12 @@ log_multiplexer_disable_delivery_propagation(LogMultiplexer *self)
   self->delivery_propagation = FALSE;
 }
 
+void
+log_multiplexer_enable_delivery_propagation(LogMultiplexer *self)
+{
+  self->delivery_propagation = TRUE;
+}
+
 static gboolean
 log_multiplexer_init(LogPipe *s)
 {
@@ -199,6 +205,34 @@ log_multiplexer_walk(LogPipe *s, LogPathWalkFunc func, gpointer user_data)
         log_pipe_walk(next_hop, func, user_data);
     }
   return log_pipe_walk_method(s, func, user_data);
+}
+
+LogMultiplexer *
+log_multiplexer_check(LogPipe *pipe)
+{
+  if (pipe && pipe->queue == log_multiplexer_queue)
+    return (LogMultiplexer *) pipe;
+  return NULL;
+}
+
+static gboolean
+_enable_delivery_propagation_walk_func(LogPipe *from, LogPathConnectionType type, LogPipe *to, gpointer user_data)
+{
+  LogMultiplexer *mpx = log_multiplexer_check(to);
+
+  if (mpx)
+    log_multiplexer_enable_delivery_propagation(mpx);
+  return TRUE;
+}
+
+void
+log_multiplexer_enable_delivery_propagation_downstream(LogPipe *pipe)
+{
+  LogMultiplexer *mpx = log_multiplexer_check(pipe);
+
+  if (mpx)
+    log_multiplexer_enable_delivery_propagation(mpx);
+  log_pipe_walk(pipe, _enable_delivery_propagation_walk_func, NULL);
 }
 
 LogMultiplexer *
