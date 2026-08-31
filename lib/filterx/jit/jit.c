@@ -300,6 +300,18 @@ filterx_jit_ir_clear_variables(FilterXJIT *self)
   _reset_variables(self);
 }
 
+void
+filterx_jit_ir_invalidate_variable(FilterXJIT *self, gint scope_var_idx)
+{
+  g_assert(!self->mod_finalized);
+
+  if (!self->current_block_variables)
+    return;
+
+  LLVMBuildStore(self->ir, _variable_uninitialized_sentinel(self),
+                 filterx_jit_ir_get_variable(self, scope_var_idx));
+}
+
 FilterXIRValue
 filterx_jit_ir_get_eval_context(FilterXJIT *self)
 {
@@ -830,6 +842,11 @@ FilterXIRValue filterx_jit_ir_is_variable_uninitialized(FilterXJIT *self, Filter
 }
 
 void filterx_jit_ir_clear_variables(FilterXJIT *self)
+{
+  g_assert_not_reached();
+}
+
+void filterx_jit_ir_invalidate_variable(FilterXJIT *self, gint scope_var_idx)
 {
   g_assert_not_reached();
 }

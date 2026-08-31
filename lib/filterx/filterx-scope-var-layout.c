@@ -35,7 +35,9 @@ _collect_variable(FilterXExpr *expr, LayoutBuilder *b)
   if (filterx_variable_expr_is_macro(expr))
     return;
 
-  FilterXVariableHandle handle = filterx_variable_expr_get_handle(expr);
+  FilterXVariableHandle handle;
+
+  filterx_variable_expr_get_handle(expr, &handle);
   g_hash_table_add(b->handles_seen, GUINT_TO_POINTER((guint) handle));
   g_ptr_array_add(b->exprs, expr);
 }
@@ -89,11 +91,13 @@ _build_layout(FilterXScopeVariableLayout *self, LayoutBuilder *b)
                           GINT_TO_POINTER((gint) idx));
     }
 
+  FilterXVariableHandle handle;
+
   for (gint j = 0; j < b->exprs->len; j++)
     {
       FilterXExpr *expr = g_ptr_array_index(b->exprs, j);
       g_assert(filterx_expr_is_variable(expr));
-      FilterXVariableHandle handle = filterx_variable_expr_get_handle(expr);
+      filterx_variable_expr_get_handle(expr, &handle);
       gpointer idx = g_hash_table_lookup(handle_to_idx, GUINT_TO_POINTER((guint) handle));
 
       filterx_variable_expr_set_scope_var_idx(expr, GPOINTER_TO_INT(idx));
