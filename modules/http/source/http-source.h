@@ -28,6 +28,8 @@
 #include "http/source/http-source.h"
 #include "template/templates.h"
 
+#include "http-decompression.h"
+
 typedef struct EHTTPSourceDriver EHTTPSourceDriver;
 typedef struct EHTTPSourceConnection EHTTPSourceConnection;
 typedef enum _EHTTPSourceMode
@@ -42,6 +44,7 @@ struct EHTTPSourceConnection
 {
   HTTPSourceConnection super;
   LogMessage *first_message;
+  HTTPDecompressResult decompress_result;
 };
 
 struct EHTTPSourceDriver
