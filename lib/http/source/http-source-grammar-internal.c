@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2002-2012 Balabit
- * Copyright (c) 1998-2012 Balázs Scheidler
+ * Copyright (c) 2018 Balabit
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
@@ -21,13 +20,20 @@
  *
  */
 
-#ifndef AFINET_H_INCLUDED
-#define AFINET_H_INCLUDED
+#include "http-source-grammar-internal.h"
+#include "cfg-grammar-internal.h"
 
-#include "afsocket.h"
-#include "transport-mapper.h"
+SocketOptions *last_http_sock_options;
+TransportMapper *last_http_transport_mapper;
+TLSContext *last_http_tls_context;
 
-guint16 afinet_lookup_service(const TransportMapper *transport_mapper, const gchar *service);
-gint afinet_determine_port(const TransportMapper *transport_mapper, const gchar *service_port);
+void
+http_source_grammar_set_source_driver(HTTPSourceDriver *sd)
+{
+  last_driver = &sd->super.super.super;
 
-#endif
+  last_reader_options = &sd->super.reader_options;
+  last_http_sock_options = sd->super.socket_options;
+  last_http_transport_mapper = sd->super.transport_mapper;
+  last_proto_server_options = &last_reader_options->proto_options.super;
+}

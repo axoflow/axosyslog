@@ -54,16 +54,6 @@ int deny_severity = 0;
 static const glong DYNAMIC_WINDOW_TIMER_MSECS = 1000;
 static const gsize DYNAMIC_WINDOW_REALLOC_TICKS = 5;
 
-typedef struct _AFSocketSourceConnection
-{
-  LogPipe super;
-  struct _AFSocketSourceDriver *owner;
-  LogReader *reader;
-  int sock;
-  GSockAddr *peer_addr;
-  GSockAddr *local_addr;
-} AFSocketSourceConnection;
-
 static void afsocket_sd_close_connection(AFSocketSourceDriver *self, AFSocketSourceConnection *sc);
 
 static void
@@ -148,8 +138,11 @@ afsocket_sc_init(LogPipe *s)
   gboolean restored_kept_alive_source = !!self->reader;
   if (!restored_kept_alive_source)
     {
-      proto = log_proto_server_factory_construct(self->owner->proto_factory, NULL,
-                                                 &self->owner->reader_options.proto_options.super, kb);
+      if (self->owner->construct_proto)
+        proto = self->owner->construct_proto(self, kb);
+      else
+        proto = log_proto_server_factory_construct(self->owner->proto_factory, NULL,
+                                                   &self->owner->reader_options.proto_options.super, kb);
       if (!proto)
         {
           stats_cluster_key_builder_free(kb);
@@ -938,14 +931,17 @@ afsocket_sd_setup_transport(AFSocketSourceDriver *self)
   if (!transport_mapper_apply_transport(self->transport_mapper, cfg))
     return FALSE;
 
-  if (!self->proto_factory)
-    self->proto_factory = log_proto_server_get_factory(&cfg->plugin_context, self->transport_mapper->logproto);
-
-  if (!self->proto_factory)
+  if (!self->construct_proto)
     {
-      msg_error("Unknown value specified in the transport() option, no such LogProto plugin found",
-                evt_tag_str("transport", self->transport_mapper->logproto));
-      return FALSE;
+      if (!self->proto_factory)
+        self->proto_factory = log_proto_server_get_factory(&cfg->plugin_context, self->transport_mapper->logproto);
+
+      if (!self->proto_factory)
+        {
+          msg_error("Unknown value specified in the transport() option, no such LogProto plugin found",
+                    evt_tag_str("transport", self->transport_mapper->logproto));
+          return FALSE;
+        }
     }
 
   afsocket_sd_setup_reader_options(self);

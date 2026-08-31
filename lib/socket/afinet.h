@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2021 Balazs Scheidler <bazsi77@gmail.com>
+ * Copyright (c) 2002-2012 Balabit
+ * Copyright (c) 1998-2012 Balázs Scheidler
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
@@ -19,25 +20,14 @@
  * COPYING for details.
  *
  */
-#ifndef SOCKET_OPTIONS_UNIX_H_INCLUDED
-#define SOCKET_OPTIONS_UNIX_H_INCLUDED
 
-#include "socket/socket-options.h"
+#ifndef AFINET_H_INCLUDED
+#define AFINET_H_INCLUDED
 
-typedef struct _SocketOptionsUnix
-{
-  SocketOptions super;
-  gint so_passcred;
-} SocketOptionsUnix;
+#include "syslog-ng.h"
+#include "transport-mapper.h"
 
-static inline void
-socket_options_unix_set_so_passcred(SocketOptions *s, gint so_passcred)
-{
-  SocketOptionsUnix *self = (SocketOptionsUnix *) s;
-
-  self->so_passcred = so_passcred;
-}
-
-SocketOptions *socket_options_unix_new(void);
+guint16 afinet_lookup_service(const TransportMapper *transport_mapper, const gchar *service);
+gint afinet_determine_port(const TransportMapper *transport_mapper, const gchar *service_port);
 
 #endif

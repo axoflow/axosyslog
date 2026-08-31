@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2002-2012 Balabit
- * Copyright (c) 1998-2012 Balázs Scheidler
+ * Copyright (c) 2018 Balabit
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
@@ -21,31 +20,37 @@
  *
  */
 
-#ifndef AFINET_SOURCE_H_INCLUDED
-#define AFINET_SOURCE_H_INCLUDED
+#ifndef HTTP_SOURCE_H_INCLUDED
+#define HTTP_SOURCE_H_INCLUDED
 
-#include "socket/afinet.h"
+#include "syslog-ng.h"
 #include "socket/afsocket-source.h"
+#include "http/http-message.h"
 #include "transport/tls-context.h"
 
-typedef struct _AFInetSourceDriver
+typedef struct _HTTPSourceDriver HTTPSourceDriver;
+typedef AFSocketSourceConnection HTTPSourceConnection;
+
+struct _HTTPSourceDriver
 {
   AFSocketSourceDriver super;
-  /* character as it can contain a service name from /etc/services */
+
   gchar *bind_port;
   gchar *bind_ip;
-} AFInetSourceDriver;
 
-void afinet_sd_set_tls_context(LogDriver *s, TLSContext *tls_context);
+  GQueue *(*extract_log_messages)(HTTPRequest *http_request, HTTPSourceConnection *connection);
+  HTTPResponse *(*create_response)(HTTPRequest *http_request, HTTPSourceConnection *connection);
+};
 
-AFInetSourceDriver *afinet_sd_new_tcp(GlobalConfig *cfg);
-AFInetSourceDriver *afinet_sd_new_tcp6(GlobalConfig *cfg);
-AFInetSourceDriver *afinet_sd_new_udp(GlobalConfig *cfg);
-AFInetSourceDriver *afinet_sd_new_udp6(GlobalConfig *cfg);
-AFInetSourceDriver *afinet_sd_new_syslog(GlobalConfig *cfg);
-AFInetSourceDriver *afinet_sd_new_network(GlobalConfig *cfg);
+TransportMapper *http_transport_mapper_new(void);
 
-void afinet_sd_set_localport(LogDriver *self, gchar *service);
-void afinet_sd_set_localip(LogDriver *self, gchar *ip);
+void http_sd_set_tls_context(LogDriver *s, TLSContext *tls_context);
+void http_sd_set_localport(LogDriver *self, gchar *service);
+void http_sd_set_localip(LogDriver *self, gchar *ip);
+
+void http_sd_init_instance(HTTPSourceDriver *self, SocketOptions *socket_options,
+                           TransportMapper *transport_mapper, GlobalConfig *cfg);
+gboolean http_sd_init_method(LogPipe *s);
+void http_sd_free_method(LogPipe *self);
 
 #endif

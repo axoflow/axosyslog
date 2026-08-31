@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2021 Balazs Scheidler <bazsi77@gmail.com>
+ * Copyright (c) 2017 Balabit
+ * Copyright (c) 2017 László Várady
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
@@ -19,25 +20,12 @@
  * COPYING for details.
  *
  */
-#ifndef SOCKET_OPTIONS_UNIX_H_INCLUDED
-#define SOCKET_OPTIONS_UNIX_H_INCLUDED
 
-#include "socket/socket-options.h"
+#include "http-message.h"
 
-typedef struct _SocketOptionsUnix
-{
-  SocketOptions super;
-  gint so_passcred;
-} SocketOptionsUnix;
-
-static inline void
-socket_options_unix_set_so_passcred(SocketOptions *s, gint so_passcred)
-{
-  SocketOptionsUnix *self = (SocketOptionsUnix *) s;
-
-  self->so_passcred = so_passcred;
-}
-
-SocketOptions *socket_options_unix_new(void);
-
-#endif
+/* low-level API for the parser and proto */
+void http_message_append_body(HTTPMessage *self, const guint8 *data, gsize length);
+void http_request_append_url(HTTPRequest *self, const gchar *data, gsize length);
+void http_message_add_header_normalized_in_place(HTTPMessage *self, GString *key, GString *value);
+GByteArray *http_response_generate_raw_response(HTTPResponse *self);
+void http_response_add_mandatory_headers(HTTPResponse *self);

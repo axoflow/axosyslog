@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2021 Balazs Scheidler <bazsi77@gmail.com>
+ * Copyright (c) 2017 Balabit
+ * Copyright (c) 2017 László Várady
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
@@ -19,25 +20,30 @@
  * COPYING for details.
  *
  */
-#ifndef SOCKET_OPTIONS_UNIX_H_INCLUDED
-#define SOCKET_OPTIONS_UNIX_H_INCLUDED
 
-#include "socket/socket-options.h"
+#ifndef HTTP_PARSER_H_INCLUDED
+#define HTTP_PARSER_H_INCLUDED
 
-typedef struct _SocketOptionsUnix
-{
-  SocketOptions super;
-  gint so_passcred;
-} SocketOptionsUnix;
+#include "http-message.h"
 
-static inline void
-socket_options_unix_set_so_passcred(SocketOptions *s, gint so_passcred)
-{
-  SocketOptionsUnix *self = (SocketOptionsUnix *) s;
+#include <glib.h>
 
-  self->so_passcred = so_passcred;
-}
+#define HTTP_PARSER_ERROR http_parser_error_quark()
+GQuark http_parser_error_quark(void);
 
-SocketOptions *socket_options_unix_new(void);
+typedef struct _HTTPParser HTTPParser;
+
+HTTPParser *http_request_parser_new(void);
+HTTPParser *http_response_parser_new(void);
+void http_parser_free(HTTPParser *self);
+
+gboolean http_parser_feed(HTTPParser *self, const gchar *data, gsize length, gsize *consumed_bytes);
+gboolean http_parser_signal_end_of_stream(HTTPParser *self);
+
+void http_parser_skip_message(HTTPParser *self);
+gboolean http_parser_is_message_complete(const HTTPParser *self);
+HTTPMessage *http_parser_steal_message(HTTPParser *self);
+
+GError *http_parser_get_last_error(const HTTPParser *self);
 
 #endif

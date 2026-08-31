@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Balazs Scheidler <bazsi77@gmail.com>
+ * Copyright (c) 2018 Balabit
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
@@ -19,25 +19,19 @@
  * COPYING for details.
  *
  */
-#ifndef SOCKET_OPTIONS_UNIX_H_INCLUDED
-#define SOCKET_OPTIONS_UNIX_H_INCLUDED
 
-#include "socket/socket-options.h"
+#ifndef HTTP_SOURCE_GRAMMAR_INTERNAL_H_INCLUDED
+#define HTTP_SOURCE_GRAMMAR_INTERNAL_H_INCLUDED
 
-typedef struct _SocketOptionsUnix
-{
-  SocketOptions super;
-  gint so_passcred;
-} SocketOptionsUnix;
+#include "http/source/http-source.h"
+#include "socket/socket-options-inet.h"
+#include "socket/transport-mapper-inet.h"
+#include "transport/tls-context.h"
 
-static inline void
-socket_options_unix_set_so_passcred(SocketOptions *s, gint so_passcred)
-{
-  SocketOptionsUnix *self = (SocketOptionsUnix *) s;
+extern SocketOptions *last_http_sock_options;
+extern TransportMapper *last_http_transport_mapper;
+extern TLSContext *last_http_tls_context;
 
-  self->so_passcred = so_passcred;
-}
-
-SocketOptions *socket_options_unix_new(void);
+void http_source_grammar_set_source_driver(HTTPSourceDriver *sd);
 
 #endif
