@@ -72,7 +72,7 @@ typedef gpointer FilterXJITCtx;
 
 struct _FilterXEvalContext;
 
-typedef FilterXObject *(*FilterXJITExecFunc)(struct _FilterXEvalContext *ctx);
+typedef FilterXObject *(*FilterXJITExecFunc)(struct _FilterXEvalContext *ctx, gpointer *ptr_table);
 
 
 FilterXJIT *filterx_jit_new(const gchar *module_name, FilterXJITDebugInfo debug_info, GError **error);
@@ -102,6 +102,8 @@ void filterx_jit_ir_set_source_location(FilterXJIT *self, const gchar *file, gin
 /* JIT */
 gboolean filterx_jit_finalize(FilterXJIT *self, GError **error);
 FilterXJITAddress filterx_jit_lookup(FilterXJIT *self, const gchar *block_name, GError **error);
+
+gpointer *filterx_jit_get_block_ptr_table(FilterXJIT *self, const gchar *block_name);
 
 void filterx_jit_global_init(void);
 void filterx_jit_global_deinit(void);
