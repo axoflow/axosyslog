@@ -65,7 +65,7 @@ _destroy_reload_entry(void *c)
 #include "compat/cpp-end.h"
 
 SourceDriver::SourceDriver(GrpcSourceDriver *s)
-  : syslogng::grpc::SourceDriver(s)
+  : syslogng::grpc::SourceDriver(s), mode(OSM_LOGMESSAGE)
 {
   this->port = 4317;
   this->trace_service = std::make_unique<TraceService::AsyncService>();
@@ -292,6 +292,13 @@ otel_sd_reload_restore(LogThreadedSourceDriver *s, gint *num_workers)
 {
   SourceDriver *self = otel_sd_get_cpp((GrpcSourceDriver *) s);
   return self->reload_restore(num_workers);
+}
+
+void
+otel_sd_set_mode(LogDriver *s, OtelSourceMode mode)
+{
+  SourceDriver *self = otel_sd_get_cpp((GrpcSourceDriver *) s);
+  self->mode = mode;
 }
 
 LogDriver *

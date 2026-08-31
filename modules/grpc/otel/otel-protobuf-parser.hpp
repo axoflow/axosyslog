@@ -60,6 +60,7 @@ public:
     this->set_host = s;
   }
 
+  static void store_peer_address(LogMessage *msg, const ::grpc::string &peer);
   static void store_raw_metadata(LogMessage *msg, const ::grpc::string &peer,
                                  const Resource &resource, const std::string &resource_schema_url,
                                  const InstrumentationScope &scope, const std::string &scope_schema_url);

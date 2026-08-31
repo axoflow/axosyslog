@@ -38,6 +38,9 @@ static CfgLexerKeyword otel_keywords[] =
   { "syslog_ng_otlp",            KW_AXOSYSLOG_OTLP },
   { "set_hostname",              KW_SET_HOSTNAME },
   { "keep_alive",                KW_KEEP_ALIVE },
+  { "mode",                      KW_MODE },
+  { "logmessage",                KW_LOGMESSAGE },
+  { "filterx_dict",              KW_FILTERX_DICT },
   { NULL }
 };
 

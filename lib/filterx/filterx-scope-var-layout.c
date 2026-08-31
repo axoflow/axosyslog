@@ -145,6 +145,27 @@ filterx_scope_variable_layout_new_from_handles(FilterXVariableHandle *handles, g
   return self;
 }
 
+gint
+filterx_scope_variable_layout_get_index(FilterXScopeVariableLayout *self, FilterXVariableHandle handle)
+{
+  gint l = 0, h = (gint) self->num_variables - 1;
+
+  while (l <= h)
+    {
+      gint m = (l + h) >> 1;
+      FilterXVariableHandle mv = self->handles[m];
+
+      if (mv == handle)
+        return m;
+      else if (mv > handle)
+        h = m - 1;
+      else
+        l = m + 1;
+    }
+
+  return -1;
+}
+
 void
 filterx_scope_variable_layout_free(FilterXScopeVariableLayout *self)
 {

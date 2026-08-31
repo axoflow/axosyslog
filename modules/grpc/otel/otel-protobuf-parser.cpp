@@ -237,8 +237,13 @@ _set_hostname_from_attributes(LogMessage *msg, const RepeatedPtrField<KeyValue> 
 }
 
 static GSockAddr *
-_extract_saddr(const grpc::string &peer)
+_extract_saddr(const grpc::string &peer_uri)
 {
+  /* newer gRPC versions percent-encode the peer, e.g. ipv6:%5B::1%5D:32768 */
+  gchar *unescaped = g_uri_unescape_string(peer_uri.c_str(), NULL);
+  const std::string peer = unescaped ? unescaped : peer_uri;
+  g_free(unescaped);
+
   size_t first = peer.find_first_of(':');
   size_t last = peer.find_last_of(':');
 
@@ -1115,6 +1120,12 @@ _unset_raw_fields(LogMessage *msg)
 }
 
 void
+syslogng::grpc::otel::ProtobufParser::store_peer_address(LogMessage *msg, const ::grpc::string &peer)
+{
+  msg->saddr = _extract_saddr(peer);
+}
+
+void
 syslogng::grpc::otel::ProtobufParser::store_raw_metadata(LogMessage *msg, const ::grpc::string &peer,
                                                          const Resource &resource,
                                                          const std::string &resource_schema_url,
@@ -1123,7 +1134,7 @@ syslogng::grpc::otel::ProtobufParser::store_raw_metadata(LogMessage *msg, const 
 {
   std::string serialized;
 
-  msg->saddr = _extract_saddr(peer);
+  store_peer_address(msg, peer);
 
   /* .otel_raw.resource */
   resource.SerializePartialToString(&serialized);

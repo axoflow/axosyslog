@@ -32,9 +32,11 @@
 #include "otel-source.hpp"
 #include "otel-protobuf-parser.hpp"
 #include "otel-logmsg-handles.hpp"
+#include "filterx/otel-field-converter.hpp"
 
 #include "compat/cpp-start.h"
 #include "transport/tls-session.h"
+#include "filterx/filterx-eval.h"
 #include "compat/cpp-end.h"
 
 #include <grpcpp/grpcpp.h>
@@ -104,6 +106,55 @@ _store_peer_info(LogMessage *msg, const TLSPeerInfo &peer_info)
   log_msg_set_value(msg, logmsg_handle::TLS_X509_CN, peer_info.cn, -1);
   log_msg_set_value(msg, logmsg_handle::TLS_X509_O, peer_info.o, -1);
   log_msg_set_value(msg, logmsg_handle::TLS_X509_OU, peer_info.ou, -1);
+}
+
+}
+}
+}
+
+static gboolean
+_filterx_inject_var(FilterXScope *fx_scope, FilterXScopeVariableLayout *layout, const gchar *name, FilterXObject *obj)
+{
+  if (!obj)
+    return FALSE;
+
+  FilterXVariableHandle handle = filterx_map_varname_to_handle(name, FX_VAR_DECLARED_FLOATING);
+  gint scope_var_idx = filterx_scope_variable_layout_get_index(layout, handle);
+  FilterXVariable *var = filterx_scope_register_variable(fx_scope, FX_VAR_DECLARED_FLOATING, handle, scope_var_idx);
+  filterx_scope_set_variable(fx_scope, var, &obj, TRUE);
+  filterx_object_unref(obj);
+  return TRUE;
+}
+
+namespace syslogng {
+namespace grpc {
+namespace otel {
+
+/* a separate function, so the scope FILTERX_EVAL_BEGIN_CONTEXT allocates with
+ * g_alloca() is freed per log record, not accumulated for the whole request */
+static gboolean
+_post_log_record_as_filterx_dicts(SourceWorker &worker, FilterXScopeVariableLayout *layout, LogMessage *msg,
+                                  const Resource &resource, const InstrumentationScope &scope,
+                                  const LogRecord &log_record)
+{
+  gboolean converted = FALSE;
+  FilterXEvalContext eval_context;
+
+  FILTERX_EVAL_BEGIN_CONTEXT(eval_context, NULL, msg, layout)
+  {
+    converted =
+      _filterx_inject_var(eval_context.scope, layout, "resource",
+                          otel_protobuf_message_to_filterx_dict(resource)) &&
+      _filterx_inject_var(eval_context.scope, layout, "scope",
+                          otel_protobuf_message_to_filterx_dict(scope)) &&
+      _filterx_inject_var(eval_context.scope, layout, "log",
+                          otel_protobuf_message_to_filterx_dict(log_record));
+    if (converted)
+      worker.blocking_post(msg, &eval_context);
+  }
+  FILTERX_EVAL_END_CONTEXT(eval_context);
+
+  return converted;
 }
 
 }
@@ -181,12 +232,25 @@ syslogng::grpc::otel::LogsServiceCall::Proceed(bool ok)
       return;
     }
 
+  SourceDriver &owner = static_cast<SourceDriver &>(worker.get_owner());
   ::grpc::Status response_status = ::grpc::Status::OK;
 
   TLSPeerInfo peer_info = { 0 };
   _extract_peer_info(ctx, &peer_info);
 
   int msgs_in_fetch_round = 0;
+
+  FilterXScopeVariableLayout *filterx_scope_var_layout = NULL;
+  if (owner.mode == OSM_FILTERX_DICT)
+    {
+      FilterXVariableHandle handles[] =
+      {
+        filterx_map_varname_to_handle("resource", FX_VAR_DECLARED_FLOATING),
+        filterx_map_varname_to_handle("scope", FX_VAR_DECLARED_FLOATING),
+        filterx_map_varname_to_handle("log", FX_VAR_DECLARED_FLOATING),
+      };
+      filterx_scope_var_layout = filterx_scope_variable_layout_new_from_handles(handles, G_N_ELEMENTS(handles));
+    }
 
   for (const ResourceLogs &resource_logs : request.resource_logs())
     {
@@ -208,20 +272,33 @@ syslogng::grpc::otel::LogsServiceCall::Proceed(bool ok)
 
               LogMessage *msg = log_msg_new_empty();
               log_msg_set_recvd_rawmsg_size(msg, log_record.ByteSizeLong());
+              _store_peer_info(msg, peer_info);
 
               if (ProtobufParser::is_syslog_ng_log_record(resource, resource_logs_schema_url, scope,
                                                           scope_logs_schema_url))
                 {
                   ProtobufParser::store_syslog_ng(msg, log_record);
+                  worker.blocking_post(msg);
                 }
-              else
+              else if (owner.mode == OSM_LOGMESSAGE)
                 {
                   ProtobufParser::store_raw_metadata(msg, ctx.peer(), resource, resource_logs_schema_url, scope,
                                                      scope_logs_schema_url);
                   ProtobufParser::store_raw(msg, log_record);
+                  worker.blocking_post(msg);
                 }
-              _store_peer_info(msg, peer_info);
-              worker.blocking_post(msg);
+              else
+                {
+                  ProtobufParser::store_peer_address(msg, ctx.peer());
+
+                  if (!_post_log_record_as_filterx_dicts(worker, filterx_scope_var_layout, msg,
+                                                         resource, scope, log_record))
+                    {
+                      msg_error("opentelemetry: failed to convert log record to FilterX dicts, dropping message");
+                      log_msg_unref(msg);
+                      continue;
+                    }
+                }
 
               msgs_in_fetch_round++;
               if (msgs_in_fetch_round == worker.get_owner().get_fetch_limit())
@@ -235,6 +312,8 @@ syslogng::grpc::otel::LogsServiceCall::Proceed(bool ok)
 
   if (msgs_in_fetch_round != 0)
     log_threaded_source_worker_close_batch(&worker.super->super);
+
+  filterx_scope_variable_layout_free(filterx_scope_var_layout);
 
   status = SEND_RESPONSE;
   responder.Finish(response, response_status, this);
