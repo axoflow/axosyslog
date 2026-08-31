@@ -21,7 +21,7 @@
  */
 
 #include <criterion/criterion.h>
-#include <criterion/parameterized.h>
+#include "libtest/parameterized.h"
 
 #include "collection-comparator.h"
 
@@ -74,27 +74,17 @@ struct TestFileList
   const gchar *expected_new_files[10];
 };
 
-struct TestFileList nothing_changed = {{"test1", "test2"}, {"test1", "test2"}, {NULL}, {NULL}};
-struct TestFileList last_file_deleted = {{"test1", "test2"}, {"test2"}, {"test1"}, {NULL}};
-struct TestFileList first_file_deleted = {{"test1", "test2"}, {"test1"}, {"test2"}, {NULL}};
-struct TestFileList delete_all = {{"test1", "test2"}, {NULL}, {"test1", "test2"}, {NULL}};
-struct TestFileList create_all = {{NULL}, {"test1", "test2"}, {NULL}, {"test1", "test2"}};
-struct TestFileList mixed = {{"test1", "test2", "test3"}, {"test1", "test4"}, {"test2", "test3"}, {"test4"}};
-
-ParameterizedTestParameters(params, multiple)
+static struct TestFileList params[] =
 {
-  static struct TestFileList params[6];
-  params[0] = nothing_changed;
-  params[1] = last_file_deleted;
-  params[2] = first_file_deleted;
-  params[3] = delete_all;
-  params[4] = create_all;
-  params[5] = mixed;
+  { {"test1", "test2"}, {"test1", "test2"}, {NULL}, {NULL} },
+  { {"test1", "test2"}, {"test2"}, {"test1"}, {NULL} },
+  { {"test1", "test2"}, {"test1"}, {"test2"}, {NULL} },
+  { {"test1", "test2"}, {NULL}, {"test1", "test2"}, {NULL} },
+  { {NULL}, {"test1", "test2"}, {NULL}, {"test1", "test2"} },
+  { {"test1", "test2", "test3"}, {"test1", "test4"}, {"test2", "test3"}, {"test4"} },
+};
 
-  return cr_make_param_array(struct TestFileList, params, sizeof (params) / sizeof (struct TestFileList));
-}
-
-ParameterizedTest(struct TestFileList *tup, params, multiple)
+StaticParameterizedTest(struct TestFileList *tup, params, params, multiple)
 {
   TestData *data = test_data_new();
   CollectionComparator *comporator = collection_comparator_new();

@@ -21,7 +21,7 @@
  *
  */
 #include <criterion/criterion.h>
-#include <criterion/parameterized.h>
+#include "libtest/parameterized.h"
 #include "test_filters_common.h"
 
 #include "filter/filter-expr.h"
@@ -43,33 +43,28 @@ typedef struct _FilterParamRange
   gboolean    expected_result;
 } FilterParamRange;
 
-ParameterizedTestParameters(filter, test_filter_severity_range)
+static FilterParamRange test_filter_severity_range_params[] =
 {
-  static FilterParamRange test_data_list[] =
-  {
-    {.msg = "<15> openvpn[2499]: PTHREAD support initialized", .from = "debug", .to = "emerg", .expected_result = TRUE},
-    {.msg = "<8> openvpn[2499]: PTHREAD support initialized", .from = "crit", .to = "emerg", .expected_result = TRUE},
-    {.msg = "<9> openvpn[2499]: PTHREAD support initialized", .from = "crit", .to = "emerg", .expected_result = TRUE},
-    {.msg = "<10> openvpn[2499]: PTHREAD support initialized", .from = "crit", .to = "emerg", .expected_result = TRUE},
-    {.msg = "<11> openvpn[2499]: PTHREAD support initialized", .from = "crit", .to = "emerg", .expected_result = FALSE},
-    {.msg = "<12> openvpn[2499]: PTHREAD support initialized", .from = "crit", .to = "emerg", .expected_result = FALSE},
-    {.msg = "<13> openvpn[2499]: PTHREAD support initialized", .from = "crit", .to = "emerg", .expected_result = FALSE},
-    {.msg = "<14> openvpn[2499]: PTHREAD support initialized", .from = "crit", .to = "emerg", .expected_result = FALSE},
-    {.msg = "<15> openvpn[2499]: PTHREAD support initialized", .from = "crit", .to = "emerg", .expected_result = FALSE},
-    {.msg = "<8> openvpn[2499]: PTHREAD support initialized", .from = "debug", .to = "notice", .expected_result = FALSE},
-    {.msg = "<9> openvpn[2499]: PTHREAD support initialized", .from = "debug", .to = "notice", .expected_result = FALSE},
-    {.msg = "<10> openvpn[2499]: PTHREAD support initialized", .from = "debug", .to = "notice", .expected_result = FALSE},
-    {.msg = "<11> openvpn[2499]: PTHREAD support initialized", .from = "debug", .to = "notice", .expected_result = FALSE},
-    {.msg = "<12> openvpn[2499]: PTHREAD support initialized", .from = "debug", .to = "notice", .expected_result = FALSE},
-    {.msg = "<13> openvpn[2499]: PTHREAD support initialized", .from = "debug", .to = "notice", .expected_result = TRUE},
-    {.msg = "<14> openvpn[2499]: PTHREAD support initialized", .from = "debug", .to = "notice", .expected_result = TRUE},
-    {.msg = "<15> openvpn[2499]: PTHREAD support initialized", .from = "debug", .to = "notice", .expected_result = TRUE}
-  };
+  {.msg = "<15> openvpn[2499]: PTHREAD support initialized", .from = "debug", .to = "emerg", .expected_result = TRUE},
+  {.msg = "<8> openvpn[2499]: PTHREAD support initialized", .from = "crit", .to = "emerg", .expected_result = TRUE},
+  {.msg = "<9> openvpn[2499]: PTHREAD support initialized", .from = "crit", .to = "emerg", .expected_result = TRUE},
+  {.msg = "<10> openvpn[2499]: PTHREAD support initialized", .from = "crit", .to = "emerg", .expected_result = TRUE},
+  {.msg = "<11> openvpn[2499]: PTHREAD support initialized", .from = "crit", .to = "emerg", .expected_result = FALSE},
+  {.msg = "<12> openvpn[2499]: PTHREAD support initialized", .from = "crit", .to = "emerg", .expected_result = FALSE},
+  {.msg = "<13> openvpn[2499]: PTHREAD support initialized", .from = "crit", .to = "emerg", .expected_result = FALSE},
+  {.msg = "<14> openvpn[2499]: PTHREAD support initialized", .from = "crit", .to = "emerg", .expected_result = FALSE},
+  {.msg = "<15> openvpn[2499]: PTHREAD support initialized", .from = "crit", .to = "emerg", .expected_result = FALSE},
+  {.msg = "<8> openvpn[2499]: PTHREAD support initialized", .from = "debug", .to = "notice", .expected_result = FALSE},
+  {.msg = "<9> openvpn[2499]: PTHREAD support initialized", .from = "debug", .to = "notice", .expected_result = FALSE},
+  {.msg = "<10> openvpn[2499]: PTHREAD support initialized", .from = "debug", .to = "notice", .expected_result = FALSE},
+  {.msg = "<11> openvpn[2499]: PTHREAD support initialized", .from = "debug", .to = "notice", .expected_result = FALSE},
+  {.msg = "<12> openvpn[2499]: PTHREAD support initialized", .from = "debug", .to = "notice", .expected_result = FALSE},
+  {.msg = "<13> openvpn[2499]: PTHREAD support initialized", .from = "debug", .to = "notice", .expected_result = TRUE},
+  {.msg = "<14> openvpn[2499]: PTHREAD support initialized", .from = "debug", .to = "notice", .expected_result = TRUE},
+  {.msg = "<15> openvpn[2499]: PTHREAD support initialized", .from = "debug", .to = "notice", .expected_result = TRUE}
+};
 
-  return cr_make_param_array(FilterParamRange, test_data_list, G_N_ELEMENTS(test_data_list));
-}
-
-ParameterizedTest(FilterParamRange *param, filter, test_filter_severity_range)
+StaticParameterizedTest(FilterParamRange *param, test_filter_severity_range_params, filter, test_filter_severity_range)
 {
   FilterExprNode *filter = filter_severity_new(level_range(param->from, param->to));
   testcase(param->msg, filter, param->expected_result);
@@ -83,25 +78,20 @@ typedef struct _FilterParamBits
   gboolean    expected_result;
 } FilterParamBits;
 
-ParameterizedTestParameters(filter, test_filter_severity_bits)
+static FilterParamBits test_filter_severity_bits_params[] =
 {
-  static FilterParamBits test_data_list[] =
-  {
-    {.msg = "<15> openvpn[2499]: PTHREAD support initialized", .lev = "emerg", .expected_result = FALSE},
-    {.msg = "<0> openvpn[2499]: PTHREAD support initialized", .lev = "emerg", .expected_result = TRUE},
-    {.msg = "<1> openvpn[2499]: PTHREAD support initialized", .lev = "alert", .expected_result = TRUE},
-    {.msg = "<2> openvpn[2499]: PTHREAD support initialized", .lev = "crit", .expected_result = TRUE},
-    {.msg = "<3> openvpn[2499]: PTHREAD support initialized", .lev = "err", .expected_result = TRUE},
-    {.msg = "<4> openvpn[2499]: PTHREAD support initialized", .lev = "warning", .expected_result = TRUE},
-    {.msg = "<5> openvpn[2499]: PTHREAD support initialized", .lev = "notice", .expected_result = TRUE},
-    {.msg = "<6> openvpn[2499]: PTHREAD support initialized", .lev = "info", .expected_result = TRUE},
-    {.msg = "<7> openvpn[2499]: PTHREAD support initialized", .lev = "debug", .expected_result = TRUE}
-  };
+  {.msg = "<15> openvpn[2499]: PTHREAD support initialized", .lev = "emerg", .expected_result = FALSE},
+  {.msg = "<0> openvpn[2499]: PTHREAD support initialized", .lev = "emerg", .expected_result = TRUE},
+  {.msg = "<1> openvpn[2499]: PTHREAD support initialized", .lev = "alert", .expected_result = TRUE},
+  {.msg = "<2> openvpn[2499]: PTHREAD support initialized", .lev = "crit", .expected_result = TRUE},
+  {.msg = "<3> openvpn[2499]: PTHREAD support initialized", .lev = "err", .expected_result = TRUE},
+  {.msg = "<4> openvpn[2499]: PTHREAD support initialized", .lev = "warning", .expected_result = TRUE},
+  {.msg = "<5> openvpn[2499]: PTHREAD support initialized", .lev = "notice", .expected_result = TRUE},
+  {.msg = "<6> openvpn[2499]: PTHREAD support initialized", .lev = "info", .expected_result = TRUE},
+  {.msg = "<7> openvpn[2499]: PTHREAD support initialized", .lev = "debug", .expected_result = TRUE}
+};
 
-  return cr_make_param_array(FilterParamBits, test_data_list, G_N_ELEMENTS(test_data_list));
-}
-
-ParameterizedTest(FilterParamBits *param, filter, test_filter_severity_bits)
+StaticParameterizedTest(FilterParamBits *param, test_filter_severity_bits_params, filter, test_filter_severity_bits)
 {
   FilterExprNode *filter = filter_severity_new(level_bits(param->lev));
   testcase(param->msg, filter, param->expected_result);

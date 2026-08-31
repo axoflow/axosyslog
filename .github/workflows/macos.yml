@@ -18,7 +18,7 @@ jobs:
     name: General
     strategy:
       matrix:
-        version: [26-intel, 14]
+        version: [14, latest]
         build-tool: [autotools, cmake]
       fail-fast: false
 

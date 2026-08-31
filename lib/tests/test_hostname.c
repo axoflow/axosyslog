@@ -20,7 +20,7 @@
  *
  */
 #include <criterion/criterion.h>
-#include <criterion/parameterized.h>
+#include "libtest/parameterized.h"
 
 #include "hostname.h"
 #include "apphook.h"
@@ -93,25 +93,20 @@ typedef struct _HostNameList
   gchar *expected;
 } HostNameList;
 
-ParameterizedTestParameters(test_hostname, test_hostname_fqdn_conversion)
+static HostNameList test_hostname_fqdn_conversion_params[] =
 {
-  static HostNameList host_name_list[] =
-  {
-    {NULL, "foo.bar", "foo.bar"},
-    {NULL, "foo", "foo.balabit"},
-    {NULL, "bzorp", "bzorp.balabit"},
-    {NULL, "bzorp.balabit", "bzorp.balabit"},
-    {"bardomain", "bzorp", "bzorp.bardomain"},
-    {"bardomain", "bzorp.balabit", "bzorp.bardomain"},
-    {"bardomain", "foo", "foo.bardomain"},
-    {"bardomain", "foo.bar", "foo.bardomain"}
-  };
+  {NULL, "foo.bar", "foo.bar"},
+  {NULL, "foo", "foo.balabit"},
+  {NULL, "bzorp", "bzorp.balabit"},
+  {NULL, "bzorp.balabit", "bzorp.balabit"},
+  {"bardomain", "bzorp", "bzorp.bardomain"},
+  {"bardomain", "bzorp.balabit", "bzorp.bardomain"},
+  {"bardomain", "foo", "foo.bardomain"},
+  {"bardomain", "foo.bar", "foo.bardomain"}
+};
 
-  return cr_make_param_array(HostNameList, host_name_list,
-                             sizeof(host_name_list) / sizeof(host_name_list[0]));
-}
-
-ParameterizedTest(HostNameList *host_name_list, test_hostname, test_hostname_fqdn_conversion)
+StaticParameterizedTest(HostNameList *host_name_list, test_hostname_fqdn_conversion_params, test_hostname,
+                        test_hostname_fqdn_conversion)
 {
   gchar buf[256];
 
@@ -123,23 +118,18 @@ ParameterizedTest(HostNameList *host_name_list, test_hostname, test_hostname_fqd
   cr_assert_str_eq(buf, host_name_list->expected, "hostname values mismatch");
 }
 
-ParameterizedTestParameters(test_hostname, test_hostname_short_conversion)
+static HostNameList test_hostname_short_conversion_params[] =
 {
-  static HostNameList host_name_list[] =
-  {
-    {NULL, "foo", "foo"},
-    {NULL, "foo.bar", "foo"},
-    {NULL, "foo.bardomain", "foo"},
-    {"bardomain", "foo", "foo"},
-    {"bardomain", "foo.bar", "foo"},
-    {"bardomain", "foo.bardomain", "foo"},
-  };
+  {NULL, "foo", "foo"},
+  {NULL, "foo.bar", "foo"},
+  {NULL, "foo.bardomain", "foo"},
+  {"bardomain", "foo", "foo"},
+  {"bardomain", "foo.bar", "foo"},
+  {"bardomain", "foo.bardomain", "foo"},
+};
 
-  return cr_make_param_array(HostNameList, host_name_list,
-                             sizeof(host_name_list) / sizeof(host_name_list[0]));
-}
-
-ParameterizedTest(HostNameList *host_name_list, test_hostname, test_hostname_short_conversion)
+StaticParameterizedTest(HostNameList *host_name_list, test_hostname_short_conversion_params, test_hostname,
+                        test_hostname_short_conversion)
 {
   gchar buf[256];
 
@@ -151,19 +141,13 @@ ParameterizedTest(HostNameList *host_name_list, test_hostname, test_hostname_sho
   cr_assert_str_eq(buf, host_name_list->expected, "hostname values mismatch");
 }
 
-ParameterizedTestParameters(test_hostname, test_hostname_fqdn)
+static HostNameList test_hostname_fqdn_params[] =
 {
-  static HostNameList host_name_list[] =
-  {
-    {NULL, NULL, "bzorp.balabit"},
-    {"bardomain", NULL, "bzorp.bardomain"},
-  };
+  {NULL, NULL, "bzorp.balabit"},
+  {"bardomain", NULL, "bzorp.bardomain"},
+};
 
-  return cr_make_param_array(HostNameList, host_name_list,
-                             sizeof(host_name_list) / sizeof(host_name_list[0]));
-}
-
-ParameterizedTest(HostNameList *host_name_list, test_hostname, test_hostname_fqdn)
+StaticParameterizedTest(HostNameList *host_name_list, test_hostname_fqdn_params, test_hostname, test_hostname_fqdn)
 {
   const gchar *host;
 
@@ -174,19 +158,13 @@ ParameterizedTest(HostNameList *host_name_list, test_hostname, test_hostname_fqd
   cr_assert_str_eq(host, host_name_list->expected, "hostname values mismatch");
 }
 
-ParameterizedTestParameters(test_hostname, test_hostname_short)
+static HostNameList test_hostname_short_params[] =
 {
-  static HostNameList host_name_list[] =
-  {
-    {NULL, NULL, "bzorp"},
-    {"bardomain", NULL, "bzorp"},
-  };
+  {NULL, NULL, "bzorp"},
+  {"bardomain", NULL, "bzorp"},
+};
 
-  return cr_make_param_array(HostNameList, host_name_list,
-                             sizeof(host_name_list) / sizeof(host_name_list[0]));
-}
-
-ParameterizedTest(HostNameList *host_name_list, test_hostname, test_hostname_short)
+StaticParameterizedTest(HostNameList *host_name_list, test_hostname_short_params, test_hostname, test_hostname_short)
 {
   const gchar *host;
 

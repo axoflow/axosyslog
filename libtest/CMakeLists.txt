@@ -15,6 +15,7 @@ set(LIBTEST_HEADERS
     queue_utils_lib.h
     stopwatch.h
     cr_template.h
+    parameterized.h
     grab-logging.h
     filterx-lib.h
 )
@@ -32,6 +33,7 @@ set(LIBTEST_SOURCES
     queue_utils_lib.c
     stopwatch.c
     cr_template.c
+    parameterized.c
     grab-logging.c
     filterx-lib.c
 )

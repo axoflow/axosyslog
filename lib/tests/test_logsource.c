@@ -22,7 +22,7 @@
  */
 
 #include <criterion/criterion.h>
-#include <criterion/parameterized.h>
+#include "libtest/parameterized.h"
 #include "libtest/mock-function.h"
 
 #include "logsource.h"
@@ -162,28 +162,24 @@ typedef struct _MangleHostnameParams
   guint32 msg_flags;
 } MangleHostnameParams;
 
-ParameterizedTestParameters(log_source, test_mangle_hostname)
+static MangleHostnameParams test_mangle_hostname_params[] =
 {
-  static MangleHostnameParams test_params[] =
+  { .keep_hostname = TRUE, .chain_hostnames = FALSE, "msg-test-host", "msg-test-host" },
+  { .keep_hostname = TRUE, .chain_hostnames = FALSE, NULL, "resolved-test-host" },
+  { .keep_hostname = TRUE, .chain_hostnames = FALSE, "", "resolved-test-host" },
+  { .keep_hostname = TRUE, .chain_hostnames = TRUE, "msg-test-host", "msg-test-host" },
+  { .keep_hostname = FALSE, .chain_hostnames = TRUE, NULL, "resolved-test-host/resolved-test-host" },
+  { .keep_hostname = FALSE, .chain_hostnames = TRUE, "", "resolved-test-host/resolved-test-host" },
+  { .keep_hostname = FALSE, .chain_hostnames = FALSE, "msg-test-host", "resolved-test-host" },
+  { .keep_hostname = FALSE, .chain_hostnames = TRUE, "msg-test-host", "msg-test-host/resolved-test-host" },
   {
-    { .keep_hostname = TRUE, .chain_hostnames = FALSE, "msg-test-host", "msg-test-host" },
-    { .keep_hostname = TRUE, .chain_hostnames = FALSE, NULL, "resolved-test-host" },
-    { .keep_hostname = TRUE, .chain_hostnames = FALSE, "", "resolved-test-host" },
-    { .keep_hostname = TRUE, .chain_hostnames = TRUE, "msg-test-host", "msg-test-host" },
-    { .keep_hostname = FALSE, .chain_hostnames = TRUE, NULL, "resolved-test-host/resolved-test-host" },
-    { .keep_hostname = FALSE, .chain_hostnames = TRUE, "", "resolved-test-host/resolved-test-host" },
-    { .keep_hostname = FALSE, .chain_hostnames = FALSE, "msg-test-host", "resolved-test-host" },
-    { .keep_hostname = FALSE, .chain_hostnames = TRUE, "msg-test-host", "msg-test-host/resolved-test-host" },
-    {
-      .keep_hostname = FALSE, .chain_hostnames = TRUE, "msg-test-host", TEST_SOURCE_GROUP "@resolved-test-host",
-      .msg_flags = LF_LOCAL
-    },
-  };
+    .keep_hostname = FALSE, .chain_hostnames = TRUE, "msg-test-host", TEST_SOURCE_GROUP "@resolved-test-host",
+    .msg_flags = LF_LOCAL
+  },
+};
 
-  return cr_make_param_array(MangleHostnameParams, test_params, G_N_ELEMENTS(test_params));
-}
-
-ParameterizedTest(MangleHostnameParams *test_params, log_source, test_mangle_hostname)
+StaticParameterizedTest(MangleHostnameParams *test_params, test_mangle_hostname_params, log_source,
+                        test_mangle_hostname)
 {
   source_options.keep_hostname = test_params->keep_hostname;
   source_options.chain_hostnames = test_params->chain_hostnames;

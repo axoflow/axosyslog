@@ -21,7 +21,7 @@
  */
 
 #include <criterion/criterion.h>
-#include <criterion/parameterized.h>
+#include "libtest/parameterized.h"
 #include "libtest/config_parse_lib.h"
 #include "libtest/grab-logging.h"
 
@@ -173,26 +173,21 @@ struct LegacyWildcardTestParams
   const gchar *expected_filename_pattern;
 };
 
-ParameterizedTestParameters(wildcard_source, test_legacy_wildcard)
+static struct LegacyWildcardTestParams test_legacy_wildcard_params[] =
 {
-  static struct LegacyWildcardTestParams params[] =
-  {
-    { "/a/b/c/d*", "/a/b/c", "d*" },
-    { "/a/b/c/d?", "/a/b/c", "d?" },
-    { "/*", "/", "*" },
-    { "*", ".", "*" },
-    { "/tmp/*", "/tmp", "*" },
-    { "tmp/?", "tmp", "?" },
-    { "tmp*", ".", "tmp*" },
-    { "/tmp*", "/", "tmp*" },
-    { "tmp/a*", "tmp", "a*" },
-  };
+  { "/a/b/c/d*", "/a/b/c", "d*" },
+  { "/a/b/c/d?", "/a/b/c", "d?" },
+  { "/*", "/", "*" },
+  { "*", ".", "*" },
+  { "/tmp/*", "/tmp", "*" },
+  { "tmp/?", "tmp", "?" },
+  { "tmp*", ".", "tmp*" },
+  { "/tmp*", "/", "tmp*" },
+  { "tmp/a*", "tmp", "a*" },
+};
 
-
-  return cr_make_param_array(struct LegacyWildcardTestParams, params, G_N_ELEMENTS(params));
-}
-
-ParameterizedTest(struct LegacyWildcardTestParams *params, wildcard_source, test_legacy_wildcard)
+StaticParameterizedTest(struct LegacyWildcardTestParams *params, test_legacy_wildcard_params, wildcard_source,
+                        test_legacy_wildcard)
 {
   WildcardSourceDriver *driver = (WildcardSourceDriver *) wildcard_sd_legacy_new(params->path, configuration);
 

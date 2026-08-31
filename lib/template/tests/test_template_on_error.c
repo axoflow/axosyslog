@@ -22,7 +22,7 @@
  */
 
 #include <criterion/criterion.h>
-#include <criterion/parameterized.h>
+#include "libtest/parameterized.h"
 
 #include "template/templates.h"
 #include "apphook.h"
@@ -34,22 +34,17 @@ typedef struct _TemplateTestCase
   gint expected;
 } TemplateTestCase;
 
-ParameterizedTestParameters(template_on_err, test_success)
+static TemplateTestCase test_success_params[] =
 {
-  static TemplateTestCase test_cases[] =
-  {
-    {"drop-message", ON_ERROR_DROP_MESSAGE},
-    {"silently-drop-message", ON_ERROR_DROP_MESSAGE | ON_ERROR_SILENT},
-    {"drop-property", ON_ERROR_DROP_PROPERTY},
-    {"silently-drop-property", ON_ERROR_DROP_PROPERTY | ON_ERROR_SILENT},
-    {"fallback-to-string", ON_ERROR_FALLBACK_TO_STRING},
-    {"silently-fallback-to-string", ON_ERROR_FALLBACK_TO_STRING | ON_ERROR_SILENT}
-  };
+  {"drop-message", ON_ERROR_DROP_MESSAGE},
+  {"silently-drop-message", ON_ERROR_DROP_MESSAGE | ON_ERROR_SILENT},
+  {"drop-property", ON_ERROR_DROP_PROPERTY},
+  {"silently-drop-property", ON_ERROR_DROP_PROPERTY | ON_ERROR_SILENT},
+  {"fallback-to-string", ON_ERROR_FALLBACK_TO_STRING},
+  {"silently-fallback-to-string", ON_ERROR_FALLBACK_TO_STRING | ON_ERROR_SILENT}
+};
 
-  return cr_make_param_array(TemplateTestCase, test_cases, sizeof(test_cases) / sizeof(test_cases[0]));
-}
-
-ParameterizedTest(TemplateTestCase *test_cases, template_on_err, test_success)
+StaticParameterizedTest(TemplateTestCase *test_cases, test_success_params, template_on_err, test_success)
 {
   gint r;
 

@@ -22,7 +22,7 @@
  */
 
 #include <criterion/criterion.h>
-#include <criterion/parameterized.h>
+#include "libtest/parameterized.h"
 #include <string.h>
 
 /* NOTE: including the implementation file to access static functions */
@@ -64,24 +64,19 @@ typedef struct _parser_test_param
   gboolean expected_result;
 } ParserTestParam;
 
-ParameterizedTestParameters(parser, test_string_parser)
+static ParserTestParam test_string_parser_params[] =
 {
-  static ParserTestParam parser_params[] =
-  {
-    {.str = "foo", .param = NULL, .expected_string = "foo", .expected_result = TRUE},
-    {.str = "foo bar", .param = NULL, .expected_string = "foo", .expected_result = TRUE},
-    {.str = "foo123 bar", .param = NULL, .expected_string = "foo123", .expected_result = TRUE},
-    {.str = "foo{}", .param = NULL, .expected_string = "foo", .expected_result = TRUE},
-    {.str = "foo[]", .param = NULL, .expected_string = "foo", .expected_result = TRUE},
-    {.str = "foo", .param = "X", .expected_string = "foo", .expected_result = TRUE},
-    {.str = "foo=bar", .param = "=", .expected_string = "foo=bar", .expected_result = TRUE},
-    {.str = "", .param = NULL, .expected_string = NULL, .expected_result = FALSE},
-  };
+  {.str = "foo", .param = NULL, .expected_string = "foo", .expected_result = TRUE},
+  {.str = "foo bar", .param = NULL, .expected_string = "foo", .expected_result = TRUE},
+  {.str = "foo123 bar", .param = NULL, .expected_string = "foo123", .expected_result = TRUE},
+  {.str = "foo{}", .param = NULL, .expected_string = "foo", .expected_result = TRUE},
+  {.str = "foo[]", .param = NULL, .expected_string = "foo", .expected_result = TRUE},
+  {.str = "foo", .param = "X", .expected_string = "foo", .expected_result = TRUE},
+  {.str = "foo=bar", .param = "=", .expected_string = "foo=bar", .expected_result = TRUE},
+  {.str = "", .param = NULL, .expected_string = NULL, .expected_result = FALSE},
+};
 
-  return cr_make_param_array(ParserTestParam, parser_params, G_N_ELEMENTS(parser_params));
-}
-
-ParameterizedTest(ParserTestParam *param, parser, test_string_parser)
+StaticParameterizedTest(ParserTestParam *param, test_string_parser_params, parser, test_string_parser)
 {
   gchar *result_string = NULL;
   gboolean result;
@@ -107,17 +102,12 @@ typedef struct _parser_test_qstring_param
   gchar *expected_string;
 } ParserQStringTestParam;
 
-ParameterizedTestParameters(parser, test_qstring_parser)
+static ParserQStringTestParam test_qstring_parser_params[] =
 {
-  static ParserQStringTestParam parser_params[] =
-  {
-    {.str = "'foo'", .quotes = "''", .expected_string = "foo"},
-    {.str = "\"foo\"", .quotes = "\"\"", .expected_string = "foo"},
-    {.str = "{foo}", .quotes = "{}", .expected_string = "foo"},
-  };
-
-  return cr_make_param_array(ParserQStringTestParam, parser_params, G_N_ELEMENTS(parser_params));
-}
+  {.str = "'foo'", .quotes = "''", .expected_string = "foo"},
+  {.str = "\"foo\"", .quotes = "\"\"", .expected_string = "foo"},
+  {.str = "{foo}", .quotes = "{}", .expected_string = "foo"},
+};
 
 static gpointer
 _compile_qstring_state(const gchar *quotes)
@@ -133,7 +123,7 @@ _compile_qstring_state(const gchar *quotes)
   return state.ptr;
 }
 
-ParameterizedTest(ParserQStringTestParam *param, parser, test_qstring_parser)
+StaticParameterizedTest(ParserQStringTestParam *param, test_qstring_parser_params, parser, test_qstring_parser)
 {
   gchar *result_string = NULL;
   gboolean result;

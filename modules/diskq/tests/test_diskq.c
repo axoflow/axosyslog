@@ -22,7 +22,7 @@
  */
 
 #include <criterion/criterion.h>
-#include <criterion/parameterized.h>
+#include "libtest/parameterized.h"
 #include "libtest/queue_utils_lib.h"
 #include "libtest/mock-function.h"
 #include "test_diskq_tools.h"
@@ -332,18 +332,14 @@ queue_new(gboolean reliable, DiskQueueOptions *options, const gchar *filename, c
   return log_queue_disk_non_reliable_new(options, filename, persist_name, STATS_LEVEL0, NULL, NULL);
 }
 
-ParameterizedTestParameters(diskq, testcase_diskbuffer_restart_corrupted)
+static restart_test_parameters testcase_diskbuffer_restart_corrupted_params[] =
 {
-  static restart_test_parameters test_cases[] =
-  {
-    {"test-diskq-restart.qf", FALSE},
-    {"test-diskq-restart.rqf", TRUE},
-  };
+  {"test-diskq-restart.qf", FALSE},
+  {"test-diskq-restart.rqf", TRUE},
+};
 
-  return cr_make_param_array(restart_test_parameters, test_cases, sizeof(test_cases) / sizeof(test_cases[0]));
-}
-
-ParameterizedTest(restart_test_parameters *test_case, diskq, testcase_diskbuffer_restart_corrupted)
+StaticParameterizedTest(restart_test_parameters *test_case, testcase_diskbuffer_restart_corrupted_params, diskq,
+                        testcase_diskbuffer_restart_corrupted)
 {
   guint64 const original_dcapacity = 1000123;
   DiskQueueOptions options;
@@ -464,22 +460,17 @@ testcase_diskq_prepare(DiskQueueOptions *options, diskq_tester_parameters_t *par
   return q;
 }
 
-ParameterizedTestParameters(diskq, test_diskq_statistics)
+static diskq_tester_parameters_t test_diskq_statistics_params[] =
 {
-  static diskq_tester_parameters_t test_cases[] =
-  {
-    // small enough to trigger overflow
-    { .disk_size = 10*1024, .reliable = TRUE, .overflow_expected = TRUE, .front_cache_size = 0, .filename = "file1.qf" },
+  // small enough to trigger overflow
+  { .disk_size = 10*1024, .reliable = TRUE, .overflow_expected = TRUE, .front_cache_size = 0, .filename = "file1.qf" },
 
-    // no overflow
-    { .disk_size = 500*1024, .reliable = TRUE, .overflow_expected = FALSE, .front_cache_size = 0, .filename = "file2.qf" },
+  // no overflow
+  { .disk_size = 500*1024, .reliable = TRUE, .overflow_expected = FALSE, .front_cache_size = 0, .filename = "file2.qf" },
 
-    // nonreliable version moves msgs from flow_control_window only if there is free space in front cache: front_cache_size must be 1
-    { .disk_size = 1*1024, .reliable = FALSE, .overflow_expected = TRUE, .front_cache_size = 1, .filename = "file3.qf" }
-  };
-
-  return cr_make_param_array(diskq_tester_parameters_t, test_cases, sizeof(test_cases) / sizeof(test_cases[0]));
-}
+  // nonreliable version moves msgs from flow_control_window only if there is free space in front cache: front_cache_size must be 1
+  { .disk_size = 1*1024, .reliable = FALSE, .overflow_expected = TRUE, .front_cache_size = 1, .filename = "file3.qf" }
+};
 
 static inline void
 assert_flow_control_window_length(diskq_tester_parameters_t *parameters, LogQueue *q, gsize sent_msgs)
@@ -497,7 +488,8 @@ assert_flow_control_window_length(diskq_tester_parameters_t *parameters, LogQueu
                "%"G_GSIZE_FORMAT" message in flow control window: line: %d", expected_length, __LINE__);
 }
 
-ParameterizedTest(diskq_tester_parameters_t *parameters, diskq, test_diskq_statistics)
+StaticParameterizedTest(diskq_tester_parameters_t *parameters, test_diskq_statistics_params, diskq,
+                        test_diskq_statistics)
 {
   LogQueue *q;
   DiskQueueOptions options = {0};

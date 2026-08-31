@@ -21,7 +21,7 @@
  *
  */
 #include <criterion/criterion.h>
-#include <criterion/parameterized.h>
+#include "libtest/parameterized.h"
 
 #include "apphook.h"
 #include "logmsg/logmsg.h"
@@ -104,87 +104,82 @@ typedef struct _test_parsers_e2e_param
   gboolean match;
 } TestParsersE2EParam;
 
-ParameterizedTestParameters(parsers_e2e, test_parsers)
+static TestParsersE2EParam parser_params[] =
 {
-  static TestParsersE2EParam parser_params[] =
+  {"@ANYSTRING:TEST@", "ab ba ab", TRUE},
+  {"@ANYSTRING:TEST@", "1234ab", TRUE},
+  {"@ANYSTRING:TEST@", "ab1234", TRUE},
+  {"@ANYSTRING:TEST@", "1.2.3.4", TRUE},
+  {"@ANYSTRING:TEST@", "ab  1234  ba", TRUE},
+  {"@ANYSTRING:TEST@", "&lt;ab ba&gt;", TRUE},
+  {"@DOUBLE:TEST@", "1234", TRUE},
+  {"@DOUBLE:TEST@", "1234.567", TRUE},
+  {"@DOUBLE:TEST@", "1.2.3.4", TRUE},
+  {"@DOUBLE:TEST@", "1234ab", TRUE},
+  {"@DOUBLE:TEST@", "ab1234", FALSE},
+  {"@ESTRING:TEST:endmark@", "ab ba endmark", TRUE},
+  {"@ESTRING:TEST:endmark@", "ab ba", FALSE},
+  {"@ESTRING:TEST:&gt;@", "ab ba > ab", TRUE},
+  {"@ESTRING:TEST:&gt;@", "ab ba", FALSE},
+  {"@ESTRING:TEST:&amp;@", "ab ba & ab", TRUE},
+  {"@ESTRING:TEST:&amp;@", "ab ba", FALSE},
+  {"@FLOAT:TEST@", "1234", TRUE},
+  {"@FLOAT:TEST@", "1234.567", TRUE},
+  {"@FLOAT:TEST@", "1.2.3.4", TRUE},
+  {"@FLOAT:TEST@", "1234ab", TRUE},
+  {"@FLOAT:TEST@", "ab1234", FALSE},
+  {"@SET:TEST: 	@", " a ", TRUE},
+  {"@SET:TEST: 	@", "  a ", TRUE},
+  {"@SET:TEST: 	@", " 	a ", TRUE},
+  {"@SET:TEST: 	@", " 	 a ", TRUE},
+  {"@SET:TEST: 	@", "ab1234", FALSE},
+  {"@OPTIONALSET:TEST: 	@", " a ", TRUE},
+  {"@OPTIONALSET:TEST: 	@", "  a ", TRUE},
+  {"@OPTIONALSET:TEST: 	@", " 	a ", TRUE},
+  {"@OPTIONALSET:TEST: 	@", " 	 a ", TRUE},
+  {"@OPTIONALSET:TEST: 	@", "ab1234", TRUE},
+  {"@IPv4:TEST@", "1.2.3.4", TRUE},
+  {"@IPv4:TEST@", "0.0.0.0", TRUE},
+  {"@IPv4:TEST@", "255.255.255.255", TRUE},
+  {"@IPv4:TEST@", "256.256.256.256", FALSE},
+  {"@IPv4:TEST@", "1234", FALSE},
+  {"@IPv4:TEST@", "ab1234", FALSE},
+  {"@IPv4:TEST@", "ab1.2.3.4", FALSE},
+  {"@IPv4:TEST@", "1,2,3,4", FALSE},
+  {"@IPv6:TEST@", "2001:0db8:0000:0000:0000:0000:1428:57ab", TRUE},
+  {"@IPv6:TEST@", "2001:0db8:0000:0000:0000::1428:57ab", TRUE},
+  {"@IPv6:TEST@", "2001:0db8:0:0:0:0:1428:57ab", TRUE},
+  {"@IPv6:TEST@", "2001:0db8:0:0::1428:57ab", TRUE},
+  {"@IPv6:TEST@", "2001:0db8::1428:57ab", TRUE},
+  {"@IPv6:TEST@", "2001:db8::1428:57ab", TRUE},
+  {"@IPv6:TEST@", "2001:0db8::34d2::1428:57ab", FALSE},
+  {"@NUMBER:TEST@", "1234", TRUE},
+  {"@NUMBER:TEST@", "1.2", TRUE},
+  {"@NUMBER:TEST@", "1.2.3.4", TRUE},
+  {"@NUMBER:TEST@", "1234ab", TRUE},
+  {"@NUMBER:TEST@", "ab1234", FALSE},
+  {"@QSTRING:TEST:&lt;&gt;@", "<aa bb>", TRUE},
+  {"@QSTRING:TEST:&lt;&gt;@", "< aabb >", TRUE},
+  {"@QSTRING:TEST:&lt;&gt;@", "aabb>", FALSE},
+  {"@QSTRING:TEST:&lt;&gt;@", "<aabb", FALSE},
+  {"@QSTRING:TEST:&quot;@", "\"aa bb\"", TRUE},
+  {"@QSTRING:TEST:&quot;@", "aa bb\"", FALSE},
+  {"@QSTRING:TEST:&apos;@", "'aa bb'", TRUE},
+  {"@QSTRING:TEST:&apos;@", "'aa bb", FALSE},
+  {"@STRING:TEST@", "aabb", TRUE},
+  {"@STRING:TEST@", "aa bb", TRUE},
+  {"@STRING:TEST@", "1234", TRUE},
+  {"@STRING:TEST@", "ab1234", TRUE},
+  {"@STRING:TEST@", "1234bb", TRUE},
+  {"@STRING:TEST@", "1.2.3.4", TRUE},
+  /* Test the example we have in the documentation */
   {
-    {"@ANYSTRING:TEST@", "ab ba ab", TRUE},
-    {"@ANYSTRING:TEST@", "1234ab", TRUE},
-    {"@ANYSTRING:TEST@", "ab1234", TRUE},
-    {"@ANYSTRING:TEST@", "1.2.3.4", TRUE},
-    {"@ANYSTRING:TEST@", "ab  1234  ba", TRUE},
-    {"@ANYSTRING:TEST@", "&lt;ab ba&gt;", TRUE},
-    {"@DOUBLE:TEST@", "1234", TRUE},
-    {"@DOUBLE:TEST@", "1234.567", TRUE},
-    {"@DOUBLE:TEST@", "1.2.3.4", TRUE},
-    {"@DOUBLE:TEST@", "1234ab", TRUE},
-    {"@DOUBLE:TEST@", "ab1234", FALSE},
-    {"@ESTRING:TEST:endmark@", "ab ba endmark", TRUE},
-    {"@ESTRING:TEST:endmark@", "ab ba", FALSE},
-    {"@ESTRING:TEST:&gt;@", "ab ba > ab", TRUE},
-    {"@ESTRING:TEST:&gt;@", "ab ba", FALSE},
-    {"@ESTRING:TEST:&amp;@", "ab ba & ab", TRUE},
-    {"@ESTRING:TEST:&amp;@", "ab ba", FALSE},
-    {"@FLOAT:TEST@", "1234", TRUE},
-    {"@FLOAT:TEST@", "1234.567", TRUE},
-    {"@FLOAT:TEST@", "1.2.3.4", TRUE},
-    {"@FLOAT:TEST@", "1234ab", TRUE},
-    {"@FLOAT:TEST@", "ab1234", FALSE},
-    {"@SET:TEST: 	@", " a ", TRUE},
-    {"@SET:TEST: 	@", "  a ", TRUE},
-    {"@SET:TEST: 	@", " 	a ", TRUE},
-    {"@SET:TEST: 	@", " 	 a ", TRUE},
-    {"@SET:TEST: 	@", "ab1234", FALSE},
-    {"@OPTIONALSET:TEST: 	@", " a ", TRUE},
-    {"@OPTIONALSET:TEST: 	@", "  a ", TRUE},
-    {"@OPTIONALSET:TEST: 	@", " 	a ", TRUE},
-    {"@OPTIONALSET:TEST: 	@", " 	 a ", TRUE},
-    {"@OPTIONALSET:TEST: 	@", "ab1234", TRUE},
-    {"@IPv4:TEST@", "1.2.3.4", TRUE},
-    {"@IPv4:TEST@", "0.0.0.0", TRUE},
-    {"@IPv4:TEST@", "255.255.255.255", TRUE},
-    {"@IPv4:TEST@", "256.256.256.256", FALSE},
-    {"@IPv4:TEST@", "1234", FALSE},
-    {"@IPv4:TEST@", "ab1234", FALSE},
-    {"@IPv4:TEST@", "ab1.2.3.4", FALSE},
-    {"@IPv4:TEST@", "1,2,3,4", FALSE},
-    {"@IPv6:TEST@", "2001:0db8:0000:0000:0000:0000:1428:57ab", TRUE},
-    {"@IPv6:TEST@", "2001:0db8:0000:0000:0000::1428:57ab", TRUE},
-    {"@IPv6:TEST@", "2001:0db8:0:0:0:0:1428:57ab", TRUE},
-    {"@IPv6:TEST@", "2001:0db8:0:0::1428:57ab", TRUE},
-    {"@IPv6:TEST@", "2001:0db8::1428:57ab", TRUE},
-    {"@IPv6:TEST@", "2001:db8::1428:57ab", TRUE},
-    {"@IPv6:TEST@", "2001:0db8::34d2::1428:57ab", FALSE},
-    {"@NUMBER:TEST@", "1234", TRUE},
-    {"@NUMBER:TEST@", "1.2", TRUE},
-    {"@NUMBER:TEST@", "1.2.3.4", TRUE},
-    {"@NUMBER:TEST@", "1234ab", TRUE},
-    {"@NUMBER:TEST@", "ab1234", FALSE},
-    {"@QSTRING:TEST:&lt;&gt;@", "<aa bb>", TRUE},
-    {"@QSTRING:TEST:&lt;&gt;@", "< aabb >", TRUE},
-    {"@QSTRING:TEST:&lt;&gt;@", "aabb>", FALSE},
-    {"@QSTRING:TEST:&lt;&gt;@", "<aabb", FALSE},
-    {"@QSTRING:TEST:&quot;@", "\"aa bb\"", TRUE},
-    {"@QSTRING:TEST:&quot;@", "aa bb\"", FALSE},
-    {"@QSTRING:TEST:&apos;@", "'aa bb'", TRUE},
-    {"@QSTRING:TEST:&apos;@", "'aa bb", FALSE},
-    {"@STRING:TEST@", "aabb", TRUE},
-    {"@STRING:TEST@", "aa bb", TRUE},
-    {"@STRING:TEST@", "1234", TRUE},
-    {"@STRING:TEST@", "ab1234", TRUE},
-    {"@STRING:TEST@", "1234bb", TRUE},
-    {"@STRING:TEST@", "1.2.3.4", TRUE},
-    /* Test the example we have in the documentation */
-    {
-      "Accepted @STRING:SSH_AUTH_METHOD:-_@ for @STRING:SSH_USERNAME:._-@ from @IPvANY:SSH_CLIENT_ADDRESS@ port @NUMBER:SSH_PORT_NUMBER@ ssh2",
-      "Accepted password for sampleuser from 10.50.0.247 port 42156 ssh2", TRUE
-    }
-  };
-
-  return cr_make_param_array(TestParsersE2EParam, parser_params, G_N_ELEMENTS(parser_params));
+    "Accepted @STRING:SSH_AUTH_METHOD:-_@ for @STRING:SSH_USERNAME:._-@ from @IPvANY:SSH_CLIENT_ADDRESS@ port @NUMBER:SSH_PORT_NUMBER@ ssh2",
+    "Accepted password for sampleuser from 10.50.0.247 port 42156 ssh2", TRUE
+  }
 };
 
-ParameterizedTest(TestParsersE2EParam *param, parsers_e2e, test_parsers)
+StaticParameterizedTest(TestParsersE2EParam *param, parser_params, parsers_e2e, test_parsers)
 {
   GString *str = g_string_new(pdb_parser_skeleton_prefix);
   g_string_append(str, param->rule);

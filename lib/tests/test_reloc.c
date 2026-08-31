@@ -20,7 +20,7 @@
  *
  */
 #include <criterion/criterion.h>
-#include <criterion/parameterized.h>
+#include "libtest/parameterized.h"
 
 #include "reloc.h"
 
@@ -33,21 +33,16 @@ typedef struct _LookupParameter
   const gchar *expected;
 } LookupParameter;
 
-ParameterizedTestParameters(reloc, test_path)
+static LookupParameter test_data_list[] =
 {
-  static LookupParameter test_data_list[] =
-  {
-    {"/opt/syslog-ng", "/opt/syslog-ng"}, /* absolute path remains unchanged */
-    {"${prefix}/bin", "/test/bin"}, /* variables are resolved */
-    {"/foo/${prefix}/bar", "/foo//test/bar"}, /* variables are resolved in the middle */
-    {"${foo}/bin", "/foo/bin"}, /* variables are resolved recursively */
-    {"${bar}/bin", "/foo/bin"} /* variables are resolved recursively */
-  };
+  {"/opt/syslog-ng", "/opt/syslog-ng"}, /* absolute path remains unchanged */
+  {"${prefix}/bin", "/test/bin"}, /* variables are resolved */
+  {"/foo/${prefix}/bar", "/foo//test/bar"}, /* variables are resolved in the middle */
+  {"${foo}/bin", "/foo/bin"}, /* variables are resolved recursively */
+  {"${bar}/bin", "/foo/bin"} /* variables are resolved recursively */
+};
 
-  return cr_make_param_array(LookupParameter, test_data_list, sizeof(test_data_list) / sizeof(test_data_list[0]));
-}
-
-ParameterizedTest(LookupParameter *test_data, reloc, test_path)
+StaticParameterizedTest(LookupParameter *test_data, test_data_list, reloc, test_path)
 {
   const gchar *result;
   result = cache_lookup(cache, test_data->template);

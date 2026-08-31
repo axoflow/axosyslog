@@ -20,7 +20,7 @@
  *
  */
 #include <criterion/criterion.h>
-#include <criterion/parameterized.h>
+#include "libtest/parameterized.h"
 
 #include "str-utils.h"
 
@@ -38,44 +38,34 @@ typedef struct _StrChrTestData
   int ofs;
 } StrChrTestData;
 
-ParameterizedTestParameters(str_utils, test_str_utils_is_null)
+static StrChrTestData test_str_utils_is_null_params[] =
 {
-  static StrChrTestData test_data_list[] =
-  {
-    {"", 'x', 0},
-    {"\0x", 'x', 0},
-    {"a", 'x', 0},
-    {"abc", 'x', 0}
-  };
+  {"", 'x', 0},
+  {"\0x", 'x', 0},
+  {"a", 'x', 0},
+  {"abc", 'x', 0}
+};
 
-  return cr_make_param_array(StrChrTestData, test_data_list, sizeof(test_data_list) / sizeof(test_data_list[0]));
-}
-
-ParameterizedTest(StrChrTestData *test_data, str_utils, test_str_utils_is_null)
+StaticParameterizedTest(StrChrTestData *test_data, test_str_utils_is_null_params, str_utils, test_str_utils_is_null)
 {
   cr_assert_null(strchr_under_test(test_data->str, test_data->c), "expected a NULL return");
 }
 
-ParameterizedTestParameters(str_utils, test_str_utils_find_char)
+static StrChrTestData test_str_utils_find_char_params[] =
 {
-  static StrChrTestData test_data_list[] =
-  {
-    {"", '\0', 0},
-    {"a", 'a', 0},
-    {"a", '\0', 1},
-    {"abc", 'a', 0},
-    {"abc", 'b', 1},
-    {"abc", 'c', 2},
-    {"abc", '\0', 3},
-    {"0123456789abcdef", '0', 0},
-    {"0123456789abcdef", '7', 7},
-    {"0123456789abcdef", 'f', 15}
-  };
+  {"", '\0', 0},
+  {"a", 'a', 0},
+  {"a", '\0', 1},
+  {"abc", 'a', 0},
+  {"abc", 'b', 1},
+  {"abc", 'c', 2},
+  {"abc", '\0', 3},
+  {"0123456789abcdef", '0', 0},
+  {"0123456789abcdef", '7', 7},
+  {"0123456789abcdef", 'f', 15}
+};
 
-  return cr_make_param_array(StrChrTestData, test_data_list, sizeof(test_data_list) / sizeof(test_data_list[0]));
-}
-
-ParameterizedTest(StrChrTestData *test_data, str_utils, test_str_utils_find_char)
+StaticParameterizedTest(StrChrTestData *test_data, test_str_utils_find_char_params, str_utils, test_str_utils_find_char)
 {
   const char *result = strchr_under_test(test_data->str, test_data->c);
 

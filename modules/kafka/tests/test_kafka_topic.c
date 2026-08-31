@@ -23,7 +23,7 @@
  */
 
 #include <criterion/criterion.h>
-#include <criterion/parameterized.h>
+#include "libtest/parameterized.h"
 
 #include "kafka-dest-driver.h"
 #include "kafka-dest-worker.h"
@@ -80,58 +80,49 @@ _init_topic_names(LogDriver *driver, const gchar *topic, const gchar *fallback_t
 
 TestSuite(kafka_topic, .init = setup, .fini = teardown);
 
-ParameterizedTestParameters(kafka_topic, valid_topic_tests)
+static struct valid_topic_test_params valid_topic_tests_params[] =
 {
-  static struct valid_topic_test_params params[] =
-  {
-    {"validname123"},
-    {"valid.name123"},
-    {"valid-name123"},
-    {"valid_name123"},
-    {"valid.name-123"},
-    {"valid_name-123"},
-    {"This.is.a.valid.name"},
-    {"This.is-a_valid-name"},
-    {STRING_249_LEN},
-  };
+  {"validname123"},
+  {"valid.name123"},
+  {"valid-name123"},
+  {"valid_name123"},
+  {"valid.name-123"},
+  {"valid_name-123"},
+  {"This.is.a.valid.name"},
+  {"This.is-a_valid-name"},
+  {STRING_249_LEN},
+};
 
-  return cr_make_param_array(struct valid_topic_test_params, params, G_N_ELEMENTS(params));
-}
-
-ParameterizedTest(struct valid_topic_test_params *param, kafka_topic, valid_topic_tests)
+StaticParameterizedTest(struct valid_topic_test_params *param, valid_topic_tests_params, kafka_topic, valid_topic_tests)
 {
   GError *error = NULL;
   cr_assert_eq(kafka_dd_validate_topic_name(param->topic_name, &error), TRUE);
   cr_assert_null(error);
 }
 
-ParameterizedTestParameters(kafka_topic, invalid_topic_tests)
+static struct invalid_topic_test_params invalid_topic_tests_params[] =
 {
-  static struct invalid_topic_test_params params[] =
-  {
-    {"test 1", TOPIC_INVALID_PATTERN},
-    {"", TOPIC_LENGTH_ZERO},
-    {"..", TOPIC_DOT_TWO_DOTS},
-    {".", TOPIC_DOT_TWO_DOTS},
-    {" invalidname", TOPIC_INVALID_PATTERN},
-    {"a*123", TOPIC_INVALID_PATTERN},
-    {"topic@123", TOPIC_INVALID_PATTERN},
-    {"aba#2", TOPIC_INVALID_PATTERN},
-    {"dontuse&", TOPIC_INVALID_PATTERN},
-    {"illegal%", TOPIC_INVALID_PATTERN},
-    {"name!", TOPIC_INVALID_PATTERN},
-    {"topics^", TOPIC_INVALID_PATTERN},
-    {"round()", TOPIC_INVALID_PATTERN},
-    {"sum+", TOPIC_INVALID_PATTERN},
-    {"topic=name", TOPIC_INVALID_PATTERN},
-    {"topic``~invalid", TOPIC_INVALID_PATTERN},
-    {STRING_250_LEN, TOPIC_EXCEEDS_MAX_LENGTH},
-  };
+  {"test 1", TOPIC_INVALID_PATTERN},
+  {"", TOPIC_LENGTH_ZERO},
+  {"..", TOPIC_DOT_TWO_DOTS},
+  {".", TOPIC_DOT_TWO_DOTS},
+  {" invalidname", TOPIC_INVALID_PATTERN},
+  {"a*123", TOPIC_INVALID_PATTERN},
+  {"topic@123", TOPIC_INVALID_PATTERN},
+  {"aba#2", TOPIC_INVALID_PATTERN},
+  {"dontuse&", TOPIC_INVALID_PATTERN},
+  {"illegal%", TOPIC_INVALID_PATTERN},
+  {"name!", TOPIC_INVALID_PATTERN},
+  {"topics^", TOPIC_INVALID_PATTERN},
+  {"round()", TOPIC_INVALID_PATTERN},
+  {"sum+", TOPIC_INVALID_PATTERN},
+  {"topic=name", TOPIC_INVALID_PATTERN},
+  {"topic``~invalid", TOPIC_INVALID_PATTERN},
+  {STRING_250_LEN, TOPIC_EXCEEDS_MAX_LENGTH},
+};
 
-  return cr_make_param_array(struct invalid_topic_test_params, params, G_N_ELEMENTS(params));
-}
-
-ParameterizedTest(struct invalid_topic_test_params *param, kafka_topic, invalid_topic_tests)
+StaticParameterizedTest(struct invalid_topic_test_params *param, invalid_topic_tests_params, kafka_topic,
+                        invalid_topic_tests)
 {
   GError *error = NULL;
   cr_assert_eq(kafka_dd_validate_topic_name(param->topic_name, &error), FALSE);

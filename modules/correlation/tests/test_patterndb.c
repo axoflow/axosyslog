@@ -22,7 +22,7 @@
  */
 
 #include <criterion/criterion.h>
-#include <criterion/parameterized.h>
+#include "libtest/parameterized.h"
 #include "libtest/msg_parse_lib.h"
 
 #include "apphook.h"
@@ -621,60 +621,55 @@ typedef struct _patterndb_test_param
   const gchar *expected_value;
 } PatternDBTestParam;
 
-ParameterizedTestParameters(pattern_db, test_rules)
+static PatternDBTestParam parser_params[] =
 {
-  static PatternDBTestParam parser_params[] =
+  // test_conflicting_rules_with_different_parsers
   {
-    // test_conflicting_rules_with_different_parsers
-    {
-      .pattern_db = pdb_conflicting_rules_with_different_parsers,
-      .program = "prog1",
-      .message = "pattern foobar ",
-      .name = ".classifier.rule_id",
-      .expected_value = "11"
-    },
-    {
-      .pattern_db = pdb_conflicting_rules_with_different_parsers,
-      .program = "prog1",
-      .message = "pattern foobar tail",
-      .name = ".classifier.rule_id",
-      .expected_value = "12"
-    },
-    {
-      .pattern_db = pdb_conflicting_rules_with_different_parsers,
-      .program = "prog1",
-      .message = "pattern foobar something else",
-      .name = ".classifier.rule_id",
-      .expected_value = "11"
-    },
-    // test_conflicting_rules_with_the_same_parsers
-    {
-      .pattern_db = pdb_conflicting_rules_with_the_same_parsers,
-      .program = "prog1",
-      .message = "pattern foobar ",
-      .name = ".classifier.rule_id",
-      .expected_value = "11"
-    },
-    {
-      .pattern_db = pdb_conflicting_rules_with_the_same_parsers,
-      .program = "prog1",
-      .message = "pattern foobar tail",
-      .name = ".classifier.rule_id",
-      .expected_value = "12"
-    },
-    {
-      .pattern_db = pdb_conflicting_rules_with_the_same_parsers,
-      .program = "prog1",
-      .message = "pattern foobar something else",
-      .name = ".classifier.rule_id",
-      .expected_value = "11"
-    },
-  };
+    .pattern_db = pdb_conflicting_rules_with_different_parsers,
+    .program = "prog1",
+    .message = "pattern foobar ",
+    .name = ".classifier.rule_id",
+    .expected_value = "11"
+  },
+  {
+    .pattern_db = pdb_conflicting_rules_with_different_parsers,
+    .program = "prog1",
+    .message = "pattern foobar tail",
+    .name = ".classifier.rule_id",
+    .expected_value = "12"
+  },
+  {
+    .pattern_db = pdb_conflicting_rules_with_different_parsers,
+    .program = "prog1",
+    .message = "pattern foobar something else",
+    .name = ".classifier.rule_id",
+    .expected_value = "11"
+  },
+  // test_conflicting_rules_with_the_same_parsers
+  {
+    .pattern_db = pdb_conflicting_rules_with_the_same_parsers,
+    .program = "prog1",
+    .message = "pattern foobar ",
+    .name = ".classifier.rule_id",
+    .expected_value = "11"
+  },
+  {
+    .pattern_db = pdb_conflicting_rules_with_the_same_parsers,
+    .program = "prog1",
+    .message = "pattern foobar tail",
+    .name = ".classifier.rule_id",
+    .expected_value = "12"
+  },
+  {
+    .pattern_db = pdb_conflicting_rules_with_the_same_parsers,
+    .program = "prog1",
+    .message = "pattern foobar something else",
+    .name = ".classifier.rule_id",
+    .expected_value = "11"
+  },
+};
 
-  return cr_make_param_array(PatternDBTestParam, parser_params, G_N_ELEMENTS(parser_params));
-}
-
-ParameterizedTest(PatternDBTestParam *param, pattern_db, test_rules)
+StaticParameterizedTest(PatternDBTestParam *param, parser_params, pattern_db, test_rules)
 {
   gchar *filename;
   PatternDB *patterndb = _create_pattern_db(param->pattern_db, &filename);

@@ -11,6 +11,8 @@ libtest_LIBRARIES		    =	\
 libtest_libsyslog_ng_test_a_SOURCES =   \
 	libtest/config_parse_lib.c	\
 	libtest/config_parse_lib.h	\
+	libtest/parameterized.c		\
+	libtest/parameterized.h		\
 	libtest/cr_template.c		\
 	libtest/grab-logging.c		\
 	libtest/grab-logging.h		\
@@ -41,6 +43,7 @@ libtest_libsyslog_ng_test_a_CFLAGS = $(AM_CFLAGS) $(CRITERION_CFLAGS) $(JSON_CFL
 
 libtestinclude_HEADERS		    =	\
 	libtest/config_parse_lib.h		\
+	libtest/parameterized.h		\
 	libtest/cr_template.h		\
 	libtest/fake-time.h		\
 	libtest/grab-logging.h		\

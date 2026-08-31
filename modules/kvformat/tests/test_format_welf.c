@@ -22,7 +22,7 @@
  */
 
 #include <criterion/criterion.h>
-#include <criterion/parameterized.h>
+#include "libtest/parameterized.h"
 #include "libtest/cr_template.h"
 
 #include "apphook.h"
@@ -131,22 +131,17 @@ struct test_params
   gchar *expected;
 };
 
-ParameterizedTestParameters(format_welf, key_and_exclude)
+static struct test_params params[] =
 {
-  static struct test_params params[] =
-  {
-    {"$(format-welf --key prefix.key*)", "prefix.key1=value1 prefix.key2=value2"},
-    {"$(format-welf --key prefix.key1,prefix.key2)", "prefix.key1=value1 prefix.key2=value2"},
-    {"$(format-welf --key prefix.* --exclude prefix.exclude*)", "prefix.key1=value1 prefix.key2=value2"},
-    {"$(format-welf --key prefix.* --exclude prefix.exclude1,prefix.exclude2)", "prefix.key1=value1 prefix.key2=value2"},
-    {"$(format-welf --key prefix.* --exclude prefix.exclude1 --exclude prefix.exclude2)", "prefix.key1=value1 prefix.key2=value2"},
-    {"$(format-welf --key prefix.* --exclude prefix.exclude* --exclude prefix.key2)", "prefix.key1=value1"},
-  };
+  {"$(format-welf --key prefix.key*)", "prefix.key1=value1 prefix.key2=value2"},
+  {"$(format-welf --key prefix.key1,prefix.key2)", "prefix.key1=value1 prefix.key2=value2"},
+  {"$(format-welf --key prefix.* --exclude prefix.exclude*)", "prefix.key1=value1 prefix.key2=value2"},
+  {"$(format-welf --key prefix.* --exclude prefix.exclude1,prefix.exclude2)", "prefix.key1=value1 prefix.key2=value2"},
+  {"$(format-welf --key prefix.* --exclude prefix.exclude1 --exclude prefix.exclude2)", "prefix.key1=value1 prefix.key2=value2"},
+  {"$(format-welf --key prefix.* --exclude prefix.exclude* --exclude prefix.key2)", "prefix.key1=value1"},
+};
 
-  return cr_make_param_array(struct test_params, params, sizeof(params)/sizeof(params[0]));
-}
-
-ParameterizedTest(struct test_params *param, format_welf, key_and_exclude)
+StaticParameterizedTest(struct test_params *param, params, format_welf, key_and_exclude)
 {
   static NVPair pairs[] =
   {

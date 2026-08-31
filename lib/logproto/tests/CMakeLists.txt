@@ -13,4 +13,4 @@ add_unit_test(LIBTEST CRITERION
   TARGET test_logproto
   SOURCES "${TEST_LOGPROTO_SOURCES}")
 
-add_unit_test(CRITERION TARGET test_findeom)
+add_unit_test(CRITERION LIBTEST TARGET test_findeom)

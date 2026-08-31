@@ -23,7 +23,7 @@
 #include "python-module.h"
 
 #include <criterion/criterion.h>
-#include <criterion/parameterized.h>
+#include "libtest/parameterized.h"
 #include "libtest/msg_parse_lib.h"
 
 #include "python-helpers.h"
@@ -123,64 +123,60 @@ typedef struct _PyLogMessageSetValueTestParams
   LogMessageValueType expected_log_msg_type;
 } PyLogMessageSetValueTestParams;
 
-ParameterizedTestParameters(python_log_message, test_python_logmessage_set_value)
+static PyLogMessageSetValueTestParams test_python_logmessage_set_value_params[] =
 {
-  static PyLogMessageSetValueTestParams test_data_list[] =
   {
-    {
-      .py_value_to_set = "'almafa'",
-      .py_value_to_check = "b'almafa'",
-      .expected_log_msg_value = "almafa",
-      .expected_log_msg_type = LM_VT_STRING
-    },
-    {
-      .py_value_to_set = "b'kortefa'",
-      .py_value_to_check = "b'kortefa'",
-      .expected_log_msg_value = "kortefa",
-      .expected_log_msg_type = LM_VT_STRING
-    },
-    {
-      .py_value_to_set = "42",
-      .py_value_to_check = "42",
-      .expected_log_msg_value = "42",
-      .expected_log_msg_type = LM_VT_INTEGER
-    },
-    {
-      .py_value_to_set = "6.9",
-      .py_value_to_check = "6.9",
-      .expected_log_msg_value = "6.900000",
-      .expected_log_msg_type = LM_VT_DOUBLE
-    },
-    {
-      .py_value_to_set = "True",
-      .py_value_to_check = "True",
-      .expected_log_msg_value = "true",
-      .expected_log_msg_type = LM_VT_BOOLEAN
-    },
-    {
-      .py_value_to_set = "None",
-      .py_value_to_check = "None",
-      .expected_log_msg_value = "",
-      .expected_log_msg_type = LM_VT_NULL
-    },
-    {
-      .py_value_to_set = "['a,', ' b', b'c']",
-      .py_value_to_check = "[b'a,', b' b', b'c']",
-      .expected_log_msg_value = "\"a,\",\" b\",c",
-      .expected_log_msg_type = LM_VT_LIST
-    },
-    {
-      .py_value_to_set = "datetime.datetime(2022, 10, 4, 14, 48, 12, 123000)",
-      .py_value_to_check = "datetime.datetime(2022, 10, 4, 14, 48, 12, 123000)",
-      .expected_log_msg_value = "1664894892.123",
-      .expected_log_msg_type = LM_VT_DATETIME
-    },
-  };
+    .py_value_to_set = "'almafa'",
+    .py_value_to_check = "b'almafa'",
+    .expected_log_msg_value = "almafa",
+    .expected_log_msg_type = LM_VT_STRING
+  },
+  {
+    .py_value_to_set = "b'kortefa'",
+    .py_value_to_check = "b'kortefa'",
+    .expected_log_msg_value = "kortefa",
+    .expected_log_msg_type = LM_VT_STRING
+  },
+  {
+    .py_value_to_set = "42",
+    .py_value_to_check = "42",
+    .expected_log_msg_value = "42",
+    .expected_log_msg_type = LM_VT_INTEGER
+  },
+  {
+    .py_value_to_set = "6.9",
+    .py_value_to_check = "6.9",
+    .expected_log_msg_value = "6.900000",
+    .expected_log_msg_type = LM_VT_DOUBLE
+  },
+  {
+    .py_value_to_set = "True",
+    .py_value_to_check = "True",
+    .expected_log_msg_value = "true",
+    .expected_log_msg_type = LM_VT_BOOLEAN
+  },
+  {
+    .py_value_to_set = "None",
+    .py_value_to_check = "None",
+    .expected_log_msg_value = "",
+    .expected_log_msg_type = LM_VT_NULL
+  },
+  {
+    .py_value_to_set = "['a,', ' b', b'c']",
+    .py_value_to_check = "[b'a,', b' b', b'c']",
+    .expected_log_msg_value = "\"a,\",\" b\",c",
+    .expected_log_msg_type = LM_VT_LIST
+  },
+  {
+    .py_value_to_set = "datetime.datetime(2022, 10, 4, 14, 48, 12, 123000)",
+    .py_value_to_check = "datetime.datetime(2022, 10, 4, 14, 48, 12, 123000)",
+    .expected_log_msg_value = "1664894892.123",
+    .expected_log_msg_type = LM_VT_DATETIME
+  },
+};
 
-  return cr_make_param_array(PyLogMessageSetValueTestParams, test_data_list, G_N_ELEMENTS(test_data_list));
-}
-
-ParameterizedTest(PyLogMessageSetValueTestParams *params, python_log_message, test_python_logmessage_set_value)
+StaticParameterizedTest(PyLogMessageSetValueTestParams *params, test_python_logmessage_set_value_params,
+                        python_log_message, test_python_logmessage_set_value)
 {
   LogMessage *msg = log_msg_new_empty();
 
@@ -294,70 +290,66 @@ typedef struct
   const gchar *expected_value;
 } PyLogMessageGetTestParams;
 
-ParameterizedTestParameters(python_log_message, test_python_logmessage_get)
+static PyLogMessageGetTestParams test_python_logmessage_get_params[] =
 {
-  static PyLogMessageGetTestParams test_data_list[] =
   {
-    {
-      .value = "test",
-      .value_length = -1,
-      .type = LM_VT_STRING,
-      .expected_value = "b'test'"
-    },
-    {
-      .value = "true",
-      .value_length = -1,
-      .type = LM_VT_BOOLEAN,
-      .expected_value = "True"
-    },
-    {
-      .value = "14",
-      .value_length = -1,
-      .type = LM_VT_INTEGER,
-      .expected_value = "14"
-    },
-    {
-      .value = "14",
-      .value_length = -1,
-      .type = LM_VT_DOUBLE,
-      .expected_value = "14.000"
-    },
-    {
-      .value = "1664894892",
-      .value_length = -1,
-      .type = LM_VT_DATETIME,
-      .expected_value = "datetime.datetime(2022, 10, 4, 14, 48, 12)"
-    },
-    {
-      .value = "\"a,\",\" b\",c",
-      .value_length = -1,
-      .type = LM_VT_LIST,
-      .expected_value = "[b'a,', b' b', b'c']"
-    },
-    {
-      .value = "",
-      .value_length = -1,
-      .type = LM_VT_NULL,
-      .expected_value = "None"
-    },
-    {
-      .value = "\0\1\2\3",
-      .value_length = 4,
-      .type = LM_VT_BYTES,
-      .expected_value = NULL
-    },
-    {
-      .value = "\4\5\6\7",
-      .value_length = 4,
-      .type = LM_VT_PROTOBUF,
-      .expected_value = NULL
-    },
-  };
+    .value = "test",
+    .value_length = -1,
+    .type = LM_VT_STRING,
+    .expected_value = "b'test'"
+  },
+  {
+    .value = "true",
+    .value_length = -1,
+    .type = LM_VT_BOOLEAN,
+    .expected_value = "True"
+  },
+  {
+    .value = "14",
+    .value_length = -1,
+    .type = LM_VT_INTEGER,
+    .expected_value = "14"
+  },
+  {
+    .value = "14",
+    .value_length = -1,
+    .type = LM_VT_DOUBLE,
+    .expected_value = "14.000"
+  },
+  {
+    .value = "1664894892",
+    .value_length = -1,
+    .type = LM_VT_DATETIME,
+    .expected_value = "datetime.datetime(2022, 10, 4, 14, 48, 12)"
+  },
+  {
+    .value = "\"a,\",\" b\",c",
+    .value_length = -1,
+    .type = LM_VT_LIST,
+    .expected_value = "[b'a,', b' b', b'c']"
+  },
+  {
+    .value = "",
+    .value_length = -1,
+    .type = LM_VT_NULL,
+    .expected_value = "None"
+  },
+  {
+    .value = "\0\1\2\3",
+    .value_length = 4,
+    .type = LM_VT_BYTES,
+    .expected_value = NULL
+  },
+  {
+    .value = "\4\5\6\7",
+    .value_length = 4,
+    .type = LM_VT_PROTOBUF,
+    .expected_value = NULL
+  },
+};
 
-  return cr_make_param_array(PyLogMessageGetTestParams, test_data_list, G_N_ELEMENTS(test_data_list));
-}
-
-ParameterizedTest(PyLogMessageGetTestParams *params, python_log_message, test_python_logmessage_get)
+StaticParameterizedTest(PyLogMessageGetTestParams *params, test_python_logmessage_get_params, python_log_message,
+                        test_python_logmessage_get)
 {
   LogMessage *msg = log_msg_new_empty();
 
@@ -420,70 +412,66 @@ Test(python_log_message, test_python_logmessage_get_with_default_value)
   log_msg_unref(msg);
 }
 
-ParameterizedTestParameters(python_log_message, test_python_logmessage_get_as_str)
+static PyLogMessageGetTestParams test_python_logmessage_get_as_str_params[] =
 {
-  static PyLogMessageGetTestParams test_data_list[] =
   {
-    {
-      .value = "test",
-      .value_length = -1,
-      .type = LM_VT_STRING,
-      .expected_value = "'test'"
-    },
-    {
-      .value = "true",
-      .value_length = -1,
-      .type = LM_VT_BOOLEAN,
-      .expected_value = "'true'"
-    },
-    {
-      .value = "14",
-      .value_length = -1,
-      .type = LM_VT_INTEGER,
-      .expected_value = "'14'"
-    },
-    {
-      .value = "14",
-      .value_length = -1,
-      .type = LM_VT_DOUBLE,
-      .expected_value = "'14'"
-    },
-    {
-      .value = "1664894892",
-      .value_length = -1,
-      .type = LM_VT_DATETIME,
-      .expected_value = "'1664894892'"
-    },
-    {
-      .value = "\"a,\",\" b\",c",
-      .value_length = -1,
-      .type = LM_VT_LIST,
-      .expected_value = "'\"a,\",\" b\",c'"
-    },
-    {
-      .value = "",
-      .value_length = -1,
-      .type = LM_VT_NULL,
-      .expected_value = "''"
-    },
-    {
-      .value = "\0\1\2\3",
-      .value_length = 4,
-      .type = LM_VT_BYTES,
-      .expected_value = NULL
-    },
-    {
-      .value = "\4\5\6\7",
-      .value_length = 4,
-      .type = LM_VT_PROTOBUF,
-      .expected_value = NULL
-    },
-  };
+    .value = "test",
+    .value_length = -1,
+    .type = LM_VT_STRING,
+    .expected_value = "'test'"
+  },
+  {
+    .value = "true",
+    .value_length = -1,
+    .type = LM_VT_BOOLEAN,
+    .expected_value = "'true'"
+  },
+  {
+    .value = "14",
+    .value_length = -1,
+    .type = LM_VT_INTEGER,
+    .expected_value = "'14'"
+  },
+  {
+    .value = "14",
+    .value_length = -1,
+    .type = LM_VT_DOUBLE,
+    .expected_value = "'14'"
+  },
+  {
+    .value = "1664894892",
+    .value_length = -1,
+    .type = LM_VT_DATETIME,
+    .expected_value = "'1664894892'"
+  },
+  {
+    .value = "\"a,\",\" b\",c",
+    .value_length = -1,
+    .type = LM_VT_LIST,
+    .expected_value = "'\"a,\",\" b\",c'"
+  },
+  {
+    .value = "",
+    .value_length = -1,
+    .type = LM_VT_NULL,
+    .expected_value = "''"
+  },
+  {
+    .value = "\0\1\2\3",
+    .value_length = 4,
+    .type = LM_VT_BYTES,
+    .expected_value = NULL
+  },
+  {
+    .value = "\4\5\6\7",
+    .value_length = 4,
+    .type = LM_VT_PROTOBUF,
+    .expected_value = NULL
+  },
+};
 
-  return cr_make_param_array(PyLogMessageGetTestParams, test_data_list, G_N_ELEMENTS(test_data_list));
-}
-
-ParameterizedTest(PyLogMessageGetTestParams *params, python_log_message, test_python_logmessage_get_as_str)
+StaticParameterizedTest(PyLogMessageGetTestParams *params, test_python_logmessage_get_as_str_params, python_log_message,
+                        test_python_logmessage_get_as_str)
 {
   LogMessage *msg = log_msg_new_empty();
 

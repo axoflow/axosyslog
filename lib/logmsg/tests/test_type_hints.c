@@ -21,7 +21,7 @@
  */
 
 #include <criterion/criterion.h>
-#include <criterion/parameterized.h>
+#include "libtest/parameterized.h"
 
 #include "logmsg/type-hinting.h"
 #include "apphook.h"
@@ -56,31 +56,26 @@ typedef struct _StringUInt64Pair
 } StringUInt64Pair;
 
 
-ParameterizedTestParameters(type_hints, test_type_hint_parse)
+static StringHintPair test_type_hint_parse_params[] =
 {
-  static StringHintPair string_value_pairs[] =
-  {
-    {"string",    LM_VT_STRING},
-    {"literal",   LM_VT_JSON},
-    {"json",      LM_VT_JSON},
-    {"boolean",   LM_VT_BOOLEAN},
-    {"int",       LM_VT_INTEGER},
-    {"int32",     LM_VT_INTEGER},
-    {"int64",     LM_VT_INTEGER},
-    {"float",     LM_VT_DOUBLE},
-    {"double",    LM_VT_DOUBLE},
-    {"datetime",  LM_VT_DATETIME},
-    {"list",      LM_VT_LIST},
-    {"null",      LM_VT_NULL},
-    {"bytes",     LM_VT_BYTES},
-    {"protobuf",  LM_VT_PROTOBUF},
-  };
+  {"string",    LM_VT_STRING},
+  {"literal",   LM_VT_JSON},
+  {"json",      LM_VT_JSON},
+  {"boolean",   LM_VT_BOOLEAN},
+  {"int",       LM_VT_INTEGER},
+  {"int32",     LM_VT_INTEGER},
+  {"int64",     LM_VT_INTEGER},
+  {"float",     LM_VT_DOUBLE},
+  {"double",    LM_VT_DOUBLE},
+  {"datetime",  LM_VT_DATETIME},
+  {"list",      LM_VT_LIST},
+  {"null",      LM_VT_NULL},
+  {"bytes",     LM_VT_BYTES},
+  {"protobuf",  LM_VT_PROTOBUF},
+};
 
-  return cr_make_param_array(StringHintPair, string_value_pairs,
-                             sizeof(string_value_pairs) / sizeof(string_value_pairs[0]));
-}
-
-ParameterizedTest(StringHintPair *string_value_pair, type_hints, test_type_hint_parse)
+StaticParameterizedTest(StringHintPair *string_value_pair, test_type_hint_parse_params, type_hints,
+                        test_type_hint_parse)
 {
   LogMessageValueType type_hint;
   GError *error = NULL;
@@ -104,25 +99,19 @@ Test(type_hints, test_invalid_type_hint_parse)
   g_clear_error(&error);
 }
 
-ParameterizedTestParameters(type_hints, test_bool_cast)
+static StringBoolPair test_bool_cast_params[] =
 {
-  static StringBoolPair string_value_pairs[] =
-  {
-    {"True",  TRUE},
-    {"true",  TRUE},
-    {"1",     TRUE},
-    {"totaly true", TRUE},
-    {"False", FALSE},
-    {"false", FALSE},
-    {"0",     FALSE},
-    {"fatally false", FALSE}
-  };
+  {"True",  TRUE},
+  {"true",  TRUE},
+  {"1",     TRUE},
+  {"totaly true", TRUE},
+  {"False", FALSE},
+  {"false", FALSE},
+  {"0",     FALSE},
+  {"fatally false", FALSE}
+};
 
-  return cr_make_param_array(StringBoolPair, string_value_pairs,
-                             sizeof(string_value_pairs) / sizeof(string_value_pairs[0]));
-}
-
-ParameterizedTest(StringBoolPair *string_value_pair, type_hints, test_bool_cast)
+StaticParameterizedTest(StringBoolPair *string_value_pair, test_bool_cast_params, type_hints, test_bool_cast)
 {
   gboolean value;
   GError *error = NULL;
@@ -254,20 +243,14 @@ Test(type_hints, test_int64_cast)
   g_clear_error(&error);
 }
 
-ParameterizedTestParameters(type_hints, test_double_cast)
+static StringDoublePair test_double_cast_params[] =
 {
-  static StringDoublePair string_value_pairs[] =
-  {
 #ifdef INFINITY
-    {"INF", (gdouble)INFINITY},
+  {"INF", (gdouble)INFINITY},
 #endif
-    {"1.0", 1.0},
-    {"1e-100000000", 0.0}
-  };
-
-  return cr_make_param_array(StringDoublePair, string_value_pairs,
-                             sizeof(string_value_pairs) / sizeof(string_value_pairs[0]));
-}
+  {"1.0", 1.0},
+  {"1e-100000000", 0.0}
+};
 
 static void
 cr_assert_gdouble_eq(gdouble a, gdouble b)
@@ -285,7 +268,7 @@ cr_assert_gdouble_eq(gdouble a, gdouble b)
   cr_assert(fabs(a-b) < G_MINDOUBLE);
 }
 
-ParameterizedTest(StringDoublePair *string_value_pair, type_hints, test_double_cast)
+StaticParameterizedTest(StringDoublePair *string_value_pair, test_double_cast_params, type_hints, test_double_cast)
 {
   gdouble value;
   GError *error = NULL;
@@ -297,21 +280,17 @@ ParameterizedTest(StringDoublePair *string_value_pair, type_hints, test_double_c
   cr_assert_null(error);
 }
 
-ParameterizedTestParameters(type_hints, test_invalid_double_cast)
+static StringDoublePair test_invalid_double_cast_params[] =
 {
-  static StringDoublePair string_list[] =
-  {
-    {"2.0bad", },
-    {"bad", },
-    {"", },
-    {"1e1000000", },
-    {"-1e1000000" },
-  };
+  {"2.0bad", },
+  {"bad", },
+  {"", },
+  {"1e1000000", },
+  {"-1e1000000" },
+};
 
-  return cr_make_param_array(StringDoublePair, string_list, sizeof(string_list) / sizeof(string_list[0]));
-}
-
-ParameterizedTest(StringDoublePair *string_value_pair, type_hints, test_invalid_double_cast)
+StaticParameterizedTest(StringDoublePair *string_value_pair, test_invalid_double_cast_params, type_hints,
+                        test_invalid_double_cast)
 {
   gdouble value;
   GError *error = NULL;
@@ -324,26 +303,20 @@ ParameterizedTest(StringDoublePair *string_value_pair, type_hints, test_invalid_
   g_clear_error(&error);
 }
 
-ParameterizedTestParameters(type_hints, test_datetime_cast)
+static StringUInt64Pair test_datetime_cast_params[] =
 {
-  static StringUInt64Pair string_value_pairs[] =
-  {
-    {"12345",   12345000},
-    {"12345.5", 12345500},
-    {"12345.54", 12345540},
-    {"12345.543", 12345543},
-    {"12345.54321", 12345543},
-    {"12345.987654", 12345987},
-    {"12345.987654321", 12345987},
-    {"12345+05:00", 12345000},
-    {"12345-05:00", 12345000},
-  };
+  {"12345",   12345000},
+  {"12345.5", 12345500},
+  {"12345.54", 12345540},
+  {"12345.543", 12345543},
+  {"12345.54321", 12345543},
+  {"12345.987654", 12345987},
+  {"12345.987654321", 12345987},
+  {"12345+05:00", 12345000},
+  {"12345-05:00", 12345000},
+};
 
-  return cr_make_param_array(StringUInt64Pair, string_value_pairs,
-                             sizeof(string_value_pairs) / sizeof(string_value_pairs[0]));
-}
-
-ParameterizedTest(StringUInt64Pair *string_value_pair, type_hints, test_datetime_cast)
+StaticParameterizedTest(StringUInt64Pair *string_value_pair, test_datetime_cast_params, type_hints, test_datetime_cast)
 {
   gint64 value;
   GError *error = NULL;
@@ -356,26 +329,21 @@ ParameterizedTest(StringUInt64Pair *string_value_pair, type_hints, test_datetime
   cr_assert_null(error);
 }
 
-ParameterizedTestParameters(type_hints, test_invalid_datetime_cast)
+static StringUInt64Pair test_invalid_datetime_cast_params[] =
 {
-  static StringUInt64Pair string_value_pairs[] =
-  {
-    {"invalid", },
-    {"12345T", },
-    {"12345.", },
-    {"12345.1234567890", },
-    {"12345+XX:YY", 12345000},
-    {"12345-05", 12345000},
-    {"12345-XX:YY", 12345000}
+  {"invalid", },
+  {"12345T", },
+  {"12345.", },
+  {"12345.1234567890", },
+  {"12345+XX:YY", 12345000},
+  {"12345-05", 12345000},
+  {"12345-XX:YY", 12345000}
 
-  };
-
-  return cr_make_param_array(StringUInt64Pair, string_value_pairs,
-                             sizeof(string_value_pairs) / sizeof(string_value_pairs[0]));
-}
+};
 
 
-ParameterizedTest(StringUInt64Pair *string_value_pair, type_hints, test_invalid_datetime_cast)
+StaticParameterizedTest(StringUInt64Pair *string_value_pair, test_invalid_datetime_cast_params, type_hints,
+                        test_invalid_datetime_cast)
 {
   GError *error = NULL;
   gint64 value;

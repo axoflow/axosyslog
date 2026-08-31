@@ -620,36 +620,6 @@ if test $lex_ok = 0 ; then
 fi
 
 dnl ***************************************************************************
-dnl Set up NO_PIE_LDFLAG: -no-pie is compatible with $CC.
-
-AX_COMPILER_VENDOR
-AX_COMPILER_VERSION
-
-if test $ostype = "Darwin"; then
-  no_pie_ldflags="-Wl,-no_pie"
-else
-  if test x$ax_cv_c_compiler_vendor = "xgnu"; then
-    AX_COMPARE_VERSION($ax_cv_c_compiler_version, gt, [4.5], [no_pie_ldflags="-no-pie"], [no_pie_ldflags=""])
-  else
-    no_pie_ldflags="-no-pie"
-  fi;
-fi
-
-old_LDFLAGS="$LDFLAGS"
-LDFLAGS="$LDFLAGS $no_pie_ldflags"
-
-AC_LINK_IFELSE([AC_LANG_SOURCE([int main(void) {return 0;}])],
-	[no_pie_option_available=yes],
-	[no_pie_option_available=no])
-
-LDFLAGS="$old_LDFLAGS"
-
-if test "$no_pie_option_available" = "yes"; then
-  NO_PIE_LDFLAG="$no_pie_ldflags"
-fi
-AC_SUBST([NO_PIE_LDFLAG])
-
-dnl ***************************************************************************
 dnl Set up CFLAGS
 
 

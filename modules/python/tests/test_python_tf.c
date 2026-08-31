@@ -23,7 +23,7 @@
 #include "python-module.h"
 
 #include <criterion/criterion.h>
-#include <criterion/parameterized.h>
+#include "libtest/parameterized.h"
 
 #include "python-helpers.h"
 #include "python-types.h"
@@ -89,75 +89,70 @@ typedef struct _PyTfTestParams
   LogMessageValueType expected_type;
 } PyTfTestParams;
 
-ParameterizedTestParameters(python_tf, test_python_tf)
+static PyTfTestParams test_data_list[] =
 {
-  static PyTfTestParams test_data_list[] =
   {
-    {
-      .value = "almafa",
-      .value_length = -1,
-      .type = LM_VT_STRING,
-      .expected_type = LM_VT_STRING,
-    },
-    {
-      .value = "42",
-      .value_length = -1,
-      .type = LM_VT_INTEGER,
-      .expected_type = LM_VT_INTEGER,
-    },
-    {
-      .value = "6.900000",
-      .value_length = -1,
-      .type = LM_VT_DOUBLE,
-      .expected_type = LM_VT_DOUBLE
-    },
-    {
-      .value = "true",
-      .value_length = -1,
-      .type = LM_VT_BOOLEAN,
-      .expected_type = LM_VT_BOOLEAN
-    },
-    {
-      .value = "",
-      .value_length = -1,
-      .type = LM_VT_NULL,
-      .expected_type = LM_VT_NULL
-    },
-    {
-      .value = "a,b,c",
-      .value_length = -1,
-      .type = LM_VT_LIST,
-      .expected_type = LM_VT_LIST
-    },
-    {
-      .value = "1680456974",
-      .value_length = -1,
-      .v4_x_expected_value = "1680456974.000",
-      .type = LM_VT_DATETIME,
-      .expected_type = LM_VT_DATETIME
-    },
-    {
-      .value = "\0\1\2\3",
-      .value_length = 4,
-      .v3_x_expected_value = "def",
-      .v4_x_expected_value = "def",
-      .type = LM_VT_BYTES,
-      .expected_type = LM_VT_STRING
-    },
-    {
-      .value = "\4\5\6\7",
-      .value_length = 4,
-      .v3_x_expected_value = "def",
-      .v4_x_expected_value = "def",
-      .type = LM_VT_PROTOBUF,
-      .expected_type = LM_VT_STRING
-    },
-  };
+    .value = "almafa",
+    .value_length = -1,
+    .type = LM_VT_STRING,
+    .expected_type = LM_VT_STRING,
+  },
+  {
+    .value = "42",
+    .value_length = -1,
+    .type = LM_VT_INTEGER,
+    .expected_type = LM_VT_INTEGER,
+  },
+  {
+    .value = "6.900000",
+    .value_length = -1,
+    .type = LM_VT_DOUBLE,
+    .expected_type = LM_VT_DOUBLE
+  },
+  {
+    .value = "true",
+    .value_length = -1,
+    .type = LM_VT_BOOLEAN,
+    .expected_type = LM_VT_BOOLEAN
+  },
+  {
+    .value = "",
+    .value_length = -1,
+    .type = LM_VT_NULL,
+    .expected_type = LM_VT_NULL
+  },
+  {
+    .value = "a,b,c",
+    .value_length = -1,
+    .type = LM_VT_LIST,
+    .expected_type = LM_VT_LIST
+  },
+  {
+    .value = "1680456974",
+    .value_length = -1,
+    .v4_x_expected_value = "1680456974.000",
+    .type = LM_VT_DATETIME,
+    .expected_type = LM_VT_DATETIME
+  },
+  {
+    .value = "\0\1\2\3",
+    .value_length = 4,
+    .v3_x_expected_value = "def",
+    .v4_x_expected_value = "def",
+    .type = LM_VT_BYTES,
+    .expected_type = LM_VT_STRING
+  },
+  {
+    .value = "\4\5\6\7",
+    .value_length = 4,
+    .v3_x_expected_value = "def",
+    .v4_x_expected_value = "def",
+    .type = LM_VT_PROTOBUF,
+    .expected_type = LM_VT_STRING
+  },
+};
 
-  return cr_make_param_array(PyTfTestParams, test_data_list, G_N_ELEMENTS(test_data_list));
-}
-
-ParameterizedTest(PyTfTestParams *params, python_tf, test_python_tf)
+StaticParameterizedTest(PyTfTestParams *params, test_data_list, python_tf, test_python_tf)
 {
   const gchar *python_tf_implementation = "def test_python_tf(msg):\n"
                                           "    return msg.get('test_key', default='def')\n";
