@@ -61,6 +61,34 @@ exit:
 }
 
 static gboolean
+_assign(FilterXExpr *s, FilterXObject **new_value)
+{
+  FilterXGetSubscript *self = (FilterXGetSubscript *) s;
+  gboolean success = FALSE;
+  FilterXObject *key = NULL;
+
+  FilterXObject *variable = filterx_expr_eval_typed(self->operand);
+  if (!variable)
+    goto error;
+
+  key = filterx_expr_eval_typed(self->key);
+  if (!key)
+    goto error;
+
+  if (!filterx_object_set_subscript(variable, key, new_value))
+    {
+      filterx_eval_push_error_static_info("Failed to assign to object",
+                                          "set_subscript() method failed");
+      goto error;
+    }
+  success = TRUE;
+error:
+  filterx_object_unref(variable);
+  filterx_object_unref(key);
+  return success;
+}
+
+static gboolean
 _isset(FilterXExpr *s)
 {
   FilterXGetSubscript *self = (FilterXGetSubscript *) s;
@@ -195,6 +223,7 @@ filterx_get_subscript_new(FilterXExpr *operand, FilterXExpr *key)
   filterx_expr_init_instance(&self->super, FILTERX_EXPR_TYPE_NAME(get_subscript), FXE_READ);
   self->super.eval = _eval_get_subscript;
   self->super.is_set = _isset;
+  self->super.assign = _assign;
   self->super.unset = _unset;
   self->super.walk_children = _get_subscript_walk;
   self->super.move = _move;

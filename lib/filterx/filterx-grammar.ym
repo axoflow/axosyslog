@@ -227,6 +227,8 @@ assignment
 	| expr '[' expr ']' KW_ASSIGN expr	{ $$ = filterx_set_subscript_new($1, $3, $6); }
 	| expr '[' ']' KW_ASSIGN expr  		{ $$ = filterx_set_subscript_new($1, NULL, $5); }
 	| dpath_lvalue KW_ASSIGN expr { $$ = filterx_assign_new($1, $3); }
+	| tuple_literal KW_ASSIGN expr		{ $$ = filterx_assign_new($1, $3); }
+	| list_literal KW_ASSIGN expr		{ $$ = filterx_assign_new($1, $3); }
 	| plus_assignment
 	| nullv_assignment
 	;

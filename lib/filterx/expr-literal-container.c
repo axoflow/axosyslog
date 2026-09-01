@@ -32,6 +32,7 @@
 #include "filterx/object-message-value.h"
 #include "filterx/object-extractor.h"
 #include "filterx/filterx-plist.h"
+#include "filterx/filterx-sequence.h"
 
 /* Object Members (e.g. key-value) */
 
@@ -264,6 +265,67 @@ _literal_list_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
 }
 
 #endif
+
+/* implements destructuring assignment, e.g. "(a, b) = expr;" or
+ * "[a, b] = expr;" */
+static gboolean
+_literal_container_assign(FilterXExpr *s, FilterXObject **new_value)
+{
+  FilterXLiteralContainer *self = (FilterXLiteralContainer *) s;
+
+  if (filterx_object_is_type(*new_value, &FILTERX_TYPE_NAME(message_value)))
+    {
+      FilterXObject *unmarshalled = filterx_object_unmarshal(*new_value);
+      filterx_object_unref(*new_value);
+      *new_value = unmarshalled;
+    }
+  FilterXObject *rhs = *new_value;
+  if (!filterx_object_is_type_or_ref(rhs, &FILTERX_TYPE_NAME(sequence)))
+    {
+      filterx_eval_push_error("Unpacking assignment requires a sequence (tuple or list) on the right hand side", rhs);
+      return FALSE;
+    }
+
+  guint64 rhs_len;
+  if (!filterx_object_len(rhs, &rhs_len))
+    {
+      filterx_eval_push_error("Failed to determine the length of the value to unpack", rhs);
+      return FALSE;
+    }
+
+  gsize lhs_len = filterx_pointer_list_get_length(&self->elements);
+  if ((guint64) lhs_len != rhs_len)
+    {
+      filterx_eval_push_error_info_printf("Unpacking assignment element count mismatch",
+                                          "expected %" G_GSIZE_FORMAT " values, got %" G_GUINT64_FORMAT,
+                                          lhs_len, rhs_len);
+      return FALSE;
+    }
+
+  for (gsize i = 0; i < lhs_len; i++)
+    {
+      FilterXLiteralElement *elem = (FilterXLiteralElement *) filterx_pointer_list_index_fast(&self->elements, i);
+
+      FilterXObject *slot_value = filterx_sequence_get_subscript(rhs, i);
+      if (!slot_value)
+        {
+          filterx_eval_push_error_info_printf("Unpacking assignment failed",
+                                              "failed to retrieve element %" G_GSIZE_FORMAT, i);
+          return FALSE;
+        }
+
+      gboolean ok = filterx_expr_assign(elem->value, &slot_value);
+      filterx_object_unref(slot_value);
+      if (!ok)
+        {
+          filterx_eval_push_error_info_printf("Unpacking assignment failed",
+                                              "cannot assign to unpacking target %" G_GSIZE_FORMAT, i);
+          return FALSE;
+        }
+    }
+
+  return TRUE;
+}
 
 static void
 _literal_container_init_instance(FilterXLiteralContainer *self, const gchar *type)
@@ -584,6 +646,7 @@ filterx_literal_list_new(GList *elements)
 #if SYSLOG_NG_ENABLE_JIT
   self->super.infer_types = _literal_list_infer_types;
 #endif
+  self->super.assign = _literal_container_assign;
   self->eval_early = _literal_list_eval_early;
   filterx_pointer_list_add_list(&self->elements, elements);
 
@@ -681,6 +744,7 @@ filterx_literal_tuple_new(GList *elements)
 
   _literal_container_init_instance(self, FILTERX_EXPR_TYPE_NAME(literal_tuple));
   self->super.eval = _literal_tuple_eval;
+  self->super.assign = _literal_container_assign;
   self->eval_early = _literal_tuple_eval_early;
   filterx_pointer_list_add_list(&self->elements, elements);
 

@@ -535,7 +535,7 @@ def test_list_unset_causes_clone(config, syslog_ng):
     assert file_true.read_log() == """[1,2,3,[4,5,6,{"foo":"foovalue","bar":"barvalue"}]]--[1,2,3,[4,5,6]]"""
 
 
-def test_list_mutable_elements_appended_from_another_list_cause_clone_when_whanged_through_l1(config, syslog_ng):
+def test_list_mutable_elements_appended_from_another_list_cause_clone_when_changed_through_l1(config, syslog_ng):
     (file_true, file_false, _) = create_config(
         config, [
             """
@@ -555,7 +555,7 @@ def test_list_mutable_elements_appended_from_another_list_cause_clone_when_whang
     assert file_true.read_log() == """[1,2,3,4,5,6,{"bar":"barvalue"}]--[4,5,6,{"foo":"foovalue","bar":"barvalue"}]"""
 
 
-def test_list_mutable_elements_appended_from_another_list_cause_clone_when_whanged_through_l2(config, syslog_ng):
+def test_list_mutable_elements_appended_from_another_list_cause_clone_when_changed_through_l2(config, syslog_ng):
     (file_true, file_false, _) = create_config(
         config, [
             """
@@ -592,13 +592,15 @@ def test_plus_on_child_of_shared_hierarchy(config, syslog_ng):
     assert file_true.read_log() == """["foo","bar","foobar"]--{"child":["foo","bar"]}"""
 
 
-def test_list_mutable_elements_from_tuple_cause_clone_when_whanged_through_tuple(config, syslog_ng):
+def test_list_mutable_elements_from_tuple_cause_changes_to_be_dropped_when_mutated_through_tuple(config, syslog_ng):
     (file_true, file_false, _) = create_config(
         config, [
             """
                 d = {'foo':'foovalue','bar':'barvalue'};
                 t = tuple([1,2,3,d]);
                 l = list(t);
+                # this change is lost as we mutate a copy we extract from the tuple
+                # we could probably raise an error when the top-level xref (parent == NULL) is floating
                 unset(t[3].foo);
                 $MSG = string(t) + '--' + string(l);
             """,
@@ -608,10 +610,10 @@ def test_list_mutable_elements_from_tuple_cause_clone_when_whanged_through_tuple
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == """(1,2,3,{"bar":"barvalue"})--[1,2,3,{"foo":"foovalue","bar":"barvalue"}]"""
+    assert file_true.read_log() == """(1,2,3,{"foo":"foovalue","bar":"barvalue"})--[1,2,3,{"foo":"foovalue","bar":"barvalue"}]"""
 
 
-def test_list_mutable_elements_from_tuple_cause_clone_when_whanged_through_list(config, syslog_ng):
+def test_list_mutable_elements_from_tuple_cause_clone_when_changed_through_list(config, syslog_ng):
     (file_true, file_false, _) = create_config(
         config, [
             """

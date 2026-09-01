@@ -57,4 +57,11 @@ void deinit_libtest_filterx(void);
 
 FilterXObject *init_and_eval_expr(FilterXExpr *expr);
 
+/* build a literal tuple/list/dict expr out of a NULL-terminated list of element
+ * expressions */
+FilterXExpr *filterx_literal_tuple_of(FilterXExpr *first, ...);
+FilterXExpr *filterx_literal_list_of(FilterXExpr *first, ...);
+FilterXExpr *filterx_literal_list_of_objects(FilterXObject *first, ...);
+FilterXExpr *filterx_literal_dict_of(FilterXExpr *first_key, FilterXExpr *first_value, ...);
+
 #endif
