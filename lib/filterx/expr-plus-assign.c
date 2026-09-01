@@ -43,12 +43,29 @@ _eval_plus_assign(FilterXExpr *s)
   return res;
 }
 
+#if SYSLOG_NG_ENABLE_JIT
+static void
+_plus_assign_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  FilterXOperatorPlusAssign *self = (FilterXOperatorPlusAssign *) s;
+
+  filterx_expr_infer_types(self->super.rhs, env);
+  filterx_expr_infer_types(self->super.lhs, env);
+
+  s->static_type = filterx_type_env_update_on_plus_assign(env, self->super.lhs, self->super.rhs);
+}
+
+#endif
+
 FilterXExpr *
 filterx_operator_plus_assign_new(FilterXExpr *lhs, FilterXExpr *rhs)
 {
   FilterXOperatorPlusAssign *self = g_new0(FilterXOperatorPlusAssign, 1);
   filterx_binary_op_init_instance(&self->super, "plus-assign", FXE_WRITE, lhs, rhs);
   self->super.super.eval = _eval_plus_assign;
+#if SYSLOG_NG_ENABLE_JIT
+  self->super.super.infer_types = _plus_assign_infer_types;
+#endif
   self->super.super.ignore_falsy_result = TRUE;
 
   return &self->super.super;

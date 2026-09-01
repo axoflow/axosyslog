@@ -155,6 +155,19 @@ _setattr_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
   return TRUE;
 }
 
+/* the location this statement writes: one hop down its object, at the attribute it sets */
+static gboolean
+_setattr_get_path(FilterXExpr *s, FilterXAccessPath *path_out)
+{
+  FilterXSetAttr *self = (FilterXSetAttr *) s;
+
+  if (!filterx_expr_get_path(self->object, path_out))
+    return FALSE;
+
+  filterx_access_path_append_step(path_out, filterx_access_path_intern_key(self->super.name));
+  return TRUE;
+}
+
 #if SYSLOG_NG_ENABLE_JIT
 
 #include "filterx/jit/jit.h"
@@ -172,6 +185,24 @@ FilterXObject *
 fx_jit_do_nullv_setattr(FilterXExpr *s, FilterXObject *lhs, FilterXObject *cloned)
 {
   return _do_nullv_setattr((FilterXSetAttr *) s, lhs, cloned);
+}
+
+static void
+_setattr_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  FilterXSetAttr *self = (FilterXSetAttr *) s;
+
+  filterx_expr_infer_types_default(s, env);
+  filterx_type_env_update_on_write(env, s, self->new_value);
+}
+
+static void
+_nullv_setattr_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  FilterXSetAttr *self = (FilterXSetAttr *) s;
+
+  filterx_expr_infer_types_default(s, env);
+  filterx_type_env_update_on_optional_write(env, s, self->new_value);
 }
 
 static inline FilterXIRValue
@@ -217,7 +248,9 @@ filterx_setattr_new(FilterXExpr *object, FilterXObject *attr_name, FilterXExpr *
   self->super.eval = _setattr_eval;
   self->super.walk_children = _setattr_walk;
   self->super.free_fn = _free;
+  self->super.get_path = _setattr_get_path;
 #if SYSLOG_NG_ENABLE_JIT
+  self->super.infer_types = _setattr_infer_types;
   self->super.compile = _setattr_compile;
 #endif
   self->object = object;
@@ -241,6 +274,7 @@ filterx_nullv_setattr_new(FilterXExpr *object, FilterXObject *attr_name, FilterX
   self->type = "nullv_setattr";
   self->eval = _nullv_setattr_eval;
 #if SYSLOG_NG_ENABLE_JIT
+  self->infer_types = _nullv_setattr_infer_types;
   self->compile = _nullv_setattr_compile;
 #endif
 

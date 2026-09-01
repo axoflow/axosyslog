@@ -270,6 +270,42 @@ _filterx_expr_propagate_to_error(FilterXExpr *self)
   filterx_eval_update_error_location_from_expr(self);
 }
 
+static gboolean
+_infer_types_child_exprs(FilterXExpr *parent, FilterXExpr **child, gpointer user_data)
+{
+  FilterXTypeEnv *env = (FilterXTypeEnv *) user_data;
+  filterx_expr_infer_types(*child, env);
+  return TRUE;
+}
+
+void
+filterx_expr_infer_types_default(FilterXExpr *self, FilterXTypeEnv *env)
+{
+  if (!self)
+    return;
+
+  if (!filterx_expr_walk_children(self, _infer_types_child_exprs, env))
+    g_assert_not_reached();
+
+  self->static_type = FILTERX_STATIC_TYPE_UNKNOWN;
+}
+
+/* only for expressions that build every value they return with filterx_boolean_new() */
+void
+filterx_expr_infer_types_boolean_result(FilterXExpr *self, FilterXTypeEnv *env)
+{
+  filterx_expr_infer_types_default(self, env);
+  self->static_type = FILTERX_STATIC_TYPE_BOOLEAN;
+}
+
+/* only for expressions whose own get_path() names the value they return */
+void
+filterx_expr_infer_types_from_path(FilterXExpr *self, FilterXTypeEnv *env)
+{
+  filterx_expr_infer_types_default(self, env);
+  self->static_type = filterx_type_env_get_static_type_of_expr(env, self);
+}
+
 FilterXExpr *
 filterx_expr_optimize(FilterXExpr *self)
 {
@@ -325,6 +361,7 @@ filterx_expr_init_instance(FilterXExpr *self, const gchar *type, FilterXEffect e
   self->plus_assign = filterx_expr_plus_assign_method;
   self->type = type;
   self->effects = effects;
+  self->static_type = FILTERX_STATIC_TYPE_UNKNOWN;
 }
 
 FilterXExpr *

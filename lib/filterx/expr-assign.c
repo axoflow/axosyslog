@@ -208,6 +208,32 @@ _nullv_assign_compile(FilterXExpr *s, FilterXJIT *jit)
   return _compile_nullv_assign_to_lhs(self, jit);
 }
 
+static void
+_assign_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  FilterXAssign *self = (FilterXAssign *) s;
+
+  filterx_expr_infer_types(self->super.rhs, env);
+  filterx_expr_infer_types(self->super.lhs, env);
+
+  filterx_type_env_update_on_write(env, self->super.lhs, self->super.rhs);
+
+  s->static_type = self->super.rhs ? self->super.rhs->static_type : FILTERX_STATIC_TYPE_UNKNOWN;
+}
+
+static void
+_nullv_assign_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  FilterXAssign *self = (FilterXAssign *) s;
+
+  filterx_expr_infer_types(self->super.rhs, env);
+  filterx_expr_infer_types(self->super.lhs, env);
+
+  filterx_type_env_update_on_optional_write(env, self->super.lhs, self->super.rhs);
+
+  s->static_type = FILTERX_STATIC_TYPE_UNKNOWN;
+}
+
 #endif
 
 static void
@@ -227,6 +253,7 @@ filterx_assign_new(FilterXExpr *lhs, FilterXExpr *rhs)
   filterx_assign_init_instance(self, "assign", lhs, rhs);
   self->super.super.eval = _assign_eval;
 #if SYSLOG_NG_ENABLE_JIT
+  self->super.super.infer_types = _assign_infer_types;
   self->super.super.compile = _assign_compile;
 #endif
   return &self->super.super;
@@ -240,6 +267,7 @@ filterx_nullv_assign_new(FilterXExpr *lhs, FilterXExpr *rhs)
   filterx_assign_init_instance(self, "nullv-assign", lhs, rhs);
   self->super.super.eval = _nullv_assign_eval;
 #if SYSLOG_NG_ENABLE_JIT
+  self->super.super.infer_types = _nullv_assign_infer_types;
   self->super.super.compile = _nullv_assign_compile;
 #endif
   return &self->super.super;

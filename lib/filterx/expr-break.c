@@ -48,6 +48,9 @@ filterx_expr_break(void)
   filterx_expr_init_instance(self, "break", FXE_CONTROL);
   self->walk_children = _break_walk;
   self->eval = _eval_break;
+#if SYSLOG_NG_ENABLE_JIT
+  self->infer_types = filterx_expr_infer_types_boolean_result;
+#endif
 
   return self;
 }

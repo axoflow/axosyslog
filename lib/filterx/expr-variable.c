@@ -217,6 +217,18 @@ _variable_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
   return TRUE;
 }
 
+/* the root of every addressable location; a macro is recomputed from the message on each read,
+ * so nothing can be recorded about it */
+static gboolean
+_variable_get_path(FilterXExpr *s, FilterXAccessPath *path_out)
+{
+  if (filterx_variable_expr_is_macro(s))
+    return FALSE;
+
+  path_out->root = filterx_variable_expr_get_handle(s);
+  return TRUE;
+}
+
 #if SYSLOG_NG_ENABLE_JIT
 
 #include "filterx/jit/jit.h"
@@ -336,7 +348,9 @@ filterx_variable_expr_new(const gchar *name, FilterXVariableType variable_type)
   self->super.walk_children = _variable_walk;
   self->super.free_fn = _free;
   self->super.eval = _eval_variable;
+  self->super.get_path = _variable_get_path;
 #if SYSLOG_NG_ENABLE_JIT
+  self->super.infer_types = filterx_expr_infer_types_from_path;
   self->super.compile = _variable_compile;
 #endif
   self->super._update_repr = _update_repr;

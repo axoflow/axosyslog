@@ -27,6 +27,8 @@
 #include "filterx/jit/jit.h"
 #include "filterx/jit/ffi.h"
 #include "filterx-object.h"
+#include "filterx/filterx-access-path.h"
+#include "filterx/filterx-type-inference.h"
 #include "cfg-lexer.h"
 #include "stats/stats-counter.h"
 
@@ -56,7 +58,7 @@ struct _FilterXExpr
 
   /* not thread-safe */
   guint32 ref_cnt;
-guint32 ignore_falsy_result:1, suppress_from_trace:1, inited:1, optimized:1, statement:1, effects:
+guint32 ignore_falsy_result:1, suppress_from_trace:1, inited:1, optimized:1, statement:1, types_inferred:1, effects:
   FXE_EFFECT_BITFIELD_SIZE;
 
   /* not to be used except for FilterXMessageRef, replace any cached values
@@ -81,7 +83,17 @@ guint32 ignore_falsy_result:1, suppress_from_trace:1, inited:1, optimized:1, sta
 #if SYSLOG_NG_ENABLE_JIT
   FilterXIRValue (*compile)(FilterXExpr *self, FilterXJIT *jit);
   FilterXIRValue (*compile_assign)(FilterXExpr *self, FilterXJIT *jit, FilterXIRValue new_value);
+  void (*infer_types)(FilterXExpr *self, FilterXTypeEnv *env);
 #endif
+
+  FilterXStaticType static_type;
+
+  /* Fill in the location @self names; FALSE when it names none.  Reach it through
+   * filterx_expr_get_path(), which is what initializes @path_out.
+   *
+   * A write node may name the location it writes, but only because the grammar reaches an
+   * assignment from stmt_expr alone, so such a node is never the operand of a read. */
+  gboolean (*get_path)(FilterXExpr *self, FilterXAccessPath *path_out);
 
   void (*free_fn)(FilterXExpr *self);
 
@@ -261,6 +273,10 @@ void filterx_expr_deinit_method(FilterXExpr *self, GlobalConfig *cfg);
 gboolean filterx_expr_init(FilterXExpr *self, GlobalConfig *cfg);
 void filterx_expr_deinit(FilterXExpr *self, GlobalConfig *cfg);
 
+void filterx_expr_infer_types_default(FilterXExpr *self, FilterXTypeEnv *env);
+void filterx_expr_infer_types_boolean_result(FilterXExpr *self, FilterXTypeEnv *env);
+void filterx_expr_infer_types_from_path(FilterXExpr *self, FilterXTypeEnv *env);
+
 static inline gboolean
 filterx_expr_visit(FilterXExpr *self, FilterXExpr **expr, FilterXExprWalkFunc f, gpointer user_data)
 {
@@ -276,6 +292,24 @@ filterx_expr_walk_children(FilterXExpr *self, FilterXExprWalkFunc f, gpointer us
   g_assert(self->walk_children);
 
   return self->walk_children(self, f, user_data);
+}
+
+static inline gboolean
+filterx_expr_get_path(FilterXExpr *self, FilterXAccessPath *path_out)
+{
+  filterx_access_path_init(path_out);
+
+  if (!self || !self->get_path)
+    return FALSE;
+
+  return self->get_path(self, path_out);
+}
+
+static inline void
+filterx_expr_assert_types_inferred(FilterXExpr *self)
+{
+  /* an un-inferred node reads as UNKNOWN and never devirtualizes */
+  g_assert(self->types_inferred);
 }
 
 /* TODO partialJIT: remove once all expressions implement compile() */
@@ -294,6 +328,8 @@ filterx_expr_compile(FilterXExpr *self, FilterXJIT *jit)
 {
 #if SYSLOG_NG_ENABLE_JIT
   g_assert(self && self->compile);
+  filterx_expr_assert_types_inferred(self);
+
   FilterXIRValue result = self->compile(self, jit);
 
   return fx_jit_emit_expr_propagate_to_error_if_null(jit, self, result);
@@ -318,6 +354,8 @@ filterx_expr_compile_assign(FilterXExpr *self, FilterXJIT *jit, FilterXIRValue n
 {
 #if SYSLOG_NG_ENABLE_JIT
   g_assert(self && self->compile_assign);
+  filterx_expr_assert_types_inferred(self);
+
   return self->compile_assign(self, jit, new_value);
 #else
   g_assert_not_reached();
@@ -329,6 +367,8 @@ filterx_expr_compile_typed(FilterXExpr *self, FilterXJIT *jit)
 {
 #if SYSLOG_NG_ENABLE_JIT
   g_assert(self && self->compile);
+  filterx_expr_assert_types_inferred(self);
+
   FilterXIRValue result = self->compile(self, jit);
 
   return fx_jit_emit_expr_make_typed_object(jit, self, result);

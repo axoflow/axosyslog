@@ -38,6 +38,17 @@ FILTERX_EXPR_DECLARE_TYPE(literal_container);
 
 gsize filterx_literal_container_len(FilterXExpr *s);
 
+/* The container early evaluation already built: literal elements in place, non-literal ones
+ * null.  Non-NULL only if every key is a literal string, a non-literal one failing
+ * filterx_mapping_normalize_key() and aborting the whole early eval. */
+FilterXObject *filterx_literal_container_get_sparse_container(FilterXExpr *s);
+
+/* Record the static types of the non-literal elements at @base in @env, on top of the shape the
+ * sparse container already installed.  FALSE when an element could not be recorded, so @base
+ * holds keys @env has not seen. */
+gboolean filterx_literal_container_infer_nonliteral_elements(FilterXExpr *s, FilterXTypeEnv *env,
+    const FilterXAccessPath *base);
+
 
 /* Literal Dict */
 

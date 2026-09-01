@@ -101,6 +101,9 @@ filterx_expr_regexp_match_new(FilterXExpr *lhs, const gchar *pattern)
   self->super.eval = _regexp_match_eval;
   self->super.walk_children = _regexp_match_walk;
   self->super.free_fn = _regexp_match_free;
+#if SYSLOG_NG_ENABLE_JIT
+  self->super.infer_types = filterx_expr_infer_types_boolean_result;
+#endif
 
   self->lhs = lhs;
   self->pattern = filterx_regexp_compile_pattern_defaults(pattern, strlen(pattern));

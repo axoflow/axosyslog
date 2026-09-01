@@ -37,5 +37,8 @@ filterx_isset_new(FilterXExpr *expr)
   FilterXUnaryOp *self = g_new0(FilterXUnaryOp, 1);
   filterx_unary_op_init_instance(self, "isset", FXE_READ, expr);
   self->super.eval = _eval_isset;
+#if SYSLOG_NG_ENABLE_JIT
+  self->super.infer_types = filterx_expr_infer_types_boolean_result;
+#endif
   return &self->super;
 }

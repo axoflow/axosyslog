@@ -20,6 +20,7 @@
  *
  */
 #include "filterx/expr-set-subscript.h"
+#include "filterx/expr-literal.h"
 #include "filterx/object-primitive.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/object-null.h"
@@ -154,6 +155,40 @@ _free(FilterXExpr *s)
   filterx_expr_free_method(s);
 }
 
+/* the location this statement writes: one hop down its object, at the step its key names */
+static gboolean
+_set_subscript_get_path(FilterXExpr *s, FilterXAccessPath *path_out)
+{
+  FilterXSetSubscript *self = (FilterXSetSubscript *) s;
+
+  if (!filterx_expr_get_path(self->object, path_out))
+    return FALSE;
+
+  filterx_access_path_append_step(path_out, filterx_literal_key_expr_to_path_step(self->key));
+  return TRUE;
+}
+
+#if SYSLOG_NG_ENABLE_JIT
+static void
+_set_subscript_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  FilterXSetSubscript *self = (FilterXSetSubscript *) s;
+
+  filterx_expr_infer_types_default(s, env);
+  filterx_type_env_update_on_write(env, s, self->new_value);
+}
+
+static void
+_nullv_set_subscript_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  FilterXSetSubscript *self = (FilterXSetSubscript *) s;
+
+  filterx_expr_infer_types_default(s, env);
+  filterx_type_env_update_on_optional_write(env, s, self->new_value);
+}
+
+#endif
+
 static gboolean
 _set_subscript_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
@@ -179,6 +214,10 @@ filterx_set_subscript_new(FilterXExpr *object, FilterXExpr *key, FilterXExpr *ne
   self->super.eval = _set_subscript_eval;
   self->super.walk_children = _set_subscript_walk;
   self->super.free_fn = _free;
+  self->super.get_path = _set_subscript_get_path;
+#if SYSLOG_NG_ENABLE_JIT
+  self->super.infer_types = _set_subscript_infer_types;
+#endif
   self->object = object;
   self->key = key;
   self->new_value = new_value;
@@ -193,5 +232,8 @@ filterx_nullv_set_subscript_new(FilterXExpr *object, FilterXExpr *key, FilterXEx
 
   self->type = "nullv_set_subscript";
   self->eval = _nullv_set_subscript_eval;
+#if SYSLOG_NG_ENABLE_JIT
+  self->infer_types = _nullv_set_subscript_infer_types;
+#endif
   return self;
 }

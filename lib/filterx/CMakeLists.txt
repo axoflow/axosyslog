@@ -32,6 +32,7 @@ set(FILTERX_HEADERS
     filterx/expr-unset.h
     filterx/expr-variable.h
     filterx/expr-string-operators.h
+    filterx/filterx-access-path.h
     filterx/filterx-allocator.h
     filterx/filterx-config.h
     filterx/filterx-error.h
@@ -50,6 +51,8 @@ set(FILTERX_HEADERS
     filterx/filterx-scope.h
     filterx/filterx-scope-var-layout.h
     filterx/filterx-stashed-object.h
+    filterx/filterx-type-inference.h
+    filterx/filterx-type-inference-private.h
     filterx/filterx-variable.h
     filterx/filterx-weakrefs.h
     filterx/filterx-dpath.h
@@ -125,6 +128,7 @@ set(FILTERX_SOURCES
     filterx/expr-unset.c
     filterx/expr-variable.c
     filterx/expr-string-operators.c
+    filterx/filterx-access-path.c
     filterx/filterx-allocator.c
     filterx/filterx-config.c
     filterx/filterx-error.c
@@ -143,6 +147,7 @@ set(FILTERX_SOURCES
     filterx/filterx-scope.c
     filterx/filterx-scope-var-layout.c
     filterx/filterx-stashed-object.c
+    filterx/filterx-type-inference.c
     filterx/filterx-variable.c
     filterx/filterx-weakrefs.c
     filterx/filterx-dpath.c
@@ -244,7 +249,7 @@ if(SYSLOG_NG_ENABLE_JIT)
       COMMAND ${LLVM_CLANG}
               -D_GNU_SOURCE=1 -D_LARGEFILE64_SOURCE=1
               "-I$<JOIN:$<TARGET_PROPERTY:syslog-ng,INCLUDE_DIRECTORIES>,;-I>"
-              -emit-llvm -O3 --no-warnings
+              -emit-llvm -O3 --no-warnings -mno-outline-atomics
               -c "${CMAKE_CURRENT_SOURCE_DIR}/${_src}" -o "${_bc}"
       DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/${_src}"
       COMMAND_EXPAND_LISTS

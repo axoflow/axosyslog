@@ -34,6 +34,7 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/expr-move.h \
 	lib/filterx/expr-variable.h \
 	lib/filterx/expr-string-operators.h \
+	lib/filterx/filterx-access-path.h \
 	lib/filterx/filterx-allocator.h \
 	lib/filterx/filterx-config.h \
 	lib/filterx/filterx-error.h \
@@ -46,6 +47,8 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/filterx-object.h \
 	lib/filterx/filterx-env.h \
 	lib/filterx/filterx-stashed-object.h \
+	lib/filterx/filterx-type-inference.h \
+	lib/filterx/filterx-type-inference-private.h \
 	lib/filterx/filterx-parser.h \
 	lib/filterx/filterx-pipe.h \
 	lib/filterx/filterx-private.h \
@@ -130,6 +133,7 @@ filterx_expr_sources = \
 lib_filterx_libfilterx_la_SOURCES = \
 	$(filterx_expr_sources) \
 	$(filterxjit_sources) \
+	lib/filterx/filterx-access-path.c \
 	lib/filterx/filterx-allocator.c \
 	lib/filterx/filterx-config.c \
 	lib/filterx/filterx-dpath.c \
@@ -152,6 +156,7 @@ lib_filterx_libfilterx_la_SOURCES = \
 	lib/filterx/filterx-scope.c \
 	lib/filterx/filterx-sequence.c \
 	lib/filterx/filterx-stashed-object.c \
+	lib/filterx/filterx-type-inference.c \
 	lib/filterx/filterx-variable.c \
 	lib/filterx/filterx-weakrefs.c \
 	lib/filterx/func-cache-json-file.c \

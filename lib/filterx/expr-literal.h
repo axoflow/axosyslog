@@ -38,4 +38,8 @@ filterx_expr_is_literal(FilterXExpr *expr)
 FilterXObject *
 filterx_literal_get_value(FilterXExpr *expr);
 
+/* The interned path step a subscript key expression names, NULL when it names none: a computed
+ * key, any list index, and the `expr[] = v` append form. */
+const gchar *filterx_literal_key_expr_to_path_step(FilterXExpr *key_expr);
+
 #endif

@@ -300,6 +300,32 @@ fx_jit_process_compound_result(FilterXCompoundExpr *self, gint32 success, Filter
   return _process_compound_result(self, success, result);
 }
 
+static void
+_compound_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  FilterXCompoundExpr *self = (FilterXCompoundExpr *) s;
+  gsize exprs_len = filterx_expr_list_get_length(&self->exprs);
+
+  FilterXStaticType last_expr_type = FILTERX_STATIC_TYPE_UNKNOWN;
+  for (gsize i = 0; i < exprs_len; i++)
+    {
+      FilterXExpr *child = filterx_expr_list_index(&self->exprs, i);
+      const gchar *trace_label = child && child->expr_text ? child->expr_text : "(statement)";
+
+      filterx_type_inference_trace_banner("===== statement %" G_GSIZE_FORMAT ": %s", i, trace_label);
+      filterx_expr_infer_types(child, env);
+      filterx_type_env_trace_dump(env, trace_label);
+      last_expr_type = child ? child->static_type : FILTERX_STATIC_TYPE_UNKNOWN;
+    }
+
+  /* a break/done/drop short-circuit yields the implicit TRUE instead, see
+   * _process_compound_result() */
+  if (self->return_value_of_last_expr && exprs_len > 0)
+    s->static_type = last_expr_type;
+  else
+    s->static_type = FILTERX_STATIC_TYPE_BOOLEAN;
+}
+
 static inline FilterXIRValue
 _emit_process_compound_result(FilterXJIT *jit, FilterXCompoundExpr *self, FilterXIRValue success, FilterXIRValue result)
 {
@@ -397,6 +423,7 @@ filterx_compound_expr_new(gboolean return_value_of_last_expr)
   self->super.walk_children = _compound_walk;
   self->super.free_fn = _free;
 #if SYSLOG_NG_ENABLE_JIT
+  self->super.infer_types = _compound_infer_types;
   self->super.compile = _compound_compile;
 #endif
   self->return_value_of_last_expr = return_value_of_last_expr;
