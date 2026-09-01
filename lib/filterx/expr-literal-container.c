@@ -272,8 +272,14 @@ static gboolean
 _literal_container_assign(FilterXExpr *s, FilterXObject **new_value)
 {
   FilterXLiteralContainer *self = (FilterXLiteralContainer *) s;
-  FilterXObject *rhs = *new_value;
 
+  if (filterx_object_is_type(*new_value, &FILTERX_TYPE_NAME(message_value)))
+    {
+      FilterXObject *unmarshalled = filterx_object_unmarshal(*new_value);
+      filterx_object_unref(*new_value);
+      *new_value = unmarshalled;
+    }
+  FilterXObject *rhs = *new_value;
   if (!filterx_object_is_type_or_ref(rhs, &FILTERX_TYPE_NAME(sequence)))
     {
       filterx_eval_push_error("Unpacking assignment requires a sequence (tuple or list) on the right hand side", rhs);
