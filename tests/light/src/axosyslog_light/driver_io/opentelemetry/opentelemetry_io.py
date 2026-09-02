@@ -204,8 +204,9 @@ class OTelResourceScopeLog:
 
 
 class OpenTelemetryIO():
-    def __init__(self, port: int) -> None:
+    def __init__(self, port: int, address: str = "localhost") -> None:
         self.__port = port
+        self.__address = address
         self.__credentials = None
 
     def set_tls(
@@ -221,7 +222,7 @@ class OpenTelemetryIO():
         )
 
     def __create_channel(self):
-        target = f"localhost:{self.__port}"
+        target = f"{self.__address}:{self.__port}"
         if self.__credentials:
             return secure_channel(target, self.__credentials)
         return insecure_channel(target)
