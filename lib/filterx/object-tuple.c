@@ -87,7 +87,27 @@ _filterx_tuple_get_subscript(FilterXObject *s, FilterXObject *key)
       return NULL;
     }
 
-  return filterx_object_ref(g_ptr_array_index(self->array, normalized_index));
+  FilterXObject *el = g_ptr_array_index(self->array, normalized_index);
+
+  /* Tuples are immutable but may contain mutable objects as children.
+   * Also, since tuples are immutable, they are not wrapped in an xref to
+   * facilitate copy-on-write (as immutable objects do not need that).
+   *
+   * This code here is similar to what FilterXRef does in
+   * _filterx_ref_replace_shared_xref_with_a_floating_one(), whenever we
+   * return an xref, we make sure that xref is a separate copy, so in case
+   * it is changed, the element in the tuple does not change with it.
+   */
+  if (filterx_object_is_ref(el))
+    {
+      /* the element is a mutable child, create an implicit copy of the xref */
+      FilterXRef *xref = (FilterXRef *) el;
+      return filterx_ref_float(_filterx_ref_new(filterx_object_ref(xref->value)));
+    }
+  else
+    {
+      return filterx_object_ref(el);
+    }
 }
 
 static gboolean
