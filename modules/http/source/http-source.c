@@ -126,6 +126,18 @@ _extract_from_json_array(struct json_object *messages_obj, MsgFormatOptions *par
     }
 }
 
+static void
+_report_json_parse_error(struct json_tokener *tok, gsize offset)
+{
+  enum json_tokener_error error = json_tokener_get_error(tok);
+  if (error == json_tokener_continue || error == json_tokener_success)
+    return;
+
+  msg_warning("Error parsing JSON messages",
+              evt_tag_str("error", json_tokener_error_desc(error)),
+              evt_tag_long("offset", offset + json_tokener_get_parse_end(tok)));
+}
+
 static GQueue *
 _extract_json_stream(struct json_tokener *tok, struct json_object *first, const gchar *data, gsize remaining,
                      MsgFormatOptions *parse_options)
@@ -139,6 +151,7 @@ _extract_json_stream(struct json_tokener *tok, struct json_object *first, const 
       return messages;
     }
 
+  const gchar *start = data;
   struct json_object *obj = first;
   while (obj)
     {
@@ -154,8 +167,8 @@ _extract_json_stream(struct json_tokener *tok, struct json_object *first, const 
         break;
 
       obj = json_tokener_parse_ex(tok, data, remaining);
-      if (!obj && json_tokener_get_error(tok) != json_tokener_continue)
-        msg_warning("Error parsing JSON messages");
+      if (!obj)
+        _report_json_parse_error(tok, data - start);
     }
 
   return messages;
@@ -176,8 +189,7 @@ _extract_messages_json(HTTPRequest *http_request, HTTPSourceConnection *connecti
   struct json_object *obj = json_tokener_parse_ex(tok, (const gchar *) body->data, body->len);
   if (!obj)
     {
-      if (json_tokener_get_error(tok) != json_tokener_continue)
-        msg_warning("Error parsing JSON messages");
+      _report_json_parse_error(tok, 0);
       json_tokener_free(tok);
       return NULL;
     }
