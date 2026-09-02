@@ -102,7 +102,7 @@ jobs:
     permissions:
       contents: read  # checkout source
       packages: write  # push image to GHCR
-    uses: ./.github/workflows/axosyslog-docker.yml
+    uses: $/.github/workflows/axosyslog-docker.yml
     needs: [prepare, tarball]
     with:
       type: snapshot

@@ -17,7 +17,7 @@ permissions:
 
 jobs:
   index-packages:
-    uses: ./.github/workflows/index-packages.yml
+    uses: $/.github/workflows/index-packages.yml
     with:
       pkg-type: ${{ github.event.inputs.pkg-type }}
       run-id: ${{ github.event.inputs.run-id }}
