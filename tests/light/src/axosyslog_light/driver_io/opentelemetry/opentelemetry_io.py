@@ -204,7 +204,7 @@ class OTelResourceScopeLog:
 
 
 class OpenTelemetryIO():
-    def __init__(self, port: int, address: str = "localhost") -> None:
+    def __init__(self, port: int, address: str = "127.0.0.1") -> None:
         self.__port = port
         self.__address = address
         self.__credentials = None
