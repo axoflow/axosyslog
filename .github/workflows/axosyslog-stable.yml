@@ -63,7 +63,7 @@ jobs:
 
   index-packages:
     needs: find-draft-release-run
-    uses: ./.github/workflows/index-packages.yml
+    uses: $/.github/workflows/index-packages.yml
     with:
       pkg-type: stable
       run-id: ${{ needs.find-draft-release-run.outputs.DRAFT_RELEASE_RUN_ID }}
@@ -74,12 +74,12 @@ jobs:
 
   test-packages:
     needs: index-packages
-    uses: ./.github/workflows/test-apt-packages.yml
+    uses: $/.github/workflows/test-apt-packages.yml
     with:
       pkg-type: stable
 
   publish-image:
-    uses: ./.github/workflows/axosyslog-docker.yml
+    uses: $/.github/workflows/axosyslog-docker.yml
     needs: find-draft-release-run
     permissions:
       contents: read  # checkout source

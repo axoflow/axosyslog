@@ -26,7 +26,7 @@ jobs:
           fi
 
   publish-image:
-    uses: ./.github/workflows/axosyslog-docker.yml
+    uses: $/.github/workflows/axosyslog-docker.yml
     needs: pre-check
     permissions:
       contents: read  # checkout source

@@ -17,6 +17,6 @@ permissions:
 
 jobs:
   test-packages:
-    uses: ./.github/workflows/test-apt-packages.yml
+    uses: $/.github/workflows/test-apt-packages.yml
     with:
       pkg-type: ${{ github.event.inputs.pkg-type }}
