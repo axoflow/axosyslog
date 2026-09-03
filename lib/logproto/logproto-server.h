@@ -267,11 +267,19 @@ log_proto_server_apply_replacement(LogProtoServer **proto)
 
 typedef struct _LogProtoServerFactory LogProtoServerFactory;
 
+/* @stateful protos are handed the PersistState of the configuration and the
+ * persistent name of the driver right after construction, through
+ * log_proto_server_restart_with_state().  The name is shared by all
+ * connections of the driver, so only declare a proto stateful if its state is
+ * really per driver (a session registry for instance) and not per connection.
+ * The server side counterpart of LogProtoClientFactory's stateful member.
+ */
 struct _LogProtoServerFactory
 {
   LogProtoServer *(*construct)(LogTransport *transport, const LogProtoServerOptions *options,
                                StatsClusterKeyBuilder *kb);
   gint default_inet_port;
+  gboolean stateful;
 };
 
 static inline LogProtoServer *
@@ -279,6 +287,12 @@ log_proto_server_factory_construct(LogProtoServerFactory *self, LogTransport *tr
                                    const LogProtoServerOptions *options, StatsClusterKeyBuilder *kb)
 {
   return self->construct(transport, options, kb);
+}
+
+static inline gboolean
+log_proto_server_factory_is_proto_stateful(const LogProtoServerFactory *self)
+{
+  return self->stateful;
 }
 
 LogProtoServerFactory *log_proto_server_get_factory(PluginContext *context, const gchar *name);

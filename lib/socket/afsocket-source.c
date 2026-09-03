@@ -158,6 +158,25 @@ afsocket_sc_init(LogPipe *s)
 
       log_transport_stack_register_stats(&proto->transport_stack, kb);
 
+      /* NOTE: intentionally conditional.  restart_with_state() binds the proto
+       * to a single persist entry named after the driver and shared by all of
+       * our connections: what a per driver state wants, but it would make the
+       * connections of a buffered proto corrupt each other's read position.
+       */
+      if (self->owner->proto_factory && log_proto_server_factory_is_proto_stateful(self->owner->proto_factory))
+        {
+          const gchar *persist_name = log_pipe_get_persist_name(&self->owner->super.super.super);
+
+          if (!log_proto_server_restart_with_state(proto, log_pipe_get_config(s)->state, persist_name))
+            {
+              msg_error("Error restoring the persistent state of the server protocol",
+                        evt_tag_str("persist_name", persist_name));
+              log_proto_server_free(proto);
+              stats_cluster_key_builder_free(kb);
+              return FALSE;
+            }
+        }
+
       self->reader = log_reader_new(s->cfg);
       log_pipe_set_options(&self->reader->super.super, &self->super.options);
       log_reader_open(self->reader, proto, poll_fd_events_new(self->sock));
