@@ -114,6 +114,13 @@ _extract_bulk_pairs(HTTPRequest *http_request, ESBulkSourceConnection *connectio
 
       const gchar *op = _action_op(action, action_length);
 
+      if (op && strcmp(op, "delete") == 0)
+        {
+          /* delete actions carry no source line in the Bulk API */
+          _append_item(connection, op, 200);
+          continue;
+        }
+
       gsize source_length = 0;
       const gchar *source = _next_line(&data, &remaining, &source_length);
 
