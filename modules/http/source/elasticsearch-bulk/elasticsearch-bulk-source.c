@@ -214,6 +214,9 @@ _new_response(HTTPStatusCode status_code)
   HTTPResponse *response = http_response_new_empty();
   http_message_set_http_version(&response->super, 1, 1);
   http_response_set_status_code(response, status_code);
+
+  /* go-elasticsearch clients reject responses without this product header */
+  http_message_add_header(&response->super, "X-Elastic-Product", "Elasticsearch");
   return response;
 }
 
