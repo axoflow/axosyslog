@@ -250,6 +250,18 @@ _create_handshake_response(ESBulkSourceDriver *self)
   return response;
 }
 
+/* libbeat polls GET /_license after the version probe and retries with
+ * backoff until it can parse a license, which delays the first bulk */
+static HTTPResponse *
+_create_license_response(void)
+{
+  HTTPResponse *response = _new_response(HTTP_OK);
+
+  GString *body = g_string_new("{\"license\":{\"uid\":\"axosyslog\",\"type\":\"basic\",\"status\":\"active\"}}");
+  _take_json_body(response, body);
+  return response;
+}
+
 static HTTPResponse *
 _create_bulk_ack_response(ESBulkSourceConnection *es_connection)
 {
@@ -277,7 +289,12 @@ _create_response(HTTPRequest *http_request, HTTPSourceConnection *connection)
 
   const gchar *method = http_request_get_method(http_request);
   if (method && strcmp(method, "GET") == 0)
-    return _create_handshake_response(self);
+    {
+      const gchar *url = http_request_get_url(http_request);
+      if (url && g_str_has_prefix(url, "/_license"))
+        return _create_license_response();
+      return _create_handshake_response(self);
+    }
 
   if (!_is_bulk_request(http_request))
     return _new_response(HTTP_OK);
