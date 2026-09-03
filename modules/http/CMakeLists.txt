@@ -52,7 +52,7 @@ add_module(
 )
 
 add_subdirectory(source)
-target_link_libraries(http PRIVATE ehttp-source)
+target_link_libraries(http PRIVATE ehttp-source elasticsearch-bulk-source)
 
 function (curl_detect_compile_option NAME)
   set(CMAKE_REQUIRED_INCLUDES "${Curl_INCLUDE_DIR}")

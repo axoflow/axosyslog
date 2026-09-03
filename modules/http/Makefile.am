@@ -35,7 +35,8 @@ modules_http_libhttp_la_CPPFLAGS  =     \
 
 modules_http_libhttp_la_LIBADD  = $(MODULE_DEPS_LIBS) $(LIBCURL_LIBS) $(ZLIB_LIBS) $(JSON_LIBS) \
   modules/http/source/libhttp-decompression.la \
-  modules/http/source/libehttp-source.la
+  modules/http/source/libehttp-source.la \
+  modules/http/source/elasticsearch-bulk/libelasticsearch-bulk-source.la
 
 modules_http_libhttp_la_LDFLAGS = $(MODULE_LDFLAGS)
 modules_http_libhttp_la_CFLAGS = $(AM_CFLAGS) $(MODULE_CFLAGS)

@@ -34,3 +34,5 @@ set_source_files_properties(
     PROPERTIES
     COMPILE_FLAGS ${BISON_BUILT_SOURCE_CFLAGS}
 )
+
+add_subdirectory(elasticsearch-bulk)
