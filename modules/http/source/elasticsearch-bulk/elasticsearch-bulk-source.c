@@ -133,6 +133,13 @@ _extract_bulk_pairs(HTTPRequest *http_request, ESBulkSourceConnection *connectio
           continue;
         }
 
+      if (op && strcmp(op, "update") == 0)
+        {
+          /* the document line of an update is a partial document or a script, not a new event */
+          _append_response_item(connection, op, 200);
+          continue;
+        }
+
       LogMessage *msg = msg_format_construct_message(parse_options, (guchar *) document, document_length);
       msg_format_parse_into(parse_options, msg, (guchar *) document, &document_length);
       log_msg_set_value(msg, self->handles.elastic_bulk_action, action, action_length);
