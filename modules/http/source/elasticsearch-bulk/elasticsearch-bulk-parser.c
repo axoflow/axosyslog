@@ -33,6 +33,7 @@ int elasticsearch_bulk_parse(CfgLexer *lexer, LogDriver **instance, gpointer arg
 static CfgLexerKeyword elasticsearch_bulk_keywords[] =
 {
   { "elasticsearch_bulk", KW_ELASTICSEARCH_BULK },
+  { "auth_token", KW_AUTH_TOKEN },
   HTTP_SOURCE_KEYWORDS,
   { NULL }
 };

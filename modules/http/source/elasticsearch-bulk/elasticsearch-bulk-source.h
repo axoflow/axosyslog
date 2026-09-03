@@ -44,6 +44,7 @@ struct ESBulkSourceConnection
 struct ESBulkSourceDriver
 {
   HTTPSourceDriver super;
+  gchar *auth_token;
   struct
   {
     NVHandle elastic_bulk_action;
@@ -51,5 +52,6 @@ struct ESBulkSourceDriver
 };
 
 ESBulkSourceDriver *elasticsearch_bulk_sd_new(GlobalConfig *cfg);
+void elasticsearch_bulk_sd_set_auth_token(LogDriver *d, const gchar *auth_token);
 
 #endif
