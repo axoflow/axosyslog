@@ -89,6 +89,10 @@ struct _LogProtoServer
    */
   LogProtoServer *proto_replacement;
 
+  /* NOTE: a proto that requests write-only readiness while the window is
+   * exhausted promises that the fetch() which follows returns no message.  A
+   * broken promise trips the window assertion in log_source_post().
+   */
   LogProtoPrepareAction (*poll_prepare)(LogProtoServer *s, GIOCondition *cond, gint *timeout);
   gboolean (*restart_with_state)(LogProtoServer *s, PersistState *state, const gchar *persist_name);
   LogProtoStatus (*fetch)(LogProtoServer *s, const guchar **msg, gsize *msg_len, gboolean *may_read,

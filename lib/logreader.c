@@ -283,10 +283,40 @@ log_reader_is_opened(LogReader *self)
  * Set watches state so we are polling the event(s) that comes next.
  *****************************************************************************/
 
+static inline gboolean
+_is_proto_waiting_for_writability(LogReader *self, LogProtoPrepareAction prepare_action, GIOCondition cond)
+{
+  if (prepare_action != LPPA_POLL_IO)
+    return FALSE;
+
+  LogTransportIOCond io_req = log_transport_stack_get_io_requirement(&self->proto->transport_stack);
+
+  /* The `cond` variable alone does not tell a proto write from a read, as
+   * the transport may flip the direction during a bidirectional handshake
+   * (e.g.  TLS).  */
+
+  if (cond == G_IO_OUT)
+    {
+      /* LTIO_READ_WANTS_WRITE: is a read pending inside a TLS read, so even
+       * if `cond` is G_IO_OUT we still want to suspend.
+       */
+
+      return io_req != LTIO_READ_WANTS_WRITE;
+    }
+  else if (cond == G_IO_IN)
+    {
+      /* LTIO_WRITE_WANTS_READ: is a write pending inside a TLS write, so
+       * even if `cond` is G_IO_IN we still want to continue.
+       */
+      return io_req == LTIO_WRITE_WANTS_READ;
+    }
+  return FALSE;
+}
+
 static void
 log_reader_update_watches(LogReader *self)
 {
-  GIOCondition cond;
+  GIOCondition cond = 0;
   gint idle_timeout = -1;
 
   main_loop_assert_main_thread();
@@ -297,14 +327,12 @@ log_reader_update_watches(LogReader *self)
   if (!log_reader_is_opened(self))
     return;
 
-  gboolean free_to_send = log_source_free_to_send(&self->super);
-  if (!free_to_send)
+  LogProtoPrepareAction prepare_action = log_proto_server_poll_prepare(self->proto, &cond, &idle_timeout);
+  if (!log_source_free_to_send(&self->super) && !_is_proto_waiting_for_writability(self, prepare_action, cond))
     {
       log_reader_suspend_until_awoken(self);
       return;
     }
-
-  LogProtoPrepareAction prepare_action = log_proto_server_poll_prepare(self->proto, &cond, &idle_timeout);
 
   if (idle_timeout > 0)
     {
