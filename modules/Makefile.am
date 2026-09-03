@@ -9,6 +9,7 @@ include modules/afsql/Makefile.am
 include modules/afstomp/Makefile.am
 include modules/afstreams/Makefile.am
 include modules/afuser/Makefile.am
+include modules/altp-proto/Makefile.am
 include modules/appmodel/Makefile.am
 include modules/azure-auth-header/Makefile.am
 include modules/basicfuncs/Makefile.am
@@ -74,7 +75,8 @@ SYSLOG_NG_MODULES	=	\
 	mod-appmodel mod-openbsd mod-snmp mod-secure-logging \
 	mod-mqtt mod-regexp-parser mod-rate-limit-filter mod-metrics-probe \
 	mod-darwinosl \
-	mod-grpc mod-cloud-auth mod-arrow-flight
+	mod-grpc mod-cloud-auth mod-arrow-flight \
+	mod-altp-proto
 
 modules modules/: ${SYSLOG_NG_MODULES}
 
@@ -90,7 +92,8 @@ modules_test_subdirs	=	\
 	modules_secure-logging modules_systemd_journal modules_kvformat modules_date \
 	modules_cef modules_diskq modules-add-contextual-data modules_getent \
 	modules_map-value-pairs modules_tagsparser modules_xml modules_appmodel \
-	modules_regexp-parser modules_rate-limit-filter modules_metrics-probe
+	modules_regexp-parser modules_rate-limit-filter modules_metrics-probe \
+	modules_altp-proto
 
 EXTRA_DIST += modules/CMakeLists.txt
 

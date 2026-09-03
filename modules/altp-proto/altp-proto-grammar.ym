@@ -1,0 +1,118 @@
+/*
+ * Copyright (c) 2026 Axoflow
+ * Copyright (c) 2026 Balazs Scheidler <balazs.scheidler@axoflow.com>
+ *
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *
+ * As an additional exemption you are allowed to compile & link against the
+ * OpenSSL libraries as published by the OpenSSL project. See the file
+ * COPYING for details.
+ *
+ */
+
+%code top {
+#include "altp-proto-parser.h"
+
+}
+
+
+%code {
+
+#include "altp-proto-options.h"
+#include "cfg-parser.h"
+#include "cfg-grammar-internal.h"
+#include "messages.h"
+
+/* the options of the transport(altp(...)) being parsed, so that the option
+ * rules below can reach them */
+static AltpProtoServerOptions *last_altp_options;
+
+}
+
+%define api.prefix {altp_proto_}
+
+/* this parameter is needed in order to instruct bison to use a complete
+ * argument list for yylex/yyerror */
+
+%lex-param {CfgLexer *lexer}
+%parse-param {CfgLexer *lexer}
+%parse-param {LogProtoServerFactory **instance}
+%parse-param {gpointer arg}
+
+/* INCLUDE_DECLS */
+
+%token KW_ALTP
+%token KW_ACK_TIMEOUT
+%token KW_SESSION_EXPIRATION
+%token KW_TLS_POLICY
+%token KW_REQUIRED
+
+%type <num> altp_tls_policy
+
+%%
+
+start
+        : LL_CONTEXT_SERVER_PROTO altp_transport
+          {
+            if (yychar != ALTP_PROTO_EMPTY)
+              cfg_lexer_unput_token(lexer, &yylval);
+            YYACCEPT;
+          }
+        ;
+
+altp_transport
+        : KW_ALTP
+          {
+            /* @arg is the last_proto_server_options of the driver, which is
+             * the LogProtoServerOptionsStorage union our options extend */
+            last_altp_options = altp_proto_server_options_defaults((LogProtoServerOptions *) arg);
+            *instance = altp_proto_server_options_get_factory(last_altp_options);
+          }
+          altp_options_block
+        ;
+
+/* transport(altp) with no option block means all defaults */
+altp_options_block
+        : '(' altp_options ')'
+        |
+        ;
+
+altp_options
+        : altp_option altp_options
+        |
+        ;
+
+altp_option
+        : KW_ACK_TIMEOUT '(' positive_integer ')'
+          {
+            last_altp_options->altp.ack_timeout = $3;
+          }
+        | KW_SESSION_EXPIRATION '(' positive_integer ')'
+          {
+            last_altp_options->altp.session_expiration = $3;
+          }
+        | KW_TLS_POLICY '(' altp_tls_policy ')'
+          {
+            last_altp_options->altp.tls_policy = $3;
+          }
+        ;
+
+altp_tls_policy
+        : KW_REQUIRED                           { $$ = ALTP_TLS_POLICY_REQUIRED; }
+        | KW_OPTIONAL                           { $$ = ALTP_TLS_POLICY_OPTIONAL; }
+        ;
+
+/* INCLUDE_RULES */
+
+%%
