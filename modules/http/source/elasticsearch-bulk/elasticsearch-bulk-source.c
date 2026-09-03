@@ -145,6 +145,49 @@ _extract_log_messages(HTTPRequest *http_request, HTTPSourceConnection *connectio
   return _extract_bulk_pairs(http_request, es_connection, self);
 }
 
+static HTTPResponse *
+_new_response(HTTPStatusCode status_code)
+{
+  HTTPResponse *response = http_response_new_empty();
+  http_message_set_http_version(&response->super, 1, 1);
+  http_response_set_status_code(response, status_code);
+  return response;
+}
+
+static void
+_take_json_body(HTTPResponse *response, GString *body_string)
+{
+  http_message_add_header(&response->super, "content-type", "application/json");
+
+  gsize length = body_string->len;
+  GByteArray *body = g_byte_array_new_take((guint8 *) g_string_free(body_string, FALSE), length);
+  http_message_take_body(&response->super, body);
+}
+
+static HTTPResponse *
+_create_bulk_ack_response(ESBulkSourceConnection *es_connection)
+{
+  HTTPResponse *response = _new_response(HTTP_OK);
+
+  GString *items = es_connection->response.items;
+  GString *body = g_string_sized_new(items->len + 40);
+  g_string_append_printf(body, "{\"took\":0,\"errors\":%s,\"items\":[",
+                         es_connection->response.errors ? "true" : "false");
+  g_string_append_len(body, items->str, items->len);
+  g_string_append(body, "]}");
+
+  _take_json_body(response, body);
+  return response;
+}
+
+static HTTPResponse *
+_create_response(HTTPRequest *http_request, HTTPSourceConnection *connection)
+{
+  ESBulkSourceConnection *es_connection = (ESBulkSourceConnection *) connection;
+
+  return _create_bulk_ack_response(es_connection);
+}
+
 static void
 _sc_free(LogPipe *s)
 {
@@ -186,6 +229,7 @@ elasticsearch_bulk_sd_new(GlobalConfig *cfg)
 
   self->handles.elastic_bulk_action = log_msg_get_value_handle(".es_bulk.action");
 
+  self->super.create_response = _create_response;
   self->super.super.construct_connection = _construct_connection;
   self->super.super.super.super.super.init = _sd_init;
 
