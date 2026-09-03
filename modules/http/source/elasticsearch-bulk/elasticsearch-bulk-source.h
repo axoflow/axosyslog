@@ -28,12 +28,15 @@
 #include "syslog-ng.h"
 #include "http/source/http-source.h"
 
+#include "http-decompression.h"
+
 typedef struct ESBulkSourceDriver ESBulkSourceDriver;
 typedef struct ESBulkSourceConnection ESBulkSourceConnection;
 
 struct ESBulkSourceConnection
 {
   HTTPSourceConnection super;
+  HTTPDecompressResult decompress_result;
   struct
   {
     GString *items;

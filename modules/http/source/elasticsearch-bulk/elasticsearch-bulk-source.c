@@ -198,11 +198,17 @@ _extract_log_messages(HTTPRequest *http_request, HTTPSourceConnection *connectio
 
   g_string_truncate(es_connection->response.items, 0);
   es_connection->response.errors = FALSE;
+  es_connection->decompress_result = HTTP_DECOMPRESS_OK;
 
   if (!_is_bulk_request(http_request))
     return NULL;
 
   if (!_authenticate(self, http_request))
+    return NULL;
+
+  gsize max_body_size = self->super.super.reader_options.proto_options.super.init_buffer_size;
+  es_connection->decompress_result = http_message_decode_content_encoding(&http_request->super, max_body_size);
+  if (es_connection->decompress_result != HTTP_DECOMPRESS_OK)
     return NULL;
 
   return _extract_bulk_pairs(http_request, es_connection, self);
@@ -289,6 +295,9 @@ _create_response(HTTPRequest *http_request, HTTPSourceConnection *connection)
 
   if (!_authenticate(self, http_request))
     return _new_response(HTTP_FORBIDDEN);
+
+  if (es_connection->decompress_result != HTTP_DECOMPRESS_OK)
+    return _new_response(http_decompress_result_to_status_code(es_connection->decompress_result));
 
   const gchar *method = http_request_get_method(http_request);
   if (method && strcmp(method, "GET") == 0)
