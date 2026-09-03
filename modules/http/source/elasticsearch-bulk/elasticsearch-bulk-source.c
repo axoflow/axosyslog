@@ -27,6 +27,7 @@
 #include "socket/socket-options-inet.h"
 #include "logmsg/logmsg.h"
 #include "msg-format.h"
+#include "messages.h"
 
 #include <string.h>
 
@@ -147,6 +148,25 @@ _extract_bulk_pairs(HTTPRequest *http_request, ESBulkSourceConnection *connectio
   return messages;
 }
 
+static gboolean
+_authenticate(ESBulkSourceDriver *self, HTTPRequest *http_request)
+{
+  if (!self->auth_token || self->auth_token[0] == '\0')
+    return TRUE;
+
+  GString *authorization = http_message_get_header(&http_request->super, "Authorization");
+  if (!authorization)
+    {
+      msg_debug("Auth failed, missing Authorization header");
+      return FALSE;
+    }
+
+  gboolean result = strcmp(authorization->str, self->auth_token) == 0;
+
+  g_string_free(authorization, TRUE);
+  return result;
+}
+
 static GQueue *
 _extract_log_messages(HTTPRequest *http_request, HTTPSourceConnection *connection)
 {
@@ -155,6 +175,9 @@ _extract_log_messages(HTTPRequest *http_request, HTTPSourceConnection *connectio
 
   g_string_truncate(es_connection->response.items, 0);
   es_connection->response.errors = FALSE;
+
+  if (!_authenticate(self, http_request))
+    return NULL;
 
   return _extract_bulk_pairs(http_request, es_connection, self);
 }
@@ -197,7 +220,11 @@ _create_bulk_ack_response(ESBulkSourceConnection *es_connection)
 static HTTPResponse *
 _create_response(HTTPRequest *http_request, HTTPSourceConnection *connection)
 {
+  ESBulkSourceDriver *self = (ESBulkSourceDriver *) connection->owner;
   ESBulkSourceConnection *es_connection = (ESBulkSourceConnection *) connection;
+
+  if (!_authenticate(self, http_request))
+    return _new_response(HTTP_FORBIDDEN);
 
   return _create_bulk_ack_response(es_connection);
 }
@@ -233,6 +260,24 @@ _sd_init(LogPipe *s)
   return http_sd_init_method(s);
 }
 
+static void
+_sd_free(LogPipe *s)
+{
+  ESBulkSourceDriver *self = (ESBulkSourceDriver *) s;
+
+  g_free(self->auth_token);
+  http_sd_free_method(s);
+}
+
+void
+elasticsearch_bulk_sd_set_auth_token(LogDriver *d, const gchar *auth_token)
+{
+  ESBulkSourceDriver *self = (ESBulkSourceDriver *) d;
+
+  g_free(self->auth_token);
+  self->auth_token = g_strdup(auth_token);
+}
+
 ESBulkSourceDriver *
 elasticsearch_bulk_sd_new(GlobalConfig *cfg)
 {
@@ -246,6 +291,7 @@ elasticsearch_bulk_sd_new(GlobalConfig *cfg)
   self->super.create_response = _create_response;
   self->super.super.construct_connection = _construct_connection;
   self->super.super.super.super.super.init = _sd_init;
+  self->super.super.super.super.super.free_fn = _sd_free;
 
   return self;
 }

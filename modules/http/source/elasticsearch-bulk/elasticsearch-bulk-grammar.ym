@@ -51,6 +51,7 @@
 /* INCLUDE_DECLS */
 
 %token KW_ELASTICSEARCH_BULK
+%token KW_AUTH_TOKEN
 
 %%
 
@@ -75,7 +76,12 @@ elasticsearch_bulk_options
 	;
 
 elasticsearch_bulk_option
-	: http_source_option
+	: KW_AUTH_TOKEN '(' string ')'
+    {
+      elasticsearch_bulk_sd_set_auth_token(last_driver, $3);
+      free($3);
+    }
+	| http_source_option
   ;
 
 /* INCLUDE_RULES */
