@@ -124,6 +124,13 @@ _extract_bulk_pairs(HTTPRequest *http_request, ESBulkSourceConnection *connectio
       gsize source_length = 0;
       const gchar *source = _next_line(&data, &remaining, &source_length);
 
+      if (op && strcmp(op, "update") == 0)
+        {
+          /* the source line of an update is a partial document or a script, not a new event */
+          _append_item(connection, op, (source && source_length) ? 200 : 400);
+          continue;
+        }
+
       if (source && source_length)
         {
           LogMessage *msg = msg_format_construct_message(parse_options, (guchar *) source, source_length);
