@@ -173,7 +173,15 @@ log_reader_wakeup_triggered(gpointer s)
 {
   LogReader *self = (LogReader *) s;
 
-  if (!self->io_job.working && self->suspended)
+  /* NOTE: the suspended state keeps the watches running, so this condition
+   * is TRUE either if 1) we are suspended or 2) we are not suspended but
+   * initialized.
+   *
+   * A wakeup might be triggered in both states: when 1) we are coming out
+   * of suspended state (ie window opens up), or when 2) the proto
+   * explicitly requests a wakeup for a different event.
+   */
+  if (!self->io_job.working && self->watches_running)
     {
       /* NOTE: by the time working is set to FALSE we're over an
        * update_watches call.  So it is called either here (when
