@@ -87,6 +87,12 @@ DestWorker::DestWorker(GrpcDestWorker *s)
 {
 }
 
+DestWorker::~DestWorker()
+{
+  if (batch_first_msg)
+    log_msg_unref(batch_first_msg);
+}
+
 void
 DestWorker::clear_current_msg_metadata()
 {
@@ -368,11 +374,8 @@ DestWorker::insert(LogMessage *msg)
       g_assert_not_reached();
     }
 
-  if (!client_context.get())
-    {
-      client_context = std::make_unique<::grpc::ClientContext>();
-      prepare_context_dynamic(*client_context, msg);
-    }
+  if (!batch_first_msg)
+    batch_first_msg = log_msg_ref(msg);
 
   if (should_initiate_flush())
     return log_threaded_dest_worker_flush(&super->super, LTF_FLUSH_NORMAL);
@@ -438,7 +441,10 @@ permanent_error:
 LogThreadedResult
 DestWorker::flush_log_records()
 {
-  ::grpc::Status status = logs_service_stub->Export(client_context.get(), *logs_service_request,
+  ::grpc::ClientContext client_context;
+  prepare_context_dynamic(client_context, batch_first_msg);
+
+  ::grpc::Status status = logs_service_stub->Export(&client_context, *logs_service_request,
                                                     logs_service_response);
   owner.metrics.insert_grpc_request_stats(status);
 
@@ -458,7 +464,10 @@ DestWorker::flush_log_records()
 LogThreadedResult
 DestWorker::flush_metrics()
 {
-  ::grpc::Status status = metrics_service_stub->Export(client_context.get(), *metrics_service_request,
+  ::grpc::ClientContext client_context;
+  prepare_context_dynamic(client_context, batch_first_msg);
+
+  ::grpc::Status status = metrics_service_stub->Export(&client_context, *metrics_service_request,
                                                        metrics_service_response);
   owner.metrics.insert_grpc_request_stats(status);
 
@@ -478,7 +487,10 @@ DestWorker::flush_metrics()
 LogThreadedResult
 DestWorker::flush_spans()
 {
-  ::grpc::Status status = trace_service_stub->Export(client_context.get(), *trace_service_request,
+  ::grpc::ClientContext client_context;
+  prepare_context_dynamic(client_context, batch_first_msg);
+
+  ::grpc::Status status = trace_service_stub->Export(&client_context, *trace_service_request,
                                                      trace_service_response);
   owner.metrics.insert_grpc_request_stats(status);
 
@@ -525,7 +537,11 @@ DestWorker::flush(LogThreadedFlushMode mode)
     }
 
 exit:
-  client_context.reset();
+  if (batch_first_msg)
+    {
+      log_msg_unref(batch_first_msg);
+      batch_first_msg = nullptr;
+    }
   fallback_msg_scope_logs = nullptr;
 
   arena.Reset();
