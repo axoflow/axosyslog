@@ -167,6 +167,29 @@ _authenticate(ESBulkSourceDriver *self, HTTPRequest *http_request)
   return result;
 }
 
+/* libbeat sets up templates and ILM policies with PUTs before the first
+ * bulk and go-elasticsearch pings with HEAD /: only the _bulk endpoint
+ * carries events */
+static gboolean
+_is_bulk_request(HTTPRequest *http_request)
+{
+  const gchar *method = http_request_get_method(http_request);
+  if (!method || (strcmp(method, "POST") != 0 && strcmp(method, "PUT") != 0))
+    return FALSE;
+
+  const gchar *url = http_request_get_url(http_request);
+  if (!url)
+    return FALSE;
+
+  const gchar *query = strchr(url, '?');
+  gsize path_length = query ? (gsize) (query - url) : strlen(url);
+  gsize suffix_length = strlen("/_bulk");
+
+  if (path_length < suffix_length)
+    return FALSE;
+  return memcmp(url + path_length - suffix_length, "/_bulk", suffix_length) == 0;
+}
+
 static GQueue *
 _extract_log_messages(HTTPRequest *http_request, HTTPSourceConnection *connection)
 {
@@ -175,6 +198,9 @@ _extract_log_messages(HTTPRequest *http_request, HTTPSourceConnection *connectio
 
   g_string_truncate(es_connection->response.items, 0);
   es_connection->response.errors = FALSE;
+
+  if (!_is_bulk_request(http_request))
+    return NULL;
 
   if (!_authenticate(self, http_request))
     return NULL;
@@ -201,6 +227,29 @@ _take_json_body(HTTPResponse *response, GString *body_string)
   http_message_take_body(&response->super, body);
 }
 
+/* libbeat pings GET / on connect and parses version.number from the
+ * body before it sends any bulk request.
+ * build_flavor must be "default", "serverless" switches libbeat into
+ * its serverless mode. */
+static HTTPResponse *
+_create_handshake_response(ESBulkSourceDriver *self)
+{
+  HTTPResponse *response = _new_response(HTTP_OK);
+
+  GString *body = g_string_sized_new(384);
+  g_string_append_printf(body,
+                         "{\"name\":\"axosyslog\",\"cluster_name\":\"axosyslog\",\"cluster_uuid\":\"axosyslog\","
+                         "\"version\":{\"number\":\"%s\",\"build_flavor\":\"default\",\"build_type\":\"docker\","
+                         "\"lucene_version\":\"9.11.1\","
+                         "\"minimum_wire_compatibility_version\":\"7.17.0\","
+                         "\"minimum_index_compatibility_version\":\"7.0.0\"},"
+                         "\"tagline\":\"You Know, for Search\"}",
+                         self->version);
+
+  _take_json_body(response, body);
+  return response;
+}
+
 static HTTPResponse *
 _create_bulk_ack_response(ESBulkSourceConnection *es_connection)
 {
@@ -225,6 +274,13 @@ _create_response(HTTPRequest *http_request, HTTPSourceConnection *connection)
 
   if (!_authenticate(self, http_request))
     return _new_response(HTTP_FORBIDDEN);
+
+  const gchar *method = http_request_get_method(http_request);
+  if (method && strcmp(method, "GET") == 0)
+    return _create_handshake_response(self);
+
+  if (!_is_bulk_request(http_request))
+    return _new_response(HTTP_OK);
 
   return _create_bulk_ack_response(es_connection);
 }
@@ -266,6 +322,7 @@ _sd_free(LogPipe *s)
   ESBulkSourceDriver *self = (ESBulkSourceDriver *) s;
 
   g_free(self->auth_token);
+  g_free(self->version);
   http_sd_free_method(s);
 }
 
@@ -278,6 +335,15 @@ elasticsearch_bulk_sd_set_auth_token(LogDriver *d, const gchar *auth_token)
   self->auth_token = g_strdup(auth_token);
 }
 
+void
+elasticsearch_bulk_sd_set_version(LogDriver *d, const gchar *version)
+{
+  ESBulkSourceDriver *self = (ESBulkSourceDriver *) d;
+
+  g_free(self->version);
+  self->version = g_strdup(version);
+}
+
 ESBulkSourceDriver *
 elasticsearch_bulk_sd_new(GlobalConfig *cfg)
 {
@@ -286,6 +352,7 @@ elasticsearch_bulk_sd_new(GlobalConfig *cfg)
   /* the bulk source lines are JSON documents, not syslog messages */
   self->super.super.reader_options.parse_options.flags |= LP_NOPARSE;
 
+  self->version = g_strdup("8.15.0");
   self->handles.elastic_bulk_action = log_msg_get_value_handle(".es_bulk.action");
 
   self->super.create_response = _create_response;

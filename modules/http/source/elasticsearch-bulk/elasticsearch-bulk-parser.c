@@ -34,6 +34,7 @@ static CfgLexerKeyword elasticsearch_bulk_keywords[] =
 {
   { "elasticsearch_bulk", KW_ELASTICSEARCH_BULK },
   { "auth_token", KW_AUTH_TOKEN },
+  { "version", KW_VERSION },
   HTTP_SOURCE_KEYWORDS,
   { NULL }
 };
