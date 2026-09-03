@@ -46,3 +46,5 @@ BUILT_SOURCES += \
 EXTRA_DIST += \
   modules/http/source/http-source-grammar.ym \
   modules/http/source/CMakeLists.txt
+
+include modules/http/source/elasticsearch-bulk/Makefile.am
