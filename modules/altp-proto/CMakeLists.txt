@@ -1,4 +1,6 @@
 set(ALTP_PROTO_SOURCES
+    altp-session.c
+    altp-session.h
     altp-proto-options.c
     altp-proto-options.h
     altp-proto-parser.c

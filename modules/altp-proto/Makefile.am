@@ -1,6 +1,8 @@
 module_LTLIBRARIES				+= modules/altp-proto/libaltp-proto.la
 modules_altp_proto_libaltp_proto_la_SOURCES	=	\
 	modules/altp-proto/altp-proto-grammar.y		\
+	modules/altp-proto/altp-session.c		\
+	modules/altp-proto/altp-session.h		\
 	modules/altp-proto/altp-proto-options.c		\
 	modules/altp-proto/altp-proto-options.h		\
 	modules/altp-proto/altp-proto-parser.c		\

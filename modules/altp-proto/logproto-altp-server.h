@@ -30,11 +30,15 @@
 /* a command line is at most 512 octets, terminator included (4.2, 16 A) */
 #define ALTP_MAX_COMMAND_LINE 512
 
-/* The Receiver side of one ALTP Connection.  @altp_options is not copied by
- * reference: the proto takes a copy, so that it survives a configuration
- * reload that recreates the driver while keeping this Connection alive.
+/* The Receiver side of one ALTP Connection.  Neither @altp_options nor
+ * @context is kept by reference: both belong to the driver, which a
+ * configuration reload recreates while this Connection lives on.
  */
 LogProtoServer *log_proto_altp_server_new(LogTransport *transport, const LogProtoServerOptions *options,
-                                          const AltpReceiverOptions *altp_options, StatsClusterKeyBuilder *kb);
+                                          const AltpReceiverOptions *altp_options, AltpReceiverContext *context,
+                                          StatsClusterKeyBuilder *kb);
+
+/* test only: run the handler of the acknowledgement timeout right now */
+void log_proto_altp_server_fire_ack_timeout(LogProtoServer *s);
 
 #endif

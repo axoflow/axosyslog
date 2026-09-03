@@ -22,19 +22,24 @@
  */
 
 #include "altp-proto-options.h"
+#include "altp-session.h"
 #include "logproto-altp-server.h"
+#include "ack-tracker/ack_tracker_factory.h"
 
 struct _AltpReceiverContext
 {
-  /* One factory per transport(altp(...)) occurrence, i.e. one per driver.  It
-   * lives here and not as a static, because afsocket reads
-   * default_inet_port, stateful and default_iw_size_per_connection off it and
-   * constructs every Connection of the driver through it.
-   *
-   * Stage B: the Session Registry, the PersistState and the driver's
-   * persistent name prefix, and the periodic Session Record expiry timer.
-   */
+  /* one factory per transport(altp(...)) occurrence, i.e. one per driver */
   LogProtoServerFactory factory;
+
+  /* The Session Registry of the Receiver, one reference held: it is created on
+   * demand, because its name -- the persistent name of the driver (ADR-0005)
+   * -- only arrives once the first Connection is set up.
+   *
+   * Stage B2: the PersistState of the configuration and the periodic Session
+   * Record expiry timer.
+   */
+  AltpSessionRegistry *registry;
+  gchar *persist_name;
 };
 
 /* The factory of a receiver context is only ever handed out for a
@@ -44,7 +49,46 @@ _construct_proto(LogTransport *transport, const LogProtoServerOptions *options, 
 {
   const AltpProtoServerOptions *self = (const AltpProtoServerOptions *) options;
 
-  return log_proto_altp_server_new(transport, options, &self->altp, kb);
+  return log_proto_altp_server_new(transport, options, &self->altp, self->context, kb);
+}
+
+void
+altp_receiver_context_bind_persist_state(AltpReceiverContext *self, PersistState *state, const gchar *persist_name)
+{
+  if (self->persist_name)
+    return;
+
+  self->persist_name = g_strdup(persist_name);
+
+  /* Stage B2: this is where the PersistState is stored and where the entries
+   * of our prefix are swept: the ones unused for session_expiration seconds
+   * are removed and the rest get frames_read := frames_acked, the restart rule
+   * of 10.1. */
+}
+
+AltpSessionRegistry *
+altp_receiver_context_get_registry(AltpReceiverContext *self)
+{
+  if (G_UNLIKELY(!self->registry))
+    {
+      if (self->persist_name)
+        {
+          self->registry = altp_session_registry_ref_by_name(self->persist_name);
+        }
+      else
+        {
+          /* Only reachable when no Connection ever delivered the persistent
+           * name of a driver, that is in a unit test constructing protos
+           * without one: the Connections of this very context still share a
+           * registry, they just do not share one with anybody else. */
+          gchar *name = g_strdup_printf("altp.unnamed(%p)", self);
+
+          self->registry = altp_session_registry_ref_by_name(name);
+          g_free(name);
+        }
+    }
+
+  return self->registry;
 }
 
 static AltpReceiverContext *
@@ -64,6 +108,10 @@ _altp_receiver_context_new(void)
 static void
 _altp_receiver_context_free(AltpReceiverContext *self)
 {
+  /* the Connections hold references of their own, so the registry survives a
+   * configuration reload that destroys us while they live on */
+  altp_session_registry_unref(self->registry);
+  g_free(self->persist_name);
   g_free(self);
 }
 
@@ -89,10 +137,9 @@ altp_proto_server_options_defaults(LogProtoServerOptions *s)
   self->context = _altp_receiver_context_new();
   self->super.destroy = _options_destroy;
 
-  /* Stage B: the Session Records report durability as an absolute prefix
-   * count, which is what a consecutive ack tracker gives us, so this is
-   * where log_proto_server_options_set_ack_tracker_factory() installs
-   * consecutive_ack_tracker_factory_new(). */
+  /* a Session Record needs durability as an absolute prefix count (10.1),
+   * which is what the consecutive ack tracker reports */
+  log_proto_server_options_set_ack_tracker_factory(&self->super, consecutive_ack_tracker_factory_new());
 
   return self;
 }

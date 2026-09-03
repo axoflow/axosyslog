@@ -24,6 +24,7 @@
 #ifndef ALTP_PROTO_OPTIONS_H_INCLUDED
 #define ALTP_PROTO_OPTIONS_H_INCLUDED
 
+#include "altp-session.h"
 #include "logproto/logproto-server.h"
 
 /* the default TCP port of an ALTP Receiver (specification 4.1) */
@@ -58,14 +59,28 @@ typedef struct _AltpReceiverOptions
   AltpTlsPolicy tls_policy;
 } AltpReceiverOptions;
 
-/* The per Receiver state shared by every Connection of one driver: it owns
- * the LogProtoServerFactory handed to afsocket by the grammar.
+/* The per Receiver state shared by every Connection of one driver: it owns the
+ * LogProtoServerFactory the grammar hands to afsocket and a reference of the
+ * Session Registry the Connections look their Sessions up in.
  *
- * Stage B: this is also where the Session Registry, the PersistState of the
- * configuration, the driver's persistent name prefix and the periodic
- * Session Record expiry timer belong.
+ * Stage B2: this is also where the PersistState of the configuration and the
+ * periodic Session Record expiry timer belong.
  */
 typedef struct _AltpReceiverContext AltpReceiverContext;
+
+/* Bind the receiver context to the persistent state and to the persistent name
+ * of its driver, which is what scopes the Session Registry (ADR-0005).  Every
+ * Connection of the driver calls this right after it was constructed, and only
+ * the first call has an effect.
+ */
+void altp_receiver_context_bind_persist_state(AltpReceiverContext *self, PersistState *state,
+                                              const gchar *persist_name);
+
+/* The Session Registry of this Receiver.  Until a Connection delivered the
+ * persistent name of the driver -- which never happens in a unit test without
+ * one -- the registry is keyed by a name of the context itself.
+ */
+AltpSessionRegistry *altp_receiver_context_get_registry(AltpReceiverContext *self);
 
 /* AltpProtoServerOptions extends LogProtoServerOptions in place, living inside
  * the LogProtoServerOptionsStorage union of the driver's LogReaderOptions,

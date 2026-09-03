@@ -28,8 +28,10 @@
 #include "libtest/proto_lib.h"
 
 #include "altp-proto-options.h"
+#include "altp-session.h"
 #include "logproto-altp-server.h"
 
+#include "ack-tracker/ack_tracker_factory.h"
 #include "apphook.h"
 #include "cfg.h"
 #include "driver.h"
@@ -39,6 +41,9 @@
 #include <string.h>
 
 #define ALTP_BANNER "220 ALTP 1.0\n"
+
+/* scopes the Session Registry our Connections share (ADR-0005) */
+#define ALTP_TEST_PERSIST_NAME "s_altp#0"
 
 /* The altp options only fit into a LogProtoServerOptionsStorage union, unlike
  * libtest's bare proto_server_options, so the tests own their storage. */
@@ -68,32 +73,42 @@ teardown(void)
 TestSuite(altp, .init = setup, .fini = teardown);
 
 /****************************************************************************
- * A fake TLS transport factory, so that the tests can tell a Connection that
- * has tls() configured from one that has not (see also
- * lib/transport/tests/test_transport_stack.c).
+ * A fake TLS transport, so a test can tell a Connection with tls() from one without.
  ****************************************************************************/
+
+typedef struct _FakeTlsTransport
+{
+  LogTransport super;
+  LogTransport *plaintext;
+} FakeTlsTransport;
 
 static gssize
 _fake_tls_read(LogTransport *s, gpointer buf, gsize count, LogTransportAuxData *aux)
 {
-  return 0;
+  FakeTlsTransport *self = (FakeTlsTransport *) s;
+
+  return log_transport_read(self->plaintext, buf, count, aux);
 }
 
 static gssize
 _fake_tls_write(LogTransport *s, const gpointer buf, gsize count)
 {
-  return count;
+  FakeTlsTransport *self = (FakeTlsTransport *) s;
+
+  return log_transport_write(self->plaintext, buf, count);
 }
 
 static LogTransport *
 _fake_tls_transport_construct(const LogTransportFactory *s, LogTransportStack *stack)
 {
-  LogTransport *self = g_new0(LogTransport, 1);
+  FakeTlsTransport *self = g_new0(FakeTlsTransport, 1);
 
-  log_transport_init_instance(self, "fake-tls", stack->fd);
-  self->read = _fake_tls_read;
-  self->write = _fake_tls_write;
-  return self;
+  log_transport_init_instance(&self->super, "fake-tls", stack->fd);
+  self->super.read = _fake_tls_read;
+  self->super.write = _fake_tls_write;
+  self->plaintext = log_transport_stack_get_transport(stack, LOG_TRANSPORT_INITIAL);
+
+  return &self->super;
 }
 
 static LogTransportFactory *
@@ -107,7 +122,7 @@ _fake_tls_transport_factory_new(void)
 }
 
 /****************************************************************************
- * Driving a proto the way the LogReader does
+ * Parsing transport(altp(...)) the way a driver does
  ****************************************************************************/
 
 static LogProtoServerFactory *
@@ -177,82 +192,199 @@ _get_altp_options(void)
   return (AltpProtoServerOptions *) &options_storage.super;
 }
 
-static LogProtoServer *
-_construct_altp_proto(const gchar *config_snippet, LogTransport *transport)
-{
-  LogProtoServerFactory *factory = _parse_altp_transport(config_snippet);
+/****************************************************************************
+ * Driving a Connection the way the LogReader does
+ ****************************************************************************/
 
-  return log_proto_server_factory_construct(factory, transport, &options_storage.super, NULL);
+typedef enum
+{
+  /* the proto waits for a durability report or for its acknowledgement timeout */
+  ALTP_PUMP_SUSPENDED,
+  ALTP_PUMP_REPLIED,
+  ALTP_PUMP_FRAMES,
+  ALTP_PUMP_EOF,
+  ALTP_PUMP_ERROR,
+} AltpPumpResult;
+
+typedef struct _AltpTestConnection
+{
+  LogTransport *transport;
+  LogProtoServer *proto;
+  GString *replies;
+  GPtrArray *frames;
+  GPtrArray *bookmarks;
+  /* When set, every fetch() is given this one Bookmark, the way the ack tracker
+   * hands its pending Bookmark to a fetch() that produces no message. */
+  Bookmark *shared_bookmark;
+} AltpTestConnection;
+
+static void
+_free_bookmark(gpointer data)
+{
+  Bookmark *bookmark = (Bookmark *) data;
+
+  /* destroying a Bookmark is what releases its Session Record reference */
+  bookmark_destroy(bookmark);
+  g_free(bookmark);
 }
 
 static void
-_collect_written(LogTransport *transport, GString *replies)
+_free_frame(gpointer data)
+{
+  g_string_free((GString *) data, TRUE);
+}
+
+static void
+_connection_init(AltpTestConnection *self, LogProtoServerFactory *factory, LogTransport *transport,
+                 gboolean with_tls)
+{
+  memset(self, 0, sizeof(*self));
+
+  self->transport = transport;
+  self->proto = log_proto_server_factory_construct(factory, transport, &options_storage.super, NULL);
+  cr_assert_not_null(self->proto);
+
+  if (with_tls)
+    log_transport_stack_add_factory(&self->proto->transport_stack, _fake_tls_transport_factory_new());
+
+  /* this is what hands the Connection its Session Registry */
+  cr_assert(log_proto_server_restart_with_state(self->proto, NULL, ALTP_TEST_PERSIST_NAME));
+
+  self->replies = g_string_new("");
+  self->frames = g_ptr_array_new_with_free_func(_free_frame);
+  self->bookmarks = g_ptr_array_new_with_free_func(_free_bookmark);
+}
+
+static void
+_connection_deinit(AltpTestConnection *self)
+{
+  log_proto_server_free(self->proto);
+  g_ptr_array_free(self->bookmarks, TRUE);
+  g_ptr_array_free(self->frames, TRUE);
+  g_string_free(self->replies, TRUE);
+  if (self->shared_bookmark)
+    _free_bookmark(self->shared_bookmark);
+}
+
+static void
+_collect_written(AltpTestConnection *self)
 {
   gchar buffer[4096];
   gssize len;
 
-  while ((len = log_transport_mock_read_from_write_buffer((LogTransportMock *) transport, buffer,
+  while ((len = log_transport_mock_read_from_write_buffer((LogTransportMock *) self->transport, buffer,
                                                           sizeof(buffer))) > 0)
-    g_string_append_len(replies, buffer, len);
+    g_string_append_len(self->replies, buffer, len);
 }
 
-/* Ask the proto what it wants and run fetch(), collecting whatever it wrote,
- * until it reports something other than success -- with a mock transport that
- * ends in LTM_EOF that is always the LPS_EOF of the exhausted input or the
- * LPS_EOF of the CLOSED state. */
-static LogProtoStatus
-_pump_proto(LogProtoServer *proto, LogTransport *transport, GString *replies)
+/* Run fetch() until the proto suspends itself, ends, errors out, or @wanted_replies
+ * octets or @wanted_frames Frames have arrived. */
+static AltpPumpResult
+_pump_until(AltpTestConnection *self, gsize wanted_replies, guint wanted_frames)
 {
-  for (gint round = 0; round < 4096; round++)
+  for (gint round = 0; round < 8192; round++)
     {
       GIOCondition cond = 0;
       gint timeout = -1;
       const guchar *msg = NULL;
       gsize msg_len = 0;
       gboolean may_read = TRUE;
-      Bookmark bookmark;
       LogTransportAuxData aux;
       LogProtoStatus status;
 
-      memset(&bookmark, 0, sizeof(bookmark));
-      memset(&aux, 0, sizeof(aux));
+      if (wanted_replies && self->replies->len >= wanted_replies)
+        return ALTP_PUMP_REPLIED;
+      if (wanted_frames && self->frames->len >= wanted_frames)
+        return ALTP_PUMP_FRAMES;
 
-      log_proto_server_poll_prepare(proto, &cond, &timeout);
+      if (log_proto_server_poll_prepare(self->proto, &cond, &timeout) == LPPA_SUSPEND)
+        return ALTP_PUMP_SUSPENDED;
+
+      Bookmark *bookmark = self->shared_bookmark;
+      if (!bookmark)
+        bookmark = g_new0(Bookmark, 1);
 
       log_transport_aux_data_init(&aux);
-      status = log_proto_server_fetch(proto, &msg, &msg_len, &may_read, &aux, &bookmark);
+      status = log_proto_server_fetch(self->proto, &msg, &msg_len, &may_read, &aux, bookmark);
       log_transport_aux_data_destroy(&aux);
 
-      cr_assert_null(msg, "the ALTP proto must not return a message before DATA is implemented");
+      if (msg)
+        {
+          g_ptr_array_add(self->frames, g_string_new_len((const gchar *) msg, msg_len));
+          if (!self->shared_bookmark)
+            g_ptr_array_add(self->bookmarks, bookmark);
+        }
+      else if (!self->shared_bookmark)
+        {
+          _free_bookmark(bookmark);
+        }
 
-      _collect_written(transport, replies);
+      _collect_written(self);
 
-      if (status != LPS_SUCCESS && status != LPS_AGAIN)
-        return status;
+      if (status == LPS_EOF)
+        return ALTP_PUMP_EOF;
+      if (status == LPS_ERROR)
+        return ALTP_PUMP_ERROR;
     }
 
-  cr_assert_fail("the ALTP proto never reached a terminal status");
-  return LPS_ERROR;
+  cr_assert_fail("the ALTP proto neither suspended itself nor reached a terminal status");
+  return ALTP_PUMP_ERROR;
+}
+
+static AltpPumpResult
+_pump(AltpTestConnection *self)
+{
+  return _pump_until(self, 0, 0);
 }
 
 static void
-_assert_conversation(const gchar *config_snippet, const gchar *input, const gchar *expected_replies,
-                     LogProtoStatus expected_status, gboolean with_tls)
+_assert_replies(AltpTestConnection *self, const gchar *expected)
 {
-  LogTransport *transport = log_transport_mock_stream_new(input, -1, LTM_EOF);
-  LogProtoServer *proto = _construct_altp_proto(config_snippet, transport);
-  GString *replies = g_string_new("");
+  _pump_until(self, strlen(expected), 0);
+  cr_assert_str_eq(self->replies->str, expected);
+}
 
-  if (with_tls)
-    log_transport_stack_add_factory(&proto->transport_stack, _fake_tls_transport_factory_new());
+static void
+_assert_frame(AltpTestConnection *self, guint index, const gchar *payload, gsize payload_len)
+{
+  cr_assert_gt(self->frames->len, index, "the ALTP proto returned %u Frames, not %u",
+               self->frames->len, index + 1);
 
-  LogProtoStatus status = _pump_proto(proto, transport, replies);
+  GString *frame = (GString *) g_ptr_array_index(self->frames, index);
 
-  cr_assert_str_eq(replies->str, expected_replies);
-  cr_assert_eq(status, expected_status, "unexpected final LogProtoStatus %d", status);
+  cr_assert_eq(frame->len, payload_len, "Frame %u is %u octets long, not %u",
+               index, (guint) frame->len, (guint) payload_len);
+  cr_assert_arr_eq(frame->str, payload, payload_len);
+}
 
-  g_string_free(replies, TRUE);
-  log_proto_server_free(proto);
+/* as the consecutive ack tracker does on the destination thread */
+static void
+_report_durable(AltpTestConnection *self, guint index)
+{
+  cr_assert_gt(self->bookmarks->len, index);
+  bookmark_save((Bookmark *) g_ptr_array_index(self->bookmarks, index));
+}
+
+static void
+_inject(AltpTestConnection *self, const gchar *input)
+{
+  log_transport_mock_inject_data((LogTransportMock *) self->transport, input, -1);
+}
+
+/* one Connection whose Sender writes everything at once and closes */
+static void
+_assert_conversation(const gchar *config_snippet, const gchar *input, const gchar *expected_replies,
+                     gboolean with_tls)
+{
+  LogProtoServerFactory *factory = _parse_altp_transport(config_snippet);
+  AltpTestConnection conn;
+
+  _connection_init(&conn, factory, log_transport_mock_stream_new(input, -1, LTM_EOF), with_tls);
+
+  cr_assert_eq(_pump(&conn), ALTP_PUMP_EOF, "the Connection did not reach the end of its input");
+  cr_assert_str_eq(conn.replies->str, expected_replies);
+
+  _connection_deinit(&conn);
 }
 
 /****************************************************************************
@@ -319,15 +451,24 @@ Test(altp, tls_policy_optional_is_parsed)
   cr_assert_eq(_get_altp_options()->altp.tls_policy, ALTP_TLS_POLICY_OPTIONAL);
 }
 
+/* durability is an absolute prefix count, so ALTP needs the consecutive tracker */
+Test(altp, the_options_install_the_consecutive_ack_tracker)
+{
+  _parse_altp_transport("altp()");
+
+  AckTrackerFactory *factory = options_storage.super.ack_tracker_factory;
+
+  cr_assert_not_null(factory);
+  cr_assert_eq(ack_tracker_factory_get_type(factory), ACK_CONSECUTIVE);
+}
+
 Test(altp, a_stateful_proto_accepts_the_persistent_state_of_the_driver)
 {
-  LogTransport *transport = log_transport_mock_stream_new("", 0, LTM_EOF);
-  LogProtoServer *proto = _construct_altp_proto("altp()", transport);
+  LogProtoServerFactory *factory = _parse_altp_transport("altp()");
+  AltpTestConnection conn;
 
-  /* afsocket refuses the Connection when this returns FALSE */
-  cr_assert(log_proto_server_restart_with_state(proto, NULL, "s_altp#0"));
-
-  log_proto_server_free(proto);
+  _connection_init(&conn, factory, log_transport_mock_stream_new("", 0, LTM_EOF), FALSE);
+  _connection_deinit(&conn);
 }
 
 /****************************************************************************
@@ -361,82 +502,89 @@ Test(altp, a_network_source_accepts_the_full_altp_option_block)
 }
 
 /****************************************************************************
- * The Connection: banner, EHLO, NOOP and the errors of Stage A
+ * The command phase: banner, EHLO, NOOP and the command errors
  ****************************************************************************/
 
 Test(altp, the_banner_is_written_before_any_command_is_read)
 {
-  _assert_conversation("altp()", "", ALTP_BANNER, LPS_EOF, FALSE);
+  _assert_conversation("altp()", "", ALTP_BANNER, FALSE);
 }
 
 Test(altp, noop_is_answered_with_250_ok)
 {
-  _assert_conversation("altp()", "NOOP\n", ALTP_BANNER "250 OK\n", LPS_EOF, FALSE);
+  _assert_conversation("altp()", "NOOP\n", ALTP_BANNER "250 OK\n", FALSE);
 }
 
 Test(altp, noop_parameters_are_ignored_rather_than_rejected)
 {
-  _assert_conversation("altp()", "NOOP keep me alive\n", ALTP_BANNER "250 OK\n", LPS_EOF, FALSE);
+  _assert_conversation("altp()", "NOOP keep me alive\n", ALTP_BANNER "250 OK\n", FALSE);
 }
 
 Test(altp, a_bare_ehlo_means_the_1_0_dialect)
 {
-  _assert_conversation("altp()", "EHLO\n", ALTP_BANNER "250 \n", LPS_EOF, FALSE);
+  _assert_conversation("altp()", "EHLO\n", ALTP_BANNER "250 \n", FALSE);
 }
 
 Test(altp, ehlo_with_a_trailing_space_and_an_empty_version_means_1_0)
 {
-  _assert_conversation("altp()", "EHLO \n", ALTP_BANNER "250 \n", LPS_EOF, FALSE);
+  _assert_conversation("altp()", "EHLO \n", ALTP_BANNER "250 \n", FALSE);
 }
 
 Test(altp, ehlo_1_0_without_tls_advertises_no_capability)
 {
-  _assert_conversation("altp()", "EHLO 1.0\n", ALTP_BANNER "250 \n", LPS_EOF, FALSE);
+  _assert_conversation("altp()", "EHLO 1.0\n", ALTP_BANNER "250 \n", FALSE);
 }
 
 Test(altp, ehlo_advertises_starttls_when_the_driver_configured_tls)
 {
-  _assert_conversation("altp()", "EHLO 1.0\n", ALTP_BANNER "250 STARTTLS\n", LPS_EOF, TRUE);
+  _assert_conversation("altp()", "EHLO 1.0\n", ALTP_BANNER "250 STARTTLS\n", TRUE);
 }
 
 Test(altp, a_bare_ehlo_advertises_starttls_too)
 {
-  _assert_conversation("altp()", "EHLO\n", ALTP_BANNER "250 STARTTLS\n", LPS_EOF, TRUE);
+  _assert_conversation("altp()", "EHLO\n", ALTP_BANNER "250 STARTTLS\n", TRUE);
 }
 
 Test(altp, ehlo_may_be_repeated_and_each_reply_supersedes_the_previous_one)
 {
-  _assert_conversation("altp()", "EHLO 1.0\nEHLO\n", ALTP_BANNER "250 \n250 \n", LPS_EOF, FALSE);
+  _assert_conversation("altp()", "EHLO 1.0\nEHLO\n", ALTP_BANNER "250 \n250 \n", FALSE);
 }
 
 Test(altp, an_unsupported_ehlo_version_is_answered_510_and_closes)
 {
-  _assert_conversation("altp()", "EHLO 2.0\n", ALTP_BANNER "510 Invalid version of dialect\n", LPS_EOF, FALSE);
+  _assert_conversation("altp()", "EHLO 2.0\n", ALTP_BANNER "510 Invalid version of dialect\n", FALSE);
 }
 
 Test(altp, a_malformed_ehlo_version_is_answered_501_and_closes)
 {
-  _assert_conversation("altp()", "EHLO 1.x\n", ALTP_BANNER "501 Syntax error\n", LPS_EOF, FALSE);
+  _assert_conversation("altp()", "EHLO 1.x\n", ALTP_BANNER "501 Syntax error\n", FALSE);
 }
 
 Test(altp, an_unknown_verb_is_answered_502_and_closes)
 {
-  _assert_conversation("altp()", "BOGUS\n", ALTP_BANNER "502 Unknown command\n", LPS_EOF, FALSE);
+  _assert_conversation("altp()", "BOGUS\n", ALTP_BANNER "502 Unknown command\n", FALSE);
+}
+
+/* ZLIB is not advertised by this Receiver in this milestone, and a Capability
+ * that is not offered is answered like any unimplemented verb (6.2). */
+Test(altp, zlib_is_answered_502_and_closes)
+{
+  _assert_conversation("altp()", "ZLIB\n", ALTP_BANNER "502 Unknown command\n", FALSE);
 }
 
 Test(altp, a_token_that_merely_begins_with_a_verb_is_not_accepted)
 {
-  _assert_conversation("altp()", "NOOPS\n", ALTP_BANNER "502 Unknown command\n", LPS_EOF, FALSE);
+  _assert_conversation("altp()", "NOOPS\n", ALTP_BANNER "502 Unknown command\n", FALSE);
 }
 
 Test(altp, nothing_is_read_after_a_5xx_reply)
 {
-  _assert_conversation("altp()", "BOGUS\nNOOP\n", ALTP_BANNER "502 Unknown command\n", LPS_EOF, FALSE);
+  _assert_conversation("altp()", "BOGUS\nNOOP\n", ALTP_BANNER "502 Unknown command\n", FALSE);
 }
 
 Test(altp, crlf_line_endings_are_accepted)
 {
-  _assert_conversation("altp()", "NOOP\r\nEHLO 1.0\r\n", ALTP_BANNER "250 OK\n250 \n", LPS_EOF, FALSE);
+  _assert_conversation("altp()", "NOOP\r\nEHLO 1.0\r\n", ALTP_BANNER "250 OK\n250 \n", FALSE);
 }
 
 Test(altp, an_over_long_command_line_is_answered_501_and_closes)
@@ -448,7 +596,7 @@ Test(altp, an_over_long_command_line_is_answered_501_and_closes)
     g_string_append_c(input, 'x');
   g_string_append_c(input, '\n');
 
-  _assert_conversation("altp()", input->str, ALTP_BANNER "501 Syntax error\n", LPS_EOF, FALSE);
+  _assert_conversation("altp()", input->str, ALTP_BANNER "501 Syntax error\n", FALSE);
   g_string_free(input, TRUE);
 }
 
@@ -461,6 +609,683 @@ Test(altp, a_command_line_of_exactly_the_limit_is_accepted)
   g_string_append_c(input, '\n');
   cr_assert_eq(input->len, (gsize) ALTP_MAX_COMMAND_LINE);
 
-  _assert_conversation("altp()", input->str, ALTP_BANNER "250 OK\n", LPS_EOF, FALSE);
+  _assert_conversation("altp()", input->str, ALTP_BANNER "250 OK\n", FALSE);
   g_string_free(input, TRUE);
+}
+
+/****************************************************************************
+ * STARTTLS (specification 6.1)
+ ****************************************************************************/
+
+Test(altp, starttls_switches_the_transport_stack_once_the_reply_is_flushed)
+{
+  LogProtoServerFactory *factory = _parse_altp_transport("altp()");
+  AltpTestConnection conn;
+
+  _connection_init(&conn, factory, log_transport_mock_endless_stream_new("STARTTLS\n", -1, LTM_EOF), TRUE);
+
+  _assert_replies(&conn, ALTP_BANNER "250 Ready to start TLS\n");
+  cr_assert_eq(conn.proto->transport_stack.active_transport, LOG_TRANSPORT_TLS,
+               "the TLS handshake must start once the reply has been written");
+
+  _connection_deinit(&conn);
+}
+
+/* the fake TLS transport reads the same mock stream, so a command injected after
+ * the switch is what arrives encrypted */
+static void
+_start_tls(AltpTestConnection *conn, LogProtoServerFactory *factory)
+{
+  _connection_init(conn, factory, log_transport_mock_endless_stream_new("STARTTLS\n", -1, LTM_EOF), TRUE);
+
+  _assert_replies(conn, ALTP_BANNER "250 Ready to start TLS\n");
+  cr_assert_eq(conn->proto->transport_stack.active_transport, LOG_TRANSPORT_TLS);
+}
+
+Test(altp, a_second_starttls_is_answered_506_and_closes)
+{
+  LogProtoServerFactory *factory = _parse_altp_transport("altp()");
+  AltpTestConnection conn;
+
+  _start_tls(&conn, factory);
+
+  _inject(&conn, "STARTTLS\n");
+  _assert_replies(&conn, ALTP_BANNER "250 Ready to start TLS\n506 Already using TLS\n");
+
+  _connection_deinit(&conn);
+}
+
+/* the Capabilities are re-evaluated after the upgrade (5.2, 6.1) */
+Test(altp, ehlo_after_starttls_no_longer_advertises_starttls)
+{
+  LogProtoServerFactory *factory = _parse_altp_transport("altp()");
+  AltpTestConnection conn;
+
+  _start_tls(&conn, factory);
+
+  _inject(&conn, "EHLO 1.0\n");
+  _assert_replies(&conn, ALTP_BANNER "250 Ready to start TLS\n250 \n");
+
+  _connection_deinit(&conn);
+}
+
+/* No plaintext octet follows the STARTTLS command line (6.1): whatever a peer
+ * pipelined after it -- or an on-path attacker appended -- MUST NOT be dispatched
+ * as a command of the TLS Session, the plaintext injection of CVE-2011-0411. */
+Test(altp, plaintext_pipelined_after_starttls_is_discarded)
+{
+  LogProtoServerFactory *factory = _parse_altp_transport("altp()");
+  AltpTestConnection conn;
+
+  /* a record mock, so both lines arrive in the read that ends the STARTTLS line */
+  _connection_init(&conn, factory,
+                   log_transport_mock_endless_records_new("STARTTLS\nSYNC evil\n", -1, LTM_EOF), TRUE);
+
+  _assert_replies(&conn, ALTP_BANNER "250 Ready to start TLS\n");
+  cr_assert_eq(conn.proto->transport_stack.active_transport, LOG_TRANSPORT_TLS);
+
+  /* had the SYNC been dispatched, DATA would have been answered `250 Ready` */
+  _inject(&conn, "DATA\n");
+  _assert_replies(&conn, ALTP_BANNER "250 Ready to start TLS\n503 Need SYNC before use this command\n");
+
+  cr_assert_eq(altp_session_registry_get_session_count(
+                 altp_receiver_context_get_registry(_get_altp_options()->context)), 0,
+               "the Session of a discarded plaintext SYNC may not be created");
+
+  _connection_deinit(&conn);
+}
+
+Test(altp, starttls_without_a_tls_factory_is_answered_502_and_closes)
+{
+  _assert_conversation("altp()", "STARTTLS\n", ALTP_BANNER "502 Unknown command\n", FALSE);
+}
+
+Test(altp, starttls_with_parameters_is_answered_501_and_closes)
+{
+  _assert_conversation("altp()", "STARTTLS now\n", ALTP_BANNER "501 Syntax error\n", TRUE);
+}
+
+/****************************************************************************
+ * SYNC (specification 7.2)
+ ****************************************************************************/
+
+Test(altp, sync_of_an_unknown_session_is_answered_with_a_zero_count)
+{
+  _assert_conversation("altp()", "SYNC 9f2c1ab4e77d05836b1e0f4c2d9a8571\n",
+                       ALTP_BANNER "250 Received 0\n", FALSE);
+}
+
+Test(altp, sync_may_be_repeated_with_the_same_session_id)
+{
+  _assert_conversation("altp()", "SYNC s1\nSYNC s1\n",
+                       ALTP_BANNER "250 Received 0\n250 Received 0\n", FALSE);
+}
+
+Test(altp, sync_with_an_empty_session_id_is_answered_504_and_closes)
+{
+  _assert_conversation("altp()", "SYNC\n", ALTP_BANNER "504 Invalid session id\n", FALSE);
+  _assert_conversation("altp()", "SYNC \n", ALTP_BANNER "504 Invalid session id\n", FALSE);
+}
+
+Test(altp, sync_with_an_over_long_session_id_is_answered_504_and_closes)
+{
+  GString *input = g_string_new("SYNC ");
+
+  for (gint i = 0; i < 65; i++)
+    g_string_append_c(input, 'a');
+  g_string_append_c(input, '\n');
+
+  _assert_conversation("altp()", input->str, ALTP_BANNER "504 Invalid session id\n", FALSE);
+  g_string_free(input, TRUE);
+}
+
+Test(altp, a_session_id_of_exactly_64_octets_is_accepted)
+{
+  GString *input = g_string_new("SYNC ");
+
+  for (gint i = 0; i < 64; i++)
+    g_string_append_c(input, 'a');
+  g_string_append_c(input, '\n');
+
+  _assert_conversation("altp()", input->str, ALTP_BANNER "250 Received 0\n", FALSE);
+  g_string_free(input, TRUE);
+}
+
+/* octets outside 0x21..0x7e are rejected, which a Receiver may do (7.2) */
+Test(altp, a_session_id_with_an_out_of_range_octet_is_answered_504_and_closes)
+{
+  _assert_conversation("altp()", "SYNC s1 s2\n", ALTP_BANNER "504 Invalid session id\n", FALSE);
+  _assert_conversation("altp()", "SYNC s\x01one\n", ALTP_BANNER "504 Invalid session id\n", FALSE);
+}
+
+Test(altp, a_second_sync_with_another_session_id_is_answered_511_and_closes)
+{
+  _assert_conversation("altp()", "SYNC s1\nSYNC s2\n",
+                       ALTP_BANNER "250 Received 0\n"
+                       "511 Another session is already bound to this connection\n", FALSE);
+}
+
+Test(altp, sync_over_plaintext_is_answered_505_when_the_receiver_requires_tls)
+{
+  _assert_conversation("altp(tls-policy(required))", "SYNC s1\n",
+                       ALTP_BANNER "505 STARTTLS required\n", FALSE);
+}
+
+/* tls() selects the required policy unless tls-policy() says otherwise (ADR-0008) */
+Test(altp, tls_configured_without_a_policy_requires_starttls_before_sync)
+{
+  _assert_conversation("altp()", "SYNC s1\n", ALTP_BANNER "505 STARTTLS required\n", TRUE);
+}
+
+Test(altp, tls_policy_optional_admits_a_plaintext_session)
+{
+  _assert_conversation("altp(tls-policy(optional))", "SYNC s1\n",
+                       ALTP_BANNER "250 Received 0\n", TRUE);
+}
+
+/****************************************************************************
+ * DATA, Frames and the Batch terminator (specification 8)
+ ****************************************************************************/
+
+Test(altp, data_without_a_successful_sync_is_answered_503_and_closes)
+{
+  _assert_conversation("altp()", "DATA\n",
+                       ALTP_BANNER "503 Need SYNC before use this command\n", FALSE);
+}
+
+Test(altp, an_empty_batch_is_acknowledged_with_a_zero_count)
+{
+  _assert_conversation("altp()", "SYNC s1\nDATA\n.\n",
+                       ALTP_BANNER "250 Received 0\n250 Ready\n250 Received 0\n", FALSE);
+}
+
+Test(altp, a_batch_is_acknowledged_only_once_every_frame_is_durable)
+{
+  LogProtoServerFactory *factory = _parse_altp_transport("altp()");
+  AltpTestConnection conn;
+
+  _connection_init(&conn, factory,
+                   log_transport_mock_endless_records_new("SYNC s1\nDATA\n", -1,
+                                                          "3 abc3 def3 ghi.\n", -1, LTM_EOF),
+                   FALSE);
+
+  cr_assert_eq(_pump(&conn), ALTP_PUMP_SUSPENDED, "the Receiver must wait for durability");
+  cr_assert_str_eq(conn.replies->str, ALTP_BANNER "250 Received 0\n250 Ready\n");
+  cr_assert_eq(conn.frames->len, 3);
+  _assert_frame(&conn, 0, "abc", 3);
+  _assert_frame(&conn, 1, "def", 3);
+  _assert_frame(&conn, 2, "ghi", 3);
+
+  _report_durable(&conn, 0);
+  cr_assert_eq(_pump(&conn), ALTP_PUMP_SUSPENDED);
+  _report_durable(&conn, 1);
+  cr_assert_eq(_pump(&conn), ALTP_PUMP_SUSPENDED);
+  cr_assert_str_eq(conn.replies->str, ALTP_BANNER "250 Received 0\n250 Ready\n",
+                   "a Batch must not be acknowledged before all of its Frames are durable");
+
+  _report_durable(&conn, 2);
+  _assert_replies(&conn, ALTP_BANNER "250 Received 0\n250 Ready\n250 Received 3\n");
+
+  _connection_deinit(&conn);
+}
+
+/* the counters are reset by the next command line, not by the ack (ADR-0004) */
+Test(altp, the_counters_are_reset_by_the_command_line_following_an_acknowledgement)
+{
+  LogProtoServerFactory *factory = _parse_altp_transport("altp()");
+  AltpTestConnection conn;
+
+  _connection_init(&conn, factory,
+                   log_transport_mock_endless_records_new("SYNC s1\nDATA\n", -1, "3 abc3 def.\n", -1, LTM_EOF),
+                   FALSE);
+
+  cr_assert_eq(_pump(&conn), ALTP_PUMP_SUSPENDED);
+  _report_durable(&conn, 0);
+  _report_durable(&conn, 1);
+  _assert_replies(&conn, ALTP_BANNER "250 Received 0\n250 Ready\n250 Received 2\n");
+
+  _inject(&conn, "DATA\n");
+  _inject(&conn, "5 world.\n");
+  cr_assert_eq(_pump(&conn), ALTP_PUMP_SUSPENDED);
+  _assert_frame(&conn, 2, "world", 5);
+
+  _report_durable(&conn, 2);
+  _assert_replies(&conn, ALTP_BANNER "250 Received 0\n250 Ready\n250 Received 2\n"
+                                     "250 Ready\n250 Received 1\n");
+
+  _connection_deinit(&conn);
+}
+
+Test(altp, a_frame_header_with_leading_zeros_and_a_crlf_terminator_are_accepted)
+{
+  LogProtoServerFactory *factory = _parse_altp_transport("altp()");
+  AltpTestConnection conn;
+
+  _connection_init(&conn, factory,
+                   log_transport_mock_endless_records_new("SYNC s1\nDATA\n", -1, "003 abc.\r\n", -1, LTM_EOF),
+                   FALSE);
+
+  cr_assert_eq(_pump(&conn), ALTP_PUMP_SUSPENDED);
+  _assert_frame(&conn, 0, "abc", 3);
+
+  _report_durable(&conn, 0);
+  _assert_replies(&conn, ALTP_BANNER "250 Received 0\n250 Ready\n250 Received 1\n");
+
+  _connection_deinit(&conn);
+}
+
+/* opaque octets, no dot stuffing: Frames are consumed by length (8.2) */
+Test(altp, a_binary_payload_is_delivered_intact)
+{
+  LogProtoServerFactory *factory = _parse_altp_transport("altp()");
+  AltpTestConnection conn;
+  const gchar payload[] = { 'a', 0, '\n', '.', '\n', 'b', '\r', '.' };
+  GString *input = g_string_new("8 ");
+
+  g_string_append_len(input, payload, sizeof(payload));
+  g_string_append(input, ".\n");
+
+  _connection_init(&conn, factory,
+                   log_transport_mock_endless_records_new("SYNC s1\nDATA\n", -1,
+                                                          input->str, (gssize) input->len, LTM_EOF),
+                   FALSE);
+
+  cr_assert_eq(_pump(&conn), ALTP_PUMP_SUSPENDED);
+  cr_assert_eq(conn.frames->len, 1);
+  _assert_frame(&conn, 0, payload, sizeof(payload));
+
+  _connection_deinit(&conn);
+  g_string_free(input, TRUE);
+}
+
+Test(altp, an_invalid_frame_header_is_answered_501_and_closes)
+{
+  const gchar *expected = ALTP_BANNER "250 Received 0\n250 Ready\n501 Invalid frame header\n";
+
+  /* command text where a Frame header is expected */
+  _assert_conversation("altp()", "SYNC s1\nDATA\nNOOP\n", expected, FALSE);
+  _assert_conversation("altp()", "SYNC s1\nDATA\n-3 abc", expected, FALSE);
+  _assert_conversation("altp()", "SYNC s1\nDATA\n12345678901 abc", expected, FALSE);
+  /* a digit run ended by anything but SP */
+  _assert_conversation("altp()", "SYNC s1\nDATA\n3\nabc", expected, FALSE);
+  /* an empty payload carries no information */
+  _assert_conversation("altp()", "SYNC s1\nDATA\n0 ", expected, FALSE);
+  /* neither a Frame header nor a terminator line */
+  _assert_conversation("altp()", "SYNC s1\nDATA\n.x\n", expected, FALSE);
+}
+
+/* a length above log-msg-size(): the payload is not read at all (8.2, 8.5) */
+Test(altp, an_over_sized_frame_is_answered_552_and_closes)
+{
+  LogProtoServerFactory *factory = _parse_altp_transport("altp()");
+  AltpTestConnection conn;
+  gchar *frame = g_strdup_printf("%d xxx", options_storage.super.max_msg_size + 1);
+
+  _connection_init(&conn, factory,
+                   log_transport_mock_records_new("SYNC s1\nDATA\n", -1, frame, -1, LTM_EOF), FALSE);
+
+  cr_assert_eq(_pump(&conn), ALTP_PUMP_EOF);
+  cr_assert_str_eq(conn.replies->str, ALTP_BANNER "250 Received 0\n250 Ready\n552 Frame too large\n");
+  cr_assert_eq(conn.frames->len, 0, "no Frame may be delivered upstream from an over-sized header");
+
+  _connection_deinit(&conn);
+  g_free(frame);
+}
+
+/****************************************************************************
+ * Resuming an interrupted Batch, and the deferred SYNC reply (7.2, 7.3, 10.3)
+ ****************************************************************************/
+
+static void
+_interrupt_a_batch_of_three(LogProtoServerFactory *factory, AltpTestConnection *conn)
+{
+  _connection_init(conn, factory,
+                   log_transport_mock_endless_records_new("SYNC s1\nDATA\n", -1, "3 abc3 def3 ghi", -1, LTM_EOF),
+                   FALSE);
+
+  cr_assert_eq(_pump_until(conn, 0, 3), ALTP_PUMP_FRAMES);
+  cr_assert_str_eq(conn->replies->str, ALTP_BANNER "250 Received 0\n250 Ready\n");
+  _report_durable(conn, 0);
+  _report_durable(conn, 1);
+}
+
+Test(altp, a_sync_of_an_interrupted_batch_defers_its_reply_until_the_batch_is_durable)
+{
+  LogProtoServerFactory *factory = _parse_altp_transport("altp()");
+  AltpTestConnection first, second;
+
+  _interrupt_a_batch_of_three(factory, &first);
+
+  /* the Sender reconnects and presents the same Session ID */
+  _connection_init(&second, factory, log_transport_mock_endless_stream_new("SYNC s1\n", -1, LTM_EOF), FALSE);
+
+  cr_assert_eq(_pump(&second), ALTP_PUMP_SUSPENDED, "the SYNC reply must be deferred");
+  cr_assert_str_eq(second.replies->str, ALTP_BANNER);
+
+  /* the report of the older Connection updates the very same Session Record (7.3) */
+  _report_durable(&first, 2);
+  _assert_replies(&second, ALTP_BANNER "250 Received 3\n");
+
+  _connection_deinit(&second);
+  _connection_deinit(&first);
+}
+
+/* The acknowledgement timeout expires while the SYNC reply is deferred: the
+ * Receiver reports the count durable at that moment (7.2, 9.3). */
+Test(altp, the_acknowledgement_timeout_answers_a_deferred_sync_partially)
+{
+  LogProtoServerFactory *factory = _parse_altp_transport("altp()");
+  AltpTestConnection first, second;
+
+  _interrupt_a_batch_of_three(factory, &first);
+
+  _connection_init(&second, factory, log_transport_mock_endless_stream_new("SYNC s1\n", -1, LTM_EOF), FALSE);
+  cr_assert_eq(_pump(&second), ALTP_PUMP_SUSPENDED);
+
+  log_proto_altp_server_fire_ack_timeout(second.proto);
+  _assert_replies(&second, ALTP_BANNER "250 Received 2\n");
+
+  _connection_deinit(&second);
+  _connection_deinit(&first);
+}
+
+/* a partial acknowledgement sets frames_read := frames_acked, so the Frames
+ * beyond it are disowned and their later durability reports are stale (9.3, 10.1) */
+Test(altp, a_partial_acknowledgement_disowns_the_frames_beyond_it)
+{
+  LogProtoServerFactory *factory = _parse_altp_transport("altp()");
+  AltpTestConnection conn;
+
+  _connection_init(&conn, factory,
+                   log_transport_mock_endless_records_new("SYNC s1\nDATA\n", -1, "3 abc3 def3 ghi.\n", -1,
+                                                          LTM_EOF),
+                   FALSE);
+
+  cr_assert_eq(_pump(&conn), ALTP_PUMP_SUSPENDED);
+  cr_assert_eq(conn.frames->len, 3);
+  _report_durable(&conn, 0);
+
+  log_proto_altp_server_fire_ack_timeout(conn.proto);
+  _assert_replies(&conn, ALTP_BANNER "250 Received 0\n250 Ready\n250 Received 1\n");
+
+  /* the Sender opens the Batch that resends the disowned Frames */
+  _inject(&conn, "DATA\n");
+  _inject(&conn, "5 world.\n");
+  cr_assert_eq(_pump(&conn), ALTP_PUMP_SUSPENDED);
+  _assert_frame(&conn, 3, "world", 5);
+
+  /* the disowned Frames complete anyway: their reports refer to a Batch already
+   * acknowledged and MUST be ignored, or they corrupt the Batch that is open now */
+  _report_durable(&conn, 1);
+  _report_durable(&conn, 2);
+
+  _report_durable(&conn, 3);
+  _assert_replies(&conn, ALTP_BANNER "250 Received 0\n250 Ready\n250 Received 1\n"
+                                     "250 Ready\n250 Received 1\n");
+
+  _connection_deinit(&conn);
+}
+
+/* not even before the next Batch opens: a later Connection would resume too far (9.3) */
+Test(altp, a_stale_durability_report_does_not_raise_the_acknowledged_count)
+{
+  LogProtoServerFactory *factory = _parse_altp_transport("altp()");
+  AltpTestConnection first, second;
+
+  _connection_init(&first, factory,
+                   log_transport_mock_endless_records_new("SYNC s1\nDATA\n", -1, "3 abc3 def3 ghi.\n", -1,
+                                                          LTM_EOF),
+                   FALSE);
+
+  cr_assert_eq(_pump(&first), ALTP_PUMP_SUSPENDED);
+  _report_durable(&first, 0);
+  log_proto_altp_server_fire_ack_timeout(first.proto);
+  _assert_replies(&first, ALTP_BANNER "250 Received 0\n250 Ready\n250 Received 1\n");
+
+  _report_durable(&first, 1);
+  _report_durable(&first, 2);
+
+  _connection_init(&second, factory, log_transport_mock_endless_stream_new("SYNC s1\n", -1, LTM_EOF), FALSE);
+  _assert_replies(&second, ALTP_BANNER "250 Received 1\n");
+
+  _connection_deinit(&second);
+  _connection_deinit(&first);
+}
+
+/* newest connection wins: the older Connection closes without a reply (7.3) */
+Test(altp, a_newer_connection_of_a_session_displaces_the_older_one)
+{
+  LogProtoServerFactory *factory = _parse_altp_transport("altp()");
+  AltpTestConnection first, second;
+
+  _connection_init(&first, factory, log_transport_mock_endless_stream_new("SYNC s1\n", -1, LTM_EOF), FALSE);
+  _assert_replies(&first, ALTP_BANNER "250 Received 0\n");
+
+  _connection_init(&second, factory, log_transport_mock_endless_stream_new("SYNC s1\n", -1, LTM_EOF), FALSE);
+  _assert_replies(&second, ALTP_BANNER "250 Received 0\n");
+
+  cr_assert_eq(_pump(&first), ALTP_PUMP_EOF, "the displaced Connection has to close");
+  cr_assert_str_eq(first.replies->str, ALTP_BANNER "250 Received 0\n");
+
+  _connection_deinit(&second);
+  _connection_deinit(&first);
+}
+
+/* their durability reports now wake the new Owning Connection (7.3) */
+Test(altp, the_frames_of_a_displaced_connection_stay_counted)
+{
+  LogProtoServerFactory *factory = _parse_altp_transport("altp()");
+  AltpTestConnection first, second;
+
+  _interrupt_a_batch_of_three(factory, &first);
+
+  _connection_init(&second, factory, log_transport_mock_endless_stream_new("SYNC s1\n", -1, LTM_EOF), FALSE);
+  cr_assert_eq(_pump(&second), ALTP_PUMP_SUSPENDED, "two of the three Frames are durable so far");
+
+  cr_assert_eq(_pump(&first), ALTP_PUMP_EOF, "the displaced Connection closes without a reply");
+  cr_assert_str_eq(first.replies->str, ALTP_BANNER "250 Received 0\n250 Ready\n");
+
+  _report_durable(&first, 2);
+  _assert_replies(&second, ALTP_BANNER "250 Received 3\n");
+
+  _connection_deinit(&second);
+  _connection_deinit(&first);
+}
+
+/* A displaced Connection asks for write-only readiness whatever state it was taken
+ * over in, so one idling in COMMAND closes without a single octet arriving and
+ * without a reply of its own (7.3).  Asking to write rather than for an immediate
+ * fetch lets it close while its Frames still hold the window (ADR-0006). */
+Test(altp, a_displaced_connection_asks_for_write_only_readiness)
+{
+  LogProtoServerFactory *factory = _parse_altp_transport("altp()");
+  AltpTestConnection first, second;
+  GIOCondition cond = 0;
+  gint timeout = -1;
+
+  _connection_init(&first, factory, log_transport_mock_endless_stream_new("SYNC s1\n", -1, LTM_EOF), FALSE);
+  _assert_replies(&first, ALTP_BANNER "250 Received 0\n");
+
+  _connection_init(&second, factory, log_transport_mock_endless_stream_new("SYNC s1\n", -1, LTM_EOF), FALSE);
+  _assert_replies(&second, ALTP_BANNER "250 Received 0\n");
+
+  cr_assert_eq(log_proto_server_poll_prepare(first.proto, &cond, &timeout), LPPA_POLL_IO);
+  cr_assert_eq(cond, G_IO_OUT, "a displaced ALTP Connection must not ask to read");
+  cr_assert_eq(timeout, 0, "the idle timeout of a displaced Connection is disarmed");
+
+  const guchar *msg = NULL;
+  gsize msg_len = 0;
+  gboolean may_read = TRUE;
+  Bookmark bookmark;
+
+  memset(&bookmark, 0, sizeof(bookmark));
+  cr_assert_eq(log_proto_server_fetch(first.proto, &msg, &msg_len, &may_read, NULL, &bookmark), LPS_EOF);
+  cr_assert_null(msg);
+
+  _collect_written(&first);
+  cr_assert_str_eq(first.replies->str, ALTP_BANNER "250 Received 0\n",
+                   "a displaced Connection closes without a reply of its own");
+
+  _connection_deinit(&second);
+  _connection_deinit(&first);
+}
+
+/****************************************************************************
+ * Waking the Owning Connection (specification 12.1)
+ ****************************************************************************/
+
+static void
+_count_wakeup(gpointer user_data)
+{
+  gint *wakeups = (gint *) user_data;
+
+  (*wakeups)++;
+}
+
+Test(altp, the_owning_connection_is_woken_once_its_batch_is_durable)
+{
+  LogProtoServerFactory *factory = _parse_altp_transport("altp()");
+  AltpTestConnection conn;
+  gint wakeups = 0;
+
+  _connection_init(&conn, factory,
+                   log_transport_mock_endless_records_new("SYNC s1\nDATA\n", -1, "3 abc3 def.\n", -1, LTM_EOF),
+                   FALSE);
+
+  cr_assert_eq(_pump(&conn), ALTP_PUMP_SUSPENDED);
+  log_proto_server_set_wakeup_cb(conn.proto, _count_wakeup, &wakeups);
+
+  _report_durable(&conn, 0);
+  cr_assert_eq(wakeups, 0, "a Connection is not woken while its Batch is incomplete");
+
+  _report_durable(&conn, 1);
+  cr_assert_eq(wakeups, 1, "the Owning Connection has to be woken once its Batch is durable");
+
+  _connection_deinit(&conn);
+}
+
+Test(altp, the_acknowledgement_timeout_wakes_the_owning_connection)
+{
+  LogProtoServerFactory *factory = _parse_altp_transport("altp()");
+  AltpTestConnection conn;
+  gint wakeups = 0;
+
+  _connection_init(&conn, factory,
+                   log_transport_mock_endless_records_new("SYNC s1\nDATA\n", -1, "3 abc.\n", -1, LTM_EOF), FALSE);
+
+  cr_assert_eq(_pump(&conn), ALTP_PUMP_SUSPENDED);
+  log_proto_server_set_wakeup_cb(conn.proto, _count_wakeup, &wakeups);
+
+  log_proto_altp_server_fire_ack_timeout(conn.proto);
+  cr_assert_eq(wakeups, 1);
+
+  _assert_replies(&conn, ALTP_BANNER "250 Received 0\n250 Ready\n250 Received 0\n");
+
+  _connection_deinit(&conn);
+}
+
+Test(altp, a_displaced_connection_is_woken_by_the_takeover)
+{
+  LogProtoServerFactory *factory = _parse_altp_transport("altp()");
+  AltpTestConnection first, second;
+  gint wakeups = 0;
+
+  _connection_init(&first, factory, log_transport_mock_endless_stream_new("SYNC s1\n", -1, LTM_EOF), FALSE);
+  _assert_replies(&first, ALTP_BANNER "250 Received 0\n");
+  log_proto_server_set_wakeup_cb(first.proto, _count_wakeup, &wakeups);
+
+  _connection_init(&second, factory, log_transport_mock_endless_stream_new("SYNC s1\n", -1, LTM_EOF), FALSE);
+  _assert_replies(&second, ALTP_BANNER "250 Received 0\n");
+
+  cr_assert_eq(wakeups, 1, "a displaced Connection has to be woken so that it can close");
+
+  _connection_deinit(&second);
+  _connection_deinit(&first);
+}
+
+/****************************************************************************
+ * Bookmarks
+ ****************************************************************************/
+
+/* a Bookmark never filled, or filled again, leaks neither a reference nor a report */
+Test(altp, a_bookmark_that_a_fetch_did_not_use_is_harmless)
+{
+  LogProtoServerFactory *factory = _parse_altp_transport("altp()");
+  AltpTestConnection conn;
+
+  _connection_init(&conn, factory,
+                   log_transport_mock_endless_records_new("SYNC s1\nDATA\n", -1, "3 abc3 def.\n", -1, LTM_EOF),
+                   FALSE);
+
+  /* one single Bookmark for every fetch() of the Connection, used or not */
+  conn.shared_bookmark = g_new0(Bookmark, 1);
+
+  cr_assert_eq(_pump(&conn), ALTP_PUMP_SUSPENDED);
+  cr_assert_eq(conn.frames->len, 2);
+
+  /* the Registry, the Connection, the Bookmark and the lookup below: an
+   * overwritten fill dropped its own reference */
+  AltpSessionRecord *record =
+    altp_session_registry_lookup(altp_receiver_context_get_registry(_get_altp_options()->context), "s1");
+
+  cr_assert_eq(altp_session_record_get_ref_count(record), 4,
+               "a Bookmark that was filled again leaked a Session Record reference");
+  altp_session_record_unref(record);
+
+  /* the last fill stands for the second Frame, so saving it ends the Batch */
+  bookmark_save(conn.shared_bookmark);
+  _assert_replies(&conn, ALTP_BANNER "250 Received 0\n250 Ready\n250 Received 2\n");
+
+  /* saving the very same Bookmark once more reports nothing new */
+  bookmark_save(conn.shared_bookmark);
+  _connection_deinit(&conn);
+}
+
+/****************************************************************************
+ * poll_prepare: what the LogReader is told to wait for
+ ****************************************************************************/
+
+/* the idle timeout is armed in COMMAND only, as the COMMAND row of 12.1 asks */
+Test(altp, the_command_state_arms_the_idle_timeout_of_the_specification)
+{
+  LogProtoServerFactory *factory = _parse_altp_transport("altp()");
+  AltpTestConnection conn;
+  GIOCondition cond = 0;
+  gint timeout = -1;
+
+  _connection_init(&conn, factory, log_transport_mock_endless_stream_new("", 0, LTM_EOF), FALSE);
+
+  /* the banner is not written yet, so all we want is to write */
+  cr_assert_eq(log_proto_server_poll_prepare(conn.proto, &cond, &timeout), LPPA_POLL_IO);
+  cr_assert_eq(cond, G_IO_OUT);
+  cr_assert_eq(timeout, 0);
+
+  _assert_replies(&conn, ALTP_BANNER);
+
+  cond = 0;
+  timeout = -1;
+  cr_assert_eq(log_proto_server_poll_prepare(conn.proto, &cond, &timeout), LPPA_POLL_IO);
+  cr_assert_eq(cond, G_IO_IN);
+  cr_assert_eq(timeout, 60, "the default idle timeout of an ALTP Receiver is 60 seconds");
+
+  _connection_deinit(&conn);
+}
+
+Test(altp, the_idle_timeout_is_not_armed_while_a_batch_is_open)
+{
+  LogProtoServerFactory *factory = _parse_altp_transport("altp()");
+  AltpTestConnection conn;
+  GIOCondition cond = 0;
+  gint timeout = -1;
+
+  _connection_init(&conn, factory,
+                   log_transport_mock_endless_records_new("SYNC s1\nDATA\n", -1, LTM_EOF), FALSE);
+
+  _assert_replies(&conn, ALTP_BANNER "250 Received 0\n250 Ready\n");
+
+  cr_assert_eq(log_proto_server_poll_prepare(conn.proto, &cond, &timeout), LPPA_POLL_IO);
+  cr_assert_eq(cond, G_IO_IN);
+  cr_assert_eq(timeout, 0);
+
+  _connection_deinit(&conn);
 }
