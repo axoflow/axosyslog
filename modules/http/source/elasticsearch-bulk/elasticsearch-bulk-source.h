@@ -33,6 +33,10 @@ typedef struct ESBulkSourceDriver ESBulkSourceDriver;
 struct ESBulkSourceDriver
 {
   HTTPSourceDriver super;
+  struct
+  {
+    NVHandle elastic_bulk_action;
+  } handles;
 };
 
 ESBulkSourceDriver *elasticsearch_bulk_sd_new(GlobalConfig *cfg);
