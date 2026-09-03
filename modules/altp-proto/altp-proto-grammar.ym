@@ -55,6 +55,7 @@ static AltpProtoServerOptions *last_altp_options;
 %token KW_ALTP
 %token KW_ACK_TIMEOUT
 %token KW_SESSION_EXPIRATION
+%token KW_MAX_SESSIONS
 %token KW_TLS_POLICY
 %token KW_REQUIRED
 
@@ -101,6 +102,11 @@ altp_option
         | KW_SESSION_EXPIRATION '(' positive_integer ')'
           {
             last_altp_options->altp.session_expiration = $3;
+          }
+        | KW_MAX_SESSIONS '(' nonnegative_integer ')'
+          {
+            /* max-sessions(0) is unlimited */
+            last_altp_options->altp.max_sessions = $3;
           }
         | KW_TLS_POLICY '(' altp_tls_policy ')'
           {

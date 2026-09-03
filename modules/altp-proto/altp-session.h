@@ -25,10 +25,27 @@
 #define ALTP_SESSION_H_INCLUDED
 
 #include "ack-tracker/bookmark.h"
+#include "atomic-gssize.h"
+#include "gsockaddr.h"
 #include "logproto/logproto-server.h"
+#include "persist-state.h"
 
 /* A Session ID is 1 to 64 visible ASCII octets (specification 7.1) */
 #define ALTP_MAX_SESSION_ID_LENGTH 64
+
+/* The layout version of a persisted Session Record.  An entry carrying
+ * anything else is refused and the Session starts over, which 10.1 allows for
+ * a Session whose state was lost.
+ */
+#define ALTP_SESSION_PERSIST_VERSION 1
+
+/* How often the Session Registry sweeps its Session Records for the ones
+ * unused for session_expiration seconds. */
+#define ALTP_SESSION_EXPIRY_SWEEP_INTERVAL 3600
+
+/* How often a Receiver at its max-sessions() bound logs a refusal: the peer
+ * provoking it is unauthenticated and can do so as fast as it can connect. */
+#define ALTP_SESSION_REFUSAL_LOG_INTERVAL 60
 
 typedef struct _AltpSessionRecord AltpSessionRecord;
 typedef struct _AltpSessionRegistry AltpSessionRegistry;
@@ -43,6 +60,12 @@ typedef struct _AltpSessionOwner
   /* how this Connection is woken; called from any thread, which
    * log_reader_wakeup() is prepared for */
   LogProtoServerWakeupCallback *wakeup;
+
+  /* The peer of this Connection, so that a take-over can be logged with both
+   * sides named (15).  It lives here and not in the LogProtoServer, because
+   * this is the only part of a Connection the other one may read.
+   */
+  gchar peer_address[MAX_SOCKADDR_STRING];
 
   /* the Connection is in AWAITING_DURABILITY, waiting for the Batch (12.1) */
   gboolean awaiting;
@@ -66,15 +89,46 @@ void altp_session_registry_unref(AltpSessionRegistry *self);
 
 const gchar *altp_session_registry_get_name(AltpSessionRegistry *self);
 
-/* Look up the Session Record of @session_id, creating one with zero counters
- * when the Session is unknown to us (7.2).  Returns a new reference.
+/* Bind the registry to the persistent state of the configuration: from here on
+ * every Session Record is loaded from and written to the entry
+ * "<registry name>.altp.session(<session-id>)".  Binding applies the restart
+ * rule of 10.1 -- `frames_read := frames_acked` -- expires the entries unused
+ * for @session_expiration seconds and arms the periodic expiry sweep.
  *
- * Stage B2: this is where a Session Record that is not in memory is loaded
- * from the persistent state of the Receiver before a new one is created.
+ * The first caller wins: a configuration reload binds again and finds the
+ * registry bound already, so the Session Records of the Connections that
+ * survived stay authoritative.  @session_expiration and @max_sessions (0 for
+ * unlimited) are per driver while the registry is per persistent name, so the
+ * smaller of two differing values applies.
+ */
+void altp_session_registry_bind_persist_state(AltpSessionRegistry *self, PersistState *state,
+                                              gint session_expiration, gint max_sessions);
+
+/* Look up the Session Record of @session_id: the one in memory, else the one
+ * loaded from the persistent state, else a fresh one with zero counters (7.2,
+ * 10.1).  Returns a new reference, or NULL when the Session has none yet and
+ * the registry is at its max_sessions bound -- a Session that does have one is
+ * served at the bound as well, an established one is never evicted.
  */
 AltpSessionRecord *altp_session_registry_lookup(AltpSessionRegistry *self, const gchar *session_id);
 
+/* TRUE when a refusal is to be logged now, at most once per Receiver per
+ * ALTP_SESSION_REFUSAL_LOG_INTERVAL seconds.
+ */
+gboolean altp_session_registry_should_log_refusal(AltpSessionRegistry *self);
+
 guint altp_session_registry_get_session_count(AltpSessionRegistry *self);
+
+/* The bound in effect, which is the smallest max-sessions() of the Receivers
+ * that bound the registry and not necessarily the one of the caller. */
+gint altp_session_registry_get_max_sessions(AltpSessionRegistry *self);
+
+/* The number of Session Records, as stats_register_external_counter() reads a
+ * gauge it does not own.  The registry outlives every Connection using it. */
+atomic_gssize *altp_session_registry_get_session_count_ref(AltpSessionRegistry *self);
+
+/* test only: run the periodic expiry sweep right now */
+void altp_session_registry_fire_expiry(AltpSessionRegistry *self);
 
 /****************************************************************************
  * Session Record: the Receiver's state of one Session (specification 10.1).
@@ -85,10 +139,18 @@ void altp_session_record_unref(AltpSessionRecord *self);
 
 const gchar *altp_session_record_get_session_id(AltpSessionRecord *self);
 
-/* Bind @owner as the Owning Connection of the Session, displacing and waking
- * the Connection that held it before, if any (newest connection wins, 7.3).
- * Returns TRUE when another Connection was displaced. */
-gboolean altp_session_record_take_over(AltpSessionRecord *self, AltpSessionOwner *owner);
+/* Bind @owner as the Owning Connection, displacing and waking the Connection
+ * that held it before (newest connection wins, 7.3).  Returns TRUE when
+ * another Connection was displaced, and then copies its peer address into
+ * @displaced_peer_address.  @peer_address is the peer of @owner itself.
+ */
+gboolean altp_session_record_take_over(AltpSessionRecord *self, AltpSessionOwner *owner, const gchar *peer_address,
+                                       gchar *displaced_peer_address, gsize displaced_peer_address_len);
+
+/* The peer address of the Connection that owns the Session now.  FALSE when no
+ * Connection is bound to it. */
+gboolean altp_session_record_get_owner_peer_address(AltpSessionRecord *self, gchar *peer_address,
+                                                    gsize peer_address_len);
 
 /* Give up the ownership if we still hold it; the counters stand (14.2). */
 void altp_session_record_release(AltpSessionRecord *self, AltpSessionOwner *owner);

@@ -35,6 +35,14 @@
 #define ALTP_DEFAULT_SESSION_EXPIRATION 2592000
 #define ALTP_DEFAULT_IDLE_TIMEOUT 60
 
+/* The largest number of Session Records a Receiver keeps.  A Session ID is the
+ * only credential of the protocol and the Sender picks it, so without a bound
+ * any peer that reaches the port could grow the Session Registry -- and the
+ * persistent state behind it -- without end (15).  Local policy, not a wire rule.
+ */
+#define ALTP_DEFAULT_MAX_SESSIONS 10000
+
+
 /* The TLS policy of the Receiver (6.1).  AUTO, the default, resolves to
  * REQUIRED when the driver configured tls() and to NONE otherwise (ADR-0008).
  */
@@ -56,25 +64,25 @@ typedef struct _AltpReceiverOptions
   gint ack_timeout;
   /* seconds after which an unused Session Record is expired */
   gint session_expiration;
+  /* the largest number of Session Records of the Receiver, 0 for unlimited */
+  gint max_sessions;
   AltpTlsPolicy tls_policy;
 } AltpReceiverOptions;
 
 /* The per Receiver state shared by every Connection of one driver: it owns the
  * LogProtoServerFactory the grammar hands to afsocket and a reference of the
  * Session Registry the Connections look their Sessions up in.
- *
- * Stage B2: this is also where the PersistState of the configuration and the
- * periodic Session Record expiry timer belong.
  */
 typedef struct _AltpReceiverContext AltpReceiverContext;
 
 /* Bind the receiver context to the persistent state and to the persistent name
  * of its driver, which is what scopes the Session Registry (ADR-0005).  Every
- * Connection of the driver calls this right after it was constructed, and only
- * the first call has an effect.
+ * Connection calls this right after it was constructed and only the first call
+ * has an effect.
  */
 void altp_receiver_context_bind_persist_state(AltpReceiverContext *self, PersistState *state,
-                                              const gchar *persist_name);
+                                              const gchar *persist_name, gint session_expiration,
+                                              gint max_sessions);
 
 /* The Session Registry of this Receiver.  Until a Connection delivered the
  * persistent name of the driver -- which never happens in a unit test without

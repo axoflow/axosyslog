@@ -31,13 +31,9 @@ struct _AltpReceiverContext
   /* one factory per transport(altp(...)) occurrence, i.e. one per driver */
   LogProtoServerFactory factory;
 
-  /* The Session Registry of the Receiver, one reference held: it is created on
-   * demand, because its name -- the persistent name of the driver (ADR-0005)
-   * -- only arrives once the first Connection is set up.
-   *
-   * Stage B2: the PersistState of the configuration and the periodic Session
-   * Record expiry timer.
-   */
+  /* the Session Registry of the Receiver, one reference held; it is taken on
+   * demand, as its name -- the persistent name of the driver (ADR-0005) --
+   * only arrives once the first Connection is set up */
   AltpSessionRegistry *registry;
   gchar *persist_name;
 };
@@ -53,17 +49,19 @@ _construct_proto(LogTransport *transport, const LogProtoServerOptions *options, 
 }
 
 void
-altp_receiver_context_bind_persist_state(AltpReceiverContext *self, PersistState *state, const gchar *persist_name)
+altp_receiver_context_bind_persist_state(AltpReceiverContext *self, PersistState *state, const gchar *persist_name,
+                                         gint session_expiration, gint max_sessions)
 {
   if (self->persist_name)
     return;
 
   self->persist_name = g_strdup(persist_name);
+  self->registry = altp_session_registry_ref_by_name(self->persist_name);
 
-  /* Stage B2: this is where the PersistState is stored and where the entries
-   * of our prefix are swept: the ones unused for session_expiration seconds
-   * are removed and the rest get frames_read := frames_acked, the restart rule
-   * of 10.1. */
+  /* the registry is module global and keyed by the persistent name, so the
+   * driver of a reloaded configuration finds the very same one, and binding is
+   * a no-op from the second Receiver on */
+  altp_session_registry_bind_persist_state(self->registry, state, session_expiration, max_sessions);
 }
 
 AltpSessionRegistry *
@@ -71,21 +69,12 @@ altp_receiver_context_get_registry(AltpReceiverContext *self)
 {
   if (G_UNLIKELY(!self->registry))
     {
-      if (self->persist_name)
-        {
-          self->registry = altp_session_registry_ref_by_name(self->persist_name);
-        }
-      else
-        {
-          /* Only reachable when no Connection ever delivered the persistent
-           * name of a driver, that is in a unit test constructing protos
-           * without one: the Connections of this very context still share a
-           * registry, they just do not share one with anybody else. */
-          gchar *name = g_strdup_printf("altp.unnamed(%p)", self);
+      /* only reachable in a unit test constructing protos without a driver:
+       * the Connections of this context still share a registry of their own */
+      gchar *name = g_strdup_printf("altp.unnamed(%p)", self);
 
-          self->registry = altp_session_registry_ref_by_name(name);
-          g_free(name);
-        }
+      self->registry = altp_session_registry_ref_by_name(name);
+      g_free(name);
     }
 
   return self->registry;
@@ -133,6 +122,7 @@ altp_proto_server_options_defaults(LogProtoServerOptions *s)
   /* log_proto_server_options_defaults() only clears the embedded super */
   self->altp.ack_timeout = ALTP_DEFAULT_ACK_TIMEOUT;
   self->altp.session_expiration = ALTP_DEFAULT_SESSION_EXPIRATION;
+  self->altp.max_sessions = ALTP_DEFAULT_MAX_SESSIONS;
   self->altp.tls_policy = ALTP_TLS_POLICY_AUTO;
   self->context = _altp_receiver_context_new();
   self->super.destroy = _options_destroy;

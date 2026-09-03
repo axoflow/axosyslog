@@ -24,7 +24,10 @@
 #include <criterion/criterion.h>
 
 #include "libtest/config_parse_lib.h"
+#include "libtest/fake-time.h"
+#include "libtest/grab-logging.h"
 #include "libtest/mock-transport.h"
+#include "libtest/persist_lib.h"
 #include "libtest/proto_lib.h"
 
 #include "altp-proto-options.h"
@@ -35,10 +38,15 @@
 #include "apphook.h"
 #include "cfg.h"
 #include "driver.h"
+#include "metrics/metric-names.h"
 #include "plugin.h"
+#include "stats/stats.h"
+#include "stats/stats-cluster-single.h"
+#include "stats/stats-registry.h"
 #include "transport/transport-stack.h"
 
 #include <string.h>
+#include <unistd.h>
 
 #define ALTP_BANNER "220 ALTP 1.0\n"
 
@@ -126,21 +134,29 @@ _fake_tls_transport_factory_new(void)
  ****************************************************************************/
 
 static LogProtoServerFactory *
-_parse_altp_transport(const gchar *config_snippet)
+_parse_altp_transport_into(LogProtoServerOptionsStorage *storage, const gchar *config_snippet)
 {
   gpointer result = NULL;
 
-  memset(&options_storage, 0, sizeof(options_storage));
-  log_proto_server_options_defaults(&options_storage.super);
+  memset(storage, 0, sizeof(*storage));
+  log_proto_server_options_defaults(&storage->super);
 
-  cr_assert(parse_config(config_snippet, LL_CONTEXT_SERVER_PROTO, &options_storage.super, &result),
+  cr_assert(parse_config(config_snippet, LL_CONTEXT_SERVER_PROTO, &storage->super, &result),
             "cannot parse transport(%s)", config_snippet);
   cr_assert_not_null(result, "the altp grammar did not return a LogProtoServerFactory");
 
-  log_proto_server_options_init(&options_storage.super, configuration);
-  options_initialized = TRUE;
+  log_proto_server_options_init(&storage->super, configuration);
 
   return (LogProtoServerFactory *) result;
+}
+
+static LogProtoServerFactory *
+_parse_altp_transport(const gchar *config_snippet)
+{
+  LogProtoServerFactory *factory = _parse_altp_transport_into(&options_storage, config_snippet);
+
+  options_initialized = TRUE;
+  return factory;
 }
 
 /* @tail is the text following the plugin name, up to and including the ')' of
@@ -234,25 +250,35 @@ _free_frame(gpointer data)
   g_string_free((GString *) data, TRUE);
 }
 
+/* Set a Connection up the way afsocket_sc_init() does: construct the proto, set
+ * the transport stack up, hand it the persistent state and name of the driver. */
 static void
-_connection_init(AltpTestConnection *self, LogProtoServerFactory *factory, LogTransport *transport,
-                 gboolean with_tls)
+_connection_init_full(AltpTestConnection *self, LogProtoServerFactory *factory,
+                      LogProtoServerOptionsStorage *storage, LogTransport *transport, gboolean with_tls,
+                      PersistState *persist_state, const gchar *persist_name, StatsClusterKeyBuilder *kb)
 {
   memset(self, 0, sizeof(*self));
 
   self->transport = transport;
-  self->proto = log_proto_server_factory_construct(factory, transport, &options_storage.super, NULL);
+  self->proto = log_proto_server_factory_construct(factory, transport, &storage->super, kb);
   cr_assert_not_null(self->proto);
 
   if (with_tls)
     log_transport_stack_add_factory(&self->proto->transport_stack, _fake_tls_transport_factory_new());
 
   /* this is what hands the Connection its Session Registry */
-  cr_assert(log_proto_server_restart_with_state(self->proto, NULL, ALTP_TEST_PERSIST_NAME));
+  cr_assert(log_proto_server_restart_with_state(self->proto, persist_state, persist_name));
 
   self->replies = g_string_new("");
   self->frames = g_ptr_array_new_with_free_func(_free_frame);
   self->bookmarks = g_ptr_array_new_with_free_func(_free_bookmark);
+}
+
+static void
+_connection_init(AltpTestConnection *self, LogProtoServerFactory *factory, LogTransport *transport,
+                 gboolean with_tls)
+{
+  _connection_init_full(self, factory, &options_storage, transport, with_tls, NULL, ALTP_TEST_PERSIST_NAME, NULL);
 }
 
 static void
@@ -414,16 +440,26 @@ Test(altp, an_empty_option_block_yields_the_specification_defaults)
 
   cr_assert_eq(_get_altp_options()->altp.ack_timeout, 900);
   cr_assert_eq(_get_altp_options()->altp.session_expiration, 2592000);
+  cr_assert_eq(_get_altp_options()->altp.max_sessions, 10000);
   cr_assert_eq(_get_altp_options()->altp.tls_policy, ALTP_TLS_POLICY_AUTO);
 }
 
 Test(altp, the_full_option_block_is_parsed)
 {
-  _parse_altp_transport("altp(ack-timeout(120) session-expiration(3600) tls-policy(required))");
+  _parse_altp_transport("altp(ack-timeout(120) session-expiration(3600) max-sessions(500) "
+                        "tls-policy(required))");
 
   cr_assert_eq(_get_altp_options()->altp.ack_timeout, 120);
   cr_assert_eq(_get_altp_options()->altp.session_expiration, 3600);
+  cr_assert_eq(_get_altp_options()->altp.max_sessions, 500);
   cr_assert_eq(_get_altp_options()->altp.tls_policy, ALTP_TLS_POLICY_REQUIRED);
+}
+
+Test(altp, max_sessions_zero_is_accepted_and_means_unlimited)
+{
+  _parse_altp_transport("altp(max-sessions(0))");
+
+  cr_assert_eq(_get_altp_options()->altp.max_sessions, 0);
 }
 
 Test(altp, transport_altp_without_an_option_block_means_all_defaults)
@@ -433,6 +469,7 @@ Test(altp, transport_altp_without_an_option_block_means_all_defaults)
   cr_assert_eq(factory->default_inet_port, 35514);
   cr_assert_eq(_get_altp_options()->altp.ack_timeout, 900);
   cr_assert_eq(_get_altp_options()->altp.session_expiration, 2592000);
+  cr_assert_eq(_get_altp_options()->altp.max_sessions, 10000);
   cr_assert_eq(_get_altp_options()->altp.tls_policy, ALTP_TLS_POLICY_AUTO);
 }
 
@@ -497,7 +534,7 @@ Test(altp, a_network_source_accepts_the_full_altp_option_block)
 {
   _assert_network_source_parses("network(port(35514) "
                                 "transport(altp(ack-timeout(900) session-expiration(2592000) "
-                                "tls-policy(required))) "
+                                "max-sessions(10000) tls-policy(required))) "
                                 "log-msg-size(65536) idle-timeout(60))");
 }
 
@@ -1067,6 +1104,16 @@ Test(altp, a_newer_connection_of_a_session_displaces_the_older_one)
   cr_assert_eq(_pump(&first), ALTP_PUMP_EOF, "the displaced Connection has to close");
   cr_assert_str_eq(first.replies->str, ALTP_BANNER "250 Received 0\n");
 
+  /* the Session Record names the peer of whichever Connection owns it now (15) */
+  AltpSessionRecord *record =
+    altp_session_registry_lookup(altp_receiver_context_get_registry(_get_altp_options()->context), "s1");
+  gchar owner_address[MAX_SOCKADDR_STRING] = "";
+
+  cr_assert(altp_session_record_get_owner_peer_address(record, owner_address, sizeof(owner_address)),
+            "the Session of a live Connection has to name its peer");
+  cr_assert_str_neq(owner_address, "");
+  altp_session_record_unref(record);
+
   _connection_deinit(&second);
   _connection_deinit(&first);
 }
@@ -1286,6 +1333,595 @@ Test(altp, the_idle_timeout_is_not_armed_while_a_batch_is_open)
   cr_assert_eq(log_proto_server_poll_prepare(conn.proto, &cond, &timeout), LPPA_POLL_IO);
   cr_assert_eq(cond, G_IO_IN);
   cr_assert_eq(timeout, 0);
+
+  _connection_deinit(&conn);
+}
+
+/****************************************************************************
+ * Persistence: the Session Records of a Receiver outlive its process (10.1)
+ ****************************************************************************/
+
+/* every persistent entry name of the Receiver is prefixed with this */
+#define ALTP_TEST_PERSIST_RECEIVER "s_altp_persist#0"
+
+static gchar *
+_entry_name(const gchar *session_id)
+{
+  return g_strdup_printf("%s.altp.session(%s)", ALTP_TEST_PERSIST_RECEIVER, session_id);
+}
+
+/* what a Connection does through restart_with_state() */
+static AltpSessionRegistry *
+_bind_registry_full(PersistState *state, gint session_expiration, gint max_sessions)
+{
+  AltpSessionRegistry *registry = altp_session_registry_ref_by_name(ALTP_TEST_PERSIST_RECEIVER);
+
+  altp_session_registry_bind_persist_state(registry, state, session_expiration, max_sessions);
+  return registry;
+}
+
+static AltpSessionRegistry *
+_bind_registry(PersistState *state, gint session_expiration)
+{
+  return _bind_registry_full(state, session_expiration, ALTP_DEFAULT_MAX_SESSIONS);
+}
+
+/* deliver @count Frames upstream and report the first @durable of them durable */
+static void
+_drive_record(AltpSessionRecord *record, guint count, guint durable)
+{
+  Bookmark bookmarks[8];
+
+  cr_assert_leq(count, (guint) G_N_ELEMENTS(bookmarks));
+  memset(bookmarks, 0, sizeof(bookmarks));
+
+  for (guint i = 0; i < count; i++)
+    {
+      guint64 batch_seq;
+      guint32 frame_index;
+
+      altp_session_record_note_frame_read(record, &batch_seq, &frame_index);
+      altp_session_bookmark_fill(&bookmarks[i], record, batch_seq, frame_index);
+    }
+
+  /* the consecutive ack tracker saves the last Frame of the durable prefix only */
+  if (durable > 0)
+    bookmark_save(&bookmarks[durable - 1]);
+
+  for (guint i = 0; i < count; i++)
+    bookmark_destroy(&bookmarks[i]);
+}
+
+static void
+_assert_counters(AltpSessionRecord *record, guint32 expected_read, guint32 expected_acked)
+{
+  guint32 frames_read = 0, frames_acked = 0;
+
+  altp_session_record_get_counters(record, &frames_read, &frames_acked);
+  cr_assert_eq(frames_read, expected_read, "frames_read is %u, not %u", frames_read, expected_read);
+  cr_assert_eq(frames_acked, expected_acked, "frames_acked is %u, not %u", frames_acked, expected_acked);
+}
+
+Test(altp, the_counters_of_a_session_survive_a_restart_of_the_receiver)
+{
+  PersistState *state = clean_and_create_persist_state_for_test("test_altp_counters.persist");
+  AltpSessionRegistry *registry = _bind_registry(state, 3600);
+
+  AltpSessionRecord *record = altp_session_registry_lookup(registry, "s1");
+  _drive_record(record, 3, 3);
+  _assert_counters(record, 3, 3);
+
+  /* the Receiver stops and the persistent state is written out */
+  altp_session_record_unref(record);
+  altp_session_registry_unref(registry);
+  state = restart_persist_state(state);
+
+  registry = _bind_registry(state, 3600);
+  cr_assert_eq(altp_session_registry_get_session_count(registry), 0,
+               "a persisted Session Record is loaded by its first lookup, not by binding the registry");
+
+  record = altp_session_registry_lookup(registry, "s1");
+  _assert_counters(record, 3, 3);
+  cr_assert_eq(altp_session_registry_get_session_count(registry), 1);
+
+  altp_session_record_unref(record);
+  altp_session_registry_unref(registry);
+  commit_and_destroy_persist_state(state);
+}
+
+/* on restart frames_read := frames_acked: what was read but not durable when the
+ * process stopped was in memory only (10.1) */
+Test(altp, the_restart_rule_rewinds_frames_read_to_the_durable_prefix)
+{
+  PersistState *state = clean_and_create_persist_state_for_test("test_altp_restart_rule.persist");
+  AltpSessionRegistry *registry = _bind_registry(state, 3600);
+
+  AltpSessionRecord *record = altp_session_registry_lookup(registry, "s1");
+  _drive_record(record, 3, 2);
+  _assert_counters(record, 3, 2);
+
+  altp_session_record_unref(record);
+  altp_session_registry_unref(registry);
+  state = restart_persist_state(state);
+
+  registry = _bind_registry(state, 3600);
+  record = altp_session_registry_lookup(registry, "s1");
+  _assert_counters(record, 2, 2);
+
+  altp_session_record_unref(record);
+  altp_session_registry_unref(registry);
+  commit_and_destroy_persist_state(state);
+}
+
+Test(altp, the_restart_sweep_forgets_a_session_unused_for_longer_than_session_expiration)
+{
+  fake_time(1600000000);
+
+  PersistState *state = clean_and_create_persist_state_for_test("test_altp_expiry.persist");
+  AltpSessionRegistry *registry = _bind_registry(state, 100);
+
+  AltpSessionRecord *record = altp_session_registry_lookup(registry, "s_old");
+  _drive_record(record, 2, 2);
+  altp_session_record_unref(record);
+
+  fake_time_add(200);
+
+  record = altp_session_registry_lookup(registry, "s_fresh");
+  _drive_record(record, 4, 4);
+  altp_session_record_unref(record);
+  altp_session_registry_unref(registry);
+
+  state = restart_persist_state(state);
+  registry = _bind_registry(state, 100);
+
+  record = altp_session_registry_lookup(registry, "s_old");
+  _assert_counters(record, 0, 0);
+  altp_session_record_unref(record);
+
+  record = altp_session_registry_lookup(registry, "s_fresh");
+  _assert_counters(record, 4, 4);
+  altp_session_record_unref(record);
+
+  altp_session_registry_unref(registry);
+  commit_and_destroy_persist_state(state);
+}
+
+/* the Session starts over, which 10.1 allows at the price of duplicates */
+Test(altp, a_persisted_session_record_of_an_unknown_version_is_refused)
+{
+  PersistState *state = clean_and_create_persist_state_for_test("test_altp_version.persist");
+  AltpSessionRegistry *registry = _bind_registry(state, 3600);
+  gchar *name = _entry_name("s1");
+
+  /* an entry of our size but of a version that is not ours */
+  PersistEntryHandle handle = persist_state_alloc_entry(state, name, 24);
+  guint8 *raw = (guint8 *) persist_state_map_entry(state, handle);
+  memset(raw, 0, 24);
+  raw[0] = 42;
+  persist_state_unmap_entry(state, handle);
+
+  start_grabbing_messages();
+  AltpSessionRecord *record = altp_session_registry_lookup(registry, "s1");
+  stop_grabbing_messages();
+
+  assert_grabbed_log_contains("The persisted ALTP Session Record has an unknown version");
+  _assert_counters(record, 0, 0);
+
+  _drive_record(record, 2, 2);
+  altp_session_record_unref(record);
+  altp_session_registry_unref(registry);
+  state = restart_persist_state(state);
+
+  registry = _bind_registry(state, 3600);
+  record = altp_session_registry_lookup(registry, "s1");
+  _assert_counters(record, 2, 2);
+
+  altp_session_record_unref(record);
+  altp_session_registry_unref(registry);
+  g_free(name);
+  commit_and_destroy_persist_state(state);
+}
+
+Test(altp, a_persisted_session_record_of_the_wrong_size_is_refused)
+{
+  PersistState *state = clean_and_create_persist_state_for_test("test_altp_size.persist");
+  AltpSessionRegistry *registry = _bind_registry(state, 3600);
+  gchar *name = _entry_name("s1");
+
+  PersistEntryHandle handle = persist_state_alloc_entry(state, name, 8);
+  guint8 *raw = (guint8 *) persist_state_map_entry(state, handle);
+  memset(raw, 0, 8);
+  raw[0] = ALTP_SESSION_PERSIST_VERSION;
+  persist_state_unmap_entry(state, handle);
+
+  start_grabbing_messages();
+  AltpSessionRecord *record = altp_session_registry_lookup(registry, "s1");
+  stop_grabbing_messages();
+
+  assert_grabbed_log_contains("The persisted ALTP Session Record has an unexpected size");
+  _assert_counters(record, 0, 0);
+
+  altp_session_record_unref(record);
+  altp_session_registry_unref(registry);
+  g_free(name);
+  cancel_and_destroy_persist_state(state);
+}
+
+Test(altp, the_expiry_sweep_drops_an_unused_session_record_and_keeps_a_held_one)
+{
+  fake_time(1600000000);
+
+  PersistState *state = clean_and_create_persist_state_for_test("test_altp_sweep.persist");
+  AltpSessionRegistry *registry = _bind_registry(state, 100);
+
+  AltpSessionRecord *unused = altp_session_registry_lookup(registry, "s_unused");
+  _drive_record(unused, 2, 2);
+  altp_session_record_unref(unused);
+
+  AltpSessionRecord *held = altp_session_registry_lookup(registry, "s_held");
+  _drive_record(held, 3, 3);
+
+  cr_assert_eq(altp_session_registry_get_session_count(registry), 2);
+
+  fake_time_add(200);
+  altp_session_registry_fire_expiry(registry);
+
+  cr_assert_eq(altp_session_registry_get_session_count(registry), 1,
+               "the Session Record a Connection still holds may not be expired");
+  cr_assert_eq(atomic_gssize_get(altp_session_registry_get_session_count_ref(registry)), 1,
+               "the altp_sessions gauge has to follow the registry");
+  _assert_counters(held, 3, 3);
+
+  /* the persisted entry went with it, so the Session comes back unknown (10.1) */
+  AltpSessionRecord *record = altp_session_registry_lookup(registry, "s_unused");
+  _assert_counters(record, 0, 0);
+
+  altp_session_record_unref(record);
+  altp_session_record_unref(held);
+  altp_session_registry_unref(registry);
+  commit_and_destroy_persist_state(state);
+}
+
+/* the registry is per persistent name but session-expiration() is per driver */
+Test(altp, two_receivers_of_one_registry_share_the_smaller_session_expiration)
+{
+  fake_time(1600000000);
+
+  PersistState *state = clean_and_create_persist_state_for_test("test_altp_rebind.persist");
+  AltpSessionRegistry *registry = _bind_registry(state, 1000);
+
+  /* the second Receiver asks for a longer expiration and does not get it */
+  start_grabbing_messages();
+  AltpSessionRegistry *again = altp_session_registry_ref_by_name(ALTP_TEST_PERSIST_RECEIVER);
+  altp_session_registry_bind_persist_state(again, state, 5000, ALTP_DEFAULT_MAX_SESSIONS);
+  stop_grabbing_messages();
+
+  cr_assert_eq(again, registry, "a Session Registry is keyed by the persistent name of the Receiver");
+  assert_grabbed_log_contains("the smaller value stays in effect");
+
+  AltpSessionRecord *record = altp_session_registry_lookup(registry, "s1");
+  altp_session_record_unref(record);
+
+  fake_time_add(2000);
+  altp_session_registry_fire_expiry(registry);
+  cr_assert_eq(altp_session_registry_get_session_count(registry), 0,
+               "the 1000 seconds of the first Receiver apply, not the 5000 of the second");
+
+  /* while a third one asking for less does lower it */
+  start_grabbing_messages();
+  altp_session_registry_bind_persist_state(registry, state, 10, ALTP_DEFAULT_MAX_SESSIONS);
+  stop_grabbing_messages();
+  assert_grabbed_log_contains("the smaller value applies");
+
+  altp_session_registry_unref(again);
+  altp_session_registry_unref(registry);
+  commit_and_destroy_persist_state(state);
+}
+
+/****************************************************************************
+ * max-sessions(): the number of Session Records a Receiver keeps is bounded (15)
+ ****************************************************************************/
+
+/* A Session Record is created on the word of an unauthenticated peer, since the
+ * Sender picks the Session ID, so their number is bounded.  An established Session
+ * is never evicted to make room, or churning Sessions would be a way to destroy
+ * the state of the legitimate Senders of the Receiver. */
+Test(altp, a_new_session_beyond_max_sessions_gets_no_session_record)
+{
+  fake_time(1600000000);
+
+  PersistState *state = clean_and_create_persist_state_for_test("test_altp_max_sessions.persist");
+  AltpSessionRegistry *registry = _bind_registry_full(state, 3600, 2);
+
+  AltpSessionRecord *first = altp_session_registry_lookup(registry, "s1");
+  AltpSessionRecord *second = altp_session_registry_lookup(registry, "s2");
+
+  cr_assert_not_null(first);
+  cr_assert_not_null(second);
+  cr_assert_eq(altp_session_registry_get_session_count(registry), 2);
+
+  cr_assert_null(altp_session_registry_lookup(registry, "s3"),
+                 "a Session beyond max-sessions() may not be created");
+  cr_assert_eq(altp_session_registry_get_session_count(registry), 2);
+
+  AltpSessionRecord *again = altp_session_registry_lookup(registry, "s1");
+
+  cr_assert_eq(again, first, "a Session that has a Session Record is served at the bound");
+  altp_session_record_unref(again);
+
+  altp_session_record_unref(second);
+  fake_time_add(4000);
+  altp_session_registry_fire_expiry(registry);
+  cr_assert_eq(altp_session_registry_get_session_count(registry), 1);
+
+  AltpSessionRecord *third = altp_session_registry_lookup(registry, "s3");
+
+  cr_assert_not_null(third);
+  altp_session_record_unref(third);
+
+  altp_session_record_unref(first);
+  altp_session_registry_unref(registry);
+  commit_and_destroy_persist_state(state);
+}
+
+Test(altp, max_sessions_zero_admits_any_number_of_sessions)
+{
+  PersistState *state = clean_and_create_persist_state_for_test("test_altp_unlimited.persist");
+  AltpSessionRegistry *registry = _bind_registry_full(state, 3600, 0);
+
+  for (gint i = 0; i < 8; i++)
+    {
+      gchar *session_id = g_strdup_printf("s%d", i);
+      AltpSessionRecord *record = altp_session_registry_lookup(registry, session_id);
+
+      cr_assert_not_null(record, "max-sessions(0) may not refuse a Session");
+      altp_session_record_unref(record);
+      g_free(session_id);
+    }
+
+  cr_assert_eq(altp_session_registry_get_session_count(registry), 8);
+
+  altp_session_registry_unref(registry);
+  commit_and_destroy_persist_state(state);
+}
+
+/****************************************************************************
+ * A configuration reload: the options are recreated while the Connections live on (ADR-0005)
+ ****************************************************************************/
+
+/* afsocket keeps the Connections of a driver across a reload and reinstalls them
+ * without constructing a proto, so the proto has to survive the options -- and the
+ * receiver context -- it was born in, and the new context has to find the very same
+ * Session Registry under the very same persistent name (ADR-0005). */
+Test(altp, a_connection_kept_across_a_configuration_reload_keeps_its_session)
+{
+  LogProtoServerOptionsStorage old_storage, new_storage;
+  AltpTestConnection first, second;
+
+  /* the old configuration: a Connection mid-Batch, two of its three Frames durable */
+  LogProtoServerFactory *old_factory = _parse_altp_transport_into(&old_storage, "altp()");
+
+  LogTransport *transport =
+    log_transport_mock_endless_records_new("SYNC s1\nDATA\n", -1, "3 abc3 def3 ghi", -1, LTM_EOF);
+
+  _connection_init_full(&first, old_factory, &old_storage, transport, FALSE, NULL, ALTP_TEST_PERSIST_NAME, NULL);
+
+  cr_assert_eq(_pump_until(&first, 0, 3), ALTP_PUMP_FRAMES);
+  cr_assert_str_eq(first.replies->str, ALTP_BANNER "250 Received 0\n250 Ready\n");
+  _report_durable(&first, 0);
+  _report_durable(&first, 1);
+
+  /* the reload: the old options are destroyed under the Connection that survived */
+  LogProtoServerFactory *new_factory = _parse_altp_transport_into(&new_storage, "altp()");
+  log_proto_server_options_destroy(&old_storage.super);
+
+  _inject(&first, ".\n");
+  cr_assert_eq(_pump(&first), ALTP_PUMP_SUSPENDED,
+               "the Connection of the old configuration lost its Session Record");
+
+  /* a Connection of the new configuration finds the same Session Record (7.2, 7.3) */
+  _connection_init_full(&second, new_factory, &new_storage,
+                        log_transport_mock_endless_stream_new("SYNC s1\n", -1, LTM_EOF), FALSE,
+                        NULL, ALTP_TEST_PERSIST_NAME, NULL);
+
+  cr_assert_eq(_pump(&second), ALTP_PUMP_SUSPENDED, "the SYNC reply must be deferred");
+  cr_assert_str_eq(second.replies->str, ALTP_BANNER);
+
+  cr_assert_eq(_pump(&first), ALTP_PUMP_EOF, "the displaced Connection has to close");
+
+  _report_durable(&first, 2);
+  _assert_replies(&second, ALTP_BANNER "250 Received 3\n");
+
+  _connection_deinit(&second);
+  _connection_deinit(&first);
+  log_proto_server_options_destroy(&new_storage.super);
+}
+
+/****************************************************************************
+ * The metrics of one Receiver (no per Session labels)
+ ****************************************************************************/
+
+static gsize
+_get_metric(const gchar *name, const gchar *label, const gchar *value)
+{
+  StatsClusterKeyBuilder *kb = stats_cluster_key_builder_new();
+
+  stats_cluster_key_builder_set_name(kb, name);
+  if (label)
+    stats_cluster_key_builder_add_label(kb, stats_cluster_label(label, value));
+
+  StatsClusterKey *key = stats_cluster_key_builder_build_single(kb);
+  StatsCounterItem *counter = NULL;
+  gsize result = 0;
+
+  stats_lock();
+  {
+    /* registering the very same key reaches the counter the Connections share */
+    cr_assert_not_null(stats_register_counter(STATS_LEVEL1, key, SC_TYPE_SINGLE_VALUE, &counter));
+    result = stats_counter_get(counter);
+    stats_unregister_counter(key, SC_TYPE_SINGLE_VALUE, &counter);
+  }
+  stats_unlock();
+
+  stats_cluster_key_free(key);
+  stats_cluster_key_builder_free(kb);
+
+  return result;
+}
+
+static void
+_enable_stats(void)
+{
+  configuration->stats_options.level = STATS_LEVEL1;
+  stats_reinit(&configuration->stats_options);
+}
+
+Test(altp, the_receiver_metrics_count_acknowledgements_takeovers_and_refusals)
+{
+  LogProtoServerFactory *factory = _parse_altp_transport("altp()");
+  StatsClusterKeyBuilder *kb = stats_cluster_key_builder_new();
+  AltpTestConnection first, second, third;
+
+  _enable_stats();
+
+  /* one acknowledgement for the SYNC, one for the Batch of two Frames */
+  LogTransport *transport =
+    log_transport_mock_endless_records_new("SYNC s1\nDATA\n", -1, "3 abc3 def.\n", -1, LTM_EOF);
+
+  _connection_init_full(&first, factory, &options_storage, transport, FALSE, NULL, ALTP_TEST_PERSIST_NAME, kb);
+
+  cr_assert_eq(altp_session_registry_get_session_count(
+                 altp_receiver_context_get_registry(_get_altp_options()->context)), 0);
+  cr_assert_eq(_get_metric(METRIC(altp_sessions), NULL, NULL), 0);
+
+  cr_assert_eq(_pump(&first), ALTP_PUMP_SUSPENDED);
+  _report_durable(&first, 0);
+  _report_durable(&first, 1);
+  _assert_replies(&first, ALTP_BANNER "250 Received 0\n250 Ready\n250 Received 2\n");
+
+  cr_assert_eq(_get_metric(METRIC(altp_acknowledgements_total), "result", "complete"), 2);
+  cr_assert_eq(_get_metric(METRIC(altp_acknowledgements_total), "result", "partial"), 0);
+  cr_assert_eq(_get_metric(METRIC(altp_sessions), NULL, NULL), 1,
+               "the altp_sessions gauge is the number of Session Records of the Receiver");
+
+  /* a Batch whose acknowledgement timeout expires is acknowledged partially */
+  _inject(&first, "DATA\n");
+  _inject(&first, "5 world.\n");
+  cr_assert_eq(_pump(&first), ALTP_PUMP_SUSPENDED);
+  log_proto_altp_server_fire_ack_timeout(first.proto);
+  _assert_replies(&first, ALTP_BANNER "250 Received 0\n250 Ready\n250 Received 2\n"
+                                      "250 Ready\n250 Received 0\n");
+
+  cr_assert_eq(_get_metric(METRIC(altp_acknowledgements_total), "result", "partial"), 1);
+
+  /* a newer Connection of the Session takes it over */
+  _connection_init_full(&second, factory, &options_storage,
+                        log_transport_mock_endless_stream_new("SYNC s1\n", -1, LTM_EOF), FALSE,
+                        NULL, ALTP_TEST_PERSIST_NAME, kb);
+  _assert_replies(&second, ALTP_BANNER "250 Received 0\n");
+
+  cr_assert_eq(_get_metric(METRIC(altp_session_takeovers_total), NULL, NULL), 1);
+
+  /* and a 5xx refusal is counted under the code it was answered with */
+  cr_assert_eq(_get_metric(METRIC(altp_replies_total), "code", "503"), 0);
+
+  _connection_init_full(&third, factory, &options_storage,
+                        log_transport_mock_stream_new("DATA\n", -1, LTM_EOF), FALSE,
+                        NULL, ALTP_TEST_PERSIST_NAME, kb);
+  cr_assert_eq(_pump(&third), ALTP_PUMP_EOF);
+  cr_assert_str_eq(third.replies->str, ALTP_BANNER "503 Need SYNC before use this command\n");
+
+  cr_assert_eq(_get_metric(METRIC(altp_replies_total), "code", "503"), 1);
+  cr_assert_eq(_get_metric(METRIC(altp_replies_total), "code", "504"), 0,
+               "only the codes the Receiver actually sent may appear");
+
+  _connection_deinit(&third);
+  _connection_deinit(&second);
+  _connection_deinit(&first);
+  stats_cluster_key_builder_free(kb);
+}
+
+/* 1.0 defines no reply code for a refused Session, so it just closes (4.3, 14.2) */
+Test(altp, a_connection_refused_at_max_sessions_closes_without_a_reply)
+{
+  LogProtoServerFactory *factory = _parse_altp_transport("altp(max-sessions(2))");
+  StatsClusterKeyBuilder *kb = stats_cluster_key_builder_new();
+  AltpTestConnection first, second, third, fourth;
+
+  _enable_stats();
+
+  _connection_init_full(&first, factory, &options_storage,
+                        log_transport_mock_endless_stream_new("SYNC s1\n", -1, LTM_EOF), FALSE,
+                        NULL, ALTP_TEST_PERSIST_NAME, kb);
+  _assert_replies(&first, ALTP_BANNER "250 Received 0\n");
+
+  _connection_init_full(&second, factory, &options_storage,
+                        log_transport_mock_endless_stream_new("SYNC s2\n", -1, LTM_EOF), FALSE,
+                        NULL, ALTP_TEST_PERSIST_NAME, kb);
+  _assert_replies(&second, ALTP_BANNER "250 Received 0\n");
+
+  cr_assert_eq(_get_metric(METRIC(altp_sessions), NULL, NULL), 2);
+  cr_assert_eq(_get_metric(METRIC(altp_sessions_refused_total), NULL, NULL), 0);
+
+  start_grabbing_messages();
+  _connection_init_full(&third, factory, &options_storage,
+                        log_transport_mock_stream_new("SYNC s3\n", -1, LTM_EOF), FALSE,
+                        NULL, ALTP_TEST_PERSIST_NAME, kb);
+  cr_assert_eq(_pump(&third), ALTP_PUMP_EOF, "a refused Connection has to close");
+  stop_grabbing_messages();
+
+  cr_assert_str_eq(third.replies->str, ALTP_BANNER,
+                   "a Session refused at max-sessions() draws no reply at all");
+  assert_grabbed_log_contains("Refusing a new ALTP Session");
+  cr_assert_eq(_get_metric(METRIC(altp_sessions_refused_total), NULL, NULL), 1);
+  cr_assert_eq(_get_metric(METRIC(altp_sessions), NULL, NULL), 2);
+
+  /* a Session the Receiver already holds is served at the bound (7.3) */
+  _connection_init_full(&fourth, factory, &options_storage,
+                        log_transport_mock_endless_stream_new("SYNC s1\n", -1, LTM_EOF), FALSE,
+                        NULL, ALTP_TEST_PERSIST_NAME, kb);
+  _assert_replies(&fourth, ALTP_BANNER "250 Received 0\n");
+
+  cr_assert_eq(_get_metric(METRIC(altp_sessions_refused_total), NULL, NULL), 1);
+
+  _connection_deinit(&fourth);
+  _connection_deinit(&third);
+  _connection_deinit(&second);
+  _connection_deinit(&first);
+  stats_cluster_key_builder_free(kb);
+}
+
+/****************************************************************************
+ * CLOSED: a displaced Connection has to close even with an exhausted window
+ ****************************************************************************/
+
+/* an immediate fetch is refused while the flow-control window is exhausted, and a
+ * displaced Connection keeps its window exhausted (ADR-0006) */
+Test(altp, a_closing_connection_asks_for_write_only_readiness)
+{
+  LogProtoServerFactory *factory = _parse_altp_transport("altp()");
+  AltpTestConnection conn;
+  GIOCondition cond = 0;
+  gint timeout = -1;
+
+  _connection_init(&conn, factory, log_transport_mock_endless_stream_new("ZLIB\n", -1, LTM_EOF), FALSE);
+
+  _assert_replies(&conn, ALTP_BANNER "502 Unknown command\n");
+
+  cond = 0;
+  timeout = -1;
+  cr_assert_eq(log_proto_server_poll_prepare(conn.proto, &cond, &timeout), LPPA_POLL_IO);
+  cr_assert_eq(cond, G_IO_OUT, "a closing ALTP Connection must not ask to read");
+  cr_assert_eq(timeout, 0, "the idle timeout is armed in COMMAND only");
+
+  const guchar *msg = NULL;
+  gsize msg_len = 0;
+  gboolean may_read = TRUE;
+  Bookmark bookmark;
+
+  memset(&bookmark, 0, sizeof(bookmark));
+  cr_assert_eq(log_proto_server_fetch(conn.proto, &msg, &msg_len, &may_read, NULL, &bookmark), LPS_EOF);
+  cr_assert_null(msg);
 
   _connection_deinit(&conn);
 }

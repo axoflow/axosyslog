@@ -31,6 +31,11 @@
 #define METRIC(name) SYSLOG_NG_METRIC_NAMES[METRIC_##name]
 
 #define METRIC_NAMES(M) \
+  M(altp_acknowledgements_total) \
+  M(altp_replies_total) \
+  M(altp_session_takeovers_total) \
+  M(altp_sessions) \
+  M(altp_sessions_refused_total) \
   M(classified_events_total) \
   M(disk_queue_capacity_bytes) \
   M(disk_queue_capacity) \

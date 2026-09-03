@@ -23,7 +23,11 @@
 
 #include "logproto-altp-server.h"
 #include "altp-session.h"
+#include "gsocket.h"
 #include "messages.h"
+#include "metrics/metric-names.h"
+#include "stats/stats-cluster-single.h"
+#include "stats/stats-registry.h"
 #include "mainloop.h"
 #include "str-utils.h"
 #include "timeutils/misc.h"
@@ -53,6 +57,21 @@
 #define ALTP_REPLY_INVALID_VERSION      "510 Invalid version of dialect\n"
 #define ALTP_REPLY_SESSION_ALREADY_BOUND "511 Another session is already bound to this connection\n"
 #define ALTP_REPLY_FRAME_TOO_LARGE      "552 Frame too large\n"
+
+/* Every 5xx code this Receiver sends, in the order of specification 13: it is
+ * what the `code` label of altp_replies_total takes its values from.  A reply
+ * counter is registered when its code is first sent, so a Receiver that never
+ * refuses anything publishes no 5xx series at all.
+ */
+static const gchar *ALTP_REPLY_CODES[] = { "501", "502", "503", "504", "505", "506", "510", "511", "552" };
+
+/* the two values of the `result` label of altp_acknowledgements_total */
+enum
+{
+  ALTP_ACK_COMPLETE,
+  ALTP_ACK_PARTIAL,
+  ALTP_ACK_RESULTS,
+};
 
 /* the number of read()s a single fetch() is allowed to issue, to keep one
  * Connection from starving the others */
@@ -92,6 +111,35 @@ typedef struct _AltpFetchContext
    * must produce no message (ADR-0006, see poll_prepare() below) */
   gboolean no_message;
 } AltpFetchContext;
+
+/* The metrics of one Receiver.  Every Connection registers the very same keys
+ * -- the labels come from the StatsClusterKeyBuilder of the driver alone,
+ * never from the Session -- so they all share reference counted counters.
+ */
+typedef struct _AltpMetrics
+{
+  /* a clone of the builder of the driver, NULL in a unit test without one; it
+   * is kept until restart_with_state() names the Session Registry */
+  StatsClusterKeyBuilder *kb;
+
+  StatsClusterKey *acknowledgements_key[ALTP_ACK_RESULTS];
+  StatsCounterItem *acknowledgements[ALTP_ACK_RESULTS];
+
+  StatsClusterKey *takeovers_key;
+  StatsCounterItem *takeovers;
+
+  StatsClusterKey *sessions_refused_key;
+  StatsCounterItem *sessions_refused;
+
+  StatsClusterKey *replies_key[G_N_ELEMENTS(ALTP_REPLY_CODES)];
+  StatsCounterItem *replies[G_N_ELEMENTS(ALTP_REPLY_CODES)];
+
+  /* a gauge the Session Registry owns; the cluster is the proof that it really
+   * got registered, which it does not below our stats-level() */
+  StatsClusterKey *sessions_key;
+  StatsCluster *sessions_cluster;
+  atomic_gssize *sessions;
+} AltpMetrics;
 
 typedef struct _LogProtoAltpServer
 {
@@ -142,6 +190,11 @@ typedef struct _LogProtoAltpServer
 
   /* auxiliary data (peer address, timestamps, ...) of the buffered input */
   LogTransportAuxData buffer_aux;
+
+  /* the peer of this Connection, resolved on demand by _get_peer_address() */
+  gchar peer_address[MAX_SOCKADDR_STRING];
+
+  AltpMetrics metrics;
 } LogProtoAltpServer;
 
 /****************************************************************************
@@ -186,6 +239,36 @@ _capability_reply(LogProtoAltpServer *self)
 }
 
 /****************************************************************************
+ * The peer of the Connection (specification 15)
+ ****************************************************************************/
+
+/* Resolved once and kept: an address the transport put in the auxiliary data
+ * wins, as a proxy protocol transport reports the real Sender there (15).
+ * Only fetch() and poll_prepare() reach this, never at the same time.
+ */
+static const gchar *
+_get_peer_address(LogProtoAltpServer *self)
+{
+  if (self->peer_address[0])
+    return self->peer_address;
+
+  GSockAddr *from_socket = NULL;
+  GSockAddr *peer = self->buffer_aux.peer_addr;
+
+  if (!peer)
+    peer = from_socket = g_socket_get_peer_name(self->super.transport_stack.fd);
+
+  if (peer)
+    g_sockaddr_format(peer, self->peer_address, sizeof(self->peer_address), GSA_FULL);
+  else
+    g_strlcpy(self->peer_address, "unknown", sizeof(self->peer_address));
+
+  g_sockaddr_unref(from_socket);
+
+  return self->peer_address;
+}
+
+/****************************************************************************
  * The Session Registry of the Receiver
  ****************************************************************************/
 
@@ -201,6 +284,124 @@ _get_registry(LogProtoAltpServer *self)
     }
 
   return self->registry;
+}
+
+/****************************************************************************
+ * Metrics
+ ****************************************************************************/
+
+static StatsClusterKey *
+_build_key(StatsClusterKeyBuilder *kb, const gchar *name, const gchar *label, const gchar *value)
+{
+  StatsClusterKey *key;
+
+  stats_cluster_key_builder_push(kb);
+  stats_cluster_key_builder_set_name(kb, name);
+  if (label)
+    stats_cluster_key_builder_add_label(kb, stats_cluster_label(label, value));
+  key = stats_cluster_key_builder_build_single(kb);
+  stats_cluster_key_builder_pop(kb);
+
+  return key;
+}
+
+/* registered one by one, the first time the Receiver sends the code */
+static void
+_register_reply_counter(LogProtoAltpServer *self, guint slot)
+{
+  self->metrics.replies_key[slot] = _build_key(self->metrics.kb, METRIC(altp_replies_total),
+                                               "code", ALTP_REPLY_CODES[slot]);
+  stats_lock();
+  stats_register_counter(STATS_LEVEL1, self->metrics.replies_key[slot], SC_TYPE_SINGLE_VALUE,
+                         &self->metrics.replies[slot]);
+  stats_unlock();
+}
+
+/* the altp_sessions gauge belongs to the registry, so this waits for one */
+static void
+_register_metrics(LogProtoAltpServer *self, AltpSessionRegistry *registry)
+{
+  if (!self->metrics.kb)
+    return;
+
+  StatsClusterKeyBuilder *kb = self->metrics.kb;
+
+  self->metrics.acknowledgements_key[ALTP_ACK_COMPLETE] =
+    _build_key(kb, METRIC(altp_acknowledgements_total), "result", "complete");
+  self->metrics.acknowledgements_key[ALTP_ACK_PARTIAL] =
+    _build_key(kb, METRIC(altp_acknowledgements_total), "result", "partial");
+  self->metrics.takeovers_key = _build_key(kb, METRIC(altp_session_takeovers_total), NULL, NULL);
+  self->metrics.sessions_refused_key = _build_key(kb, METRIC(altp_sessions_refused_total), NULL, NULL);
+  self->metrics.sessions_key = _build_key(kb, METRIC(altp_sessions), NULL, NULL);
+  self->metrics.sessions = altp_session_registry_get_session_count_ref(registry);
+
+  stats_lock();
+  for (gint i = 0; i < ALTP_ACK_RESULTS; i++)
+    stats_register_counter(STATS_LEVEL1, self->metrics.acknowledgements_key[i], SC_TYPE_SINGLE_VALUE,
+                           &self->metrics.acknowledgements[i]);
+  stats_register_counter(STATS_LEVEL1, self->metrics.takeovers_key, SC_TYPE_SINGLE_VALUE,
+                         &self->metrics.takeovers);
+  stats_register_counter(STATS_LEVEL1, self->metrics.sessions_refused_key, SC_TYPE_SINGLE_VALUE,
+                         &self->metrics.sessions_refused);
+  /* the registry owns the gauge and outlives us: we hold a reference */
+  self->metrics.sessions_cluster =
+    stats_register_external_counter(STATS_LEVEL1, self->metrics.sessions_key, SC_TYPE_SINGLE_VALUE,
+                                    self->metrics.sessions);
+  stats_unlock();
+}
+
+static void
+_unregister_metrics(LogProtoAltpServer *self)
+{
+  stats_lock();
+  for (gint i = 0; i < ALTP_ACK_RESULTS; i++)
+    {
+      if (self->metrics.acknowledgements_key[i])
+        stats_unregister_counter(self->metrics.acknowledgements_key[i], SC_TYPE_SINGLE_VALUE,
+                                 &self->metrics.acknowledgements[i]);
+    }
+  if (self->metrics.takeovers_key)
+    stats_unregister_counter(self->metrics.takeovers_key, SC_TYPE_SINGLE_VALUE, &self->metrics.takeovers);
+  if (self->metrics.sessions_refused_key)
+    stats_unregister_counter(self->metrics.sessions_refused_key, SC_TYPE_SINGLE_VALUE,
+                             &self->metrics.sessions_refused);
+  if (self->metrics.sessions_cluster)
+    stats_unregister_external_counter(self->metrics.sessions_key, SC_TYPE_SINGLE_VALUE, self->metrics.sessions);
+  for (guint i = 0; i < G_N_ELEMENTS(ALTP_REPLY_CODES); i++)
+    {
+      if (self->metrics.replies_key[i])
+        stats_unregister_counter(self->metrics.replies_key[i], SC_TYPE_SINGLE_VALUE, &self->metrics.replies[i]);
+    }
+  stats_unlock();
+
+  for (gint i = 0; i < ALTP_ACK_RESULTS; i++)
+    stats_cluster_key_free(self->metrics.acknowledgements_key[i]);
+  stats_cluster_key_free(self->metrics.takeovers_key);
+  stats_cluster_key_free(self->metrics.sessions_refused_key);
+  stats_cluster_key_free(self->metrics.sessions_key);
+  for (guint i = 0; i < G_N_ELEMENTS(ALTP_REPLY_CODES); i++)
+    stats_cluster_key_free(self->metrics.replies_key[i]);
+
+  StatsClusterKeyBuilder *kb = self->metrics.kb;
+
+  memset(&self->metrics, 0, sizeof(self->metrics));
+  self->metrics.kb = kb;
+}
+
+/* @reply is a canonical text, so its first three octets are its reply code */
+static void
+_count_reply(LogProtoAltpServer *self, const gchar *reply)
+{
+  for (guint i = 0; i < G_N_ELEMENTS(ALTP_REPLY_CODES); i++)
+    {
+      if (strncmp(reply, ALTP_REPLY_CODES[i], 3) != 0)
+        continue;
+
+      if (!self->metrics.replies[i] && self->metrics.kb)
+        _register_reply_counter(self, i);
+      stats_counter_inc(self->metrics.replies[i]);
+      return;
+    }
 }
 
 /****************************************************************************
@@ -225,6 +426,7 @@ _reply_and_continue(LogProtoAltpServer *self, const gchar *reply)
 static void
 _reply_and_close(LogProtoAltpServer *self, const gchar *reply)
 {
+  _count_reply(self, reply);
   _queue_reply(self, reply, ALTP_CLOSED);
 }
 
@@ -232,9 +434,10 @@ _reply_and_close(LogProtoAltpServer *self, const gchar *reply)
  * reset the counters: see _process_command_line().
  */
 static void
-_queue_acknowledgement(LogProtoAltpServer *self, guint32 frames_acked)
+_queue_acknowledgement(LogProtoAltpServer *self, guint32 frames_acked, gboolean partial)
 {
   g_string_append_printf(self->out_buf, ALTP_REPLY_RECEIVED_FORMAT, frames_acked);
+  stats_counter_inc(self->metrics.acknowledgements[partial ? ALTP_ACK_PARTIAL : ALTP_ACK_COMPLETE]);
   self->ack_sent = TRUE;
   self->next_state = ALTP_COMMAND;
   self->state = ALTP_SENDING_REPLY;
@@ -262,6 +465,7 @@ _discard_plaintext_input(LogProtoAltpServer *self)
   if (discarded > 0)
     msg_warning("Discarding the ALTP input a Sender pipelined after its STARTTLS command line, "
                 "those octets were sent in plaintext",
+                evt_tag_str("client", _get_peer_address(self)),
                 evt_tag_int("discarded", discarded),
                 evt_tag_int(EVT_TAG_FD, self->super.transport_stack.fd));
 
@@ -521,6 +725,30 @@ _is_valid_session_id(const gchar *param, gsize param_len)
   return TRUE;
 }
 
+/* At max-sessions(): the Session is not created and the Connection closes
+ * without a reply -- 1.0 defines no code for a refused Session, and a Sender
+ * treats the close as the transport error it is, backs off and reconnects
+ * (4.3, 14.2), which is what a Receiver at its capacity wants.
+ */
+static void
+_refuse_session(LogProtoAltpServer *self)
+{
+  stats_counter_inc(self->metrics.sessions_refused);
+
+  /* the peer that provokes this is unauthenticated and can do it per
+   * Connection, so the registry rate limits the line; every refusal is counted */
+  if (altp_session_registry_should_log_refusal(_get_registry(self)))
+    msg_warning("Refusing a new ALTP Session, the Receiver holds as many Session Records as "
+                "max-sessions() allows",
+                evt_tag_str("receiver", altp_session_registry_get_name(_get_registry(self))),
+                evt_tag_str("session_id", self->session_id),
+                evt_tag_str("client", _get_peer_address(self)),
+                evt_tag_int("max_sessions", altp_session_registry_get_max_sessions(_get_registry(self))),
+                evt_tag_int(EVT_TAG_FD, self->super.transport_stack.fd));
+
+  self->state = ALTP_CLOSED;
+}
+
 static void
 _on_sync(LogProtoAltpServer *self, const gchar *param, gsize param_len)
 {
@@ -553,18 +781,31 @@ _on_sync(LogProtoAltpServer *self, const gchar *param, gsize param_len)
     {
       self->session_id = g_strndup(param, param_len);
       self->record = altp_session_registry_lookup(_get_registry(self), self->session_id);
+      if (!self->record)
+        {
+          _refuse_session(self);
+          return;
+        }
     }
 
   /* newest connection wins: the older Connection closes unacknowledged (7.3) */
-  if (altp_session_record_take_over(self->record, &self->owner))
-    msg_notice("Taking over an ALTP Session from an older Connection",
-               evt_tag_str("session_id", self->session_id),
-               evt_tag_int(EVT_TAG_FD, self->super.transport_stack.fd));
+  gchar displaced_client[MAX_SOCKADDR_STRING] = "";
+
+  if (altp_session_record_take_over(self->record, &self->owner, _get_peer_address(self),
+                                    displaced_client, sizeof(displaced_client)))
+    {
+      msg_notice("Taking over an ALTP Session from an older Connection",
+                 evt_tag_str("session_id", self->session_id),
+                 evt_tag_str("client", _get_peer_address(self)),
+                 evt_tag_str("displaced_client", displaced_client),
+                 evt_tag_int(EVT_TAG_FD, self->super.transport_stack.fd));
+      stats_counter_inc(self->metrics.takeovers);
+    }
 
   guint32 frames_acked;
   if (altp_session_record_wait_for_durability(self->record, &self->owner, &frames_acked))
     {
-      _queue_acknowledgement(self, frames_acked);
+      _queue_acknowledgement(self, frames_acked, FALSE);
     }
   else
     {
@@ -904,6 +1145,7 @@ static AltpStepControl
 _on_awaiting_durability(LogProtoAltpServer *self, LogProtoStatus *status)
 {
   guint32 frames_acked;
+  gboolean partial = FALSE;
 
   g_assert(self->record != NULL);
 
@@ -916,6 +1158,7 @@ _on_awaiting_durability(LogProtoAltpServer *self, LogProtoStatus *status)
       msg_notice("Acknowledging an ALTP Batch partially, the acknowledgement timeout expired",
                  evt_tag_str("session_id", self->session_id),
                  evt_tag_int("frames_acked", frames_acked));
+      partial = TRUE;
     }
   else if (altp_session_record_wait_for_durability(self->record, &self->owner, &frames_acked))
     {
@@ -929,7 +1172,7 @@ _on_awaiting_durability(LogProtoAltpServer *self, LogProtoStatus *status)
       return ALTP_CTRL_RETURN_WITH_STATUS;
     }
 
-  _queue_acknowledgement(self, frames_acked);
+  _queue_acknowledgement(self, frames_acked, partial);
   return ALTP_CTRL_NEXT_STATE;
 }
 
@@ -951,8 +1194,13 @@ _handle_displacement(LogProtoAltpServer *self)
   if (!altp_session_record_is_displaced(self->record, &self->owner))
     return;
 
+  gchar displacing_client[MAX_SOCKADDR_STRING] = "";
+
+  altp_session_record_get_owner_peer_address(self->record, displacing_client, sizeof(displacing_client));
   msg_notice("Closing an ALTP Connection displaced by a newer Connection of the same Session",
              evt_tag_str("session_id", self->session_id),
+             evt_tag_str("client", _get_peer_address(self)),
+             evt_tag_str("displacing_client", displacing_client),
              evt_tag_int(EVT_TAG_FD, self->super.transport_stack.fd));
   g_string_truncate(self->out_buf, 0);
   self->out_pos = 0;
@@ -1189,9 +1437,12 @@ log_proto_altp_server_restart_with_state(LogProtoServer *s, PersistState *state,
    */
   if (self->context)
     {
-      altp_receiver_context_bind_persist_state(self->context, state, persist_name);
+      altp_receiver_context_bind_persist_state(self->context, state, persist_name, self->options.session_expiration,
+                                               self->options.max_sessions);
       self->registry = altp_session_registry_ref(altp_receiver_context_get_registry(self->context));
       self->context = NULL;
+
+      _register_metrics(self, self->registry);
     }
 
   return TRUE;
@@ -1204,6 +1455,11 @@ log_proto_altp_server_free(LogProtoServer *s)
 
   if (iv_timer_registered(&self->ack_timer))
     iv_timer_unregister(&self->ack_timer);
+
+  /* the altp_sessions gauge points into the registry, so it goes first */
+  _unregister_metrics(self);
+  if (self->metrics.kb)
+    stats_cluster_key_builder_free(self->metrics.kb);
 
   if (self->record)
     {
@@ -1245,7 +1501,9 @@ log_proto_altp_server_new(LogTransport *transport, const LogProtoServerOptions *
   self->ack_timer.cookie = self;
   self->ack_timer.handler = _ack_timer_expired;
 
-  /* Stage B2: register the per Receiver metrics of 10.1 with @kb. */
+  /* the builder is owned by our caller, so a clone is what survives */
+  if (kb)
+    self->metrics.kb = stats_cluster_key_builder_clone(kb);
 
   return &self->super;
 }
