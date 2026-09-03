@@ -29,6 +29,17 @@
 #include "http/source/http-source.h"
 
 typedef struct ESBulkSourceDriver ESBulkSourceDriver;
+typedef struct ESBulkSourceConnection ESBulkSourceConnection;
+
+struct ESBulkSourceConnection
+{
+  HTTPSourceConnection super;
+  struct
+  {
+    GString *items;
+    gboolean errors;
+  } response;
+};
 
 struct ESBulkSourceDriver
 {

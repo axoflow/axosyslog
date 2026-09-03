@@ -30,6 +30,43 @@
 
 #include <string.h>
 
+static const gchar *ES_BULK_OPS[] = { "index", "create", "update", "delete" };
+
+/* the action type is the first key of the action object */
+static const gchar *
+_action_op(const gchar *action, gsize action_length)
+{
+  const gchar *key = memchr(action, '"', action_length);
+  if (!key)
+    return NULL;
+  key++;
+
+  const gchar *key_end = memchr(key, '"', action + action_length - key);
+  if (!key_end)
+    return NULL;
+
+  for (gsize i = 0; i < G_N_ELEMENTS(ES_BULK_OPS); i++)
+    {
+      gsize op_length = strlen(ES_BULK_OPS[i]);
+      if ((gsize) (key_end - key) == op_length && strncmp(key, ES_BULK_OPS[i], op_length) == 0)
+        return ES_BULK_OPS[i];
+    }
+  return NULL;
+}
+
+/* bulk clients ack per event: they walk items[] positionally, so every
+ * action needs exactly one item */
+static void
+_append_item(ESBulkSourceConnection *self, const gchar *op, gint status)
+{
+  GString *items = self->response.items;
+  if (items->len)
+    g_string_append_c(items, ',');
+  g_string_append_printf(items, "{\"%s\":{\"status\":%d}}", op, status);
+  if (status >= 300)
+    self->response.errors = TRUE;
+}
+
 static const gchar *
 _next_line(const gchar **data, gsize *remaining, gsize *line_length)
 {
@@ -53,7 +90,7 @@ _next_line(const gchar **data, gsize *remaining, gsize *line_length)
 }
 
 static GQueue *
-_extract_bulk_pairs(HTTPRequest *http_request, ESBulkSourceDriver *self)
+_extract_bulk_pairs(HTTPRequest *http_request, ESBulkSourceConnection *connection, ESBulkSourceDriver *self)
 {
   MsgFormatOptions *parse_options = &self->super.super.reader_options.parse_options;
 
@@ -75,6 +112,8 @@ _extract_bulk_pairs(HTTPRequest *http_request, ESBulkSourceDriver *self)
       if (action_length == 0)
         continue;
 
+      const gchar *op = _action_op(action, action_length);
+
       gsize source_length = 0;
       const gchar *source = _next_line(&data, &remaining, &source_length);
 
@@ -84,6 +123,11 @@ _extract_bulk_pairs(HTTPRequest *http_request, ESBulkSourceDriver *self)
           msg_format_parse_into(parse_options, msg, (guchar *) source, &source_length);
           log_msg_set_value(msg, self->handles.elastic_bulk_action, action, action_length);
           g_queue_push_tail(messages, msg);
+          _append_item(connection, op ? op : "index", 201);
+        }
+      else
+        {
+          _append_item(connection, op ? op : "index", 400);
         }
     }
   return messages;
@@ -93,8 +137,33 @@ static GQueue *
 _extract_log_messages(HTTPRequest *http_request, HTTPSourceConnection *connection)
 {
   ESBulkSourceDriver *self = (ESBulkSourceDriver *) connection->owner;
+  ESBulkSourceConnection *es_connection = (ESBulkSourceConnection *) connection;
 
-  return _extract_bulk_pairs(http_request, self);
+  g_string_truncate(es_connection->response.items, 0);
+  es_connection->response.errors = FALSE;
+
+  return _extract_bulk_pairs(http_request, es_connection, self);
+}
+
+static void
+_sc_free(LogPipe *s)
+{
+  ESBulkSourceConnection *self = (ESBulkSourceConnection *) s;
+
+  g_string_free(self->response.items, TRUE);
+  afsocket_sc_free_method(s);
+}
+
+static AFSocketSourceConnection *
+_construct_connection(AFSocketSourceDriver *s, GSockAddr *peer_addr, GSockAddr *local_addr, gint fd)
+{
+  ESBulkSourceConnection *self = g_new0(ESBulkSourceConnection, 1);
+
+  afsocket_sc_init_instance(&self->super, peer_addr, local_addr, fd, s->super.super.super.cfg);
+  self->super.super.free_fn = _sc_free;
+  self->response.items = g_string_sized_new(256);
+
+  return &self->super;
 }
 
 static gboolean
@@ -117,6 +186,7 @@ elasticsearch_bulk_sd_new(GlobalConfig *cfg)
 
   self->handles.elastic_bulk_action = log_msg_get_value_handle(".es_bulk.action");
 
+  self->super.super.construct_connection = _construct_connection;
   self->super.super.super.super.super.init = _sd_init;
 
   return self;
