@@ -100,6 +100,10 @@ struct _LogThreadedDestWorker
   gboolean suspended;
   time_t time_reopen;
 
+  /* set once this worker is counted as unreachable in owner->reachable_workers,
+   * to avoid double counting on repeated failures/successes */
+  gboolean counted_as_unreachable;
+
   struct
   {
     GString *last_key;
@@ -199,6 +203,11 @@ struct _LogThreadedDestDriver
   gint num_workers;
   gint created_workers;
   guint last_worker;
+
+  /* number of workers not currently counted as unreachable, used to
+   * implement flags(destination-failover); optimistic default: a worker
+   * that hasn't attempted to connect yet is not counted as unreachable */
+  gint reachable_workers;
 
   gboolean flush_on_key_change;
   gboolean worker_partition_autoscaling;

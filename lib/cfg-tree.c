@@ -636,6 +636,8 @@ log_expr_node_lookup_flag(const gchar *flag)
     return LC_FLOW_CONTROL;
   else if (strcmp(flag, "no-flow-control") == 0)
     return LC_NO_FLOW_CONTROL;
+  else if (strcmp(flag, "destination-failover") == 0)
+    return LC_DESTINATION_FAILOVER;
   else if (strcmp(flag, "drop-unmatched") == 0)
     {
       msg_warning_once("WARNING: The drop-unmatched flag has been removed starting with " VERSION_4_1 ". "
@@ -649,7 +651,11 @@ log_expr_node_lookup_flag(const gchar *flag)
 gboolean
 log_expr_node_validate_flags(gint flags)
 {
-  return !(flags & LC_FLOW_CONTROL && flags & LC_NO_FLOW_CONTROL);
+  if (flags & LC_FLOW_CONTROL && flags & LC_NO_FLOW_CONTROL)
+    return FALSE;
+  if ((flags & LC_DESTINATION_FAILOVER) && (flags & (LC_FALLBACK | LC_FINAL)))
+    return FALSE;
+  return TRUE;
 }
 
 static LogPipe *
@@ -925,6 +931,27 @@ cfg_tree_propagate_expr_node_properties_to_pipe(LogExprNode *node, LogPipe *pipe
 
   if (node->flags & LC_FINAL)
     pipe->flags |= PIF_BRANCH_FINAL;
+
+  if (node->flags & LC_DESTINATION_FAILOVER)
+    {
+      /* an ordered failover chain is branches tried in declared order,
+       * stopping at the first one that accepts the message (sets *matched
+       * to TRUE) -- this is exactly what PIF_BRANCH_FINAL already does in
+       * LogMultiplexer. PIF_BRANCH_DESTINATION_FAILOVER additionally makes
+       * LogMultiplexer.queue() set LogPathOptions.destination_failover on
+       * messages routed into this branch. That path option, not this pipe
+       * flag, is what actually gets a destination's rejection back up to
+       * the enclosing junction: every multiplexer along the way (the
+       * per-reference wrapper, a named destination's own nested junction,
+       * anything further downstream) still disables delivery propagation
+       * by default, but LogMultiplexer.queue() propagates anyway once it
+       * sees destination_failover set on the message it received -- see
+       * the comment there. destination_failover is inherited unchanged
+       * through arbitrarily many levels of nesting (LogPathOptions is
+       * copied wholesale by log_path_options_push_junction()), so no
+       * pipe-graph walk is needed here to make that happen. */
+      pipe->flags |= PIF_BRANCH_FINAL | PIF_BRANCH_DESTINATION_FAILOVER;
+    }
 
   if (_is_log_path(node))
     {
