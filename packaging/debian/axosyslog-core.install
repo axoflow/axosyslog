@@ -9,6 +9,7 @@ usr/lib/syslog-ng/*/libaffile.so
 usr/lib/syslog-ng/*/libafprog.so
 usr/lib/syslog-ng/*/libafsocket.so
 usr/lib/syslog-ng/*/libafuser.so
+usr/lib/syslog-ng/*/libaltp-proto.so
 usr/lib/syslog-ng/*/libbasicfuncs.so
 usr/lib/syslog-ng/*/libconfgen.so
 usr/lib/syslog-ng/*/libcryptofuncs.so

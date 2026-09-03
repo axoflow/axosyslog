@@ -496,6 +496,7 @@ fi
 %{_libdir}/syslog-ng/libafsocket.so
 %{_libdir}/syslog-ng/libafstomp.so
 %{_libdir}/syslog-ng/libafuser.so
+%{_libdir}/syslog-ng/libaltp-proto.so
 %{_libdir}/syslog-ng/libappmodel.so
 %{_libdir}/syslog-ng/libbasicfuncs.so
 %{_libdir}/syslog-ng/libcef.so
