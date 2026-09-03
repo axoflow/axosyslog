@@ -10,6 +10,7 @@ EXTRA_DIST += \
 	tests/light/functional_tests/destination_drivers/arrow_flight_destination/test_arrow_flight_destination.py \
 	tests/light/functional_tests/destination_drivers/bigquery_destination/test_bigquery_destination.py \
 	tests/light/functional_tests/destination_drivers/example_destination/test_example_destination.py \
+	tests/light/functional_tests/destination_drivers/network_destination/test_altp_destination.py \
 	tests/light/functional_tests/destination_drivers/network_destination/test_kept_alive_tls_connection_doing_handshake_after_reload.py \
 	tests/light/functional_tests/destination_drivers/network_destination/test_network_destination_transport.py \
 	tests/light/functional_tests/destination_drivers/opentelemetry_destination/test_opentelemetry_destination_batching.py \
@@ -84,6 +85,7 @@ EXTRA_DIST += \
 	tests/light/functional_tests/source_drivers/network_source/proxyprotocol/test_pp_with_multiple_clients.py \
 	tests/light/functional_tests/source_drivers/network_source/proxyprotocol/test_pp_with_simple_tcp_connection.py \
 	tests/light/functional_tests/source_drivers/network_source/proxyprotocol/test_pp_with_syslog_proto.py \
+	tests/light/functional_tests/source_drivers/network_source/test_altp_source.py \
 	tests/light/functional_tests/source_drivers/network_source/test_network_transports.py \
 	tests/light/functional_tests/source_drivers/network_source/test_syslog_parser_timestamp_spinning.py \
 	tests/light/functional_tests/source_drivers/network_source/test_transport_error_metrics.py \

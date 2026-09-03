@@ -24,6 +24,7 @@ EXTRA_DIST += \
 	tests/light/src/axosyslog_light/driver_io/file/tests/test_file_io.py \
 	tests/light/src/axosyslog_light/driver_io/__init__.py \
 	tests/light/src/axosyslog_light/driver_io/message_readers.py \
+	tests/light/src/axosyslog_light/driver_io/network/altp_sender.py \
 	tests/light/src/axosyslog_light/driver_io/network/__init__.py \
 	tests/light/src/axosyslog_light/driver_io/network/network_io.py \
 	tests/light/src/axosyslog_light/driver_io/opentelemetry/opentelemetry_io.py \

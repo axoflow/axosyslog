@@ -31,8 +31,11 @@ def map_transport(transport):
         "tcp": NetworkIO.Transport.TCP,
         "udp": NetworkIO.Transport.UDP,
         "tls": NetworkIO.Transport.TLS,
+        "altp": NetworkIO.Transport.TCP,
     }
     transport = transport.replace("_", "-").replace("'", "").replace('"', "").lower()
+    # a transport may carry its own option block, e.g. altp(ack-timeout(60))
+    transport = transport.split("(", 1)[0].strip()
 
     return mapping[transport]
 
