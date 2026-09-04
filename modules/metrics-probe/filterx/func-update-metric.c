@@ -29,13 +29,14 @@
 #include "filterx/object-primitive.h"
 #include "stats/stats.h"
 
-#define FILTERX_FUNC_UPDATE_METRIC_USAGE "update_metric(\"key\", labels={\"key\": \"value\"}, increment=1, level=0)"
+#define FILTERX_FUNC_UPDATE_METRIC_USAGE "update_metric(\"key\", labels={\"key\": \"value\"}, increment=1|set=20, level=0)"
 
 typedef struct FilterXFunctionUpdateMetric_
 {
   FilterXFunction super;
   FilterXMetrics *metrics;
   gint level;
+  gboolean assign_mode;
 
   struct
   {
@@ -63,7 +64,7 @@ _get_value(FilterXFunctionUpdateMetric *self, gint64 *value)
   if (!success)
     {
       filterx_eval_push_error_info_printf("Failed to evaluate update_metric()",
-                                          "Metric increment must be an integer, got: %s",
+                                          "Metric value must be an integer, got: %s",
                                           filterx_object_get_type_name(value_obj));
     }
 
@@ -82,11 +83,23 @@ _eval(FilterXExpr *s)
   if (!_get_value(self, &value))
     goto exit;
 
+  /* stats_counter_set does not support negative values */
+  if (self->assign_mode && value < 0)
+    {
+      filterx_eval_push_error_info_printf("Failed to evaluate update_metric()",
+                                          "Metric value must be non-negative, got: %" G_GINT64_FORMAT,
+                                          value);
+      goto exit;
+    }
+
   StatsCounterItem *counter;
   if (!filterx_metrics_get_stats_counter(self->metrics, &counter))
     goto exit;
 
-  stats_counter_add(counter, value);
+  if (self->assign_mode)
+    stats_counter_set(counter, (gsize) value);
+  else
+    stats_counter_add(counter, value);
   success = TRUE;
 
 exit:
@@ -166,8 +179,27 @@ _free(FilterXExpr *s)
 static gboolean
 _extract_value_arg(FilterXFunctionUpdateMetric *self, FilterXFunctionArgs *args, GError **error)
 {
+  FilterXExpr *increment = filterx_function_args_get_named_expr(args, "increment");
+  FilterXExpr *set = filterx_function_args_get_named_expr(args, "set");
+
+  if (increment && set)
+    {
+      filterx_expr_unref(increment);
+      filterx_expr_unref(set);
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "increment and set are mutually exclusive. " FILTERX_FUNC_UPDATE_METRIC_USAGE);
+      return FALSE;
+    }
+
+  if (set)
+    {
+      self->assign_mode = TRUE;
+      self->value.expr = set;
+      return TRUE;
+    }
+
   self->value.literal = 1;
-  self->value.expr = filterx_function_args_get_named_expr(args, "increment");
+  self->value.expr = increment;
 
   return TRUE;
 }
