@@ -725,6 +725,119 @@ $MSG = $list;
     assert file_true.read_log() == """foo,bar,baz"""
 
 
+def test_list_subscript_without_index_appends_to_a_typed_list(config, syslog_ng):
+    # a native list literal has a LIST static type, so the JIT devirtualizes the
+    # keyless append form into a raw list write
+    (file_true, file_false) = create_config(
+        config, """
+l = [];
+l[] = "foo";
+l[] = "bar";
+l[] = "baz";
+$MSG = l;
+""",
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == """foo,bar,baz"""
+
+
+def test_list_subscript_without_index_appends_to_an_untyped_list(config, syslog_ng):
+    # json_array() hides the type from the inference, so the same append takes the
+    # generic set-subscript helper
+    (file_true, file_false) = create_config(
+        config, """
+l = json_array([]);
+l[] = "foo";
+l[] = "bar";
+$MSG = string(l);
+""",
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == """["foo","bar"]"""
+
+
+def test_list_nullv_subscript_without_index_skips_null(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, """
+l = [1];
+l[] =?? null;
+l[] =?? 2;
+$MSG = string(l);
+""",
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == """[1,2]"""
+
+
+def test_list_set_subscript_with_a_failing_key_does_not_append(config, syslog_ng):
+    # a key that fails to evaluate must be an error, not the keyless append form
+    (file_true, file_false) = create_config(
+        config, """
+l = [1, 2];
+l[non_existent_var] = 3;
+$MSG = l;
+""",
+    )
+    syslog_ng.start(config)
+
+    assert "processed" not in file_true.get_stats()
+    assert file_false.get_stats()["processed"] == 1
+
+
+def test_untyped_dict_get_and_set_subscript(config, syslog_ng):
+    # json() hides the type from the inference, so both subscripts take the generic helpers
+    (file_true, file_false) = create_config(
+        config, """
+d = json({"foo": "foovalue"});
+d["bar"] = d["foo"];
+$MSG = string(d);
+""",
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == """{"foo":"foovalue","bar":"foovalue"}"""
+
+
+def test_untyped_dict_nullv_set_subscript(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, """
+d = json({"foo": "foovalue"});
+d["bar"] =?? null;
+d["baz"] =?? "bazvalue";
+$MSG = string(d);
+""",
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == """{"foo":"foovalue","baz":"bazvalue"}"""
+
+
+def test_untyped_dict_get_subscript_of_a_missing_key(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, """
+d = json({"foo": "foovalue"});
+$MSG = d["missing"];
+""",
+    )
+    syslog_ng.start(config)
+
+    assert "processed" not in file_true.get_stats()
+    assert file_false.get_stats()["processed"] == 1
+
+
 # The emitted code has to stop evaluating the operands where the interpreter stops, or the
 # skipped operands run their side effects. set_pri() is the side effect these tests observe:
 # it is set to 30 first, and a 50 in the output means the guarded operand still ran.

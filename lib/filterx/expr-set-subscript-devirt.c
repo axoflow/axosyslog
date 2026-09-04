@@ -32,13 +32,15 @@
 
 typedef gboolean (*FilterXJITTypedSetSubscript)(FilterXObject *object, FilterXObject *key, FilterXObject **value);
 
-/* The static type that selected this fast path is only a hint. A coercing container (e.g.
+/* The static type that selected a fast path is only a hint. A coercing container (e.g.
  * otel masquerading as dict/list) has a different runtime layout, which the downcast in
  * @typed_set_subscript cannot take, so @expected_type guards it. The generic vtable
- * set_subscript has the same signature and serves as the fallback.
+ * set_subscript has the same signature and serves as the fallback. @expected_type is NULL
+ * in the generic helper, which has no fast path and always takes the vtable.
  *
  * _compile_dispatch() guards @cloned and @key against NULL, only @object can still fail
- * here.
+ * here. A NULL @key is the keyless append form (`list[] = value`), which both the vtable and
+ * the list fast path take as "append to the tail".
  *
  * @cloned is the already forked right hand side, see the NOTE in _compile_dispatch().
  * We own it, together with @object and @key, and we return it on success. */
@@ -52,7 +54,7 @@ _do_set_subscript(FilterXObject *object, FilterXObject *key, FilterXObject *clon
                                           "Failed to evaluate expression");
       goto error;
     }
-  if (!filterx_object_is_type_or_ref(object, expected_type))
+  if (!expected_type || !filterx_object_is_type_or_ref(object, expected_type))
     typed_set_subscript = filterx_object_set_subscript;
   if (!typed_set_subscript(object, key, &cloned))
     {
@@ -87,6 +89,15 @@ fx_jit_typed_set_subscript_list(FilterXObject *object, FilterXObject *key, Filte
   return _do_set_subscript(object, key, cloned, filterx_list_set_subscript_by_key, &FILTERX_TYPE_NAME(list));
 }
 
+/* No usable static type hint: the vtable does the dispatch, but the object, the key and the
+ * right hand side expressions stay compiled instead of falling back to the interpreter. */
+__attribute__((used))
+FilterXObject *
+fx_jit_do_set_subscript(FilterXObject *object, FilterXObject *key, FilterXObject *cloned)
+{
+  return _do_set_subscript(object, key, cloned, NULL, NULL);
+}
+
 static FilterXIRValue
 _compile_dispatch(FilterXExpr *s, FilterXJIT *jit, gboolean nullv)
 {
@@ -105,12 +116,9 @@ _compile_dispatch(FilterXExpr *s, FilterXJIT *jit, gboolean nullv)
       fn_name = "fx_jit_typed_set_subscript_list";
       break;
     default:
-      return fx_jit_emit_expr_eval(jit, s);
+      fn_name = "fx_jit_do_set_subscript";
+      break;
     }
-
-  /* the keyless append form takes the interpreter path */
-  if (!self->key)
-    return fx_jit_emit_expr_eval(jit, s);
 
   FilterXIRValue result_slot = filterx_jit_ir_add_stack_slot(jit, ffi->ptr_ty, "result");
   LLVMBuildStore(ir, LLVMConstNull(ffi->ptr_ty), result_slot);
@@ -180,21 +188,27 @@ _compile_dispatch(FilterXExpr *s, FilterXJIT *jit, gboolean nullv)
       filterx_jit_ir_set_insert_point_to_sequence_tail(jit, eval_key);
     }
 
-  FilterXIRValue key = filterx_expr_compile_or_eval(self->key, jit);
+  /* the keyless append form has no key expression, it passes a NULL key down */
+  FilterXIRValue key = fx_jit_emit_const_ptr(jit, NULL);
+  if (self->key)
+    {
+      key = filterx_expr_compile_or_eval(self->key, jit);
 
-  FilterXIRSequence key_null = filterx_jit_ir_create_sequence(jit, "set_subscript_key_null", block);
-  FilterXIRSequence do_set = filterx_jit_ir_create_sequence(jit, "set_subscript_do_set", block);
+      FilterXIRSequence key_null = filterx_jit_ir_create_sequence(jit, "set_subscript_key_null", block);
+      FilterXIRSequence do_set = filterx_jit_ir_create_sequence(jit, "set_subscript_do_set", block);
 
-  /* if (!key) { unref(new_value); goto finish; } */
-  LLVMBuildCondBr(ir, LLVMBuildIsNull(ir, key, "key_is_null"), key_null, do_set);
+      /* if (!key) { unref(new_value); goto finish; } */
+      LLVMBuildCondBr(ir, LLVMBuildIsNull(ir, key, "key_is_null"), key_null, do_set);
 
-  filterx_jit_ir_add_sequence_to_block(jit, key_null, block);
-  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, key_null);
-  fx_jit_emit_object_unref(jit, new_value);
-  LLVMBuildBr(ir, finish);
+      filterx_jit_ir_add_sequence_to_block(jit, key_null, block);
+      filterx_jit_ir_set_insert_point_to_sequence_tail(jit, key_null);
+      fx_jit_emit_object_unref(jit, new_value);
+      LLVMBuildBr(ir, finish);
 
-  filterx_jit_ir_add_sequence_to_block(jit, do_set, block);
-  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, do_set);
+      filterx_jit_ir_add_sequence_to_block(jit, do_set, block);
+      filterx_jit_ir_set_insert_point_to_sequence_tail(jit, do_set);
+    }
+
   FilterXIRValue cloned = fx_jit_emit_object_cow_fork2(jit, new_value);
   FilterXIRValue object = filterx_expr_compile_or_eval_typed(self->object, jit);
 
