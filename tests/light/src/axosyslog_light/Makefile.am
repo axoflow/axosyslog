@@ -63,6 +63,7 @@ EXTRA_DIST += \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/destinations/bigquery_destination.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/destinations/destination_driver.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/destinations/example_destination.py \
+	tests/light/src/axosyslog_light/syslog_ng_config/statements/destinations/opentelemetry_destination.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/destinations/file_destination.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/destinations/__init__.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/destinations/network_destination.py \
