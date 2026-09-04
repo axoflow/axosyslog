@@ -793,6 +793,22 @@ non_existent_var[set_pri(50)];
     assert file_false.read_log() == "30"
 
 
+def test_setattr_skips_the_object_on_a_failing_rhs(config, syslog_ng):
+    # the guarded operand is the rhs, so the side effect sits in the object expression
+    (file_true, file_false) = create_config(
+        config, """
+set_pri(30);
+set_pri(50).attr = non_existent_var;
+""",
+        template='"$PRI\n"',
+    )
+    syslog_ng.start(config)
+
+    assert "processed" not in file_true.get_stats()
+    assert file_false.get_stats()["processed"] == 1
+    assert file_false.read_log() == "30"
+
+
 def test_literal_generator_assignment(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, r"""

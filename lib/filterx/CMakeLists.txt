@@ -16,6 +16,8 @@ set(FILTERX_HEADERS
     filterx/expr-get-subscript-private.h
     filterx/expr-get-subscript-devirt.h
     filterx/expr-getattr.h
+    filterx/expr-getattr-private.h
+    filterx/expr-getattr-devirt.h
     filterx/expr-isset.h
     filterx/expr-literal-container.h
     filterx/expr-literal.h
@@ -31,6 +33,8 @@ set(FILTERX_HEADERS
     filterx/expr-set-subscript-private.h
     filterx/expr-set-subscript-devirt.h
     filterx/expr-setattr.h
+    filterx/expr-setattr-private.h
+    filterx/expr-setattr-devirt.h
     filterx/expr-switch.h
     filterx/expr-template.h
     filterx/expr-unset.h
@@ -115,6 +119,7 @@ set(FILTERX_SOURCES
     filterx/expr-get-subscript.c
     filterx/expr-get-subscript-devirt.c
     filterx/expr-getattr.c
+    filterx/expr-getattr-devirt.c
     filterx/expr-isset.c
     filterx/expr-literal-container.c
     filterx/expr-literal.c
@@ -129,6 +134,7 @@ set(FILTERX_SOURCES
     filterx/expr-set-subscript.c
     filterx/expr-set-subscript-devirt.c
     filterx/expr-setattr.c
+    filterx/expr-setattr-devirt.c
     filterx/expr-switch.c
     filterx/expr-template.c
     filterx/expr-unset.c
@@ -209,6 +215,7 @@ set(FILTERX_BITCODE_SOURCES
     expr-get-subscript.c
     expr-get-subscript-devirt.c
     expr-getattr.c
+    expr-getattr-devirt.c
     expr-isset.c
     expr-literal-container.c
     expr-literal.c
@@ -223,6 +230,7 @@ set(FILTERX_BITCODE_SOURCES
     expr-set-subscript.c
     expr-set-subscript-devirt.c
     expr-setattr.c
+    expr-setattr-devirt.c
     expr-string-operators.c
     expr-switch.c
     expr-template.c
