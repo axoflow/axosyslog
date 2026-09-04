@@ -127,6 +127,120 @@ fx_jit_emit_expr_make_typed_object(FilterXJIT *jit, FilterXExpr *expr, FilterXIR
   return result;
 }
 
+typedef enum
+{
+  BAIL_RESULT_NULL,     /* the expression failed */
+  BAIL_RESULT_VALUE,    /* the guarded value is the result */
+  BAIL_RESULT_SUPPRESS, /* dump the suppressed errors, the result is a new null object */
+} FilterXIRBailResult;
+
+static inline FilterXIRSequence
+_create_bail_sequence(FilterXJIT *jit, FilterXIRShortCircuit *self, const gchar *suffix)
+{
+  gchar seq_name[64];
+
+  g_snprintf(seq_name, sizeof(seq_name), "%s_%s%u", self->name, suffix, self->num_bails);
+  return filterx_jit_ir_create_sequence(jit, seq_name, self->block);
+}
+
+static void
+_emit_bail(FilterXJIT *jit, FilterXIRShortCircuit *self, FilterXIRValue condition, FilterXIRValue value,
+           FilterXIRBailResult bail_result, FilterXIRValue release)
+{
+  FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
+  FilterXIRBuilder ir = filterx_jit_get_ir_builder(jit);
+
+  FilterXIRSequence bail = _create_bail_sequence(jit, self, "bail");
+  FilterXIRSequence cont = _create_bail_sequence(jit, self, "cont");
+  self->num_bails++;
+
+  LLVMBuildCondBr(ir, condition, bail, cont);
+
+  filterx_jit_ir_add_sequence_to_block(jit, bail, self->block);
+  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, bail);
+  if (release)
+    fx_jit_emit_object_unref(jit, release);
+  switch (bail_result)
+    {
+    case BAIL_RESULT_NULL:
+      /* the slot already holds NULL */
+      break;
+    case BAIL_RESULT_VALUE:
+      LLVMBuildStore(ir, value, self->result_slot);
+      break;
+    case BAIL_RESULT_SUPPRESS:
+      LLVMBuildStore(ir, fx_jit_emit_extern_call(jit, "fx_jit_nullv_suppress_error", ffi->ptr_ty, NULL, NULL, 0),
+                     self->result_slot);
+      break;
+    default:
+      g_assert_not_reached();
+    }
+  LLVMBuildBr(ir, self->finish);
+
+  filterx_jit_ir_add_sequence_to_block(jit, cont, self->block);
+  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, cont);
+}
+
+void
+fx_jit_emit_short_circuit_begin(FilterXJIT *jit, FilterXIRShortCircuit *self, const gchar *name)
+{
+  FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
+  FilterXIRBuilder ir = filterx_jit_get_ir_builder(jit);
+
+  self->name = name;
+  self->num_bails = 0;
+  self->block = filterx_jit_ir_get_current_block(jit);
+  self->result_slot = filterx_jit_ir_add_stack_slot(jit, ffi->ptr_ty, "result");
+  LLVMBuildStore(ir, LLVMConstNull(ffi->ptr_ty), self->result_slot);
+  self->finish = _create_bail_sequence(jit, self, "finish");
+}
+
+FilterXIRValue
+fx_jit_emit_short_circuit_end(FilterXJIT *jit, FilterXIRShortCircuit *self, FilterXIRValue result)
+{
+  FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
+  FilterXIRBuilder ir = filterx_jit_get_ir_builder(jit);
+
+  LLVMBuildStore(ir, result, self->result_slot);
+  LLVMBuildBr(ir, self->finish);
+
+  filterx_jit_ir_add_sequence_to_block(jit, self->finish, self->block);
+  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, self->finish);
+  return LLVMBuildLoad2(ir, ffi->ptr_ty, self->result_slot, "result");
+}
+
+void
+fx_jit_emit_bail_if_null(FilterXJIT *jit, FilterXIRShortCircuit *self, FilterXIRValue value, FilterXIRValue release)
+{
+  FilterXIRBuilder ir = filterx_jit_get_ir_builder(jit);
+
+  _emit_bail(jit, self, LLVMBuildIsNull(ir, value, "is_null"), value, BAIL_RESULT_NULL, release);
+}
+
+void
+fx_jit_emit_bail_if_rhs_suppressed(FilterXJIT *jit, FilterXIRShortCircuit *self, FilterXIRValue value)
+{
+  FilterXIRBuilder ir = filterx_jit_get_ir_builder(jit);
+
+  _emit_bail(jit, self, LLVMBuildIsNull(ir, value, "rhs_is_null"), value, BAIL_RESULT_SUPPRESS, NULL);
+}
+
+void
+fx_jit_emit_bail_if_rhs_null_object(FilterXJIT *jit, FilterXIRShortCircuit *self, FilterXIRValue value,
+                                    FilterXIRValue release)
+{
+  FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
+  FilterXIRBuilder ir = filterx_jit_get_ir_builder(jit);
+
+  FilterXIRType param_tys[] = { ffi->ptr_ty };
+  FilterXIRValue args[] = { value };
+  FilterXIRValue extracted = fx_jit_emit_extern_call(jit, "fx_jit_object_extract_null",
+                                                     ffi->i32_ty, param_tys, args, 1);
+  FilterXIRValue is_null_object = LLVMBuildICmp(ir, LLVMIntNE, extracted,
+                                                LLVMConstInt(ffi->i32_ty, 0, FALSE), "rhs_is_null_object");
+  _emit_bail(jit, self, is_null_object, value, BAIL_RESULT_VALUE, release);
+}
+
 FilterXIRValue
 fx_jit_emit_expr_propagate_to_error_if_null(FilterXJIT *jit, FilterXExpr *expr, FilterXIRValue result)
 {

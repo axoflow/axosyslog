@@ -78,6 +78,45 @@ FilterXIRValue fx_jit_emit_boolean_new(FilterXJIT *jit, gboolean value);
 
 FilterXIRValue fx_jit_emit_const_ptr(FilterXJIT *jit, gconstpointer p);
 
+/*
+ * Short-circuit region. The interpreter stops evaluating the operands of an expression as
+ * soon as one of them fails, and the emitted code has to do the same, or the skipped
+ * operands run their side effects. Everything emitted between the begin and the end call
+ * runs only while no guarded value bails out.
+ *
+ *   FilterXIRShortCircuit sc;
+ *   fx_jit_emit_short_circuit_begin(jit, &sc, "setattr");
+ *   FilterXIRValue rhs = filterx_expr_compile_or_eval(self->new_value, jit);
+ *   fx_jit_emit_bail_if_null(jit, &sc, rhs, NULL);
+ *   FilterXIRValue lhs = filterx_expr_compile_or_eval_typed(self->object, jit);
+ *   FilterXIRValue result = fx_jit_emit_extern_call(...);
+ *   return fx_jit_emit_short_circuit_end(jit, &sc, result);
+ */
+typedef struct _FilterXIRShortCircuit
+{
+  const gchar *name;
+  guint num_bails;
+  FilterXIRValue block;
+  FilterXIRValue result_slot;
+  FilterXIRSequence finish;
+} FilterXIRShortCircuit;
+
+void fx_jit_emit_short_circuit_begin(FilterXJIT *jit, FilterXIRShortCircuit *self, const gchar *name);
+FilterXIRValue fx_jit_emit_short_circuit_end(FilterXJIT *jit, FilterXIRShortCircuit *self, FilterXIRValue result);
+
+/* The expression fails: @value is NULL because its expression failed and already pushed its
+ * own error. @release is an object the skipped code would have consumed, or NULL. */
+void fx_jit_emit_bail_if_null(FilterXJIT *jit, FilterXIRShortCircuit *self, FilterXIRValue value,
+                              FilterXIRValue release);
+
+/* The `=??` forms: a failed right hand side is suppressed and becomes a null object. */
+void fx_jit_emit_bail_if_rhs_suppressed(FilterXJIT *jit, FilterXIRShortCircuit *self, FilterXIRValue value);
+
+/* The `=??` forms: a right hand side that is a null object is the result, and nothing is
+ * written. @release is an object the skipped code would have consumed, or NULL. */
+void fx_jit_emit_bail_if_rhs_null_object(FilterXJIT *jit, FilterXIRShortCircuit *self, FilterXIRValue value,
+                                         FilterXIRValue release);
+
 void fx_jit_emit_eval_push_error(FilterXJIT *jit, const gchar *msg, FilterXIRValue obj);
 void fx_jit_emit_eval_push_falsy_error(FilterXJIT *jit, const gchar *msg, FilterXIRValue obj);
 void fx_jit_emit_eval_push_error_static_info(FilterXJIT *jit, const gchar *msg, const gchar *info);

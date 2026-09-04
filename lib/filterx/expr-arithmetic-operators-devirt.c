@@ -136,27 +136,13 @@ exit:
 /* Mirrors _eval_op(): only the lhs is evaluated typed, which is what lets a fast path rely
  * on its static type, and the rhs is not evaluated when the lhs fails. */
 static void
-_compile_operands(FilterXArithmeticOperator *self, FilterXJIT *jit, FilterXIRValue block,
-                  FilterXIRSequence finish, FilterXIRValue *lhs, FilterXIRValue *rhs)
+_compile_operands(FilterXArithmeticOperator *self, FilterXJIT *jit, FilterXIRShortCircuit *short_circuit,
+                  FilterXIRValue *lhs, FilterXIRValue *rhs)
 {
-  FilterXIRBuilder ir = filterx_jit_get_ir_builder(jit);
-
   *lhs = self->literal_lhs
          ? fx_jit_emit_object_ref(jit, fx_jit_emit_const_ptr(jit, self->literal_lhs))
          : filterx_expr_compile_or_eval_typed(self->super.lhs, jit);
-
-  FilterXIRSequence lhs_null = filterx_jit_ir_create_sequence(jit, "plus_lhs_null", block);
-  FilterXIRSequence eval_rhs = filterx_jit_ir_create_sequence(jit, "plus_eval_rhs", block);
-
-  /* if (!lhs) goto finish; */
-  LLVMBuildCondBr(ir, LLVMBuildIsNull(ir, *lhs, "lhs_is_null"), lhs_null, eval_rhs);
-
-  filterx_jit_ir_add_sequence_to_block(jit, lhs_null, block);
-  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, lhs_null);
-  LLVMBuildBr(ir, finish);
-
-  filterx_jit_ir_add_sequence_to_block(jit, eval_rhs, block);
-  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, eval_rhs);
+  fx_jit_emit_bail_if_null(jit, short_circuit, *lhs, NULL);
 
   *rhs = self->literal_rhs
          ? fx_jit_emit_object_ref(jit, fx_jit_emit_const_ptr(jit, self->literal_rhs))
@@ -178,35 +164,25 @@ _compile_plus(FilterXExpr *s, FilterXJIT *jit)
   if (kind != FILTERX_STATIC_TYPE_STRING && !_is_numeric_static_type(kind))
     return _compile_binary_arithmetic(s, jit, "fx_jit_arithmetic_plus");
 
-  FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
-  FilterXIRBuilder ir = filterx_jit_get_ir_builder(jit);
-  FilterXIRValue block = filterx_jit_ir_get_current_block(jit);
-
-  FilterXIRValue result_slot = filterx_jit_ir_add_stack_slot(jit, ffi->ptr_ty, "result");
-  LLVMBuildStore(ir, LLVMConstNull(ffi->ptr_ty), result_slot);
-
-  FilterXIRSequence finish = filterx_jit_ir_create_sequence(jit, "plus_finish", block);
+  FilterXIRShortCircuit short_circuit;
+  fx_jit_emit_short_circuit_begin(jit, &short_circuit, "plus");
 
   FilterXIRValue lhs, rhs;
-  _compile_operands(self, jit, block, finish, &lhs, &rhs);
+  _compile_operands(self, jit, &short_circuit, &lhs, &rhs);
 
   if (kind == FILTERX_STATIC_TYPE_STRING)
-    LLVMBuildStore(ir, filterx_string_concat_compile(jit, lhs, rhs, s), result_slot);
-  else
-    {
-      /* _infer_types_plus() claims INTEGER for int + int, DOUBLE as soon as either side is a
-       * double. */
-      const gchar *fn_name = kind == FILTERX_STATIC_TYPE_INTEGER ? "fx_jit_int_plus" : "fx_jit_double_plus";
+    return fx_jit_emit_short_circuit_end(jit, &short_circuit, filterx_string_concat_compile(jit, lhs, rhs, s));
 
-      FilterXIRValue args[] = { lhs, rhs, fx_jit_emit_const_ptr(jit, self) };
-      FilterXIRType param_tys[] = { ffi->ptr_ty, ffi->ptr_ty, ffi->ptr_ty };
-      LLVMBuildStore(ir, fx_jit_emit_extern_call(jit, fn_name, ffi->ptr_ty, param_tys, args, 3), result_slot);
-    }
-  LLVMBuildBr(ir, finish);
+  /* _infer_types_plus() claims INTEGER for int + int, DOUBLE as soon as either side is a
+   * double. */
+  const gchar *fn_name = kind == FILTERX_STATIC_TYPE_INTEGER ? "fx_jit_int_plus" : "fx_jit_double_plus";
+  FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
 
-  filterx_jit_ir_add_sequence_to_block(jit, finish, block);
-  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, finish);
-  return LLVMBuildLoad2(ir, ffi->ptr_ty, result_slot, "result");
+  FilterXIRValue args[] = { lhs, rhs, fx_jit_emit_const_ptr(jit, self) };
+  FilterXIRType param_tys[] = { ffi->ptr_ty, ffi->ptr_ty, ffi->ptr_ty };
+  FilterXIRValue result = fx_jit_emit_extern_call(jit, fn_name, ffi->ptr_ty, param_tys, args, 3);
+
+  return fx_jit_emit_short_circuit_end(jit, &short_circuit, result);
 }
 
 /* @lhs is a FilterXString, the eval_typed result of a STRING-static_type operand.

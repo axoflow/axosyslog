@@ -98,8 +98,6 @@ _get_subscript_compile(FilterXExpr *s, FilterXJIT *jit)
 {
   FilterXGetSubscript *self = (FilterXGetSubscript *) s;
   FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
-  FilterXIRBuilder ir = filterx_jit_get_ir_builder(jit);
-  FilterXIRValue block = filterx_jit_ir_get_current_block(jit);
 
   const gchar *fn_name;
   switch (self->operand->static_type)
@@ -115,35 +113,19 @@ _get_subscript_compile(FilterXExpr *s, FilterXJIT *jit)
       break;
     }
 
-  FilterXIRValue result_slot = filterx_jit_ir_add_stack_slot(jit, ffi->ptr_ty, "result");
-  LLVMBuildStore(ir, LLVMConstNull(ffi->ptr_ty), result_slot);
-
-  FilterXIRSequence operand_null = filterx_jit_ir_create_sequence(jit, "get_subscript_operand_null", block);
-  FilterXIRSequence eval_key = filterx_jit_ir_create_sequence(jit, "get_subscript_eval_key", block);
-  FilterXIRSequence finish = filterx_jit_ir_create_sequence(jit, "get_subscript_finish", block);
+  /* mirrors _eval_get_subscript(): the key is not evaluated when the operand fails */
+  FilterXIRShortCircuit short_circuit;
+  fx_jit_emit_short_circuit_begin(jit, &short_circuit, "get_subscript");
 
   FilterXIRValue variable = filterx_expr_compile_or_eval_typed(self->operand, jit);
+  fx_jit_emit_bail_if_null(jit, &short_circuit, variable, NULL);
 
-  /* mirrors _eval_get_subscript(): if (!variable) goto finish; the key is not evaluated */
-  FilterXIRValue variable_is_null = LLVMBuildIsNull(ir, variable, "variable_is_null");
-  LLVMBuildCondBr(ir, variable_is_null, operand_null, eval_key);
-
-  filterx_jit_ir_add_sequence_to_block(jit, operand_null, block);
-  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, operand_null);
-  LLVMBuildBr(ir, finish);
-
-  /* eval_key: the operand is non-NULL, the called helper consumes both operands */
-  filterx_jit_ir_add_sequence_to_block(jit, eval_key, block);
-  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, eval_key);
   FilterXIRValue key = filterx_expr_compile_or_eval_typed(self->key, jit);
   FilterXIRValue args[] = { variable, key };
   FilterXIRType param_tys[] = { ffi->ptr_ty, ffi->ptr_ty };
-  LLVMBuildStore(ir, fx_jit_emit_extern_call(jit, fn_name, ffi->ptr_ty, param_tys, args, 2), result_slot);
-  LLVMBuildBr(ir, finish);
+  FilterXIRValue result = fx_jit_emit_extern_call(jit, fn_name, ffi->ptr_ty, param_tys, args, 2);
 
-  filterx_jit_ir_add_sequence_to_block(jit, finish, block);
-  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, finish);
-  return LLVMBuildLoad2(ir, ffi->ptr_ty, result_slot, "result");
+  return fx_jit_emit_short_circuit_end(jit, &short_circuit, result);
 }
 
 #endif

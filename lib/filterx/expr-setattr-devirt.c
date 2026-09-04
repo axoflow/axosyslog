@@ -100,15 +100,9 @@ static inline FilterXIRValue
 _emit_setattr_call(FilterXSetAttr *self, FilterXJIT *jit, const gchar *fn_name, gboolean nullv)
 {
   FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
-  FilterXIRBuilder ir = filterx_jit_get_ir_builder(jit);
-  FilterXIRValue block = filterx_jit_ir_get_current_block(jit);
 
-  FilterXIRValue result_slot = filterx_jit_ir_add_stack_slot(jit, ffi->ptr_ty, "result");
-  LLVMBuildStore(ir, LLVMConstNull(ffi->ptr_ty), result_slot);
-
-  FilterXIRSequence rhs_null = filterx_jit_ir_create_sequence(jit, "setattr_rhs_null", block);
-  FilterXIRSequence eval_object = filterx_jit_ir_create_sequence(jit, "setattr_eval_object", block);
-  FilterXIRSequence finish = filterx_jit_ir_create_sequence(jit, "setattr_finish", block);
+  FilterXIRShortCircuit short_circuit;
+  fx_jit_emit_short_circuit_begin(jit, &short_circuit, "setattr");
 
   /* NOTE: we need to fork the rhs first, so that the lhs will notice it is
    * shared and can clone accordingly.  This is needed to make sure
@@ -117,32 +111,22 @@ _emit_setattr_call(FilterXSetAttr *self, FilterXJIT *jit, const gchar *fn_name, 
 
   FilterXIRValue rhs = filterx_expr_compile_or_eval(self->new_value, jit);
 
-  /* mirrors _setattr_eval()/_nullv_setattr_eval(): if (!rhs) goto finish; the lhs is not
-   * evaluated. NOTE: a null object right hand side is not an early exit here, the `=??` form
+  /* mirrors _setattr_eval()/_nullv_setattr_eval(): the lhs is not evaluated when the rhs
+   * fails. NOTE: a null object right hand side is not an early exit here, the `=??` form
    * evaluates the lhs and drops it in _do_nullv_setattr(). set-subscript differs. */
-  LLVMBuildCondBr(ir, LLVMBuildIsNull(ir, rhs, "rhs_is_null"), rhs_null, eval_object);
-
-  filterx_jit_ir_add_sequence_to_block(jit, rhs_null, block);
-  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, rhs_null);
   if (nullv)
-    LLVMBuildStore(ir, fx_jit_emit_extern_call(jit, "fx_jit_nullv_suppress_error", ffi->ptr_ty, NULL, NULL, 0),
-                   result_slot);
-  LLVMBuildBr(ir, finish);
+    fx_jit_emit_bail_if_rhs_suppressed(jit, &short_circuit, rhs);
+  else
+    fx_jit_emit_bail_if_null(jit, &short_circuit, rhs, NULL);
 
-  /* eval_object: the rhs is non-NULL, the called helper consumes both operands */
-  filterx_jit_ir_add_sequence_to_block(jit, eval_object, block);
-  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, eval_object);
   FilterXIRValue cloned = fx_jit_emit_object_cow_fork2(jit, rhs);
   FilterXIRValue lhs = filterx_expr_compile_or_eval_typed(self->object, jit);
 
   FilterXIRValue args[] = { fx_jit_emit_const_ptr(jit, self), lhs, cloned };
   FilterXIRType param_tys[] = { ffi->ptr_ty, ffi->ptr_ty, ffi->ptr_ty };
-  LLVMBuildStore(ir, fx_jit_emit_extern_call(jit, fn_name, ffi->ptr_ty, param_tys, args, 3), result_slot);
-  LLVMBuildBr(ir, finish);
+  FilterXIRValue result = fx_jit_emit_extern_call(jit, fn_name, ffi->ptr_ty, param_tys, args, 3);
 
-  filterx_jit_ir_add_sequence_to_block(jit, finish, block);
-  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, finish);
-  return LLVMBuildLoad2(ir, ffi->ptr_ty, result_slot, "result");
+  return fx_jit_emit_short_circuit_end(jit, &short_circuit, result);
 }
 
 FilterXIRValue
