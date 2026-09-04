@@ -25,6 +25,7 @@
 #include "filterx/filterx-eval.h"
 #include "filterx/object-primitive.h"
 #include "filterx/object-extractor.h"
+#include "filterx/object-null.h"
 
 #if SYSLOG_NG_ENABLE_JIT
 
@@ -97,6 +98,16 @@ gboolean
 fx_jit_object_extract_null(FilterXObject *self)
 {
   return filterx_object_extract_null(self);
+}
+
+/* The `=??` forms suppress a failed right hand side and evaluate to a null object. */
+__attribute__((used))
+FilterXObject *
+fx_jit_nullv_suppress_error(void)
+{
+  filterx_eval_dump_errors("FilterX: null coalesce assignment suppressing error");
+
+  return filterx_null_new();
 }
 
 __attribute__((used))

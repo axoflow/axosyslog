@@ -94,13 +94,6 @@ _nullv_assign_eval(FilterXExpr *s)
 #include "filterx/jit/jit.h"
 #include "filterx/jit/ffi.h"
 
-__attribute__((used))
-FilterXObject *
-fx_jit_nullv_assign_suppress_error(void)
-{
-  return _suppress_error();
-}
-
 static FilterXIRValue
 _compile_assign_to_lhs(FilterXAssign *self, FilterXJIT *jit)
 {
@@ -166,7 +159,7 @@ _compile_nullv_assign_to_lhs(FilterXAssign *self, FilterXJIT *jit)
 
   filterx_jit_ir_add_sequence_to_block(jit, rhs_error, block);
   filterx_jit_ir_set_insert_point_to_sequence_tail(jit, rhs_error);
-  FilterXIRValue suppressed = fx_jit_emit_extern_call(jit, "fx_jit_nullv_assign_suppress_error",
+  FilterXIRValue suppressed = fx_jit_emit_extern_call(jit, "fx_jit_nullv_suppress_error",
                                                       ffi->ptr_ty, NULL, NULL, 0);
   LLVMBuildBr(ir, finish);
 
