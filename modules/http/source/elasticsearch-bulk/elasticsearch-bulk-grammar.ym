@@ -1,0 +1,95 @@
+/*
+ * Copyright (c) 2026 Axoflow
+ * Copyright (c) 2026 Attila Szakacs-Bertok <attila.szakacs@axoflow.com>
+ *
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *
+ * As an additional exemption you are allowed to compile & link against the
+ * OpenSSL libraries as published by the OpenSSL project. See the file
+ * COPYING for details.
+ *
+ */
+
+/* REQUIRE lib/http/source/http-source-grammar.ym */
+
+%code requires {
+
+#include "elasticsearch-bulk-parser.h"
+
+}
+
+%code {
+
+#include "cfg-grammar-internal.h"
+#include "syslog-ng.h"
+#include "cfg-parser.h"
+#include "elasticsearch-bulk-source.h"
+#include "messages.h"
+#include "syslog-names.h"
+#include "plugin.h"
+#include "service-management.h"
+
+}
+
+%define api.prefix {elasticsearch_bulk_}
+%lex-param {CfgLexer *lexer}
+%parse-param {CfgLexer *lexer}
+%parse-param {LogDriver **instance}
+%parse-param {gpointer arg}
+
+/* INCLUDE_DECLS */
+
+%token KW_ELASTICSEARCH_BULK
+%token KW_AUTH_TOKEN
+%token KW_VERSION
+
+%%
+
+start
+  : LL_CONTEXT_SOURCE KW_ELASTICSEARCH_BULK
+    {
+      ESBulkSourceDriver *d = elasticsearch_bulk_sd_new(configuration);
+      http_source_grammar_set_source_driver(&d->super);
+      *instance = &d->super.super.super.super;
+    }
+    '(' elasticsearch_bulk_options ')'
+    {
+      if (yychar != ELASTICSEARCH_BULK_EMPTY)
+        cfg_lexer_unput_token(lexer, &yylval);
+      YYACCEPT;
+    }
+  ;
+
+elasticsearch_bulk_options
+	: elasticsearch_bulk_option elasticsearch_bulk_options
+	|
+	;
+
+elasticsearch_bulk_option
+	: KW_AUTH_TOKEN '(' string ')'
+    {
+      elasticsearch_bulk_sd_set_auth_token(last_driver, $3);
+      free($3);
+    }
+	| KW_VERSION '(' string ')'
+    {
+      elasticsearch_bulk_sd_set_version(last_driver, $3);
+      free($3);
+    }
+	| http_source_option
+  ;
+
+/* INCLUDE_RULES */
+
+%%
