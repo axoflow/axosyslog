@@ -23,6 +23,7 @@
 
 #include "altp-proto-options.h"
 #include "altp-session.h"
+#include "logproto-altp-client.h"
 #include "logproto-altp-server.h"
 #include "ack-tracker/ack_tracker_factory.h"
 
@@ -139,4 +140,52 @@ LogProtoServerFactory *
 altp_proto_server_options_get_factory(AltpProtoServerOptions *self)
 {
   return &self->context->factory;
+}
+
+/****************************************************************************
+ * The Sender side of the transport
+ ****************************************************************************/
+
+/* The factory below is only ever handed out for a LogProtoClientOptionsStorage
+ * the grammar initialized, so the cast is safe. */
+static LogProtoClient *
+_construct_client_proto(LogTransport *transport, const LogProtoClientOptions *options)
+{
+  const AltpProtoClientOptions *self = (const AltpProtoClientOptions *) options;
+
+  return log_proto_altp_client_new(transport, options, &self->altp);
+}
+
+/* One factory serves every transport(altp) destination: unlike a Receiver, a
+ * Sender keeps nothing outside its options and its persistent state.
+ */
+static LogProtoClientFactory altp_proto_client_factory =
+{
+  .construct = _construct_client_proto,
+  .default_inet_port = ALTP_DEFAULT_PORT,
+  /* Our Session ID and frames_sent come from the persistent state of the
+   * driver, so afsocket has to call restart_with_state() -- and, just as
+   * importantly, must not rewind our flow control backlog at initialization
+   * time: those Frames are retained until the next SYNC reconciles them (10.2).
+   */
+  .stateful = TRUE,
+};
+
+AltpProtoClientOptions *
+altp_proto_client_options_defaults(LogProtoClientOptions *s)
+{
+  AltpProtoClientOptions *self = (AltpProtoClientOptions *) s;
+
+  /* nobody calls log_proto_client_options_defaults(), the storage of the
+   * driver simply arrives zeroed */
+  self->altp.ack_timeout = ALTP_DEFAULT_ACK_TIMEOUT;
+  self->altp.max_frame_size = ALTP_SENDER_DEFAULT_MAX_FRAME_SIZE;
+
+  return self;
+}
+
+LogProtoClientFactory *
+altp_proto_client_options_get_factory(AltpProtoClientOptions *self)
+{
+  return &altp_proto_client_factory;
 }

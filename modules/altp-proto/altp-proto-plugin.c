@@ -21,7 +21,9 @@
  *
  */
 
+#include "altp-proto-client-parser.h"
 #include "altp-proto-parser.h"
+#include "logproto/logproto-client.h"
 #include "logproto/logproto-server.h"
 #include "plugin.h"
 #include "plugin-types.h"
@@ -29,6 +31,8 @@
 static Plugin altp_proto_plugins[] =
 {
   LOG_PROTO_SERVER_PLUGIN_WITH_GRAMMAR(altp_proto_parser, "altp"),
+  /* the same name in another context: plugin_find() keys on type and name */
+  LOG_PROTO_CLIENT_PLUGIN_WITH_GRAMMAR(altp_proto_client_parser, "altp"),
 };
 
 gboolean
@@ -43,7 +47,8 @@ const ModuleInfo altp_proto_module_info =
   .canonical_name = "altp_proto",
   .version = SYSLOG_NG_VERSION,
   .description =
-  "The altp_proto module provides the Receiver side of the Advanced Log Transport Protocol (ALTP).",
+  "The altp_proto module provides the Advanced Log Transport Protocol (ALTP), the Receiver side for "
+  "source drivers and the Sender side for destination drivers.",
   .core_revision = SYSLOG_NG_SOURCE_REVISION,
   .plugins = altp_proto_plugins,
   .plugins_len = G_N_ELEMENTS(altp_proto_plugins),

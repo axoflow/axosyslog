@@ -1,0 +1,105 @@
+/*
+ * Copyright (c) 2026 Axoflow
+ * Copyright (c) 2026 Balazs Scheidler <balazs.scheidler@axoflow.com>
+ *
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *
+ * As an additional exemption you are allowed to compile & link against the
+ * OpenSSL libraries as published by the OpenSSL project. See the file
+ * COPYING for details.
+ *
+ */
+
+%code top {
+#include "altp-proto-client-parser.h"
+
+}
+
+
+%code {
+
+#include "altp-proto-options.h"
+#include "cfg-parser.h"
+#include "cfg-grammar-internal.h"
+#include "messages.h"
+
+/* the options of the transport(altp(...)) being parsed, so that the option
+ * rules below can reach them */
+static AltpProtoClientOptions *last_altp_client_options;
+
+}
+
+%define api.prefix {altp_proto_client_}
+
+/* this parameter is needed in order to instruct bison to use a complete
+ * argument list for yylex/yyerror */
+
+%lex-param {CfgLexer *lexer}
+%parse-param {CfgLexer *lexer}
+%parse-param {LogProtoClientFactory **instance}
+%parse-param {gpointer arg}
+
+/* INCLUDE_DECLS */
+
+%token KW_ALTP
+%token KW_ACK_TIMEOUT
+%token KW_MAX_FRAME_SIZE
+
+%%
+
+start
+        : LL_CONTEXT_CLIENT_PROTO altp_client_transport
+          {
+            if (yychar != ALTP_PROTO_CLIENT_EMPTY)
+              cfg_lexer_unput_token(lexer, &yylval);
+            YYACCEPT;
+          }
+        ;
+
+altp_client_transport
+        : KW_ALTP
+          {
+            /* @arg is the last_proto_client_options of the driver, which is
+             * the LogProtoClientOptionsStorage union our options extend */
+            last_altp_client_options = altp_proto_client_options_defaults((LogProtoClientOptions *) arg);
+            *instance = altp_proto_client_options_get_factory(last_altp_client_options);
+          }
+          altp_client_options_block
+        ;
+
+/* transport(altp) with no option block means all defaults */
+altp_client_options_block
+        : '(' altp_client_options ')'
+        |
+        ;
+
+altp_client_options
+        : altp_client_option altp_client_options
+        |
+        ;
+
+altp_client_option
+        : KW_ACK_TIMEOUT '(' positive_integer ')'
+          {
+            last_altp_client_options->altp.ack_timeout = $3;
+          }
+        | KW_MAX_FRAME_SIZE '(' positive_integer ')'
+          {
+            last_altp_client_options->altp.max_frame_size = $3;
+          }
+        ;
+
+/* INCLUDE_RULES */
+
+%%

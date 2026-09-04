@@ -25,12 +25,16 @@
 #define ALTP_PROTO_OPTIONS_H_INCLUDED
 
 #include "altp-session.h"
+#include "logproto/logproto-client.h"
 #include "logproto/logproto-server.h"
 
 /* the default TCP port of an ALTP Receiver (specification 4.1) */
 #define ALTP_DEFAULT_PORT 35514
 
-/* Receiver side defaults of specification 11, Appendix C */
+/* Defaults of specification 11, Appendix C.  The acknowledgement timeout is
+ * the same 900 seconds on both sides, but a different timeout: the Receiver
+ * waits for its own pipeline, the Sender for `250 Received n`.
+ */
 #define ALTP_DEFAULT_ACK_TIMEOUT 900
 #define ALTP_DEFAULT_SESSION_EXPIRATION 2592000
 #define ALTP_DEFAULT_IDLE_TIMEOUT 60
@@ -124,5 +128,47 @@ G_STATIC_ASSERT(sizeof(AltpProtoServerOptions) <= LOG_PROTO_SERVER_OPTIONS_SIZE)
 AltpProtoServerOptions *altp_proto_server_options_defaults(LogProtoServerOptions *s);
 
 LogProtoServerFactory *altp_proto_server_options_get_factory(AltpProtoServerOptions *self);
+
+/* The largest Frame payload this Sender writes (8.2); a message above it is
+ * dropped, see _drop_oversized_message() in logproto-altp-client.c.
+ */
+#define ALTP_SENDER_DEFAULT_MAX_FRAME_SIZE 65536
+
+/* The Frame count a Sender SHOULD bound a Batch by (8.4), and the ceiling of
+ * the bound derived from flush-lines(): the Batch is the unit of
+ * acknowledgement, so one that grows without end never becomes durable.
+ */
+#define ALTP_SENDER_MAX_BATCH_FRAMES 1000
+
+/* The ALTP specific settings of one Sender.  The proto keeps a copy, as the
+ * options belong to the driver, which a configuration reload recreates under a
+ * Connection kept alive across it.
+ */
+typedef struct _AltpSenderOptions
+{
+  /* seconds to wait for `250 Received n` before the Connection is closed and
+   * everything unacknowledged retained (9.5) */
+  gint ack_timeout;
+  /* the largest Frame payload written, in octets (8.2) */
+  gint max_frame_size;
+} AltpSenderOptions;
+
+/* AltpProtoClientOptions extends LogProtoClientOptions in place, exactly as
+ * AltpProtoServerOptions extends the server side.  Unlike that one it owns no
+ * resources: there is no destroy hook on the client options and
+ * log_proto_client_options_defaults() is never called by anyone.
+ */
+typedef struct _AltpProtoClientOptions
+{
+  LogProtoClientOptions super;
+  AltpSenderOptions altp;
+} AltpProtoClientOptions;
+
+G_STATIC_ASSERT(sizeof(AltpProtoClientOptions) <= LOG_PROTO_CLIENT_OPTIONS_SIZE);
+
+/* @s must point to a storage union and not to a bare LogProtoClientOptions. */
+AltpProtoClientOptions *altp_proto_client_options_defaults(LogProtoClientOptions *s);
+
+LogProtoClientFactory *altp_proto_client_options_get_factory(AltpProtoClientOptions *self);
 
 #endif

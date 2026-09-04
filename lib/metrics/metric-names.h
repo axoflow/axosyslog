@@ -33,6 +33,10 @@
 #define METRIC_NAMES(M) \
   M(altp_acknowledgements_total) \
   M(altp_replies_total) \
+  M(altp_sender_acknowledgements_total) \
+  M(altp_sender_frames_dropped_total) \
+  M(altp_sender_frames_rewound_total) \
+  M(altp_sender_replies_total) \
   M(altp_session_takeovers_total) \
   M(altp_sessions) \
   M(altp_sessions_refused_total) \
