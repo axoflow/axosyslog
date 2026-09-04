@@ -730,6 +730,38 @@ $MSG = $list;
 # it is set to 30 first, and a 50 in the output means the guarded operand still ran.
 
 
+def test_nullv_set_subscript_skips_the_key_on_a_null_rhs(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, """
+set_pri(30);
+l = [1, 2];
+l[set_pri(50)] =?? null;
+$MSG = $PRI;
+""",
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "30"
+
+
+def test_nullv_set_subscript_skips_the_key_on_a_failing_rhs(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, """
+set_pri(30);
+l = [1, 2];
+l[set_pri(50)] =?? non_existent_var;
+$MSG = $PRI;
+""",
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "30"
+
+
 def test_set_subscript_skips_the_key_on_a_failing_rhs(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, """

@@ -229,6 +229,7 @@ filterx_nullv_set_subscript_new(FilterXExpr *object, FilterXExpr *key, FilterXEx
   self->eval = _nullv_set_subscript_eval;
 #if SYSLOG_NG_ENABLE_JIT
   self->infer_types = _nullv_set_subscript_infer_types;
+  self->compile = _nullv_set_subscript_compile;
 #endif
   return self;
 }

@@ -26,6 +26,7 @@
 
 #if SYSLOG_NG_ENABLE_JIT
 FilterXIRValue _set_subscript_compile(FilterXExpr *s, FilterXJIT *jit);
+FilterXIRValue _nullv_set_subscript_compile(FilterXExpr *s, FilterXJIT *jit);
 #endif
 
 #endif
