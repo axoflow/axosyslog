@@ -37,4 +37,11 @@ FilterXObject *filterx_dict_new_from_args(FilterXExpr *s, FilterXObject *args[],
 FilterXDictAnchor filterx_dict_get_anchor_for_key(FilterXObject *s, FilterXObject *key);
 void filterx_dict_set_subscript_by_anchor(FilterXObject *s, FilterXDictAnchor anchor, FilterXObject **new_value);
 
+/* Unwraps a FilterXRef and calls the dict's get_subscript directly, without the vtable. */
+FilterXObject *filterx_dict_get_subscript(FilterXObject *s, FilterXObject *key);
+
+/* Calls the dict's set_subscript directly, without the vtable, and keeps the FilterXRef
+ * cow and parent linkage. */
+gboolean filterx_dict_set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject **new_value);
+
 #endif

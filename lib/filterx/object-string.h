@@ -89,6 +89,9 @@ FilterXObject *filterx_string_new_from_json_literal(const gchar *str, gssize str
 FilterXObject *filterx_string_new_frozen(const gchar *str);
 
 FilterXObject *filterx_bytes_new(const gchar *str, gssize str_len);
+
+/* @lhs must be a FilterXString, @rhs any string-extractable value. */
+FilterXObject *filterx_string_concat(FilterXObject *lhs, FilterXObject *rhs);
 FilterXObject *filterx_bytes_new_take(gchar *str, gssize str_len);
 FilterXObject *filterx_protobuf_new(const gchar *str, gssize str_len);
 

@@ -5,6 +5,8 @@ filterxincludedir			= ${pkgincludedir}/filterx
 filterxinclude_HEADERS = 			\
 	lib/filterx/jsmn.h \
 	lib/filterx/expr-arithmetic-operators.h \
+	lib/filterx/expr-arithmetic-operators-private.h \
+	lib/filterx/expr-arithmetic-operators-devirt.h \
 	lib/filterx/expr-assign.h \
 	lib/filterx/expr-boolalg.h \
 	lib/filterx/expr-comparison.h \
@@ -15,7 +17,11 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/expr-break.h \
 	lib/filterx/expr-function.h \
 	lib/filterx/expr-get-subscript.h \
+	lib/filterx/expr-get-subscript-private.h \
+	lib/filterx/expr-get-subscript-devirt.h \
 	lib/filterx/expr-getattr.h \
+	lib/filterx/expr-getattr-private.h \
+	lib/filterx/expr-getattr-devirt.h \
 	lib/filterx/expr-isset.h \
 	lib/filterx/expr-literal-container.h \
 	lib/filterx/expr-literal.h \
@@ -27,7 +33,11 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/expr-regexp-subst.h \
 	lib/filterx/expr-regexp.h \
 	lib/filterx/expr-set-subscript.h \
+	lib/filterx/expr-set-subscript-private.h \
+	lib/filterx/expr-set-subscript-devirt.h \
 	lib/filterx/expr-setattr.h \
+	lib/filterx/expr-setattr-private.h \
+	lib/filterx/expr-setattr-devirt.h \
 	lib/filterx/expr-switch.h \
 	lib/filterx/expr-template.h \
 	lib/filterx/expr-unset.h \
@@ -100,6 +110,7 @@ noinst_LTLIBRARIES += lib/filterx/libfilterx.la
 
 filterx_expr_sources = \
 	lib/filterx/expr-arithmetic-operators.c \
+	lib/filterx/expr-arithmetic-operators-devirt.c \
 	lib/filterx/expr-assign.c \
 	lib/filterx/expr-boolalg.c \
 	lib/filterx/expr-break.c \
@@ -110,7 +121,9 @@ filterx_expr_sources = \
 	lib/filterx/expr-drop.c \
 	lib/filterx/expr-function.c \
 	lib/filterx/expr-get-subscript.c \
+	lib/filterx/expr-get-subscript-devirt.c \
 	lib/filterx/expr-getattr.c \
+	lib/filterx/expr-getattr-devirt.c \
 	lib/filterx/expr-isset.c \
 	lib/filterx/expr-literal-container.c \
 	lib/filterx/expr-literal.c \
@@ -123,7 +136,9 @@ filterx_expr_sources = \
 	lib/filterx/expr-regexp-subst.c \
 	lib/filterx/expr-regexp.c \
 	lib/filterx/expr-set-subscript.c \
+	lib/filterx/expr-set-subscript-devirt.c \
 	lib/filterx/expr-setattr.c \
+	lib/filterx/expr-setattr-devirt.c \
 	lib/filterx/expr-string-operators.c \
 	lib/filterx/expr-switch.c \
 	lib/filterx/expr-template.c \

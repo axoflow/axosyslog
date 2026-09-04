@@ -191,4 +191,9 @@ filterx_ref_ground(FilterXObject *s)
 
 FilterXObject *filterx_ref_dup(FilterXObject *s);
 
+/* @s is a child just read out of the container of the FilterXRef @c. The ref's
+ * getattr/get_subscript vtable calls this; a read fast path that bypasses the ref must call
+ * it too, or a later mutation of @s does not trigger copy-on-write. */
+FilterXObject *filterx_ref_replace_shared_xref_with_a_shadow(FilterXObject *s, FilterXObject *c);
+
 #endif
