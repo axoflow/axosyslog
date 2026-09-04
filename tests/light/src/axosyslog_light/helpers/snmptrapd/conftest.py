@@ -27,16 +27,18 @@ from pathlib import Path
 import pytest
 from axosyslog_light.common.blocking import wait_until_true
 from axosyslog_light.common.file import File
-from axosyslog_light.executors.process_executor import ProcessExecutor
-from psutil import TimeoutExpired
+from axosyslog_light.fixtures import third_party_runner_uses_docker
+from axosyslog_light.helpers.snmptrapd.snmptrapd_docker_executor import SnmpTrapdDockerExecutor
+from axosyslog_light.helpers.snmptrapd.snmptrapd_local_executor import SnmpTrapdLocalExecutor
 
 
 class SNMPtrapd(object):
     TRAP_LOG_PREFIX = 'LIGHT_TEST_SNMP_TRAP_RECEIVED:'
 
-    def __init__(self, port):
-        self.snmptrapd_proc = None
+    def __init__(self, executor, port):
+        self.executor = executor
         self.port = port
+        self.started = False
 
         self.snmptrapd_log = Path("snmptrapd_log")
         self.snmptrapd_stdout_path = Path("snmptrapd_stdout")
@@ -49,43 +51,37 @@ class SNMPtrapd(object):
         return "NET-SNMP version" in self.snmptrapd_log.read_text()
 
     def start(self):
-        if self.snmptrapd_proc is not None:
+        if self.started:
             return
 
-        self.snmptrapd_proc = ProcessExecutor().start(
-            [
-                "snmptrapd", "-f",
-                "--disableAuthorization=yes",
-                "-C",
-                "-m ALL",
-                "-A",
-                "-Ddump",
-                "-On",
-                "--doNotLogTraps=no",
-                "--authCommunity=log public",
-                self.port,
-                "-d",
-                "-Lf", os.path.relpath(str(self.snmptrapd_log)),
-                "-F", "{}%v\n".format(self.TRAP_LOG_PREFIX),
-            ],
-            self.snmptrapd_stdout_path,
-            self.snmptrapd_stderr_path,
-        )
+        snmptrapd_options = [
+            "-f",
+            "--disableAuthorization=yes",
+            "-C",
+            "-m ALL",
+            "-A",
+            "-Ddump",
+            "-On",
+            "--doNotLogTraps=no",
+            "--authCommunity=log public",
+            self.port,
+            "-d",
+            "-Lf", os.path.relpath(str(self.snmptrapd_log)),
+            "-F", "{}%v\n".format(self.TRAP_LOG_PREFIX),
+        ]
+        proc = self.executor.start(snmptrapd_options, self.snmptrapd_stdout_path, self.snmptrapd_stderr_path)
+        self.started = True
+
         wait_until_true(self.wait_for_snmptrapd_log_creation)
         wait_until_true(self.wait_for_snmptrapd_startup)
-        return self.snmptrapd_proc.is_running()
+        return proc.is_running()
 
     def stop(self):
-        if self.snmptrapd_proc is None:
+        if not self.started:
             return
 
-        self.snmptrapd_proc.terminate()
-        try:
-            self.snmptrapd_proc.wait(4)
-        except TimeoutExpired:
-            self.snmptrapd_proc.kill()
-
-        self.snmptrapd_proc = None
+        self.executor.stop()
+        self.started = False
 
     def get_port(self):
         return self.port
@@ -120,8 +116,14 @@ class SNMPtrapd(object):
 
 
 @pytest.fixture
-def snmptrapd(port_allocator):
-    server = SNMPtrapd(port_allocator())
+def snmptrapd(request, port_allocator, container_name):
+    if third_party_runner_uses_docker(request, "snmptrapd"):
+        executor = SnmpTrapdDockerExecutor(
+            f"snmptrapd_{container_name}",
+        )
+    else:
+        executor = SnmpTrapdLocalExecutor()
+    server = SNMPtrapd(executor, port_allocator())
     server.start()
     yield server
     server.stop()
