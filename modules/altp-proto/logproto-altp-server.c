@@ -37,9 +37,7 @@
 #include <errno.h>
 #include <string.h>
 
-/* The canonical reply texts of specification 13.  Every 5xx reply is written
- * and then the Connection closed.
- */
+/* the canonical reply texts of specification 13 */
 #define ALTP_REPLY_BANNER               "220 ALTP 1.0\n"
 #define ALTP_REPLY_NO_CAPABILITIES      "250 \n"
 #define ALTP_REPLY_CAPABILITY_STARTTLS  "250 STARTTLS\n"
@@ -47,6 +45,7 @@
 #define ALTP_REPLY_OK                   "250 OK\n"
 #define ALTP_REPLY_READY                "250 Ready\n"
 #define ALTP_REPLY_RECEIVED_FORMAT      "250 Received %" G_GUINT32_FORMAT "\n"
+#define ALTP_REPLY_TRY_AGAIN_LATER      "421 Try again later\n"
 #define ALTP_REPLY_SYNTAX_ERROR         "501 Syntax error\n"
 #define ALTP_REPLY_INVALID_FRAME_HEADER "501 Invalid frame header\n"
 #define ALTP_REPLY_UNKNOWN_COMMAND      "502 Unknown command\n"
@@ -58,12 +57,14 @@
 #define ALTP_REPLY_SESSION_ALREADY_BOUND "511 Another session is already bound to this connection\n"
 #define ALTP_REPLY_FRAME_TOO_LARGE      "552 Frame too large\n"
 
-/* Every 5xx code this Receiver sends, in the order of specification 13: it is
- * what the `code` label of altp_replies_total takes its values from.  A reply
- * counter is registered when its code is first sent, so a Receiver that never
- * refuses anything publishes no 5xx series at all.
+/* The `code` label values of altp_replies_total, in the order of specification
+ * 13.  A counter is registered when its code is first sent, so a Receiver that
+ * refuses nothing publishes no series at all.
  */
-static const gchar *ALTP_REPLY_CODES[] = { "501", "502", "503", "504", "505", "506", "510", "511", "552" };
+static const gchar *ALTP_REPLY_CODES[] =
+{
+  "421", "501", "502", "503", "504", "505", "506", "510", "511", "552"
+};
 
 /* the two values of the `result` label of altp_acknowledgements_total */
 enum
@@ -422,7 +423,8 @@ _reply_and_continue(LogProtoAltpServer *self, const gchar *reply)
   _queue_reply(self, reply, ALTP_COMMAND);
 }
 
-/* every 5xx reply is followed by the Receiver closing the Connection (4.3) */
+/* the Receiver closes the Connection after every 5xx reply, and after the 421
+ * with which it abandons a Batch (4.3, 9.3) */
 static void
 _reply_and_close(LogProtoAltpServer *self, const gchar *reply)
 {
@@ -1141,6 +1143,46 @@ _on_frame_payload(LogProtoAltpServer *self, AltpFetchContext *ctx, LogProtoStatu
   return ALTP_CTRL_RETURN_WITH_STATUS;
 }
 
+/* The abandon row of the acknowledgement timeout in 12.1, which is what
+ * ack-timeout-action(close) -- the default -- does on expiry.
+ *
+ * A partial acknowledgement would be the alternative, but this Receiver cannot
+ * discard the Frames such an acknowledgement disowns: nothing revokes a
+ * message already queued for a destination, so the Sender would resend Frames
+ * we still hold, one duplicate per expiry for as long as the destination is
+ * down.  Abandoning the Batch keeps exactly one copy of every Frame instead:
+ * every counter stands, so the Sender's next SYNC of the Session is deferred
+ * until the Frames we already read are durable and it resends nothing
+ * (ADR-0009).
+ *
+ * The acknowledgement timer is left alone: it belongs to the main thread while
+ * this may run on an I/O worker, and the poll_prepare() of the state we leave
+ * to -- failing that, free() -- unregisters it.
+ */
+static AltpStepControl
+_abandon_batch(LogProtoAltpServer *self)
+{
+  guint32 frames_read, frames_acked;
+
+  altp_session_record_get_counters(self->record, &frames_read, &frames_acked);
+  g_assert(frames_acked <= frames_read);
+  /* only the wait ends, the counters and the ownership stay ours */
+  altp_session_record_abandon(self->record, &self->owner);
+
+  msg_notice("Abandoning an ALTP Batch, the acknowledgement timeout expired before it became durable; "
+             "nothing is acknowledged and the Sender resends nothing, its next SYNC of this Session is "
+             "deferred until the Frames are durable",
+             evt_tag_str("session_id", self->session_id),
+             evt_tag_str("client", _get_peer_address(self)),
+             evt_tag_int("frames_read", frames_read),
+             evt_tag_int("frames_acked", frames_acked),
+             evt_tag_int("ack_timeout", self->options.ack_timeout),
+             evt_tag_int(EVT_TAG_FD, self->super.transport_stack.fd));
+
+  _reply_and_close(self, ALTP_REPLY_TRY_AGAIN_LATER);
+  return ALTP_CTRL_NEXT_STATE;
+}
+
 static AltpStepControl
 _on_awaiting_durability(LogProtoAltpServer *self, LogProtoStatus *status)
 {
@@ -1151,9 +1193,13 @@ _on_awaiting_durability(LogProtoAltpServer *self, LogProtoStatus *status)
 
   if (g_atomic_int_get(&self->ack_timed_out))
     {
+      g_atomic_int_set(&self->ack_timed_out, 0);
+
+      if (self->options.ack_timeout_action == ALTP_ACK_TIMEOUT_ACTION_CLOSE)
+        return _abandon_batch(self);
+
       /* acknowledge the prefix durable at this moment and disown the Frames
        * beyond it by setting frames_read := frames_acked (9.3, 12.1) */
-      g_atomic_int_set(&self->ack_timed_out, 0);
       frames_acked = altp_session_record_acknowledge(self->record, &self->owner, TRUE);
       msg_notice("Acknowledging an ALTP Batch partially, the acknowledgement timeout expired",
                  evt_tag_str("session_id", self->session_id),

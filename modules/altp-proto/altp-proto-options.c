@@ -121,6 +121,7 @@ altp_proto_server_options_defaults(LogProtoServerOptions *s)
 
   /* log_proto_server_options_defaults() only clears the embedded super */
   self->altp.ack_timeout = ALTP_DEFAULT_ACK_TIMEOUT;
+  self->altp.ack_timeout_action = ALTP_ACK_TIMEOUT_ACTION_CLOSE;
   self->altp.session_expiration = ALTP_DEFAULT_SESSION_EXPIRATION;
   self->altp.max_sessions = ALTP_DEFAULT_MAX_SESSIONS;
   self->altp.tls_policy = ALTP_TLS_POLICY_AUTO;

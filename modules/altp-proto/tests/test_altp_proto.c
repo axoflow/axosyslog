@@ -439,6 +439,8 @@ Test(altp, an_empty_option_block_yields_the_specification_defaults)
   _parse_altp_transport("altp()");
 
   cr_assert_eq(_get_altp_options()->altp.ack_timeout, 900);
+  cr_assert_eq(_get_altp_options()->altp.ack_timeout_action, ALTP_ACK_TIMEOUT_ACTION_CLOSE,
+               "a Receiver that cannot discard disowned Frames abandons the Batch by default (ADR-0009)");
   cr_assert_eq(_get_altp_options()->altp.session_expiration, 2592000);
   cr_assert_eq(_get_altp_options()->altp.max_sessions, 10000);
   cr_assert_eq(_get_altp_options()->altp.tls_policy, ALTP_TLS_POLICY_AUTO);
@@ -446,13 +448,21 @@ Test(altp, an_empty_option_block_yields_the_specification_defaults)
 
 Test(altp, the_full_option_block_is_parsed)
 {
-  _parse_altp_transport("altp(ack-timeout(120) session-expiration(3600) max-sessions(500) "
-                        "tls-policy(required))");
+  _parse_altp_transport("altp(ack-timeout(120) ack-timeout-action(partial-ack) session-expiration(3600) "
+                        "max-sessions(500) tls-policy(required))");
 
   cr_assert_eq(_get_altp_options()->altp.ack_timeout, 120);
+  cr_assert_eq(_get_altp_options()->altp.ack_timeout_action, ALTP_ACK_TIMEOUT_ACTION_PARTIAL_ACK);
   cr_assert_eq(_get_altp_options()->altp.session_expiration, 3600);
   cr_assert_eq(_get_altp_options()->altp.max_sessions, 500);
   cr_assert_eq(_get_altp_options()->altp.tls_policy, ALTP_TLS_POLICY_REQUIRED);
+}
+
+Test(altp, ack_timeout_action_close_is_parsed)
+{
+  _parse_altp_transport("altp(ack-timeout-action(close))");
+
+  cr_assert_eq(_get_altp_options()->altp.ack_timeout_action, ALTP_ACK_TIMEOUT_ACTION_CLOSE);
 }
 
 Test(altp, max_sessions_zero_is_accepted_and_means_unlimited)
@@ -533,7 +543,8 @@ Test(altp, a_network_source_accepts_transport_altp_without_an_option_block)
 Test(altp, a_network_source_accepts_the_full_altp_option_block)
 {
   _assert_network_source_parses("network(port(35514) "
-                                "transport(altp(ack-timeout(900) session-expiration(2592000) "
+                                "transport(altp(ack-timeout(900) ack-timeout-action(partial-ack) "
+                                "session-expiration(2592000) "
                                 "max-sessions(10000) tls-policy(required))) "
                                 "log-msg-size(65536) idle-timeout(60))");
 }
@@ -1007,11 +1018,10 @@ Test(altp, a_sync_of_an_interrupted_batch_defers_its_reply_until_the_batch_is_du
   _connection_deinit(&first);
 }
 
-/* The acknowledgement timeout expires while the SYNC reply is deferred: the
- * Receiver reports the count durable at that moment (7.2, 9.3). */
+/* the deferred reply carries the count durable when the timeout fires (7.2, 9.3) */
 Test(altp, the_acknowledgement_timeout_answers_a_deferred_sync_partially)
 {
-  LogProtoServerFactory *factory = _parse_altp_transport("altp()");
+  LogProtoServerFactory *factory = _parse_altp_transport("altp(ack-timeout-action(partial-ack))");
   AltpTestConnection first, second;
 
   _interrupt_a_batch_of_three(factory, &first);
@@ -1030,7 +1040,7 @@ Test(altp, the_acknowledgement_timeout_answers_a_deferred_sync_partially)
  * beyond it are disowned and their later durability reports are stale (9.3, 10.1) */
 Test(altp, a_partial_acknowledgement_disowns_the_frames_beyond_it)
 {
-  LogProtoServerFactory *factory = _parse_altp_transport("altp()");
+  LogProtoServerFactory *factory = _parse_altp_transport("altp(ack-timeout-action(partial-ack))");
   AltpTestConnection conn;
 
   _connection_init(&conn, factory,
@@ -1066,7 +1076,7 @@ Test(altp, a_partial_acknowledgement_disowns_the_frames_beyond_it)
 /* not even before the next Batch opens: a later Connection would resume too far (9.3) */
 Test(altp, a_stale_durability_report_does_not_raise_the_acknowledged_count)
 {
-  LogProtoServerFactory *factory = _parse_altp_transport("altp()");
+  LogProtoServerFactory *factory = _parse_altp_transport("altp(ack-timeout-action(partial-ack))");
   AltpTestConnection first, second;
 
   _connection_init(&first, factory,
@@ -1084,6 +1094,82 @@ Test(altp, a_stale_durability_report_does_not_raise_the_acknowledged_count)
 
   _connection_init(&second, factory, log_transport_mock_endless_stream_new("SYNC s1\n", -1, LTM_EOF), FALSE);
   _assert_replies(&second, ALTP_BANNER "250 Received 1\n");
+
+  _connection_deinit(&second);
+  _connection_deinit(&first);
+}
+
+/****************************************************************************
+ * Abandoning a Batch: what the acknowledgement timeout does by default (9.3, ADR-0009)
+ ****************************************************************************/
+
+static void
+_get_session_counters(const gchar *session_id, guint32 *frames_read, guint32 *frames_acked)
+{
+  AltpSessionRegistry *registry = altp_receiver_context_get_registry(_get_altp_options()->context);
+  AltpSessionRecord *record = altp_session_registry_lookup(registry, session_id);
+
+  cr_assert_not_null(record);
+  altp_session_record_get_counters(record, frames_read, frames_acked);
+  altp_session_record_unref(record);
+}
+
+/* ack-timeout-action(close), the default: nothing is acknowledged and the
+ * counters stand, so no Frame is disowned and none is asked for again (9.3, 12.1) */
+Test(altp, the_acknowledgement_timeout_abandons_the_batch_with_421_by_default)
+{
+  LogProtoServerFactory *factory = _parse_altp_transport("altp()");
+  AltpTestConnection conn;
+  guint32 frames_read = 0, frames_acked = 0;
+
+  _connection_init(&conn, factory,
+                   log_transport_mock_endless_records_new("SYNC s1\nDATA\n", -1, "3 abc3 def3 ghi.\n", -1,
+                                                          LTM_EOF),
+                   FALSE);
+
+  cr_assert_eq(_pump(&conn), ALTP_PUMP_SUSPENDED);
+  cr_assert_eq(conn.frames->len, 3);
+  _report_durable(&conn, 0);
+
+  log_proto_altp_server_fire_ack_timeout(conn.proto);
+  cr_assert_eq(_pump(&conn), ALTP_PUMP_EOF, "the abandoning Connection has to close");
+  cr_assert_str_eq(conn.replies->str, ALTP_BANNER "250 Received 0\n250 Ready\n421 Try again later\n");
+
+  /* nothing was acknowledged, so the Frames beyond the durable prefix stay ours */
+  _get_session_counters("s1", &frames_read, &frames_acked);
+  cr_assert_eq(frames_read, 3);
+  cr_assert_eq(frames_acked, 1);
+
+  _connection_deinit(&conn);
+}
+
+/* the abandoned Batch is resumed and not resent (7.2, 9.3) */
+Test(altp, the_sync_following_an_abandoned_batch_is_deferred_and_reports_every_frame)
+{
+  LogProtoServerFactory *factory = _parse_altp_transport("altp()");
+  AltpTestConnection first, second;
+
+  _connection_init(&first, factory,
+                   log_transport_mock_endless_records_new("SYNC s1\nDATA\n", -1, "3 abc3 def3 ghi.\n", -1,
+                                                          LTM_EOF),
+                   FALSE);
+
+  cr_assert_eq(_pump(&first), ALTP_PUMP_SUSPENDED);
+  _report_durable(&first, 0);
+  log_proto_altp_server_fire_ack_timeout(first.proto);
+  cr_assert_eq(_pump(&first), ALTP_PUMP_EOF);
+  cr_assert_str_eq(first.replies->str, ALTP_BANNER "250 Received 0\n250 Ready\n421 Try again later\n");
+
+  _connection_init(&second, factory, log_transport_mock_endless_stream_new("SYNC s1\n", -1, LTM_EOF), FALSE);
+
+  cr_assert_eq(_pump(&second), ALTP_PUMP_SUSPENDED, "the SYNC reply must be deferred");
+  cr_assert_str_eq(second.replies->str, ALTP_BANNER);
+
+  _report_durable(&first, 1);
+  cr_assert_eq(_pump(&second), ALTP_PUMP_SUSPENDED);
+  _report_durable(&first, 2);
+
+  _assert_replies(&second, ALTP_BANNER "250 Received 3\n");
 
   _connection_deinit(&second);
   _connection_deinit(&first);
@@ -1226,7 +1312,7 @@ Test(altp, the_acknowledgement_timeout_wakes_the_owning_connection)
   log_proto_altp_server_fire_ack_timeout(conn.proto);
   cr_assert_eq(wakeups, 1);
 
-  _assert_replies(&conn, ALTP_BANNER "250 Received 0\n250 Ready\n250 Received 0\n");
+  _assert_replies(&conn, ALTP_BANNER "250 Received 0\n250 Ready\n421 Try again later\n");
 
   _connection_deinit(&conn);
 }
@@ -1778,7 +1864,7 @@ _enable_stats(void)
 
 Test(altp, the_receiver_metrics_count_acknowledgements_takeovers_and_refusals)
 {
-  LogProtoServerFactory *factory = _parse_altp_transport("altp()");
+  LogProtoServerFactory *factory = _parse_altp_transport("altp(ack-timeout-action(partial-ack))");
   StatsClusterKeyBuilder *kb = stats_cluster_key_builder_new();
   AltpTestConnection first, second, third;
 
@@ -1838,6 +1924,33 @@ Test(altp, the_receiver_metrics_count_acknowledgements_takeovers_and_refusals)
   _connection_deinit(&third);
   _connection_deinit(&second);
   _connection_deinit(&first);
+  stats_cluster_key_builder_free(kb);
+}
+
+Test(altp, an_abandoned_batch_is_counted_under_the_421_reply_code)
+{
+  LogProtoServerFactory *factory = _parse_altp_transport("altp()");
+  StatsClusterKeyBuilder *kb = stats_cluster_key_builder_new();
+  AltpTestConnection conn;
+
+  _enable_stats();
+
+  _connection_init_full(&conn, factory, &options_storage,
+                        log_transport_mock_endless_records_new("SYNC s1\nDATA\n", -1, "3 abc.\n", -1, LTM_EOF),
+                        FALSE, NULL, ALTP_TEST_PERSIST_NAME, kb);
+
+  cr_assert_eq(_pump(&conn), ALTP_PUMP_SUSPENDED);
+  cr_assert_eq(_get_metric(METRIC(altp_replies_total), "code", "421"), 0);
+
+  log_proto_altp_server_fire_ack_timeout(conn.proto);
+  cr_assert_eq(_pump(&conn), ALTP_PUMP_EOF);
+  cr_assert_str_eq(conn.replies->str, ALTP_BANNER "250 Received 0\n250 Ready\n421 Try again later\n");
+
+  cr_assert_eq(_get_metric(METRIC(altp_replies_total), "code", "421"), 1);
+  cr_assert_eq(_get_metric(METRIC(altp_acknowledgements_total), "result", "partial"), 0,
+               "an abandoned Batch is not acknowledged, not even partially");
+
+  _connection_deinit(&conn);
   stats_cluster_key_builder_free(kb);
 }
 

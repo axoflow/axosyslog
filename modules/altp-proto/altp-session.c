@@ -1037,6 +1037,14 @@ altp_session_record_acknowledge(AltpSessionRecord *self, AltpSessionOwner *owner
 }
 
 void
+altp_session_record_abandon(AltpSessionRecord *self, AltpSessionOwner *owner)
+{
+  g_mutex_lock(&self->mutex);
+  owner->awaiting = FALSE;
+  g_mutex_unlock(&self->mutex);
+}
+
+void
 altp_session_record_reset_counters(AltpSessionRecord *self)
 {
   g_mutex_lock(&self->mutex);

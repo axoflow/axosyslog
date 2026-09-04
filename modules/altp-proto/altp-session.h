@@ -172,6 +172,12 @@ gboolean altp_session_record_wait_for_durability(AltpSessionRecord *self, AltpSe
  * as they stand, see _process_command_line() in logproto-altp-server.c. */
 guint32 altp_session_record_acknowledge(AltpSessionRecord *self, AltpSessionOwner *owner, gboolean partial);
 
+/* Leave AWAITING_DURABILITY without acknowledging anything: only the wait ends
+ * here, every counter and the ownership stay as they are.  See _abandon_batch()
+ * in logproto-altp-server.c.
+ */
+void altp_session_record_abandon(AltpSessionRecord *self, AltpSessionOwner *owner);
+
 /* The deferred counter reset of ADR-0004, see _process_command_line() in
  * logproto-altp-server.c. */
 void altp_session_record_reset_counters(AltpSessionRecord *self);

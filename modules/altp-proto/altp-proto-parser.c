@@ -32,6 +32,9 @@ static CfgLexerKeyword altp_proto_keywords[] =
 {
   { "altp",               KW_ALTP },
   { "ack_timeout",        KW_ACK_TIMEOUT },
+  { "ack_timeout_action", KW_ACK_TIMEOUT_ACTION },
+  { "close",              KW_CLOSE },
+  { "partial_ack",        KW_PARTIAL_ACK },
   { "session_expiration", KW_SESSION_EXPIRATION },
   { "max_sessions",       KW_MAX_SESSIONS },
   { "tls_policy",         KW_TLS_POLICY },

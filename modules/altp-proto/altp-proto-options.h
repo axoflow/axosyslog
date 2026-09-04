@@ -43,6 +43,17 @@
 #define ALTP_DEFAULT_MAX_SESSIONS 10000
 
 
+/* What the Receiver does when its acknowledgement timeout expires while it
+ * waits for durability (11, 12.1).  CLOSE, the default, abandons the Batch and
+ * PARTIAL_ACK acknowledges the durable prefix; see _abandon_batch() in
+ * logproto-altp-server.c for why the default is the one it is.
+ */
+typedef enum
+{
+  ALTP_ACK_TIMEOUT_ACTION_CLOSE,
+  ALTP_ACK_TIMEOUT_ACTION_PARTIAL_ACK,
+} AltpAckTimeoutAction;
+
 /* The TLS policy of the Receiver (6.1).  AUTO, the default, resolves to
  * REQUIRED when the driver configured tls() and to NONE otherwise (ADR-0008).
  */
@@ -60,8 +71,9 @@ typedef enum
  */
 typedef struct _AltpReceiverOptions
 {
-  /* seconds to wait for durability before acknowledging partially (11) */
+  /* seconds to wait for durability before the Batch is given up on (11) */
   gint ack_timeout;
+  AltpAckTimeoutAction ack_timeout_action;
   /* seconds after which an unused Session Record is expired */
   gint session_expiration;
   /* the largest number of Session Records of the Receiver, 0 for unlimited */

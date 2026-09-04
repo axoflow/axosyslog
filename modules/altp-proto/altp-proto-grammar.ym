@@ -54,11 +54,15 @@ static AltpProtoServerOptions *last_altp_options;
 
 %token KW_ALTP
 %token KW_ACK_TIMEOUT
+%token KW_ACK_TIMEOUT_ACTION
+%token KW_CLOSE
+%token KW_PARTIAL_ACK
 %token KW_SESSION_EXPIRATION
 %token KW_MAX_SESSIONS
 %token KW_TLS_POLICY
 %token KW_REQUIRED
 
+%type <num> altp_ack_timeout_action
 %type <num> altp_tls_policy
 
 %%
@@ -99,6 +103,10 @@ altp_option
           {
             last_altp_options->altp.ack_timeout = $3;
           }
+        | KW_ACK_TIMEOUT_ACTION '(' altp_ack_timeout_action ')'
+          {
+            last_altp_options->altp.ack_timeout_action = $3;
+          }
         | KW_SESSION_EXPIRATION '(' positive_integer ')'
           {
             last_altp_options->altp.session_expiration = $3;
@@ -112,6 +120,11 @@ altp_option
           {
             last_altp_options->altp.tls_policy = $3;
           }
+        ;
+
+altp_ack_timeout_action
+        : KW_CLOSE                              { $$ = ALTP_ACK_TIMEOUT_ACTION_CLOSE; }
+        | KW_PARTIAL_ACK                        { $$ = ALTP_ACK_TIMEOUT_ACTION_PARTIAL_ACK; }
         ;
 
 altp_tls_policy
