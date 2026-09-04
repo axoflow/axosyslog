@@ -725,6 +725,26 @@ $MSG = $list;
     assert file_true.read_log() == """foo,bar,baz"""
 
 
+# The emitted code has to stop evaluating the operands where the interpreter stops, or the
+# skipped operands run their side effects. set_pri() is the side effect these tests observe:
+# it is set to 30 first, and a 50 in the output means the guarded operand still ran.
+
+
+def test_get_subscript_skips_the_key_on_a_failing_operand(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, """
+set_pri(30);
+non_existent_var[set_pri(50)];
+""",
+        template='"$PRI\n"',
+    )
+    syslog_ng.start(config)
+
+    assert "processed" not in file_true.get_stats()
+    assert file_false.get_stats()["processed"] == 1
+    assert file_false.read_log() == "30"
+
+
 def test_literal_generator_assignment(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, r"""

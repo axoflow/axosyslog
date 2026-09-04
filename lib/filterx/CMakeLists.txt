@@ -13,6 +13,8 @@ set(FILTERX_HEADERS
     filterx/expr-drop.h
     filterx/expr-function.h
     filterx/expr-get-subscript.h
+    filterx/expr-get-subscript-private.h
+    filterx/expr-get-subscript-devirt.h
     filterx/expr-getattr.h
     filterx/expr-isset.h
     filterx/expr-literal-container.h
@@ -109,6 +111,7 @@ set(FILTERX_SOURCES
     filterx/expr-drop.c
     filterx/expr-function.c
     filterx/expr-get-subscript.c
+    filterx/expr-get-subscript-devirt.c
     filterx/expr-getattr.c
     filterx/expr-isset.c
     filterx/expr-literal-container.c
@@ -201,6 +204,7 @@ set(FILTERX_BITCODE_SOURCES
     expr-drop.c
     expr-function.c
     expr-get-subscript.c
+    expr-get-subscript-devirt.c
     expr-getattr.c
     expr-isset.c
     expr-literal-container.c

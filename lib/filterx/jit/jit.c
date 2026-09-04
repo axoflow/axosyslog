@@ -367,6 +367,29 @@ filterx_jit_ir_add_new_sequence_to_block(FilterXJIT *self, const gchar *seq_name
   return LLVMAppendBasicBlockInContext(self->ctx, block, seq_name);
 }
 
+/* A stack slot that lives for the whole block, for example the result slot of a
+ * short-circuit region.  It always goes to the head of the entry sequence, because mem2reg
+ * and SROA only promote allocas they find there.  A slot emitted anywhere else stays a real
+ * stack access for the life of the block. */
+FilterXIRValue
+filterx_jit_ir_add_stack_slot(FilterXJIT *self, FilterXIRType type, const gchar *name)
+{
+  g_assert(!self->mod_finalized);
+  g_assert(self->current_ir_block);
+
+  FilterXIRSequence entry = LLVMGetEntryBasicBlock(self->current_ir_block);
+  FilterXIRSequence resume = LLVMGetInsertBlock(self->ir);
+
+  /* LLVMPositionBuilder() takes a NULL instruction as "the end of the sequence", which is
+   * what an entry sequence with no instruction yet needs.  It also leaves the current debug
+   * location alone, unlike LLVMPositionBuilderBefore(). */
+  LLVMPositionBuilder(self->ir, entry, LLVMGetFirstInstruction(entry));
+  FilterXIRValue slot = LLVMBuildAlloca(self->ir, type, name);
+  LLVMPositionBuilderAtEnd(self->ir, resume);
+
+  return slot;
+}
+
 #if FILTERX_JIT_DEBUG_INFO_LLVM_IR_SUPPORTED
 
 static gint

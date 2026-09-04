@@ -20,17 +20,12 @@
  *
  */
 #include "filterx/expr-get-subscript.h"
+#include "filterx/expr-get-subscript-private.h"
+#include "filterx/expr-get-subscript-devirt.h"
 #include "filterx/expr-literal.h"
 #include "filterx/filterx-eval.h"
 #include "stats/stats-registry.h"
 #include "stats/stats-cluster-single.h"
-
-typedef struct _FilterXGetSubscript
-{
-  FilterXExpr super;
-  FilterXExpr *operand;
-  FilterXExpr *key;
-} FilterXGetSubscript;
 
 static FilterXObject *
 _eval_get_subscript(FilterXExpr *s)
@@ -202,6 +197,7 @@ filterx_get_subscript_new(FilterXExpr *operand, FilterXExpr *key)
   self->super.get_path = _get_subscript_get_path;
 #if SYSLOG_NG_ENABLE_JIT
   self->super.infer_types = filterx_expr_infer_types_from_path;
+  self->super.compile = _get_subscript_compile;
 #endif
   self->operand = operand;
   self->key = key;

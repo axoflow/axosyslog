@@ -1,0 +1,121 @@
+/*
+ * Copyright (c) 2023 Balazs Scheidler <balazs.scheidler@axoflow.com>
+ *
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *
+ * As an additional exemption you are allowed to compile & link against the
+ * OpenSSL libraries as published by the OpenSSL project. See the file
+ * COPYING for details.
+ *
+ */
+#include "filterx/expr-get-subscript-private.h"
+#include "filterx/expr-get-subscript-devirt.h"
+#include "filterx/filterx-eval.h"
+
+#if SYSLOG_NG_ENABLE_JIT
+
+#include "filterx/jit/jit.h"
+#include "filterx/jit/ffi.h"
+#include "filterx/object-dict.h"
+#include "filterx/object-list.h"
+
+typedef FilterXObject *(*FilterXJITTypedGetSubscript)(FilterXObject *object, FilterXObject *key);
+
+/* _get_subscript_compile() guards @variable against NULL, only @key can still fail here. */
+static inline __attribute__((always_inline)) FilterXObject *
+_do_get_subscript(FilterXObject *variable, FilterXObject *key,
+                  FilterXJITTypedGetSubscript typed_get_subscript)
+{
+  if (!key)
+    {
+      filterx_eval_push_error_static_info("Failed to get-subscript from object",
+                                          "Failed to evaluate key");
+      filterx_object_unref(variable);
+      return NULL;
+    }
+  FilterXObject *result = typed_get_subscript(variable, key);
+  if (!result)
+    filterx_eval_push_error("Failed to get-subscript from object", key);
+  filterx_object_unref(key);
+  filterx_object_unref(variable);
+  return result;
+}
+
+__attribute__((used))
+FilterXObject *
+fx_jit_typed_get_subscript_dict(FilterXObject *variable, FilterXObject *key)
+{
+  return _do_get_subscript(variable, key, filterx_dict_get_subscript);
+}
+
+__attribute__((used))
+FilterXObject *
+fx_jit_typed_get_subscript_list(FilterXObject *variable, FilterXObject *key)
+{
+  return _do_get_subscript(variable, key, filterx_list_get_subscript);
+}
+
+FilterXIRValue
+_get_subscript_compile(FilterXExpr *s, FilterXJIT *jit)
+{
+  FilterXGetSubscript *self = (FilterXGetSubscript *) s;
+  FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
+  FilterXIRBuilder ir = filterx_jit_get_ir_builder(jit);
+  FilterXIRValue block = filterx_jit_ir_get_current_block(jit);
+
+  const gchar *fn_name;
+  switch (self->operand->static_type)
+    {
+    case FILTERX_STATIC_TYPE_DICT:
+      fn_name = "fx_jit_typed_get_subscript_dict";
+      break;
+    case FILTERX_STATIC_TYPE_LIST:
+      fn_name = "fx_jit_typed_get_subscript_list";
+      break;
+    default:
+      return fx_jit_emit_expr_eval(jit, s);
+    }
+
+  FilterXIRValue result_slot = filterx_jit_ir_add_stack_slot(jit, ffi->ptr_ty, "result");
+  LLVMBuildStore(ir, LLVMConstNull(ffi->ptr_ty), result_slot);
+
+  FilterXIRSequence operand_null = filterx_jit_ir_create_sequence(jit, "get_subscript_operand_null", block);
+  FilterXIRSequence eval_key = filterx_jit_ir_create_sequence(jit, "get_subscript_eval_key", block);
+  FilterXIRSequence finish = filterx_jit_ir_create_sequence(jit, "get_subscript_finish", block);
+
+  FilterXIRValue variable = filterx_expr_compile_or_eval_typed(self->operand, jit);
+
+  /* mirrors _eval_get_subscript(): if (!variable) goto finish; the key is not evaluated */
+  FilterXIRValue variable_is_null = LLVMBuildIsNull(ir, variable, "variable_is_null");
+  LLVMBuildCondBr(ir, variable_is_null, operand_null, eval_key);
+
+  filterx_jit_ir_add_sequence_to_block(jit, operand_null, block);
+  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, operand_null);
+  LLVMBuildBr(ir, finish);
+
+  /* eval_key: the operand is non-NULL, the called helper consumes both operands */
+  filterx_jit_ir_add_sequence_to_block(jit, eval_key, block);
+  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, eval_key);
+  FilterXIRValue key = filterx_expr_compile_or_eval_typed(self->key, jit);
+  FilterXIRValue args[] = { variable, key };
+  FilterXIRType param_tys[] = { ffi->ptr_ty, ffi->ptr_ty };
+  LLVMBuildStore(ir, fx_jit_emit_extern_call(jit, fn_name, ffi->ptr_ty, param_tys, args, 2), result_slot);
+  LLVMBuildBr(ir, finish);
+
+  filterx_jit_ir_add_sequence_to_block(jit, finish, block);
+  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, finish);
+  return LLVMBuildLoad2(ir, ffi->ptr_ty, result_slot, "result");
+}
+
+#endif

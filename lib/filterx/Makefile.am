@@ -15,6 +15,8 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/expr-break.h \
 	lib/filterx/expr-function.h \
 	lib/filterx/expr-get-subscript.h \
+	lib/filterx/expr-get-subscript-private.h \
+	lib/filterx/expr-get-subscript-devirt.h \
 	lib/filterx/expr-getattr.h \
 	lib/filterx/expr-isset.h \
 	lib/filterx/expr-literal-container.h \
@@ -110,6 +112,7 @@ filterx_expr_sources = \
 	lib/filterx/expr-drop.c \
 	lib/filterx/expr-function.c \
 	lib/filterx/expr-get-subscript.c \
+	lib/filterx/expr-get-subscript-devirt.c \
 	lib/filterx/expr-getattr.c \
 	lib/filterx/expr-isset.c \
 	lib/filterx/expr-literal-container.c \

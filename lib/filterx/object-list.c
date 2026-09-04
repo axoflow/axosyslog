@@ -407,6 +407,12 @@ filterx_list_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len
   return NULL;
 }
 
+FilterXObject *
+filterx_list_get_subscript(FilterXObject *s, FilterXObject *key)
+{
+  return _filterx_list_get_subscript(filterx_ref_unwrap_ro(s), key);
+}
+
 FILTERX_DEFINE_TYPE(list, FILTERX_TYPE_NAME(sequence),
                     .is_mutable = TRUE,
                     .truthy = _filterx_list_truthy,
