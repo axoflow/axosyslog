@@ -40,4 +40,8 @@ void filterx_dict_set_subscript_by_anchor(FilterXObject *s, FilterXDictAnchor an
 /* Unwraps a FilterXRef and calls the dict's get_subscript directly, without the vtable. */
 FilterXObject *filterx_dict_get_subscript(FilterXObject *s, FilterXObject *key);
 
+/* Calls the dict's set_subscript directly, without the vtable, and keeps the FilterXRef
+ * cow and parent linkage. */
+gboolean filterx_dict_set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject **new_value);
+
 #endif

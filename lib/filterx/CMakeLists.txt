@@ -28,6 +28,8 @@ set(FILTERX_HEADERS
     filterx/expr-regexp-subst.h
     filterx/expr-regexp.h
     filterx/expr-set-subscript.h
+    filterx/expr-set-subscript-private.h
+    filterx/expr-set-subscript-devirt.h
     filterx/expr-setattr.h
     filterx/expr-switch.h
     filterx/expr-template.h
@@ -125,6 +127,7 @@ set(FILTERX_SOURCES
     filterx/expr-regexp-subst.c
     filterx/expr-regexp.c
     filterx/expr-set-subscript.c
+    filterx/expr-set-subscript-devirt.c
     filterx/expr-setattr.c
     filterx/expr-switch.c
     filterx/expr-template.c
@@ -218,6 +221,7 @@ set(FILTERX_BITCODE_SOURCES
     expr-regexp-subst.c
     expr-regexp.c
     expr-set-subscript.c
+    expr-set-subscript-devirt.c
     expr-setattr.c
     expr-string-operators.c
     expr-switch.c
