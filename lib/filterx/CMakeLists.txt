@@ -3,6 +3,8 @@ add_subdirectory(jit)
 set(FILTERX_HEADERS
     ${FILTERX_JIT_HEADERS}
     filterx/expr-arithmetic-operators.h
+    filterx/expr-arithmetic-operators-private.h
+    filterx/expr-arithmetic-operators-devirt.h
     filterx/expr-assign.h
     filterx/expr-boolalg.h
     filterx/expr-break.h
@@ -107,6 +109,7 @@ set(FILTERX_HEADERS
 set(FILTERX_SOURCES
     ${FILTERX_JIT_SOURCES}
     filterx/expr-arithmetic-operators.c
+    filterx/expr-arithmetic-operators-devirt.c
     filterx/expr-assign.c
     filterx/expr-boolalg.c
     filterx/expr-break.c
@@ -203,6 +206,7 @@ set(FILTERX_SOURCES
 set(FILTERX_BITCODE_SOURCES
     ${FILTERX_JIT_BITCODE_SOURCES}
     expr-arithmetic-operators.c
+    expr-arithmetic-operators-devirt.c
     expr-assign.c
     expr-boolalg.c
     expr-break.c

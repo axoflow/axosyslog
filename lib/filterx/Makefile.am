@@ -5,6 +5,8 @@ filterxincludedir			= ${pkgincludedir}/filterx
 filterxinclude_HEADERS = 			\
 	lib/filterx/jsmn.h \
 	lib/filterx/expr-arithmetic-operators.h \
+	lib/filterx/expr-arithmetic-operators-private.h \
+	lib/filterx/expr-arithmetic-operators-devirt.h \
 	lib/filterx/expr-assign.h \
 	lib/filterx/expr-boolalg.h \
 	lib/filterx/expr-comparison.h \
@@ -108,6 +110,7 @@ noinst_LTLIBRARIES += lib/filterx/libfilterx.la
 
 filterx_expr_sources = \
 	lib/filterx/expr-arithmetic-operators.c \
+	lib/filterx/expr-arithmetic-operators-devirt.c \
 	lib/filterx/expr-assign.c \
 	lib/filterx/expr-boolalg.c \
 	lib/filterx/expr-break.c \

@@ -20,6 +20,8 @@
  *
  */
 #include "expr-arithmetic-operators.h"
+#include "expr-arithmetic-operators-private.h"
+#include "expr-arithmetic-operators-devirt.h"
 #include "filterx/object-primitive.h"
 #include "filterx/expr-literal.h"
 #include "filterx/object-extractor.h"
@@ -30,14 +32,6 @@
 /* If you want to make the arithmetic operators support other types,
  * follow the pattern of filterx_operator_plus_new() which uses
  * filterx_object_add() for type-generic addition. */
-
-typedef struct FilterXArithmeticOperator_
-{
-  FilterXBinaryOp super;
-  FilterXObject *literal_lhs;
-  FilterXObject *literal_rhs;
-} FilterXArithmeticOperator;
-
 
 /* consumes operand objects */
 static gboolean
@@ -501,7 +495,7 @@ fx_jit_arithmetic_uminus(FilterXObject *operand, FilterXExpr *expr)
   return _do_uminus(operand, expr);
 }
 
-static FilterXIRValue
+FilterXIRValue
 _compile_binary_arithmetic(FilterXExpr *s, FilterXJIT *jit, const gchar *fn_name)
 {
   FilterXArithmeticOperator *self = (FilterXArithmeticOperator *) s;
@@ -557,12 +551,6 @@ _compile_binary_arithmetic(FilterXExpr *s, FilterXJIT *jit, const gchar *fn_name
   filterx_jit_ir_add_sequence_to_block(jit, finish, block);
   filterx_jit_ir_set_insert_point_to_sequence_tail(jit, finish);
   return LLVMBuildLoad2(ir, ffi->ptr_ty, result_slot, "result");
-}
-
-static FilterXIRValue
-_compile_plus(FilterXExpr *s, FilterXJIT *jit)
-{
-  return _compile_binary_arithmetic(s, jit, "fx_jit_arithmetic_plus");
 }
 
 static FilterXIRValue
