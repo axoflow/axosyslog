@@ -33,6 +33,7 @@
 #include "seqnum.h"
 #include "str-utils.h"
 #include "find-crlf.h"
+#include "cfg.h"
 #include "mainloop.h"
 #include "mainloop-io-worker.h"
 #include "mainloop-call.h"
@@ -1577,6 +1578,19 @@ _unregister_counters(LogWriter *self)
   _unregister_raw_bytes_stats(self);
 }
 
+static void
+log_writer_deinit_queue(LogWriter *self)
+{
+  GlobalConfig *cfg = log_pipe_get_config(&self->super);
+
+  log_queue_reset_parallel_push(self->queue);
+
+  if (!cfg_is_shutting_down(cfg) || log_queue_flush_on_shutdown(self->queue))
+    log_writer_forced_flush(self);
+  else
+    log_writer_msg_rewind(self);
+}
+
 static gboolean
 log_writer_deinit(LogPipe *s)
 {
@@ -1584,8 +1598,7 @@ log_writer_deinit(LogPipe *s)
 
   main_loop_assert_main_thread();
 
-  log_queue_reset_parallel_push(self->queue);
-  log_writer_forced_flush(self);
+  log_writer_deinit_queue(self);
   /* FIXME: by the time we arrive here, it must be guaranteed that no
    * _queue() call is running in a different thread, otherwise we'd need
    * some kind of locking. */
