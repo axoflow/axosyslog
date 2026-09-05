@@ -265,10 +265,12 @@ def clickhouse_server(request, testcase_parameters):
 @pytest.fixture
 def s3_server(port_allocator):
     s3_server_instance = S3ServerExecutor()
-    s3_server_instance.start(port_allocator())
-    yield s3_server_instance
-    if s3_server_instance.process is not None:
-        s3_server_instance.stop()
+    try:
+        s3_server_instance.start(port_allocator())
+        yield s3_server_instance
+    finally:
+        if s3_server_instance.process is not None:
+            s3_server_instance.stop()
 
 
 def calculate_report_file_path(working_dir):
