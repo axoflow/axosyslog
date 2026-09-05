@@ -29,45 +29,46 @@
 #include "filterx/object-primitive.h"
 #include "stats/stats.h"
 
-#define FILTERX_FUNC_UPDATE_METRIC_USAGE "update_metric(\"key\", labels={\"key\": \"value\"}, increment=1, level=0)"
+#define FILTERX_FUNC_UPDATE_METRIC_USAGE "update_metric(\"key\", labels={\"key\": \"value\"}, increment=1|set=20, level=0)"
 
 typedef struct FilterXFunctionUpdateMetric_
 {
   FilterXFunction super;
   FilterXMetrics *metrics;
   gint level;
+  gboolean assign_mode;
 
   struct
   {
     FilterXExpr *expr;
-    gint64 value;
-  } increment;
+    gint64 literal;
+  } value;
 } FilterXFunctionUpdateMetric;
 
 static gboolean
-_get_increment(FilterXFunctionUpdateMetric *self, gint64 *increment)
+_get_value(FilterXFunctionUpdateMetric *self, gint64 *value)
 {
-  if (!self->increment.expr)
+  if (!self->value.expr)
     {
-      *increment = self->increment.value;
+      *value = self->value.literal;
       return TRUE;
     }
 
-  FilterXObject *increment_obj = filterx_expr_eval_typed(self->increment.expr);
-  if (!increment_obj)
+  FilterXObject *value_obj = filterx_expr_eval_typed(self->value.expr);
+  if (!value_obj)
     {
       return FALSE;
     }
 
-  gboolean success = filterx_integer_unwrap(increment_obj, increment);
+  gboolean success = filterx_integer_unwrap(value_obj, value);
   if (!success)
     {
       filterx_eval_push_error_info_printf("Failed to evaluate update_metric()",
-                                          "Metric increment must be an integer, got: %s",
-                                          filterx_object_get_type_name(increment_obj));
+                                          "Metric value must be an integer, got: %s",
+                                          filterx_object_get_type_name(value_obj));
     }
 
-  filterx_object_unref(increment_obj);
+  filterx_object_unref(value_obj);
   return success;
 }
 
@@ -78,15 +79,27 @@ _eval(FilterXExpr *s)
 
   gboolean success = FALSE;
 
-  gint64 increment;
-  if (!_get_increment(self, &increment))
+  gint64 value;
+  if (!_get_value(self, &value))
     goto exit;
+
+  /* stats_counter_set does not support negative values */
+  if (self->assign_mode && value < 0)
+    {
+      filterx_eval_push_error_info_printf("Failed to evaluate update_metric()",
+                                          "Metric value must be non-negative, got: %" G_GINT64_FORMAT,
+                                          value);
+      goto exit;
+    }
 
   StatsCounterItem *counter;
   if (!filterx_metrics_get_stats_counter(self->metrics, &counter))
     goto exit;
 
-  stats_counter_add(counter, increment);
+  if (self->assign_mode)
+    stats_counter_set(counter, (gsize) value);
+  else
+    stats_counter_add(counter, value);
   success = TRUE;
 
 exit:
@@ -100,22 +113,22 @@ exit:
 }
 
 static void
-_optimize_increment(FilterXFunctionUpdateMetric *self)
+_optimize_value(FilterXFunctionUpdateMetric *self)
 {
-  if (!self->increment.expr || !filterx_expr_is_literal(self->increment.expr))
+  if (!self->value.expr || !filterx_expr_is_literal(self->value.expr))
     return;
 
-  FilterXObject *increment_obj = filterx_literal_get_value(self->increment.expr);
-  if (!increment_obj)
+  FilterXObject *value_obj = filterx_literal_get_value(self->value.expr);
+  if (!value_obj)
     return;
 
-  gboolean success = filterx_object_extract_integer(increment_obj, &self->increment.value);
-  filterx_object_unref(increment_obj);
+  gboolean success = filterx_object_extract_integer(value_obj, &self->value.literal);
+  filterx_object_unref(value_obj);
   if (!success)
     return;
 
-  filterx_expr_unref(self->increment.expr);
-  self->increment.expr = NULL;
+  filterx_expr_unref(self->value.expr);
+  self->value.expr = NULL;
 }
 
 static FilterXExpr *
@@ -123,7 +136,7 @@ _optimize(FilterXExpr *s)
 {
   FilterXFunctionUpdateMetric *self = (FilterXFunctionUpdateMetric *) s;
 
-  _optimize_increment(self);
+  _optimize_value(self);
   filterx_metrics_optimize(self->metrics);
 
   return filterx_function_optimize_method(&self->super);
@@ -136,7 +149,7 @@ _init(FilterXExpr *s, GlobalConfig *cfg)
 
   if (!filterx_metrics_init(self->metrics, cfg))
     {
-      filterx_expr_deinit(self->increment.expr, cfg);
+      filterx_expr_deinit(self->value.expr, cfg);
       return FALSE;
     }
 
@@ -158,16 +171,35 @@ _free(FilterXExpr *s)
 
   if (self->metrics)
     filterx_metrics_free(self->metrics);
-  filterx_expr_unref(self->increment.expr);
+  filterx_expr_unref(self->value.expr);
 
   filterx_function_free_method(&self->super);
 }
 
 static gboolean
-_extract_increment_arg(FilterXFunctionUpdateMetric *self, FilterXFunctionArgs *args, GError **error)
+_extract_value_arg(FilterXFunctionUpdateMetric *self, FilterXFunctionArgs *args, GError **error)
 {
-  self->increment.value = 1;
-  self->increment.expr = filterx_function_args_get_named_expr(args, "increment");
+  FilterXExpr *increment = filterx_function_args_get_named_expr(args, "increment");
+  FilterXExpr *set = filterx_function_args_get_named_expr(args, "set");
+
+  if (increment && set)
+    {
+      filterx_expr_unref(increment);
+      filterx_expr_unref(set);
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "increment and set are mutually exclusive. " FILTERX_FUNC_UPDATE_METRIC_USAGE);
+      return FALSE;
+    }
+
+  if (set)
+    {
+      self->assign_mode = TRUE;
+      self->value.expr = set;
+      return TRUE;
+    }
+
+  self->value.literal = 1;
+  self->value.expr = increment;
 
   return TRUE;
 }
@@ -216,7 +248,7 @@ _extract_args(FilterXFunctionUpdateMetric *self, FilterXFunctionArgs *args, GErr
       return FALSE;
     }
 
-  if (!_extract_increment_arg(self, args, error))
+  if (!_extract_value_arg(self, args, error))
     return FALSE;
 
   if (!_extract_level_arg(self, args, error))
@@ -233,7 +265,7 @@ _update_metric_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXFunctionUpdateMetric *self = (FilterXFunctionUpdateMetric *) s;
 
-  if (!filterx_expr_visit(s, &self->increment.expr, f, user_data))
+  if (!filterx_expr_visit(s, &self->value.expr, f, user_data))
     return FALSE;
 
   if (!filterx_metrics_walk_children(self->metrics, s, f, user_data))

@@ -236,3 +236,59 @@ def test_filterx_update_metric_skip_empty_labels(config, port_allocator, syslog_
     assert int(samples[0].value) == 1
 
     syslog_ng.stop()
+
+
+def test_filterx_update_metric_set(config, port_allocator, syslog_ng):
+    network_source, file_destination = create_config(
+        config,
+        port_allocator,
+        r"""
+            update_metric("gauge", set=int($MSG));
+            update_metric("labeled", set=int($MSG), labels={"foo": "foovalue"});
+        """,
+    )
+
+    syslog_ng.start(config)
+    network_source.write_logs(["3", "2", "1", "0"])
+    file_destination.read_logs(4)
+
+    # the last value wins, it is not accumulated like increment=
+
+    samples = config.get_prometheus_samples([MetricFilter("syslogng_gauge", {})])
+    assert len(samples) == 1
+    assert int(samples[0].value) == 0
+
+    samples = config.get_prometheus_samples([MetricFilter("syslogng_labeled", {"foo": "foovalue"})])
+    assert len(samples) == 1
+    assert int(samples[0].value) == 0
+
+    syslog_ng.stop()
+
+
+def test_filterx_update_metric_set_negative_is_rejected(config, port_allocator, syslog_ng):
+    network_source, file_destination = create_config(
+        config,
+        port_allocator,
+        r"""
+            update_metric("gauge", set=int($MSG));
+        """,
+    )
+
+    syslog_ng.start(config)
+    network_source.write_logs(["5"])
+    file_destination.read_logs(1)
+
+    samples = config.get_prometheus_samples([MetricFilter("syslogng_gauge", {})])
+    assert len(samples) == 1
+    assert int(samples[0].value) == 5
+
+    # the counter is scraped unsigned, so a negative is refused and the previous value kept
+
+    network_source.write_logs(["-1"])
+    file_destination.read_logs(1)
+
+    samples = config.get_prometheus_samples([MetricFilter("syslogng_gauge", {})])
+    assert len(samples) == 1
+    assert int(samples[0].value) == 5
+
+    syslog_ng.stop()
