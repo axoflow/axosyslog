@@ -52,6 +52,19 @@ class AlreadyFinishedError(Exception):
     pass
 
 
+# HTTP status codes for which a request will never succeed as-is.  Mirrors the drop set of the
+# http() destination's default status code handler.
+PERMANENT_DROP_HTTP_STATUS_CODES = {410, 416, 422, 424, 425, 451, 508}
+
+# Retry cap for transient part-upload failures, like the http() destination's retries() option.
+PART_UPLOAD_MAX_RETRIES = 3
+
+
+def is_permanent_client_error(error: ClientError) -> bool:
+    status_code = error.response.get("ResponseMetadata", {}).get("HTTPStatusCode", 0)
+    return status_code in PERMANENT_DROP_HTTP_STATUS_CODES
+
+
 class S3Chunk:
     MAX_PART_NUMBER = 9999
 
@@ -64,6 +77,8 @@ class S3Chunk:
         path: Optional[Path] = None,
         prev_chunk: Optional[S3Chunk] = None,
     ) -> None:
+        self.upload_retries = 0
+
         if prev_chunk is not None:
             path = Path(prev_chunk.buffer.path.parent, str(uuid4()))
             self.__buffer = prev_chunk.buffer.create_next(path)
@@ -412,6 +427,8 @@ class S3Object:
         self.__size: int = 0
         self.__modified_at: float = monotonic()
 
+        self.__multipart_start_lock = Lock()
+
         # Locked variables
         self.__lock = Lock()
         self.__current_chunk: Optional[S3Chunk] = None
@@ -624,41 +641,46 @@ class S3Object:
         if self.__persist.upload_id != "":
             return True
 
-        extra_args = {}
+        with self.__multipart_start_lock:
+            # Another thread may have created the upload while we were waiting for the lock.
+            if self.__persist.upload_id != "":
+                return True
 
-        if self.__persist.server_side_encryption != "":
-            extra_args["ServerSideEncryption"] = self.__persist.server_side_encryption
+            extra_args = {}
 
-        if self.__persist.kms_key != "":
-            extra_args["SSEKMSKeyId"] = self.__persist.kms_key
+            if self.__persist.server_side_encryption != "":
+                extra_args["ServerSideEncryption"] = self.__persist.server_side_encryption
 
-        if self.__persist.canned_acl != "":
-            extra_args["ACL"] = self.__persist.canned_acl,
+            if self.__persist.kms_key != "":
+                extra_args["SSEKMSKeyId"] = self.__persist.kms_key
 
-        if self.__persist.content_type != "":
-            extra_args["ContentType"] = self.__persist.content_type
+            if self.__persist.canned_acl != "":
+                extra_args["ACL"] = self.__persist.canned_acl
 
-        try:
-            response = self.__client.create_multipart_upload(
-                Bucket=self.bucket,
-                Key=self.key,
-                StorageClass=self.__persist.storage_class,
-                **extra_args,
-            )
-            self.__logger.debug(f"Multipart upload created for {self.bucket}/{self.key}")
-        except (ClientError, EndpointConnectionError) as e:
-            self.__logger.error(f"Failed to create multipart upload: {self.bucket}/{self.key} => {e}")
-            return False
+            if self.__persist.content_type != "":
+                extra_args["ContentType"] = self.__persist.content_type
 
-        try:
-            self.__persist.upload_id = response["UploadId"]
-        except KeyError:
-            self.__logger.error(
-                f"Failed to create multipart upload: {self.bucket}/{self.key} => Unexpected response: {response}"
-            )
-            return False
+            try:
+                response = self.__client.create_multipart_upload(
+                    Bucket=self.bucket,
+                    Key=self.key,
+                    StorageClass=self.__persist.storage_class,
+                    **extra_args,
+                )
+                self.__logger.debug(f"Multipart upload created for {self.bucket}/{self.key}")
+            except (ClientError, EndpointConnectionError) as e:
+                self.__logger.error(f"Failed to create multipart upload: {self.bucket}/{self.key} => {e}")
+                return False
 
-        return True
+            try:
+                self.__persist.upload_id = response["UploadId"]
+            except KeyError:
+                self.__logger.error(
+                    f"Failed to create multipart upload: {self.bucket}/{self.key} => Unexpected response: {response}"
+                )
+                return False
+
+            return True
 
     def __upload_chunk_cb(self, chunk: S3Chunk, is_retry: bool) -> None:
         if not self.__ensure_multipart_upload_started():
@@ -679,6 +701,15 @@ class S3Object:
             self.__upload_chunk(chunk, is_retry=True)
             return
         except ClientError as e:
+            if not is_permanent_client_error(e) and chunk.upload_retries < PART_UPLOAD_MAX_RETRIES:
+                chunk.upload_retries += 1
+                self.__logger.error(
+                    f"Failed to upload part, retrying ({chunk.upload_retries}/{PART_UPLOAD_MAX_RETRIES}): "
+                    f"{self.bucket}/{self.key} ({chunk.part_number}) => {e}"
+                )
+                self.__upload_chunk(chunk, is_retry=True)
+                return
+
             self.__logger.error(
                 f"Critical failure when trying to upload part, finishing S3 object: {self.bucket}/{self.key} => {e}"
             )
@@ -723,6 +754,9 @@ class S3Object:
             chunk = self.__current_chunk
         if chunk is None:
             with self.__lock:
+                if self.__prev_chunk is None:
+                    # the flush timer can finish this object between the caller selecting it and this write
+                    raise AlreadyFinishedError()
                 self.__current_chunk = self.__prev_chunk.create_next()
                 self.__prev_chunk = None
                 self.__persist.add_pending_part(self.__current_chunk.buffer.path, self.__current_chunk.part_number)
@@ -739,7 +773,7 @@ class S3Object:
             self.__lock.acquire()
 
             if self.__current_chunk is None:
-                # finish() was called while we were writing the buffer, this can only happen in part upload failure.
+                # finish() was called while we were writing the buffer (part upload failure or the flush timer).
                 self.__lock.release()
                 raise AlreadyFinishedError()
 
@@ -788,7 +822,10 @@ class S3Object:
             return
 
         if len(uploaded_parts) == 0:
-            assert self.__persist.upload_id == ""
+            # started-but-empty upload: abort it or it lingers in the bucket
+            if self.__persist.upload_id != "" and not self.__abort_multipart():
+                self.__complete_multipart(is_retry=True)
+                return
             self.__persist.unlink()
             with self.__lock:
                 self.__multipart_completed = True

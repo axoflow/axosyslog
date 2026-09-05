@@ -50,6 +50,7 @@ from axosyslog_light.helpers.loggen.loggen import Loggen
 from axosyslog_light.helpers.loggen.loggen_docker_executor import LoggenDockerExecutor
 from axosyslog_light.helpers.loggen.loggen_executor import LoggenExecutor
 from axosyslog_light.helpers.loggen.loggen_local_executor import LoggenLocalExecutor
+from axosyslog_light.helpers.s3.s3_server_executor import S3ServerExecutor
 from axosyslog_light.message_builder.bsd_format import BSDFormat
 from axosyslog_light.message_builder.log_message import LogMessage
 from axosyslog_light.syslog_ng.syslog_ng import SyslogNg
@@ -281,6 +282,15 @@ def clickhouse_server(request, testcase_parameters, container_name):
     yield clickhouse_server_instance
     if clickhouse_server_instance.process is not None:
         clickhouse_server_instance.stop()
+
+
+@pytest.fixture
+def s3_server(port_allocator):
+    s3_server_instance = S3ServerExecutor()
+    s3_server_instance.start(port_allocator())
+    yield s3_server_instance
+    if s3_server_instance.process is not None:
+        s3_server_instance.stop()
 
 
 def calculate_report_file_path(working_dir):
