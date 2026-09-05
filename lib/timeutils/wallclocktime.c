@@ -287,8 +287,8 @@ _is_str_empty(const gchar *str)
   return !str || strcmp(str, "") == 0;
 }
 
-gchar *
-wall_clock_time_strptime(WallClockTime *wct, const gchar *format, const gchar *input)
+static gchar *
+_strptime(WallClockTime *wct, const gchar *format, const gchar *input)
 {
   unsigned char c;
   const unsigned char *bp, *ep, *zname;
@@ -386,7 +386,7 @@ literal:
           new_fmt = _TIME_LOCALE(loc)->d_fmt;
           state |= S_MON | S_MDAY | S_YEAR;
 recurse:
-          bp = (const unsigned char *)wall_clock_time_strptime(wct, new_fmt, (const char *)bp);
+          bp = (const unsigned char *)_strptime(wct, new_fmt, (const char *)bp);
           LEGAL_ALT(ALT_E);
           continue;
 
@@ -909,6 +909,18 @@ out:
     }
 
   return __UNCONST(bp);
+}
+
+gchar *
+wall_clock_time_strptime(WallClockTime *wct, const gchar *format, const gchar *input)
+{
+  WallClockTime backup = *wct;
+  gchar *end = _strptime(wct, format, input);
+
+  if (!end)
+    *wct = backup;
+
+  return end;
 }
 
 /* Determine (guess) the year for the month.

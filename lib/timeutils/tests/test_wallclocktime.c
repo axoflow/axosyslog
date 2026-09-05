@@ -145,6 +145,18 @@ Test(wallclocktime, test_strptime_usec_parse_finds_character)
   cr_expect(wct.wct_usec == 0, "%d", wct.wct_usec);
 }
 
+Test(wallclocktime, test_strptime_leaves_wct_untouched_on_failure)
+{
+  WallClockTime wct = WALL_CLOCK_TIME_INIT;
+  gchar *end;
+
+  end = wall_clock_time_strptime(&wct, "%b %d %Y %H:%M:%S", "Jan 16 2019 boom");
+  cr_assert_null(end);
+  cr_expect(wct.wct_mon == -1);
+  cr_expect(wct.wct_mday == -1);
+  cr_expect(wct.wct_year == -1);
+}
+
 Test(wallclocktime, test_strptime_percent_z_parses_rfc822_timezone)
 {
   WallClockTime wct = WALL_CLOCK_TIME_INIT;
