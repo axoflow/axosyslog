@@ -28,7 +28,7 @@ import pytest
 pytest.importorskip("botocore")
 
 from botocore.exceptions import ClientError, EndpointConnectionError  # noqa: E402
-from syslogng.modules.s3.s3_object import AlreadyFinishedError, S3Object, S3ObjectPersist  # noqa: E402
+from syslogng.modules.s3.s3_object import PART_UPLOAD_MAX_RETRIES, AlreadyFinishedError, S3Object, S3ObjectPersist  # noqa: E402
 
 LOGGER = getLogger(__name__)
 CHUNK_SIZE = S3Object.MIN_CHUNK_SIZE_BYTES
@@ -42,15 +42,23 @@ class FakeS3Client:
     """A boto3 S3 client stub that records the calls and injects part upload failures on demand."""
 
     def __init__(
-        self, transient_failure_part=None, permanent_failure_part=None, unexpected_failure_part=None, failure_gate=None
+        self,
+        transient_failure_part=None,
+        retryable_failure_part=None,
+        retryable_failures=1,
+        permanent_failure_part=None,
+        unexpected_failure_part=None,
+        failure_gate=None,
     ):
         self.transient_failure_part = transient_failure_part
+        self.retryable_failure_part = retryable_failure_part
+        self.retryable_failures = retryable_failures
         self.permanent_failure_part = permanent_failure_part
         self.unexpected_failure_part = unexpected_failure_part
         self.failure_gate = failure_gate
         self.completed_parts = {}
         self.aborted_keys = []
-        self.__failed_parts = set()
+        self.upload_attempts = {}
         self.__lock = Lock()
 
     def list_multipart_uploads(self, **kwargs):
@@ -62,28 +70,35 @@ class FakeS3Client:
     def create_multipart_upload(self, **kwargs):
         return {"UploadId": "upload-id-" + kwargs["Key"]}
 
+    def __injected_failure(self, part_number, attempt):
+        if part_number == self.transient_failure_part and attempt == 1:
+            return EndpointConnectionError(endpoint_url="http://localhost")
+        if part_number == self.retryable_failure_part and attempt <= self.retryable_failures:
+            return ClientError(
+                {"Error": {"Code": "InternalError"}, "ResponseMetadata": {"HTTPStatusCode": 500}},
+                "UploadPart",
+            )
+        if part_number == self.permanent_failure_part:
+            return ClientError(
+                {"Error": {"Code": "UnprocessableEntity"}, "ResponseMetadata": {"HTTPStatusCode": 422}},
+                "UploadPart",
+            )
+        if part_number == self.unexpected_failure_part:
+            return RuntimeError("unexpected failure injected by the test")
+        return None
+
     def upload_part(self, **kwargs):
         key = kwargs["Key"]
         part_number = kwargs["PartNumber"]
 
         with self.__lock:
-            transient = part_number == self.transient_failure_part and (key, part_number) not in self.__failed_parts
-            if transient:
-                self.__failed_parts.add((key, part_number))
+            attempt = self.upload_attempts[(key, part_number)] = self.upload_attempts.get((key, part_number), 0) + 1
 
-        if transient:
+        error = self.__injected_failure(part_number, attempt)
+        if error is not None:
             if self.failure_gate is not None:
                 self.failure_gate.wait(WAIT_TIMEOUT_SECONDS)
-            raise EndpointConnectionError(endpoint_url="http://localhost")
-
-        if part_number == self.permanent_failure_part:
-            raise ClientError(
-                {"Error": {"Code": "UnprocessableEntity"}, "ResponseMetadata": {"HTTPStatusCode": 422}},
-                "UploadPart",
-            )
-
-        if part_number == self.unexpected_failure_part:
-            raise RuntimeError("unexpected failure injected by the test")
+            raise error
 
         return {"ETag": "etag-%d" % part_number}
 
@@ -194,11 +209,39 @@ def test_transient_part_upload_failure_is_retried(tmp_path):
     assert client.completed_parts == {"test-key-0.log": [1, 2, 3]}
 
 
-def test_permanent_part_upload_failure_drops_the_part(tmp_path):
-    client = FakeS3Client(permanent_failure_part=2)
+def test_retryable_client_error_is_retried(tmp_path):
+    client = FakeS3Client(retryable_failure_part=2)
     s3_object = create_s3_object(tmp_path, ThreadPoolExecutor(max_workers=8), client, Event())
     write_parts(s3_object, 3)
     s3_object.finish()
+
+    assert wait_for_uploads([s3_object])
+    assert client.completed_parts == {"test-key-0.log": [1, 2, 3]}
+    assert client.upload_attempts[("test-key-0.log", 2)] == 2
+
+
+def test_retryable_client_error_drops_the_part_after_the_retry_cap(tmp_path):
+    failure_gate = Event()
+    client = FakeS3Client(
+        retryable_failure_part=2, retryable_failures=PART_UPLOAD_MAX_RETRIES + 1, failure_gate=failure_gate
+    )
+    s3_object = create_s3_object(tmp_path, ThreadPoolExecutor(max_workers=8), client, Event())
+    write_parts(s3_object, 3)
+    s3_object.finish()
+    failure_gate.set()
+
+    assert wait_for_uploads([s3_object])
+    assert client.completed_parts == {"test-key-0.log": [1, 3]}
+    assert client.upload_attempts[("test-key-0.log", 2)] == PART_UPLOAD_MAX_RETRIES + 1
+
+
+def test_permanent_part_upload_failure_drops_the_part(tmp_path):
+    failure_gate = Event()
+    client = FakeS3Client(permanent_failure_part=2, failure_gate=failure_gate)
+    s3_object = create_s3_object(tmp_path, ThreadPoolExecutor(max_workers=8), client, Event())
+    write_parts(s3_object, 3)
+    s3_object.finish()
+    failure_gate.set()
 
     assert wait_for_uploads([s3_object])
     assert client.completed_parts == {"test-key-0.log": [1, 3]}
