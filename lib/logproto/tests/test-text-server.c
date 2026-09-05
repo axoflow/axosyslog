@@ -116,30 +116,30 @@ test_log_proto_text_server_no_encoding(LogTransportMockConstructor log_transport
 
               LTM_EOF));
 
-  assert_proto_server_fetch(proto, "01234567", -1);
+  assert_proto_server_fetch(&proto, "01234567", -1);
 
   /* input split due to an oversized input line */
-  assert_proto_server_fetch(proto, "0123456789ABCDEF0123456789ABCDEF", -1);
-  assert_proto_server_fetch(proto, "01234567", -1);
+  assert_proto_server_fetch(&proto, "0123456789ABCDEF0123456789ABCDEF", -1);
+  assert_proto_server_fetch(&proto, "01234567", -1);
 
-  assert_proto_server_fetch(proto, "árvíztűrőtükörfúrógép", -1);
-  assert_proto_server_fetch(proto,
+  assert_proto_server_fetch(&proto, "árvíztűrőtükörfúrógép", -1);
+  assert_proto_server_fetch(&proto,
                             "\xe1\x72\x76\xed\x7a\x74\xfb\x72\xf5\x74\xfc\x6b\xf6\x72\x66\xfa"    /*  |árvíztűrőtükörfú| */
                             "\x72\xf3\x67\xe9\x70",                                               /*  |rógép|            */
                             -1);
-  assert_proto_server_fetch(proto, "01234567", -1);
+  assert_proto_server_fetch(&proto, "01234567", -1);
 
-  assert_proto_server_fetch(proto, "01234567", -1);
-  assert_proto_server_fetch(proto, "", -1);
+  assert_proto_server_fetch(&proto, "01234567", -1);
+  assert_proto_server_fetch(&proto, "", -1);
 
-  assert_proto_server_fetch(proto, "01234567", -1);
-  assert_proto_server_fetch(proto, "", -1);
+  assert_proto_server_fetch(&proto, "01234567", -1);
+  assert_proto_server_fetch(&proto, "", -1);
 
-  assert_proto_server_fetch(proto, "01234567", -1);
-  assert_proto_server_fetch(proto, "", -1);
+  assert_proto_server_fetch(&proto, "01234567", -1);
+  assert_proto_server_fetch(&proto, "", -1);
 
-  assert_proto_server_fetch(proto, "01234567", -1);
-  assert_proto_server_fetch(proto, "01234567", -1);
+  assert_proto_server_fetch(&proto, "01234567", -1);
+  assert_proto_server_fetch(&proto, "01234567", -1);
   log_proto_server_free(proto);
 }
 
@@ -160,8 +160,8 @@ Test(log_proto, test_log_proto_text_server_no_eol_before_eof)
 
               LTM_EOF));
 
-  assert_proto_server_fetch(proto, "01234567", -1);
-  assert_proto_server_fetch_failure(proto, LPS_EOF, NULL);
+  assert_proto_server_fetch(&proto, "01234567", -1);
+  assert_proto_server_fetch_failure(&proto, LPS_EOF, NULL);
   log_proto_server_free(proto);
 
 }
@@ -176,9 +176,9 @@ Test(log_proto, test_log_proto_text_server_eols_are_removed_from_the_front_as_we
               "\r01234567\r\n", -1,
               LTM_EOF));
 
-  assert_proto_server_fetch(proto, "01234567", -1);
-  assert_proto_server_fetch(proto, "01234567", -1);
-  assert_proto_server_fetch_failure(proto, LPS_EOF, NULL);
+  assert_proto_server_fetch(&proto, "01234567", -1);
+  assert_proto_server_fetch(&proto, "01234567", -1);
+  assert_proto_server_fetch_failure(&proto, LPS_EOF, NULL);
   log_proto_server_free(proto);
 }
 
@@ -194,9 +194,9 @@ Test(log_proto, test_log_proto_text_with_embedded_nuls)
 
               LTM_EOF));
 
-  assert_proto_server_fetch(proto, "01234567", -1);
-  assert_proto_server_fetch(proto, "alma\x00korte", 10);
-  assert_proto_server_fetch_failure(proto, LPS_EOF, NULL);
+  assert_proto_server_fetch(&proto, "01234567", -1);
+  assert_proto_server_fetch(&proto, "alma\x00korte", 10);
+  assert_proto_server_fetch_failure(&proto, LPS_EOF, NULL);
   log_proto_server_free(proto);
 }
 
@@ -212,9 +212,9 @@ Test(log_proto, test_log_proto_nul_terminated_records)
 
               LTM_EOF));
 
-  assert_proto_server_fetch(proto, "01234\n567", -1);
-  assert_proto_server_fetch(proto, "alma\nkorte", -1);
-  assert_proto_server_fetch_failure(proto, LPS_EOF, NULL);
+  assert_proto_server_fetch(&proto, "01234\n567", -1);
+  assert_proto_server_fetch(&proto, "alma\nkorte", -1);
+  assert_proto_server_fetch_failure(&proto, LPS_EOF, NULL);
   log_proto_server_free(proto);
 }
 
@@ -229,10 +229,10 @@ Test(log_proto, test_log_proto_text_server_eol_before_eof)
               LTM_INJECT_ERROR(EIO),
               LTM_EOF));
 
-  assert_proto_server_fetch(proto, "01234", -1);
-  assert_proto_server_fetch(proto, "567", -1);
-  assert_proto_server_fetch(proto, "890", -1);
-  assert_proto_server_fetch_failure(proto, LPS_ERROR, NULL);
+  assert_proto_server_fetch(&proto, "01234", -1);
+  assert_proto_server_fetch(&proto, "567", -1);
+  assert_proto_server_fetch(&proto, "890", -1);
+  assert_proto_server_fetch_failure(&proto, LPS_ERROR, NULL);
   log_proto_server_free(proto);
 }
 
@@ -246,8 +246,8 @@ Test(log_proto, test_log_proto_text_server_io_error_before_eof)
               LTM_INJECT_ERROR(EIO),
               LTM_EOF));
 
-  assert_proto_server_fetch(proto, "01234567", -1);
-  assert_proto_server_fetch_failure(proto, LPS_ERROR, NULL);
+  assert_proto_server_fetch(&proto, "01234567", -1);
+  assert_proto_server_fetch_failure(&proto, LPS_ERROR, NULL);
   log_proto_server_free(proto);
 }
 
@@ -264,7 +264,7 @@ Test(log_proto, test_log_proto_text_server_partial_chars_before_eof)
 
   cr_assert(log_proto_server_validate_options(proto),
             "validate_options() returned failure but it should have succeeded");
-  assert_proto_server_fetch_failure(proto, LPS_EOF,
+  assert_proto_server_fetch_failure(&proto, LPS_EOF,
                                     "EOF read on a channel with leftovers from previous character conversion, dropping input");
   log_proto_server_free(proto);
 }
@@ -281,7 +281,7 @@ Test(log_proto, test_log_proto_text_server_invalid_char_with_encoding)
 
   cr_assert(log_proto_server_validate_options(proto),
             "validate_options() returned failure but it should have succeeded");
-  assert_proto_server_fetch(proto, "foobarbaz", -1);
+  assert_proto_server_fetch(&proto, "foobarbaz", -1);
   log_proto_server_free(proto);
 }
 
@@ -299,8 +299,8 @@ Test(log_proto, test_log_proto_text_server_not_fixed_encoding)
               LTM_EOF));
   cr_assert(log_proto_server_validate_options(proto),
             "validate_options() returned failure but it should have succeeded");
-  assert_proto_server_fetch(proto, "árvíztűrőtükörfúrógép", -1);
-  assert_proto_server_fetch_failure(proto, LPS_EOF, NULL);
+  assert_proto_server_fetch(&proto, "árvíztűrőtükörfúrógép", -1);
+  assert_proto_server_fetch_failure(&proto, LPS_EOF, NULL);
   log_proto_server_free(proto);
 }
 
@@ -322,8 +322,8 @@ Test(log_proto, test_log_proto_text_server_ucs4)
 
   cr_assert(log_proto_server_validate_options(proto),
             "validate_options() returned failure but it should have succeeded");
-  assert_proto_server_fetch(proto, "árvíztűrőtükörfúrógép", -1);
-  assert_proto_server_fetch_failure(proto, LPS_EOF, NULL);
+  assert_proto_server_fetch(&proto, "árvíztűrőtükörfúrógép", -1);
+  assert_proto_server_fetch_failure(&proto, LPS_EOF, NULL);
   log_proto_server_free(proto);
 }
 
@@ -341,8 +341,8 @@ Test(log_proto, test_log_proto_text_server_iso8859_2)
 
   cr_assert(log_proto_server_validate_options(proto),
             "validate_options() returned failure but it should have succeeded");
-  assert_proto_server_fetch(proto, "árvíztűrőtükörfúrógép", -1);
-  assert_proto_server_fetch_failure(proto, LPS_EOF, NULL);
+  assert_proto_server_fetch(&proto, "árvíztűrőtükörfúrógép", -1);
+  assert_proto_server_fetch_failure(&proto, LPS_EOF, NULL);
   log_proto_server_free(proto);
 }
 
@@ -376,9 +376,9 @@ Test(log_proto, test_log_proto_text_server_multi_read)
               LTM_INJECT_ERROR(EIO),
               LTM_EOF));
 
-  assert_proto_server_fetch(proto, "foobar", -1);
-  assert_proto_server_fetch(proto, "foobaz", -1);
-  assert_proto_server_fetch_failure(proto, LPS_ERROR, NULL);
+  assert_proto_server_fetch(&proto, "foobar", -1);
+  assert_proto_server_fetch(&proto, "foobaz", -1);
+  assert_proto_server_fetch_failure(&proto, LPS_ERROR, NULL);
   log_proto_server_free(proto);
 }
 
@@ -396,17 +396,17 @@ Test(log_proto, test_log_proto_text_server_multi_read_not_allowed, .disabled = t
               LTM_EOF));
 
   ((LogProtoBufferedServer *) proto)->no_multi_read = TRUE;
-  assert_proto_server_fetch_single_read(proto, "foobar", -1);
+  assert_proto_server_fetch_single_read(&proto, "foobar", -1);
   /* because of EAGAIN */
-  assert_proto_server_fetch_single_read(proto, NULL, -1);
+  assert_proto_server_fetch_single_read(&proto, NULL, -1);
   /* because of NOMREAD, partial lines are returned as empty */
-  assert_proto_server_fetch_single_read(proto, NULL, -1);
+  assert_proto_server_fetch_single_read(&proto, NULL, -1);
   /* because of EAGAIN */
-  assert_proto_server_fetch_single_read(proto, NULL, -1);
+  assert_proto_server_fetch_single_read(&proto, NULL, -1);
   /* error was detected by this time, partial line is returned before the error */
-  assert_proto_server_fetch_single_read(proto, "foobaz", -1);
+  assert_proto_server_fetch_single_read(&proto, "foobaz", -1);
   /* finally the error is returned too */
-  assert_proto_server_fetch_failure(proto, LPS_ERROR, NULL);
+  assert_proto_server_fetch_failure(&proto, LPS_ERROR, NULL);
   log_proto_server_free(proto);
 }
 
@@ -429,11 +429,11 @@ Test(log_proto, test_log_proto_text_server_is_not_fetching_input_as_long_as_ther
               LTM_INJECT_ERROR(EIO),
               LTM_EOF));
 
-  assert_proto_server_fetch(proto, "foo", -1);
-  assert_proto_server_fetch(proto, "bar", -1);
-  assert_proto_server_fetch(proto, "baz", -1);
-  assert_proto_server_fetch(proto, "booz", -1);
-  assert_proto_server_fetch_failure(proto, LPS_ERROR, NULL);
+  assert_proto_server_fetch(&proto, "foo", -1);
+  assert_proto_server_fetch(&proto, "bar", -1);
+  assert_proto_server_fetch(&proto, "baz", -1);
+  assert_proto_server_fetch(&proto, "booz", -1);
+  assert_proto_server_fetch_failure(&proto, LPS_ERROR, NULL);
   log_proto_server_free(proto);
 }
 
@@ -467,10 +467,10 @@ test_log_proto_text_server_accumulate_line_is_called_for_each_line(LogTransportM
               LTM_PADDING,
               LTM_EOF));
 
-  assert_proto_server_fetch(proto, "0 line", -1);
-  assert_proto_server_fetch(proto, "1 line", -1);
-  assert_proto_server_fetch(proto, "2 line", -1);
-  assert_proto_server_fetch(proto, "3 line", -1);
+  assert_proto_server_fetch(&proto, "0 line", -1);
+  assert_proto_server_fetch(&proto, "1 line", -1);
+  assert_proto_server_fetch(&proto, "2 line", -1);
+  assert_proto_server_fetch(&proto, "3 line", -1);
 
   log_proto_server_free(proto);
 }
@@ -509,8 +509,8 @@ test_log_proto_text_server_accumulate_line_can_consume_lines_without_returning_t
               LTM_PADDING,
               LTM_EOF));
 
-  assert_proto_server_fetch(proto, "0 line\n1 line", -1);
-  assert_proto_server_fetch(proto, "2 line\n3 line", -1);
+  assert_proto_server_fetch(&proto, "0 line\n1 line", -1);
+  assert_proto_server_fetch(&proto, "2 line\n3 line", -1);
 
   log_proto_server_free(proto);
 }
@@ -558,8 +558,8 @@ test_log_proto_text_server_accumulate_line_can_rewind_lines_if_uninteresting(Log
               LTM_PADDING,
               LTM_EOF));
 
-  assert_proto_server_fetch(proto, "0 line\n line", -1);
-  assert_proto_server_fetch(proto, "2 line\n line", -1);
+  assert_proto_server_fetch(&proto, "0 line\n line", -1);
+  assert_proto_server_fetch(&proto, "2 line\n line", -1);
 
   log_proto_server_free(proto);
 }
@@ -585,8 +585,8 @@ test_log_proto_text_server_accumulation_terminated_if_input_is_closed(LogTranspo
               "1 line\n", -1,
               LTM_EOF));
 
-  assert_proto_server_fetch(proto, "0 line\n line", -1);
-  assert_proto_server_fetch(proto, "1 line", -1);
+  assert_proto_server_fetch(&proto, "0 line\n line", -1);
+  assert_proto_server_fetch(&proto, "1 line", -1);
 
   log_proto_server_free(proto);
 }
@@ -611,8 +611,8 @@ test_log_proto_text_server_accumulation_terminated_if_buffer_full(LogTransportMo
               " continuation\n", -1,
               LTM_EOF));
 
-  assert_proto_server_fetch(proto, "0123456789abcdef\n 0123456789abcd", -1);
-  assert_proto_server_fetch(proto, "ef\n continuation", -1);
+  assert_proto_server_fetch(&proto, "0123456789abcdef\n 0123456789abcd", -1);
+  assert_proto_server_fetch(&proto, "ef\n continuation", -1);
   log_proto_server_free(proto);
 }
 
@@ -648,10 +648,10 @@ test_log_proto_text_server_rewinding_the_initial_line_results_in_an_empty_messag
               LTM_PADDING,
               LTM_EOF));
 
-  assert_proto_server_fetch(proto, "", -1);
-  assert_proto_server_fetch(proto, "0 line", -1);
-  assert_proto_server_fetch(proto, "1 line", -1);
-  assert_proto_server_fetch(proto, "2 line", -1);
+  assert_proto_server_fetch(&proto, "", -1);
+  assert_proto_server_fetch(&proto, "0 line", -1);
+  assert_proto_server_fetch(&proto, "1 line", -1);
+  assert_proto_server_fetch(&proto, "2 line", -1);
 
   log_proto_server_free(proto);
 }
@@ -706,12 +706,12 @@ Test(log_proto, buffer_split_with_encoding_and_position_tracking)
   LogProtoServer *proto = log_proto_text_server_new((LogTransport *) transport, get_inited_proto_server_options());
 
   start_grabbing_messages();
-  assert_proto_server_fetch(proto, data_smaller->str, data_smaller->len - 1);
-  assert_proto_server_fetch(proto, data->str, data->len - 1);
+  assert_proto_server_fetch(&proto, data_smaller->str, data_smaller->len - 1);
+  assert_proto_server_fetch(&proto, data->str, data->len - 1);
   stop_grabbing_messages();
   cr_assert_not(find_grabbed_message("Internal error"));
 
-  assert_proto_server_fetch_failure(proto, LPS_EOF, NULL);
+  assert_proto_server_fetch_failure(&proto, LPS_EOF, NULL);
 
   log_proto_server_free(proto);
   g_free(full_payload);

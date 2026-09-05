@@ -65,10 +65,10 @@ Test(log_proto, test_base)
   /* check if error state is not forgotten unless reset_error is called */
   proto->status = LPS_ERROR;
   assert_proto_server_status(proto, proto->status, LPS_ERROR);
-  assert_proto_server_fetch_failure(proto, LPS_ERROR, NULL);
+  assert_proto_server_fetch_failure(&proto, LPS_ERROR, NULL);
 
   log_proto_server_reset_error(proto);
-  assert_proto_server_fetch(proto, "árvíztűr", -1);
+  assert_proto_server_fetch(&proto, "árvíztűr", -1);
   assert_proto_server_status(proto, proto->status, LPS_SUCCESS);
 
   log_proto_server_free(proto);
