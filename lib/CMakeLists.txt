@@ -420,6 +420,7 @@ target_link_libraries(
     libcap
     OpenSSL::SSL
     OpenSSL::Crypto
+    ZLIB::ZLIB
     Threads::Threads
     secret-storage
 )

@@ -2,6 +2,7 @@ lib_transport_tests_TESTS		 = \
 	lib/transport/tests/test_aux_data \
 	lib/transport/tests/test_transport \
 	lib/transport/tests/test_transport_stack \
+	lib/transport/tests/test_transport_zlib \
 	lib/transport/tests/test_transport_haproxy \
 	lib/transport/tests/test_tls_wildcard_match
 
@@ -26,6 +27,12 @@ lib_transport_tests_test_transport_stack_CFLAGS  = $(TEST_CFLAGS) \
 lib_transport_tests_test_transport_stack_LDADD	 = $(TEST_LDADD)
 lib_transport_tests_test_transport_stack_SOURCES = 			\
 	lib/transport/tests/test_transport_stack.c
+
+lib_transport_tests_test_transport_zlib_CFLAGS  = $(TEST_CFLAGS) \
+	-I${top_srcdir}/lib/transport/tests
+lib_transport_tests_test_transport_zlib_LDADD	 = $(TEST_LDADD)
+lib_transport_tests_test_transport_zlib_SOURCES = 			\
+	lib/transport/tests/test_transport_zlib.c
 
 lib_transport_tests_test_transport_haproxy_CFLAGS  = $(TEST_CFLAGS) \
 	-I${top_srcdir}/lib/transport/tests

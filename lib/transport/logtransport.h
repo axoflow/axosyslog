@@ -70,6 +70,13 @@ struct _LogTransport
   void (*free_fn)(LogTransport *self);
   void (*register_stats)(LogTransport *self, StatsClusterKeyBuilder *kb);
 
+  /* Optional: TRUE while the transport holds octets that read() would deliver
+   * without a single further one arriving on the connection, so that
+   * poll_prepare() schedules a fetch rather than waiting for a file descriptor
+   * that is not going to become readable again on its own.
+   */
+  gboolean (*has_pending_input)(LogTransport *self);
+
   /* read ahead */
   struct
   {
@@ -107,6 +114,9 @@ log_transport_poll_prepare(LogTransport *self, GIOCondition *cond)
   *cond = _log_transport_io_cond(self->cond);
 
   if (self->ra.buf_len != self->ra.pos)
+    return TRUE;
+
+  if (self->has_pending_input && self->has_pending_input(self))
     return TRUE;
 
   return FALSE;

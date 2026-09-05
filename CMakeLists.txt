@@ -276,6 +276,7 @@ external_or_find_package(IVYKIS REQUIRED)
 external_or_find_package(JSONC REQUIRED)
 
 find_package(OpenSSL REQUIRED)
+find_package(ZLIB REQUIRED)
 find_package(FLEX REQUIRED)
 find_package(Resolv REQUIRED)
 find_package(WRAP)

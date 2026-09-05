@@ -10,6 +10,8 @@ set(TRANSPORT_HEADERS
     transport/transport-udp-socket.h
     transport/transport-stack.h
     transport/transport-factory-tls.h
+    transport/transport-zlib.h
+    transport/transport-factory-zlib.h
     transport/transport-factory-haproxy.h
     transport/transport-globals.h
     transport/tls-context.h
@@ -29,6 +31,8 @@ set(TRANSPORT_SOURCES
     transport/transport-tls.c
     transport/transport-stack.c
     transport/transport-factory-tls.c
+    transport/transport-zlib.c
+    transport/transport-factory-zlib.c
     transport/transport-factory-haproxy.c
     transport/transport-globals.c
     transport/tls-context.c
