@@ -68,7 +68,6 @@ struct _LogWriter
   LogQueue *queue;
   guint32 flags:31;
   gint32 seq_num;
-  gboolean handshake_in_progress;
   gboolean partial_write;
 
   struct
@@ -1270,20 +1269,6 @@ log_writer_queue_pop_message(LogWriter *self, LogPathOptions *path_options, gboo
     return log_queue_pop_head(self->queue, path_options);
 }
 
-static inline LogProtoStatus
-log_writer_process_handshake(LogWriter *self)
-{
-  gboolean handshake_finished = FALSE;
-  LogProtoStatus status = log_proto_client_handshake(self->proto, &handshake_finished);
-
-  if (status != LPS_SUCCESS)
-    return LPS_ERROR;
-
-  if (handshake_finished)
-    self->handshake_in_progress = FALSE;
-  return LPS_SUCCESS;
-}
-
 /*
  * @flush_mode specifies how hard LogWriter is trying to send messages to
  * the actual destination:
@@ -1300,9 +1285,6 @@ log_writer_flush(LogWriter *self, LogWriterFlushMode flush_mode)
 
   if (!self->proto)
     return LPS_ERROR;
-
-  if (self->handshake_in_progress)
-    return log_writer_process_handshake(self);
 
   /* NOTE: in case we're reloading or exiting we flush all queued items as
    * long as the destination can consume it.  This is not going to be an
@@ -1882,7 +1864,6 @@ log_writer_new(guint32 flags, GlobalConfig *cfg)
   self->flags = flags;
   self->line_buffer = g_string_sized_new(128);
   self->pollable_state = -1;
-  self->handshake_in_progress = TRUE;
   init_sequence_number(&self->seq_num);
 
   log_writer_init_watches(self);
