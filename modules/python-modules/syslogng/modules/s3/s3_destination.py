@@ -37,7 +37,7 @@ from pathlib import Path
 from signal import signal, SIGINT, SIG_IGN
 from sys import exc_info
 from syslogng import LogDestination, LogMessage, LogTemplate, get_installation_path_for
-from threading import Event, Timer
+from threading import Event, Lock, Timer
 from time import monotonic, sleep
 from typing import Any, Dict, Optional
 
@@ -162,6 +162,8 @@ class S3Destination(LogDestination):
         self.session: Optional[Session] = None
         self.client: Optional[Any] = None
 
+        # send() worker vs. flush poll timer vs. close()
+        self.objects_lock = Lock()
         self.s3_objects: Dict[str, S3Object] = dict()
         self.finished_s3_objects: Dict[str, Dict[str, Dict[int, S3Object]]] = dict()
         self.backfill_s3_objects: Dict[str, Dict[str, S3Object]] = dict()
@@ -334,21 +336,26 @@ class S3Destination(LogDestination):
             self.flush_poll_event.cancel()
             self.flush_poll_event = None
 
-        for s3_object in self.s3_objects.values():
-            if not s3_object.finished:
-                self.__finish_s3_object(s3_object)
-
-        for backfill_timestamps in self.backfill_s3_objects.values():
-            for s3_object in backfill_timestamps.values():
+        with self.objects_lock:
+            for s3_object in self.s3_objects.values():
                 if not s3_object.finished:
                     self.__finish_s3_object(s3_object)
 
-        for finished_timestamps in self.finished_s3_objects.values():
-            for indexes in finished_timestamps.values():
-                for s3_object in indexes.values():
-                    s3_object.wait_for_upload_to_complete()
+            for backfill_timestamps in self.backfill_s3_objects.values():
+                for s3_object in backfill_timestamps.values():
+                    if not s3_object.finished:
+                        self.__finish_s3_object(s3_object)
 
-        self.finished_s3_objects.clear()
+            finished_objects = [
+                s3_object
+                for finished_timestamps in self.finished_s3_objects.values()
+                for indexes in finished_timestamps.values()
+                for s3_object in indexes.values()
+            ]
+            self.finished_s3_objects.clear()
+
+        for s3_object in finished_objects:
+            s3_object.wait_for_upload_to_complete()
 
         self.client.close()
         self.client = None
@@ -365,16 +372,18 @@ class S3Destination(LogDestination):
 
         now = monotonic()
 
-        for s3_object in self.s3_objects.values():
-            if should_flush_s3_object(s3_object, now):
-                self.__finish_s3_object(s3_object)
-
-        for timestamps in self.backfill_s3_objects.values():
-            for s3_object in timestamps.values():
+        with self.objects_lock:
+            for s3_object in list(self.s3_objects.values()):
                 if should_flush_s3_object(s3_object, now):
                     self.__finish_s3_object(s3_object)
 
-        self.__start_flush_poll_timer()
+            for timestamps in list(self.backfill_s3_objects.values()):
+                for s3_object in list(timestamps.values()):
+                    if should_flush_s3_object(s3_object, now):
+                        self.__finish_s3_object(s3_object)
+
+        if not self.exit_requested.is_set():
+            self.__start_flush_poll_timer()
 
     def __format_template_string(self, template: LogTemplate, msg: LogMessage) -> str:
         return template.format(msg, self.template_options).decode("utf-8", errors="backslashreplace")
@@ -489,7 +498,8 @@ class S3Destination(LogDestination):
             return self.NOT_CONNECTED
 
         try:
-            s3_object = self.__get_s3_object(msg)
+            with self.objects_lock:
+                s3_object = self.__get_s3_object(msg)
         except ConstructorError as e:
             self.logger.error(str(e))
             return self.NOT_CONNECTED
@@ -503,15 +513,18 @@ class S3Destination(LogDestination):
             return self.ERROR
         except AlreadyFinishedError as e:
             self.logger.error(f"Failed to write data: {e}")
-            self.__finish_s3_object(s3_object)
+            with self.objects_lock:
+                self.__finish_s3_object(s3_object)
             return self.ERROR
 
         if s3_object.finished:
             # The S3 object finished itself after a successful write.
-            self.__finish_s3_object(s3_object)
+            with self.objects_lock:
+                self.__finish_s3_object(s3_object)
 
         if s3_object.size >= self.max_object_size:
-            self.__finish_s3_object(s3_object)
+            with self.objects_lock:
+                self.__finish_s3_object(s3_object)
 
         self.stats_written_bytes_add(len(data))
         return self.SUCCESS
