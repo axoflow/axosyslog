@@ -21,6 +21,7 @@
  */
 #include <criterion/criterion.h>
 #include "libtest/filterx-lib.h"
+#include "libtest/fake-time.h"
 
 #include "filterx/object-datetime.h"
 #include "filterx/object-primitive.h"
@@ -332,6 +333,35 @@ Test(filterx_datetime, test_filterx_datetime_strptime_matching_nth_timefmt)
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(datetime)));
 
   assert_object_repr_equals(obj, "datetime(1712567472.000000)");
+
+  filterx_object_unref(obj);
+  filterx_expr_unref(func_expr);
+}
+
+Test(filterx_datetime, test_filterx_datetime_strptime_partially_matching_timefmt)
+{
+  /* Sat Jan 19 18:58:48 CET 2019 */
+  fake_time(1547920728);
+
+  const gchar *test_time_str = "Jan 02 03:04:05.123 UTC";
+  GList *args = NULL;
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_literal_new(filterx_string_new(test_time_str, -1))));
+  /* %Y reads "03" from the time of day, then %I fails on ":04" */
+  args = g_list_append(args, filterx_function_arg_new(NULL,
+                                                      filterx_literal_new(filterx_string_new("%b %d %Y %I:%M:%S %p %Z",
+                                                          -1))));
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_literal_new(filterx_string_new("%b %d %H:%M:%S.%f %Z",
+                                                      -1))));
+
+  FilterXExpr *func_expr = filterx_function_strptime_new(filterx_function_args_new(args, NULL), NULL);
+  cr_assert(func_expr);
+
+  FilterXObject *obj = init_and_eval_expr(func_expr);
+  cr_assert(obj);
+  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(datetime)));
+
+  /* the year is guessed from the faked current time, not left behind by the failed format */
+  assert_object_repr_equals(obj, "datetime(1546398245.123000)");
 
   filterx_object_unref(obj);
   filterx_expr_unref(func_expr);
