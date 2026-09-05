@@ -777,42 +777,34 @@ class S3Object:
         """Raises OSError on write failure. Cannot be called from multiple threads."""
         with self.__lock:
             chunk = self.__current_chunk
-        if chunk is None:
-            with self.__lock:
+            if chunk is None:
                 if self.__prev_chunk is None:
                     # the flush timer can finish this object between the caller selecting it and this write
                     raise AlreadyFinishedError()
-                self.__current_chunk = self.__prev_chunk.create_next()
+                chunk = self.__current_chunk = self.__prev_chunk.create_next()
                 self.__prev_chunk = None
-                self.__persist.add_pending_part(self.__current_chunk.buffer.path, self.__current_chunk.part_number)
-                chunk = self.__current_chunk
+                self.__persist.add_pending_part(chunk.buffer.path, chunk.part_number)
 
-        old_size = chunk.buffer.tell()
-        chunk.buffer.write(data)
-        new_size = chunk.buffer.tell()
-        self.__size += new_size - old_size
+            # the lock must cover the write, or finish() closes the buffer underneath
+            old_size = chunk.buffer.tell()
+            chunk.buffer.write(data)
+            new_size = chunk.buffer.tell()
+            self.__size += new_size - old_size
+            self.__modified_at = monotonic()
 
-        self.__modified_at = monotonic()
-
-        if new_size > self.__persist.chunk_size:
-            self.__lock.acquire()
-
-            if self.__current_chunk is None:
-                # finish() was called while we were writing the buffer (part upload failure or the flush timer).
-                self.__lock.release()
-                raise AlreadyFinishedError()
-
-            if self.__current_chunk.part_number == S3Chunk.MAX_PART_NUMBER:
-                self.__lock.release()
-                self.finish()
+            if new_size <= self.__persist.chunk_size:
                 return
 
-            self.__prev_chunk = self.__current_chunk
-            self.__current_chunk = None
+            rollover = chunk.part_number < S3Chunk.MAX_PART_NUMBER
+            if rollover:
+                self.__prev_chunk = chunk
+                self.__current_chunk = None
 
-            self.__lock.release()
-
+        # both take the lock themselves
+        if rollover:
             self.__upload_chunk(chunk)
+        else:
+            self.finish()
 
     def __abort_multipart(self) -> bool:
         assert self.__persist.upload_id
