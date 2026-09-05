@@ -78,7 +78,7 @@ BuildRequires: json-c-devel
 BuildRequires: llvm-devel
 BuildRequires: clang
 BuildRequires: libcap-devel
-%if 0%{?rhel} <= 8
+%if %{with sql}
 BuildRequires: libdbi-devel
 %endif
 BuildRequires: libnet-devel
