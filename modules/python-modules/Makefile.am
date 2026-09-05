@@ -59,6 +59,7 @@ EXTRA_DIST += \
 	modules/python-modules/syslogng/modules/s3/s3_destination.py \
 	modules/python-modules/syslogng/modules/s3/s3_object.py \
 	modules/python-modules/syslogng/modules/s3/scl/s3.conf \
+	modules/python-modules/syslogng/modules/s3/tests/test_s3_object.py \
 	modules/python-modules/syslogng/modules/webhook/__init__.py \
 	modules/python-modules/syslogng/modules/webhook/scl/webhook.conf \
 	modules/python-modules/syslogng/modules/webhook/source.py \

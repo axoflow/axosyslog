@@ -12,6 +12,7 @@ EXTRA_DIST += \
 	tests/light/functional_tests/destination_drivers/network_destination/test_kept_alive_tls_connection_doing_handshake_after_reload.py \
 	tests/light/functional_tests/destination_drivers/network_destination/test_network_destination_transport.py \
 	tests/light/functional_tests/destination_drivers/python_destination/test_python_destination.py \
+	tests/light/functional_tests/destination_drivers/s3_destination/test_s3_destination.py \
 	tests/light/functional_tests/destination_drivers/snmp_destination/general/test_snmp_destination_acceptance.py \
 	tests/light/functional_tests/destination_drivers/snmp_destination/general/test_snmp_destination_missing_snmp_obj.py \
 	tests/light/functional_tests/destination_drivers/snmp_destination/general/test_snmp_destination_missing_trap_obj.py \
