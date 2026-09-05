@@ -23,7 +23,12 @@
 #define COMPAT_JSON_C_H_INCLUDED 1
 
 #include "compat/compat.h"
+
+/* json-c < 0.16 tests __STDC_VERSION__ unguarded, C++ never defines it */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wundef"
 #include <json.h>
+#pragma GCC diagnostic pop
 
 #if JSON_C_MAJOR_VERSION == 0 && JSON_C_MINOR_VERSION < 15
 
