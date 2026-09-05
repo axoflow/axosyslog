@@ -30,18 +30,24 @@
 #include "stats/stats-registry.h"
 #include "mainloop.h"
 #include "str-utils.h"
+#include "transport/transport-factory-zlib.h"
 #include "timeutils/misc.h"
 
 #include <iv.h>
 
 #include <errno.h>
 #include <string.h>
+#include <zlib.h>
 
 /* the canonical reply texts of specification 13 */
 #define ALTP_REPLY_BANNER               "220 ALTP 1.0\n"
 #define ALTP_REPLY_NO_CAPABILITIES      "250 \n"
 #define ALTP_REPLY_CAPABILITY_STARTTLS  "250 STARTTLS\n"
+#define ALTP_REPLY_CAPABILITY_ZLIB      "250 ZLIB\n"
+/* the multi-line form of 4.3: a non-final Capability line, then the final one */
+#define ALTP_REPLY_CAPABILITY_BOTH      "250-STARTTLS\n250 ZLIB\n"
 #define ALTP_REPLY_READY_TO_START_TLS   "250 Ready to start TLS\n"
+#define ALTP_REPLY_READY_TO_START_ZLIB  "250 Ready to start ZLIB\n"
 #define ALTP_REPLY_OK                   "250 OK\n"
 #define ALTP_REPLY_READY                "250 Ready\n"
 #define ALTP_REPLY_RECEIVED_FORMAT      "250 Received %" G_GUINT32_FORMAT "\n"
@@ -53,6 +59,7 @@
 #define ALTP_REPLY_INVALID_SESSION_ID   "504 Invalid session id\n"
 #define ALTP_REPLY_STARTTLS_REQUIRED    "505 STARTTLS required\n"
 #define ALTP_REPLY_ALREADY_USING_TLS    "506 Already using TLS\n"
+#define ALTP_REPLY_ALREADY_USING_ZLIB   "507 Already using ZLIB\n"
 #define ALTP_REPLY_INVALID_VERSION      "510 Invalid version of dialect\n"
 #define ALTP_REPLY_SESSION_ALREADY_BOUND "511 Another session is already bound to this connection\n"
 #define ALTP_REPLY_FRAME_TOO_LARGE      "552 Frame too large\n"
@@ -63,7 +70,7 @@
  */
 static const gchar *ALTP_REPLY_CODES[] =
 {
-  "421", "501", "502", "503", "504", "505", "506", "510", "511", "552"
+  "421", "501", "502", "503", "504", "505", "506", "507", "510", "511", "552"
 };
 
 /* the two values of the `result` label of altp_acknowledgements_total */
@@ -177,6 +184,12 @@ typedef struct _LogProtoAltpServer
 
   /* the TLS handshake starts once the reply being written is flushed (6.1) */
   gboolean start_tls_after_reply;
+  /* and so does the switch to the zlib stream, in both directions (6.2) */
+  gboolean start_zlib_after_reply;
+  /* STARTTLS succeeded here.  Neither the active transport nor the presence of
+   * a TLS layer answers that: ZLIB may sit on top of TLS, and the stats
+   * registration of afsocket constructs the TLS layer eagerly. */
+  gboolean tls_active;
 
   /* the unparsed input is buffer[buffer_pos .. buffer_end) */
   guchar *buffer;
@@ -205,7 +218,7 @@ typedef struct _LogProtoAltpServer
 static gboolean
 _is_tls_active(LogProtoAltpServer *self)
 {
-  return self->super.transport_stack.active_transport == LOG_TRANSPORT_TLS;
+  return self->tls_active || self->super.transport_stack.active_transport == LOG_TRANSPORT_TLS;
 }
 
 /* a TLS factory on the stack is what tls() on the driver puts there */
@@ -229,13 +242,36 @@ _resolve_tls_policy(LogProtoAltpServer *self)
   return ALTP_TLS_POLICY_NONE;
 }
 
-/* ZLIB is never advertised by this Receiver, so the Capability list is at
- * most one line long and never needs the multi-line form of 4.3. */
+static gboolean
+_is_zlib_active(LogProtoAltpServer *self)
+{
+  return self->super.transport_stack.active_transport == LOG_TRANSPORT_ZLIB;
+}
+
+/* ZLIB is offered inside TLS as well: the deployments this Receiver is written
+ * for run compression under encryption, which 6.2 permits a Receiver to do --
+ * legacy Receivers withhold it there (Appendix B).
+ */
+static gboolean
+_is_zlib_available(LogProtoAltpServer *self)
+{
+  return self->options.allow_compression && !_is_zlib_active(self);
+}
+
+/* One Capability name per line: the non-final lines carry the `250-` prefix
+ * and the last one the `250 ` of an ordinary reply (4.3, 5.2). */
 static const gchar *
 _capability_reply(LogProtoAltpServer *self)
 {
-  if (_is_starttls_available(self))
+  gboolean starttls = _is_starttls_available(self);
+  gboolean zlib = _is_zlib_available(self);
+
+  if (starttls && zlib)
+    return ALTP_REPLY_CAPABILITY_BOTH;
+  if (starttls)
     return ALTP_REPLY_CAPABILITY_STARTTLS;
+  if (zlib)
+    return ALTP_REPLY_CAPABILITY_ZLIB;
   return ALTP_REPLY_NO_CAPABILITIES;
 }
 
@@ -451,22 +487,19 @@ _queue_acknowledgement(LogProtoAltpServer *self, guint32 frames_acked, gboolean 
  * dispatching what an on-path attacker appended to the plaintext stream would
  * be the classic STARTTLS plaintext injection (CVE-2011-0411 and its kin).
  *
- * The read-ahead buffer of the transport underneath us needs no such treatment.
- * It is filled by log_transport_read_ahead() and log_transport_look_ahead()
- * only, which the auto-detecting server proto is the sole user of and which
- * never constructs an ALTP Connection, so it is empty here.  Were it not, its
- * octets would reach the TLS adapter through log_transport_read() and be
- * offered to the handshake as a TLS record, which fails the handshake and
- * closes the Connection -- a failure closed, never an injection.
+ * The read-ahead buffer of the transport underneath needs no such treatment:
+ * only the auto-detecting server proto ever fills it, and that one never
+ * constructs an ALTP Connection.
  */
 static void
-_discard_plaintext_input(LogProtoAltpServer *self)
+_discard_pipelined_input(LogProtoAltpServer *self, const gchar *command)
 {
   gsize discarded = self->buffer_end - self->buffer_pos;
 
   if (discarded > 0)
-    msg_warning("Discarding the ALTP input a Sender pipelined after its STARTTLS command line, "
-                "those octets were sent in plaintext",
+    msg_warning("Discarding the ALTP input a Sender pipelined after its upgrade command line, "
+                "those octets were sent on the transport the upgrade replaced",
+                evt_tag_str("command", command),
                 evt_tag_str("client", _get_peer_address(self)),
                 evt_tag_int("discarded", discarded),
                 evt_tag_int(EVT_TAG_FD, self->super.transport_stack.fd));
@@ -519,8 +552,31 @@ _flush_reply(LogProtoAltpServer *self, LogProtoStatus *status)
           *status = LPS_ERROR;
           return ALTP_CTRL_RETURN_WITH_STATUS;
         }
-      _discard_plaintext_input(self);
+      self->tls_active = TRUE;
+      _discard_pipelined_input(self, "STARTTLS");
       msg_debug("ALTP Connection switched to TLS",
+                evt_tag_int(EVT_TAG_FD, self->super.transport_stack.fd));
+    }
+
+  if (self->start_zlib_after_reply)
+    {
+      /* Compression begins after the LF of the reply, in both directions and
+       * for the life of the Connection.  The factory layers the zlib stream on
+       * whichever transport is active, so a TLS Connection compresses inside
+       * TLS (6.2).
+       */
+      self->start_zlib_after_reply = FALSE;
+      log_transport_stack_add_factory(&self->super.transport_stack,
+                                      transport_factory_zlib_new(Z_DEFAULT_COMPRESSION));
+      if (!log_transport_stack_switch(&self->super.transport_stack, LOG_TRANSPORT_ZLIB))
+        {
+          msg_error("Error switching the ALTP Connection to ZLIB",
+                    evt_tag_int(EVT_TAG_FD, self->super.transport_stack.fd));
+          *status = LPS_ERROR;
+          return ALTP_CTRL_RETURN_WITH_STATUS;
+        }
+      _discard_pipelined_input(self, "ZLIB");
+      msg_debug("ALTP Connection switched to ZLIB",
                 evt_tag_int(EVT_TAG_FD, self->super.transport_stack.fd));
     }
 
@@ -700,6 +756,14 @@ _on_starttls(LogProtoAltpServer *self, gsize param_len)
       return;
     }
 
+  if (_is_zlib_active(self))
+    {
+      /* TLS comes first, so no upgrade is left once ZLIB runs (6.1, 6.2) */
+      msg_error("ALTP STARTTLS requested on a Connection that is already compressed");
+      _reply_and_close(self, ALTP_REPLY_ALREADY_USING_ZLIB);
+      return;
+    }
+
   if (!_is_starttls_available(self))
     {
       /* no tls() on the driver: the none policy of 6.1 has no such verb */
@@ -710,6 +774,38 @@ _on_starttls(LogProtoAltpServer *self, gsize param_len)
 
   self->start_tls_after_reply = TRUE;
   _reply_and_continue(self, ALTP_REPLY_READY_TO_START_TLS);
+}
+
+static void
+_on_zlib(LogProtoAltpServer *self, gsize param_len)
+{
+  /* ZLIB takes no parameters (6.2) */
+  if (param_len != 0)
+    {
+      msg_error("Parameters supplied to the ALTP ZLIB command");
+      _reply_and_close(self, ALTP_REPLY_SYNTAX_ERROR);
+      return;
+    }
+
+  if (_is_zlib_active(self))
+    {
+      msg_error("ALTP ZLIB requested on a Connection that is already compressed");
+      _reply_and_close(self, ALTP_REPLY_ALREADY_USING_ZLIB);
+      return;
+    }
+
+  if (!self->options.allow_compression)
+    {
+      /* a Capability we do not offer is like a verb we do not implement (5.4, 6.2) */
+      msg_error("ALTP ZLIB requested, but compression is not allowed on this Receiver");
+      _reply_and_close(self, ALTP_REPLY_UNKNOWN_COMMAND);
+      return;
+    }
+
+  /* the most-recent-EHLO rule of 5.3 binds the Sender, not us: one that asks
+   * without reading our Capability list still gets what it asked for */
+  self->start_zlib_after_reply = TRUE;
+  _reply_and_continue(self, ALTP_REPLY_READY_TO_START_ZLIB);
 }
 
 /* 1 to 64 visible ASCII octets; we reject the out of range ones 7.1 lets us */
@@ -870,10 +966,12 @@ _dispatch_command(LogProtoAltpServer *self, const gchar *line, gsize line_len)
     {
       _on_starttls(self, param_len);
     }
+  else if (_verb_equals(line, verb_len, "ZLIB"))
+    {
+      _on_zlib(self, param_len);
+    }
   else
     {
-      /* ZLIB is never advertised by this Receiver, and a Capability that is
-       * not offered is answered like any unimplemented verb (5.4, 6.2) */
       msg_error("Unknown ALTP command", evt_tag_mem("verb", line, verb_len));
       _reply_and_close(self, ALTP_REPLY_UNKNOWN_COMMAND);
     }

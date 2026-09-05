@@ -126,6 +126,7 @@ altp_proto_server_options_defaults(LogProtoServerOptions *s)
   self->altp.session_expiration = ALTP_DEFAULT_SESSION_EXPIRATION;
   self->altp.max_sessions = ALTP_DEFAULT_MAX_SESSIONS;
   self->altp.tls_policy = ALTP_TLS_POLICY_AUTO;
+  self->altp.allow_compression = FALSE;
   self->context = _altp_receiver_context_new();
   self->super.destroy = _options_destroy;
 

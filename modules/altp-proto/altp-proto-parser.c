@@ -38,6 +38,7 @@ static CfgLexerKeyword altp_proto_keywords[] =
   { "session_expiration", KW_SESSION_EXPIRATION },
   { "max_sessions",       KW_MAX_SESSIONS },
   { "tls_policy",         KW_TLS_POLICY },
+  { "allow_compression",  KW_ALLOW_COMPRESSION },
   { "required",           KW_REQUIRED },
   { "optional",           KW_OPTIONAL },
   { NULL }

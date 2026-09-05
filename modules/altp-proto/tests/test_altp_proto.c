@@ -47,6 +47,7 @@
 
 #include <string.h>
 #include <unistd.h>
+#include <zlib.h>
 
 #define ALTP_BANNER "220 ALTP 1.0\n"
 
@@ -209,6 +210,90 @@ _get_altp_options(void)
 }
 
 /****************************************************************************
+ * The Sender's side of a compressed Connection: one zlib stream per direction (6.2).
+ ****************************************************************************/
+
+typedef struct _AltpTestZlib
+{
+  z_stream deflate_stream;
+  z_stream inflate_stream;
+  /* the mock transport borrows injected pointers, so the chunks are kept here */
+  GPtrArray *chunks;
+} AltpTestZlib;
+
+static void
+_free_gstring(gpointer data)
+{
+  g_string_free((GString *) data, TRUE);
+}
+
+static AltpTestZlib *
+_zlib_new(void)
+{
+  AltpTestZlib *self = g_new0(AltpTestZlib, 1);
+
+  cr_assert_eq(deflateInit(&self->deflate_stream, Z_DEFAULT_COMPRESSION), Z_OK);
+  cr_assert_eq(inflateInit(&self->inflate_stream), Z_OK);
+  self->chunks = g_ptr_array_new_with_free_func(_free_gstring);
+
+  return self;
+}
+
+static void
+_zlib_free(AltpTestZlib *self)
+{
+  deflateEnd(&self->deflate_stream);
+  inflateEnd(&self->inflate_stream);
+  g_ptr_array_free(self->chunks, TRUE);
+  g_free(self);
+}
+
+static GString *
+_zlib_compress(AltpTestZlib *self, const gchar *input, gsize input_len)
+{
+  GString *out = g_string_new("");
+  guchar buf[4096];
+
+  self->deflate_stream.next_in = (Bytef *) input;
+  self->deflate_stream.avail_in = input_len;
+
+  do
+    {
+      self->deflate_stream.next_out = buf;
+      self->deflate_stream.avail_out = sizeof(buf);
+      cr_assert_eq(deflate(&self->deflate_stream, Z_SYNC_FLUSH), Z_OK);
+      g_string_append_len(out, (const gchar *) buf, sizeof(buf) - self->deflate_stream.avail_out);
+    }
+  while (self->deflate_stream.avail_out == 0);
+
+  g_ptr_array_add(self->chunks, out);
+
+  return out;
+}
+
+static void
+_zlib_inflate_into(AltpTestZlib *self, const gchar *data, gsize len, GString *out)
+{
+  guchar buf[4096];
+
+  self->inflate_stream.next_in = (Bytef *) data;
+  self->inflate_stream.avail_in = len;
+
+  while (self->inflate_stream.avail_in > 0)
+    {
+      self->inflate_stream.next_out = buf;
+      self->inflate_stream.avail_out = sizeof(buf);
+
+      gint rc = inflate(&self->inflate_stream, Z_SYNC_FLUSH);
+      cr_assert(rc == Z_OK || rc == Z_BUF_ERROR, "the Receiver's output is not a zlib stream: %d", rc);
+      g_string_append_len(out, (const gchar *) buf, sizeof(buf) - self->inflate_stream.avail_out);
+
+      if (rc == Z_BUF_ERROR)
+        break;
+    }
+}
+
+/****************************************************************************
  * Driving a Connection the way the LogReader does
  ****************************************************************************/
 
@@ -232,6 +317,8 @@ typedef struct _AltpTestConnection
   /* When set, every fetch() is given this one Bookmark, the way the ack tracker
    * hands its pending Bookmark to a fetch() that produces no message. */
   Bookmark *shared_bookmark;
+  /* set once compressed: turns the zlib stream back into readable reply text */
+  AltpTestZlib *codec;
 } AltpTestConnection;
 
 static void
@@ -284,6 +371,8 @@ _connection_init(AltpTestConnection *self, LogProtoServerFactory *factory, LogTr
 static void
 _connection_deinit(AltpTestConnection *self)
 {
+  if (self->codec)
+    _zlib_free(self->codec);
   log_proto_server_free(self->proto);
   g_ptr_array_free(self->bookmarks, TRUE);
   g_ptr_array_free(self->frames, TRUE);
@@ -300,7 +389,12 @@ _collect_written(AltpTestConnection *self)
 
   while ((len = log_transport_mock_read_from_write_buffer((LogTransportMock *) self->transport, buffer,
                                                           sizeof(buffer))) > 0)
-    g_string_append_len(self->replies, buffer, len);
+    {
+      if (self->codec)
+        _zlib_inflate_into(self->codec, buffer, len, self->replies);
+      else
+        g_string_append_len(self->replies, buffer, len);
+    }
 }
 
 /* Run fetch() until the proto suspends itself, ends, errors out, or @wanted_replies
@@ -395,6 +489,15 @@ static void
 _inject(AltpTestConnection *self, const gchar *input)
 {
   log_transport_mock_inject_data((LogTransportMock *) self->transport, input, -1);
+}
+
+/* deflated with the sync flush of 6.2 before it goes on the wire */
+static void
+_inject_compressed(AltpTestConnection *self, const gchar *input)
+{
+  GString *compressed = _zlib_compress(self->codec, input, strlen(input));
+
+  log_transport_mock_inject_data((LogTransportMock *) self->transport, compressed->str, compressed->len);
 }
 
 /* one Connection whose Sender writes everything at once and closes */
@@ -613,9 +716,8 @@ Test(altp, an_unknown_verb_is_answered_502_and_closes)
   _assert_conversation("altp()", "BOGUS\n", ALTP_BANNER "502 Unknown command\n", FALSE);
 }
 
-/* ZLIB is not advertised by this Receiver in this milestone, and a Capability
- * that is not offered is answered like any unimplemented verb (6.2). */
-Test(altp, zlib_is_answered_502_and_closes)
+/* a Capability that is not offered is answered like any unimplemented verb (6.2) */
+Test(altp, zlib_without_allow_compression_is_answered_502_and_closes)
 {
   _assert_conversation("altp()", "ZLIB\n", ALTP_BANNER "502 Unknown command\n", FALSE);
 }
@@ -751,6 +853,180 @@ Test(altp, starttls_without_a_tls_factory_is_answered_502_and_closes)
 Test(altp, starttls_with_parameters_is_answered_501_and_closes)
 {
   _assert_conversation("altp()", "STARTTLS now\n", ALTP_BANNER "501 Syntax error\n", TRUE);
+}
+
+/****************************************************************************
+ * ZLIB (specification 6.2)
+ ****************************************************************************/
+
+Test(altp, allow_compression_is_parsed)
+{
+  _parse_altp_transport("altp(allow-compression(yes))");
+
+  cr_assert(_get_altp_options()->altp.allow_compression);
+}
+
+Test(altp, compression_is_not_allowed_by_default)
+{
+  _parse_altp_transport("altp()");
+
+  cr_assert_not(_get_altp_options()->altp.allow_compression);
+}
+
+Test(altp, ehlo_advertises_zlib_when_compression_is_allowed)
+{
+  _assert_conversation("altp(allow-compression(yes))", "EHLO 1.0\n", ALTP_BANNER "250 ZLIB\n", FALSE);
+}
+
+/* the non-final Capability line carries the `250-` prefix (4.3, 5.2) */
+Test(altp, ehlo_advertises_starttls_and_zlib_in_the_multi_line_form)
+{
+  _assert_conversation("altp(allow-compression(yes))", "EHLO 1.0\n",
+                       ALTP_BANNER "250-STARTTLS\n250 ZLIB\n", TRUE);
+}
+
+Test(altp, zlib_with_parameters_is_answered_501_and_closes)
+{
+  _assert_conversation("altp(allow-compression(yes))", "ZLIB now\n", ALTP_BANNER "501 Syntax error\n", FALSE);
+}
+
+Test(altp, zlib_switches_the_transport_stack_once_the_reply_is_flushed)
+{
+  LogProtoServerFactory *factory = _parse_altp_transport("altp(allow-compression(yes))");
+  AltpTestConnection conn;
+
+  _connection_init(&conn, factory, log_transport_mock_endless_stream_new("ZLIB\n", -1, LTM_EOF), FALSE);
+
+  _assert_replies(&conn, ALTP_BANNER "250 Ready to start ZLIB\n");
+  cr_assert_eq(conn.proto->transport_stack.active_transport, LOG_TRANSPORT_ZLIB,
+               "compression must begin once the reply has been written");
+
+  _connection_deinit(&conn);
+}
+
+/* everything past the `250 Ready to start ZLIB` line is compressed both ways */
+static void
+_start_zlib(AltpTestConnection *conn, LogProtoServerFactory *factory, gboolean with_tls,
+            const gchar *expected_prefix)
+{
+  _connection_init(conn, factory, log_transport_mock_endless_stream_new("ZLIB\n", -1, LTM_EOF), with_tls);
+
+  _assert_replies(conn, expected_prefix);
+  cr_assert_eq(conn->proto->transport_stack.active_transport, LOG_TRANSPORT_ZLIB);
+
+  conn->codec = _zlib_new();
+}
+
+Test(altp, a_whole_session_is_carried_by_the_compressed_stream)
+{
+  LogProtoServerFactory *factory = _parse_altp_transport("altp(allow-compression(yes))");
+  AltpTestConnection conn;
+  const gchar *replies = ALTP_BANNER "250 Ready to start ZLIB\n";
+
+  _start_zlib(&conn, factory, FALSE, replies);
+
+  _inject_compressed(&conn, "SYNC s1\nDATA\n");
+  _inject_compressed(&conn, "3 abc3 def.\n");
+
+  cr_assert_eq(_pump(&conn), ALTP_PUMP_SUSPENDED, "the Receiver must wait for durability");
+  cr_assert_str_eq(conn.replies->str, ALTP_BANNER "250 Ready to start ZLIB\n250 Received 0\n250 Ready\n");
+  cr_assert_eq(conn.frames->len, 2);
+  _assert_frame(&conn, 0, "abc", 3);
+  _assert_frame(&conn, 1, "def", 3);
+
+  _report_durable(&conn, 0);
+  _report_durable(&conn, 1);
+  _assert_replies(&conn, ALTP_BANNER "250 Ready to start ZLIB\n250 Received 0\n250 Ready\n250 Received 2\n");
+
+  _connection_deinit(&conn);
+}
+
+Test(altp, a_second_zlib_is_answered_507_and_closes)
+{
+  LogProtoServerFactory *factory = _parse_altp_transport("altp(allow-compression(yes))");
+  AltpTestConnection conn;
+
+  _start_zlib(&conn, factory, FALSE, ALTP_BANNER "250 Ready to start ZLIB\n");
+
+  _inject_compressed(&conn, "ZLIB\n");
+  _assert_replies(&conn, ALTP_BANNER "250 Ready to start ZLIB\n507 Already using ZLIB\n");
+
+  _connection_deinit(&conn);
+}
+
+/* TLS comes first, so no upgrade is left once compression runs (6.1) */
+Test(altp, starttls_after_zlib_is_answered_507_and_closes)
+{
+  LogProtoServerFactory *factory = _parse_altp_transport("altp(allow-compression(yes))");
+  AltpTestConnection conn;
+
+  _start_zlib(&conn, factory, TRUE, ALTP_BANNER "250 Ready to start ZLIB\n");
+
+  _inject_compressed(&conn, "STARTTLS\n");
+  _assert_replies(&conn, ALTP_BANNER "250 Ready to start ZLIB\n507 Already using ZLIB\n");
+
+  _connection_deinit(&conn);
+}
+
+Test(altp, ehlo_after_zlib_no_longer_advertises_zlib)
+{
+  LogProtoServerFactory *factory = _parse_altp_transport("altp(allow-compression(yes))");
+  AltpTestConnection conn;
+
+  _start_zlib(&conn, factory, FALSE, ALTP_BANNER "250 Ready to start ZLIB\n");
+
+  _inject_compressed(&conn, "EHLO 1.0\n");
+  _assert_replies(&conn, ALTP_BANNER "250 Ready to start ZLIB\n250 \n");
+
+  _connection_deinit(&conn);
+}
+
+Test(altp, zlib_after_starttls_compresses_inside_tls)
+{
+  LogProtoServerFactory *factory = _parse_altp_transport("altp(allow-compression(yes))");
+  AltpTestConnection conn;
+
+  _connection_init(&conn, factory, log_transport_mock_endless_stream_new("STARTTLS\n", -1, LTM_EOF), TRUE);
+
+  _assert_replies(&conn, ALTP_BANNER "250 Ready to start TLS\n");
+  cr_assert_eq(conn.proto->transport_stack.active_transport, LOG_TRANSPORT_TLS);
+
+  _inject(&conn, "EHLO 1.0\nZLIB\n");
+  _assert_replies(&conn, ALTP_BANNER "250 Ready to start TLS\n250 ZLIB\n250 Ready to start ZLIB\n");
+  cr_assert_eq(conn.proto->transport_stack.active_transport, LOG_TRANSPORT_ZLIB);
+
+  conn.codec = _zlib_new();
+
+  /* the Receiver still knows it is inside TLS, so the Session is admitted */
+  _inject_compressed(&conn, "SYNC s1\n");
+  _assert_replies(&conn, ALTP_BANNER "250 Ready to start TLS\n250 ZLIB\n250 Ready to start ZLIB\n"
+                                     "250 Received 0\n");
+
+  _connection_deinit(&conn);
+}
+
+/* what a peer pipelined after the ZLIB line is not in the deflate stream (6.2, 15) */
+Test(altp, uncompressed_input_pipelined_after_zlib_is_discarded)
+{
+  LogProtoServerFactory *factory = _parse_altp_transport("altp(allow-compression(yes))");
+  AltpTestConnection conn;
+
+  _connection_init(&conn, factory,
+                   log_transport_mock_endless_records_new("ZLIB\nSYNC evil\n", -1, LTM_EOF), FALSE);
+
+  _assert_replies(&conn, ALTP_BANNER "250 Ready to start ZLIB\n");
+  cr_assert_eq(conn.proto->transport_stack.active_transport, LOG_TRANSPORT_ZLIB);
+
+  conn.codec = _zlib_new();
+
+  _inject_compressed(&conn, "DATA\n");
+  _assert_replies(&conn, ALTP_BANNER "250 Ready to start ZLIB\n503 Need SYNC before use this command\n");
+
+  cr_assert_eq(altp_session_registry_get_session_count(
+                 altp_receiver_context_get_registry(_get_altp_options()->context)), 0,
+               "the Session of a discarded uncompressed SYNC may not be created");
+
+  _connection_deinit(&conn);
 }
 
 /****************************************************************************

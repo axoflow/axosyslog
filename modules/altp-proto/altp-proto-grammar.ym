@@ -61,6 +61,7 @@ static AltpProtoServerOptions *last_altp_options;
 %token KW_MAX_SESSIONS
 %token KW_TLS_POLICY
 %token KW_REQUIRED
+%token KW_ALLOW_COMPRESSION
 
 %type <num> altp_ack_timeout_action
 %type <num> altp_tls_policy
@@ -119,6 +120,10 @@ altp_option
         | KW_TLS_POLICY '(' altp_tls_policy ')'
           {
             last_altp_options->altp.tls_policy = $3;
+          }
+        | KW_ALLOW_COMPRESSION '(' yesno ')'
+          {
+            last_altp_options->altp.allow_compression = $3;
           }
         ;
 

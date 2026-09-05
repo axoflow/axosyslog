@@ -83,6 +83,10 @@ typedef struct _AltpReceiverOptions
   /* the largest number of Session Records of the Receiver, 0 for unlimited */
   gint max_sessions;
   AltpTlsPolicy tls_policy;
+  /* Whether the ZLIB Capability is offered (6.2).  Compression costs CPU on a
+   * Receiver that has no say in how much of it a Sender asks for, so it is off
+   * unless the user turns it on. */
+  gboolean allow_compression;
 } AltpReceiverOptions;
 
 /* The per Receiver state shared by every Connection of one driver: it owns the
@@ -150,8 +154,7 @@ typedef struct _AltpSenderOptions
    * everything unacknowledged retained (9.5) */
   gint ack_timeout;
   /* the largest Frame payload written, in octets (8.2) */
-  gint max_frame_size;
-} AltpSenderOptions;
+  gint max_frame_size;} AltpSenderOptions;
 
 /* AltpProtoClientOptions extends LogProtoClientOptions in place, exactly as
  * AltpProtoServerOptions extends the server side.  Unlike that one it owns no
