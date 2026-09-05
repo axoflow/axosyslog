@@ -144,6 +144,12 @@ LogProtoServerFactory *altp_proto_server_options_get_factory(AltpProtoServerOpti
  */
 #define ALTP_SENDER_MAX_BATCH_FRAMES 1000
 
+/* The deflate level of the direction a Sender writes (6.2): a local choice,
+ * never negotiated, and 6 is what zlib calls the default trade.
+ */
+#define ALTP_SENDER_DEFAULT_COMPRESSION_LEVEL 6
+#define ALTP_SENDER_MAX_COMPRESSION_LEVEL 9
+
 /* The ALTP specific settings of one Sender.  The proto keeps a copy, as the
  * options belong to the driver, which a configuration reload recreates under a
  * Connection kept alive across it.
@@ -154,7 +160,13 @@ typedef struct _AltpSenderOptions
    * everything unacknowledged retained (9.5) */
   gint ack_timeout;
   /* the largest Frame payload written, in octets (8.2) */
-  gint max_frame_size;} AltpSenderOptions;
+  gint max_frame_size;
+  /* Whether ZLIB is requested when the Receiver advertises it (6.2).  A Sender
+   * MUST NOT request a Capability that was not advertised, so this only asks. */
+  gboolean compression;
+  /* the deflate level of the Frames we write, 0 to 9 */
+  gint compression_level;
+} AltpSenderOptions;
 
 /* AltpProtoClientOptions extends LogProtoClientOptions in place, exactly as
  * AltpProtoServerOptions extends the server side.  Unlike that one it owns no

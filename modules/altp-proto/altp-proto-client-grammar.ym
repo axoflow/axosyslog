@@ -55,6 +55,8 @@ static AltpProtoClientOptions *last_altp_client_options;
 %token KW_ALTP
 %token KW_ACK_TIMEOUT
 %token KW_MAX_FRAME_SIZE
+%token KW_COMPRESSION
+%token KW_COMPRESSION_LEVEL
 
 %%
 
@@ -97,6 +99,16 @@ altp_client_option
         | KW_MAX_FRAME_SIZE '(' positive_integer ')'
           {
             last_altp_client_options->altp.max_frame_size = $3;
+          }
+        | KW_COMPRESSION '(' yesno ')'
+          {
+            last_altp_client_options->altp.compression = $3;
+          }
+        | KW_COMPRESSION_LEVEL '(' nonnegative_integer ')'
+          {
+            CHECK_ERROR($3 <= ALTP_SENDER_MAX_COMPRESSION_LEVEL, @3,
+                        "compression-level() must be between 0 and %d", ALTP_SENDER_MAX_COMPRESSION_LEVEL);
+            last_altp_client_options->altp.compression_level = $3;
           }
         ;
 

@@ -29,24 +29,27 @@
 #include "stats/stats-cluster-single.h"
 #include "stats/stats-registry.h"
 #include "str-format.h"
+#include "transport/transport-factory-zlib.h"
 
 #include <openssl/rand.h>
 
 #include <errno.h>
 #include <string.h>
+#include <zlib.h>
 
-/* The commands of specification 4.2 this Sender writes.  ZLIB is never
- * requested and NOOP is never needed, because the Sender idles inside an open
- * Batch, where the Receiver applies no idle timeout (ADR-0010).
+/* The commands of specification 4.2 this Sender writes.  NOOP is never needed:
+ * see log_proto_altp_client_flush().
  */
 #define ALTP_COMMAND_EHLO      "EHLO 1.0\n"
 #define ALTP_COMMAND_STARTTLS  "STARTTLS\n"
+#define ALTP_COMMAND_ZLIB      "ZLIB\n"
 #define ALTP_COMMAND_DATA      "DATA\n"
 #define ALTP_COMMAND_SYNC_FORMAT "SYNC %s\n"
 #define ALTP_BATCH_TERMINATOR  ".\n"
 
-/* the Capability name of the only upgrade this Sender knows (5.3) */
+/* the Capability names of the two upgrades this Sender knows (5.3) */
 #define ALTP_CAPABILITY_STARTTLS "STARTTLS"
+#define ALTP_CAPABILITY_ZLIB     "ZLIB"
 
 /* the normative text of the one reply a Sender parses beyond its code (13.2) */
 #define ALTP_REPLY_RECEIVED_PREFIX "Received "
@@ -73,17 +76,14 @@ static const gchar *ALTP_SENDER_REPLY_CODES[] =
 };
 
 /* The Sender states of specification 12.2.  READY -- Session established, no
- * Batch open -- is not among them: a Sender that idles in it would be closed
- * by the idle timeout of the Receiver, so DATA is written the moment an
- * acknowledgement is processed and the wait for messages happens in IN_BATCH
- * instead (ADR-0010).  ZLIB_REQUESTED is missing because compression is never
- * requested.
+ * Batch open -- is not among them: see log_proto_altp_client_flush().
  */
 typedef enum
 {
   ALTP_SENDER_AWAIT_BANNER,
   ALTP_SENDER_EHLO_SENT,
   ALTP_SENDER_TLS_REQUESTED,
+  ALTP_SENDER_ZLIB_REQUESTED,
   ALTP_SENDER_SYNC_SENT,
   ALTP_SENDER_DATA_SENT,
   ALTP_SENDER_IN_BATCH,
@@ -164,9 +164,16 @@ typedef struct _LogProtoAltpClient
   gchar in_buf[ALTP_MAX_REPLY_LINE];
   gsize in_pos, in_end;
 
-  /* STARTTLS appeared in the most recent EHLO reply, which is the only one a
-   * Capability may be invoked from (5.3) */
+  /* what the most recent EHLO reply advertised, which is the only Capability
+   * list we may invoke from (5.3) */
   gboolean starttls_advertised;
+  gboolean zlib_advertised;
+
+  /* STARTTLS succeeded: the active transport cannot answer that on its own
+   * once ZLIB is layered on top of TLS */
+  gboolean tls_active;
+  /* the unavailability of compression is said once per Connection */
+  gboolean compression_unavailable_logged;
 
   /* the "<driver>.altp.sender" entry, 0 while the state is memory only */
   PersistState *persist_state;
@@ -575,7 +582,13 @@ _close_connection(LogProtoAltpClient *self, LogProtoStatus status)
 static inline gboolean
 _is_tls_active(LogProtoAltpClient *self)
 {
-  return self->super.transport_stack.active_transport == LOG_TRANSPORT_TLS;
+  return self->tls_active || self->super.transport_stack.active_transport == LOG_TRANSPORT_TLS;
+}
+
+static inline gboolean
+_is_zlib_active(LogProtoAltpClient *self)
+{
+  return self->super.transport_stack.active_transport == LOG_TRANSPORT_ZLIB;
 }
 
 /* A tls() block puts a TLS factory on the stack and means that STARTTLS is
@@ -593,6 +606,7 @@ _send_ehlo(LogProtoAltpClient *self)
 {
   /* every EHLO reply supersedes the previous one (5.2, 5.3) */
   self->starttls_advertised = FALSE;
+  self->zlib_advertised = FALSE;
   _append_command(self, ALTP_COMMAND_EHLO);
   self->state = ALTP_SENDER_EHLO_SENT;
 
@@ -645,6 +659,29 @@ _on_capabilities(LogProtoAltpClient *self)
       return LPS_SUCCESS;
     }
 
+  /* TLS is settled by now, so compression is what is left to ask for, and it
+   * is asked for inside TLS (6.1, 12.2) */
+  if (self->options.compression && !_is_zlib_active(self))
+    {
+      if (self->zlib_advertised)
+        {
+          _append_command(self, ALTP_COMMAND_ZLIB);
+          self->state = ALTP_SENDER_ZLIB_REQUESTED;
+
+          return LPS_SUCCESS;
+        }
+
+      /* a Capability the most recent EHLO reply did not advertise MUST NOT be
+       * invoked (5.3), so the Session stays uncompressed */
+      if (!self->compression_unavailable_logged)
+        {
+          self->compression_unavailable_logged = TRUE;
+          msg_notice("The ALTP Receiver does not offer the ZLIB Capability but compression() is configured for "
+                     "this destination, continuing without compression",
+                     evt_tag_int(EVT_TAG_FD, self->super.transport_stack.fd));
+        }
+    }
+
   return _send_sync(self);
 }
 
@@ -671,11 +708,47 @@ _on_ready_to_start_tls(LogProtoAltpClient *self)
       self->in_pos = self->in_end = 0;
     }
 
+  self->tls_active = TRUE;
+
   msg_debug("ALTP Connection switched to TLS",
             evt_tag_int(EVT_TAG_FD, self->super.transport_stack.fd));
 
   /* the Capabilities of the upgraded Connection come from a new EHLO (6.1) */
   return _send_ehlo(self);
+}
+
+static LogProtoStatus
+_on_ready_to_start_zlib(LogProtoAltpClient *self)
+{
+  /* Compression begins after the LF of the reply, in both directions and for
+   * the life of the Connection.  The factory layers the zlib stream on
+   * whichever transport is active, so a TLS Connection compresses inside TLS
+   * (6.2). */
+  log_transport_stack_add_factory(&self->super.transport_stack,
+                                  transport_factory_zlib_new(self->options.compression_level));
+
+  if (!log_transport_stack_switch(&self->super.transport_stack, LOG_TRANSPORT_ZLIB))
+    {
+      msg_error("Error switching the ALTP Connection to ZLIB",
+                evt_tag_int(EVT_TAG_FD, self->super.transport_stack.fd));
+      return LPS_ERROR;
+    }
+
+  if (self->in_pos < self->in_end)
+    {
+      /* the octets were written uncompressed and are not part of the deflate
+       * stream the peer started, so they are discarded (6.2) */
+      msg_warning("Discarding the ALTP input a Receiver pipelined after its ZLIB reply, "
+                  "those octets were sent uncompressed",
+                  evt_tag_int("discarded", self->in_end - self->in_pos),
+                  evt_tag_int(EVT_TAG_FD, self->super.transport_stack.fd));
+      self->in_pos = self->in_end = 0;
+    }
+
+  msg_debug("ALTP Connection switched to ZLIB",
+            evt_tag_int(EVT_TAG_FD, self->super.transport_stack.fd));
+
+  return _send_sync(self);
 }
 
 /* `Received` followed by an ASCII decimal count and nothing else (9.4, 13.2) */
@@ -889,6 +962,9 @@ _on_reply_line(LogProtoAltpClient *self, const gchar *line, gsize line_len)
       if (text_len == strlen(ALTP_CAPABILITY_STARTTLS) &&
           strncmp(text, ALTP_CAPABILITY_STARTTLS, text_len) == 0)
         self->starttls_advertised = TRUE;
+      else if (text_len == strlen(ALTP_CAPABILITY_ZLIB) &&
+               strncmp(text, ALTP_CAPABILITY_ZLIB, text_len) == 0)
+        self->zlib_advertised = TRUE;
 
       if (continuation)
         return LPS_SUCCESS;
@@ -897,6 +973,9 @@ _on_reply_line(LogProtoAltpClient *self, const gchar *line, gsize line_len)
 
     case ALTP_SENDER_TLS_REQUESTED:
       return _on_ready_to_start_tls(self);
+
+    case ALTP_SENDER_ZLIB_REQUESTED:
+      return _on_ready_to_start_zlib(self);
 
     case ALTP_SENDER_SYNC_SENT:
     case ALTP_SENDER_BATCH_CLOSED:
@@ -1191,6 +1270,7 @@ log_proto_altp_client_poll_prepare(LogProtoClient *s, GIOCondition *cond, GIOCon
     case ALTP_SENDER_AWAIT_BANNER:
     case ALTP_SENDER_EHLO_SENT:
     case ALTP_SENDER_TLS_REQUESTED:
+    case ALTP_SENDER_ZLIB_REQUESTED:
     case ALTP_SENDER_DATA_SENT:
       /* a reply is due, so the queue must not be polled; the timeout is armed
        * here too, or a handshake that never answers would hold the connection

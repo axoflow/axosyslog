@@ -33,6 +33,8 @@ static CfgLexerKeyword altp_proto_client_keywords[] =
   { "altp",               KW_ALTP },
   { "ack_timeout",        KW_ACK_TIMEOUT },
   { "max_frame_size",     KW_MAX_FRAME_SIZE },
+  { "compression",        KW_COMPRESSION },
+  { "compression_level",  KW_COMPRESSION_LEVEL },
   { NULL }
 };
 

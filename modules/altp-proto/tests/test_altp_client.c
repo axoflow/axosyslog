@@ -38,15 +38,20 @@
 
 #include <errno.h>
 #include <string.h>
+#include <zlib.h>
 
 #define ALTP_BANNER              "220 ALTP 1.0\n"
 #define ALTP_NO_CAPABILITIES     "250 \n"
 #define ALTP_CAPABILITY_LIST     "250 STARTTLS\n"
+#define ALTP_CAPABILITY_ZLIB     "250 ZLIB\n"
+#define ALTP_CAPABILITY_BOTH     "250-STARTTLS\n250 ZLIB\n"
 #define ALTP_READY_TO_START_TLS  "250 Ready to start TLS\n"
+#define ALTP_READY_TO_START_ZLIB "250 Ready to start ZLIB\n"
 #define ALTP_READY               "250 Ready\n"
 
 #define ALTP_EHLO                "EHLO 1.0\n"
 #define ALTP_STARTTLS            "STARTTLS\n"
+#define ALTP_ZLIB                "ZLIB\n"
 #define ALTP_DATA                "DATA\n"
 #define ALTP_TERMINATOR          ".\n"
 
@@ -259,6 +264,90 @@ _get_altp_options(void)
 }
 
 /****************************************************************************
+ * The Receiver's side of a compressed Connection: one zlib stream per direction, sync flush per write (6.2).
+ ****************************************************************************/
+
+typedef struct _AltpTestZlib
+{
+  z_stream deflate_stream;
+  z_stream inflate_stream;
+  /* the compressed replies stay alive here: the mock borrows the pointers it is injected with */
+  GPtrArray *chunks;
+} AltpTestZlib;
+
+static void
+_free_gstring(gpointer data)
+{
+  g_string_free((GString *) data, TRUE);
+}
+
+static AltpTestZlib *
+_zlib_new(void)
+{
+  AltpTestZlib *self = g_new0(AltpTestZlib, 1);
+
+  cr_assert_eq(deflateInit(&self->deflate_stream, Z_DEFAULT_COMPRESSION), Z_OK);
+  cr_assert_eq(inflateInit(&self->inflate_stream), Z_OK);
+  self->chunks = g_ptr_array_new_with_free_func(_free_gstring);
+
+  return self;
+}
+
+static void
+_zlib_free(AltpTestZlib *self)
+{
+  deflateEnd(&self->deflate_stream);
+  inflateEnd(&self->inflate_stream);
+  g_ptr_array_free(self->chunks, TRUE);
+  g_free(self);
+}
+
+static GString *
+_zlib_compress(AltpTestZlib *self, const gchar *input)
+{
+  GString *out = g_string_new("");
+  guchar buf[4096];
+
+  self->deflate_stream.next_in = (Bytef *) input;
+  self->deflate_stream.avail_in = strlen(input);
+
+  do
+    {
+      self->deflate_stream.next_out = buf;
+      self->deflate_stream.avail_out = sizeof(buf);
+      cr_assert_eq(deflate(&self->deflate_stream, Z_SYNC_FLUSH), Z_OK);
+      g_string_append_len(out, (const gchar *) buf, sizeof(buf) - self->deflate_stream.avail_out);
+    }
+  while (self->deflate_stream.avail_out == 0);
+
+  g_ptr_array_add(self->chunks, out);
+
+  return out;
+}
+
+static void
+_zlib_inflate_into(AltpTestZlib *self, const gchar *data, gsize len, GString *out)
+{
+  guchar buf[4096];
+
+  self->inflate_stream.next_in = (Bytef *) data;
+  self->inflate_stream.avail_in = len;
+
+  while (self->inflate_stream.avail_in > 0)
+    {
+      self->inflate_stream.next_out = buf;
+      self->inflate_stream.avail_out = sizeof(buf);
+
+      gint rc = inflate(&self->inflate_stream, Z_SYNC_FLUSH);
+      cr_assert(rc == Z_OK || rc == Z_BUF_ERROR, "the Sender's output is not a zlib stream: %d", rc);
+      g_string_append_len(out, (const gchar *) buf, sizeof(buf) - self->inflate_stream.avail_out);
+
+      if (rc == Z_BUF_ERROR)
+        break;
+    }
+}
+
+/****************************************************************************
  * Driving a Sender the way the LogWriter does
  ****************************************************************************/
 
@@ -276,6 +365,9 @@ typedef struct _AltpTestSender
   gint frames_sent_at_ack;
 
   PersistState *persist_state;
+
+  /* set once the Connection is compressed: turns the zlib stream back into command text */
+  AltpTestZlib *codec;
 } AltpTestSender;
 
 static gint
@@ -346,6 +438,8 @@ _sender_deinit(AltpTestSender *self)
 {
   log_proto_client_free(self->proto);
   g_string_free(self->written, TRUE);
+  if (self->codec)
+    _zlib_free(self->codec);
 }
 
 static void
@@ -355,13 +449,32 @@ _collect_written(AltpTestSender *self)
   gssize len;
 
   while ((len = log_transport_mock_read_from_write_buffer(self->mock, buffer, sizeof(buffer))) > 0)
-    g_string_append_len(self->written, buffer, len);
+    {
+      if (self->codec)
+        _zlib_inflate_into(self->codec, buffer, len, self->written);
+      else
+        g_string_append_len(self->written, buffer, len);
+    }
 }
 
 static LogProtoStatus
 _reply(AltpTestSender *self, const gchar *reply)
 {
   log_transport_mock_inject_data(self->mock, reply, -1);
+
+  LogProtoStatus status = log_proto_client_process_in(self->proto);
+
+  _collect_written(self);
+
+  return status;
+}
+
+static LogProtoStatus
+_reply_compressed(AltpTestSender *self, const gchar *reply)
+{
+  GString *compressed = _zlib_compress(self->codec, reply);
+
+  log_transport_mock_inject_data(self->mock, compressed->str, compressed->len);
 
   LogProtoStatus status = log_proto_client_process_in(self->proto);
 
@@ -679,6 +792,180 @@ Test(altp_client, starttls_is_never_requested_without_tls)
                  "the Sender requested STARTTLS without tls(): <%s>", sender.written->str);
 
   gchar *session_id = _extract_session_id(&sender);
+  g_free(session_id);
+  _sender_deinit(&sender);
+}
+
+/****************************************************************************
+ * ZLIB (6.2)
+ ****************************************************************************/
+
+Test(altp_client, compression_is_off_by_default_and_level_6)
+{
+  _parse_altp_transport("altp()");
+
+  cr_assert_not(_get_altp_options()->altp.compression);
+  cr_assert_eq(_get_altp_options()->altp.compression_level, ALTP_SENDER_DEFAULT_COMPRESSION_LEVEL);
+}
+
+Test(altp_client, compression_and_compression_level_are_parsed)
+{
+  _parse_altp_transport("altp(compression(yes) compression-level(1))");
+
+  cr_assert(_get_altp_options()->altp.compression);
+  cr_assert_eq(_get_altp_options()->altp.compression_level, 1);
+}
+
+Test(altp_client, zlib_is_never_requested_without_compression)
+{
+  AltpTestSender sender;
+
+  _sender_init(&sender, _parse_altp_transport("altp()"), FALSE, NULL);
+
+  cr_assert_eq(_reply(&sender, ALTP_BANNER), LPS_SUCCESS);
+  _assert_written(&sender, ALTP_EHLO);
+
+  cr_assert_eq(_reply(&sender, ALTP_CAPABILITY_ZLIB), LPS_SUCCESS);
+  cr_assert_null(strstr(sender.written->str, ALTP_ZLIB),
+                 "the Sender requested ZLIB without compression(): <%s>", sender.written->str);
+
+  gchar *session_id = _extract_session_id(&sender);
+  g_free(session_id);
+  _sender_deinit(&sender);
+}
+
+/* a Capability the most recent EHLO reply did not advertise MUST NOT be invoked (5.3, 6.2) */
+Test(altp_client, a_receiver_that_does_not_offer_zlib_is_talked_to_in_the_clear)
+{
+  AltpTestSender sender;
+
+  _sender_init(&sender, _parse_altp_transport("altp(compression(yes))"), FALSE, NULL);
+
+  cr_assert_eq(_reply(&sender, ALTP_BANNER), LPS_SUCCESS);
+  _assert_written(&sender, ALTP_EHLO);
+
+  cr_assert_eq(_reply(&sender, ALTP_NO_CAPABILITIES), LPS_SUCCESS);
+  cr_assert_null(strstr(sender.written->str, ALTP_ZLIB),
+                 "the Sender requested an unadvertised ZLIB: <%s>", sender.written->str);
+  cr_assert_eq(sender.proto->transport_stack.active_transport, LOG_TRANSPORT_INITIAL);
+
+  gchar *session_id = _extract_session_id(&sender);
+  g_free(session_id);
+  _sender_deinit(&sender);
+}
+
+/* the codec takes over at the LF of `250 Ready to start ZLIB`, so the SYNC is already deflated */
+static gchar *
+_negotiate_zlib(AltpTestSender *sender)
+{
+  cr_assert_eq(_reply(sender, ALTP_BANNER), LPS_SUCCESS);
+  _assert_written(sender, ALTP_EHLO);
+
+  cr_assert_eq(_reply(sender, ALTP_CAPABILITY_ZLIB), LPS_SUCCESS);
+  _assert_written(sender, ALTP_ZLIB);
+
+  sender->codec = _zlib_new();
+
+  cr_assert_eq(_reply(sender, ALTP_READY_TO_START_ZLIB), LPS_SUCCESS);
+  cr_assert_eq(sender->proto->transport_stack.active_transport, LOG_TRANSPORT_ZLIB,
+               "the Sender did not switch the Connection to ZLIB");
+
+  gchar *session_id = _extract_session_id(sender);
+  g_string_truncate(sender->written, 0);
+
+  return session_id;
+}
+
+Test(altp_client, a_whole_session_runs_over_the_compressed_stream)
+{
+  AltpTestSender sender;
+
+  _sender_init(&sender, _parse_altp_transport("altp(compression(yes))"), FALSE, NULL);
+
+  gchar *session_id = _negotiate_zlib(&sender);
+  cr_assert_eq(strlen(session_id), 32);
+
+  cr_assert_eq(_reply_compressed(&sender, "250 Received 0\n"), LPS_SUCCESS);
+  _assert_written(&sender, ALTP_DATA);
+
+  cr_assert_eq(_reply_compressed(&sender, ALTP_READY), LPS_SUCCESS);
+  _assert_written(&sender, "");
+
+  _post_and_assert_consumed(&sender, "hello");
+  cr_assert_eq(_flush(&sender), LPS_SUCCESS);
+  _assert_written(&sender, "5 hello" ALTP_TERMINATOR);
+
+  cr_assert_eq(_reply_compressed(&sender, "250 Received 1\n"), LPS_SUCCESS);
+  cr_assert_eq(sender.acked, 1);
+
+  g_free(session_id);
+  _sender_deinit(&sender);
+}
+
+Test(altp_client, the_frames_written_after_the_switch_are_deflated)
+{
+  AltpTestSender sender;
+
+  _sender_init(&sender, _parse_altp_transport("altp(compression(yes) compression-level(9))"), FALSE, NULL);
+
+  gchar *session_id = _negotiate_zlib(&sender);
+
+  cr_assert_eq(_reply_compressed(&sender, "250 Received 0\n"), LPS_SUCCESS);
+  cr_assert_eq(_reply_compressed(&sender, ALTP_READY), LPS_SUCCESS);
+  g_string_truncate(sender.written, 0);
+
+  /* drop the codec so that `written` keeps the raw zlib octets */
+  AltpTestZlib *codec = sender.codec;
+  sender.codec = NULL;
+
+  _post_and_assert_consumed(&sender, "hello");
+  cr_assert_eq(_flush(&sender), LPS_SUCCESS);
+
+  cr_assert_null(strstr(sender.written->str, "5 hello"),
+                 "the Frame went on the wire uncompressed");
+
+  GString *inflated = g_string_new("");
+  _zlib_inflate_into(codec, sender.written->str, sender.written->len, inflated);
+  cr_assert_str_eq(inflated->str, "5 hello" ALTP_TERMINATOR);
+
+  g_string_truncate(sender.written, 0);
+  sender.codec = codec;
+  g_string_free(inflated, TRUE);
+  g_free(session_id);
+  _sender_deinit(&sender);
+}
+
+Test(altp_client, zlib_is_requested_inside_tls_after_starttls)
+{
+  AltpTestSender sender;
+
+  _sender_init(&sender, _parse_altp_transport("altp(compression(yes))"), TRUE, NULL);
+
+  cr_assert_eq(_reply(&sender, ALTP_BANNER), LPS_SUCCESS);
+  _assert_written(&sender, ALTP_EHLO);
+
+  /* TLS is settled first, so the ZLIB of this reply is not invoked yet */
+  cr_assert_eq(_reply(&sender, ALTP_CAPABILITY_BOTH), LPS_SUCCESS);
+  _assert_written(&sender, ALTP_STARTTLS);
+
+  cr_assert_eq(_reply(&sender, ALTP_READY_TO_START_TLS), LPS_SUCCESS);
+  cr_assert_eq(sender.proto->transport_stack.active_transport, LOG_TRANSPORT_TLS);
+  _assert_written(&sender, ALTP_EHLO);
+
+  cr_assert_eq(_reply(&sender, ALTP_CAPABILITY_ZLIB), LPS_SUCCESS);
+  _assert_written(&sender, ALTP_ZLIB);
+
+  sender.codec = _zlib_new();
+
+  cr_assert_eq(_reply(&sender, ALTP_READY_TO_START_ZLIB), LPS_SUCCESS);
+  cr_assert_eq(sender.proto->transport_stack.active_transport, LOG_TRANSPORT_ZLIB);
+
+  gchar *session_id = _extract_session_id(&sender);
+  g_string_truncate(sender.written, 0);
+
+  cr_assert_eq(_reply_compressed(&sender, "250 Received 0\n"), LPS_SUCCESS);
+  _assert_written(&sender, ALTP_DATA);
+
   g_free(session_id);
   _sender_deinit(&sender);
 }
