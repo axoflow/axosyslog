@@ -25,7 +25,12 @@ from __future__ import annotations
 from .compressable_file_buffer import CompressableFileBuffer
 
 try:
-    from botocore.exceptions import ClientError, EndpointConnectionError
+    from botocore.exceptions import ClientError, ConnectionError as BotocoreConnectionError, HTTPClientError
+
+    # botocore raises these when its own retries did not get past a network failure, like a refused
+    # connection, a timeout or a closed connection.  Errors raised without a network call, like
+    # ParamValidationError, are left out, as the next attempt fails the same way.
+    TRANSIENT_ERRORS = (BotocoreConnectionError, HTTPClientError)
 except ImportError:
     pass
 
@@ -657,7 +662,7 @@ class S3Object:
                     **extra_args,
                 )
                 self.__logger.debug(f"Multipart upload created for {self.bucket}/{self.key}")
-            except (ClientError, EndpointConnectionError) as e:
+            except (ClientError, *TRANSIENT_ERRORS) as e:
                 self.__logger.error(f"Failed to create multipart upload: {self.bucket}/{self.key} => {e}")
                 return False
 
@@ -697,8 +702,9 @@ class S3Object:
                 Body=chunk.buffer.getvalue(),
             )
             self.__logger.debug(f"Multipart upload finished for {self.bucket}/{self.key}")
-        except EndpointConnectionError as e:
+        except TRANSIENT_ERRORS as e:
             self.__logger.error(f"Failed to upload part: {self.bucket}/{self.key} ({chunk.part_number}) => {e}")
+            # no retry cap here: a network failure carries no verdict on the part, unlike a status code
             self.__upload_chunk(chunk, is_retry=True)
             return
         except ClientError as e:
@@ -818,7 +824,7 @@ class S3Object:
                 UploadId=self.__persist.upload_id,
             )
             self.__logger.debug(f"Multipart upload aborted for {self.bucket}/{self.key}")
-        except EndpointConnectionError as e:
+        except TRANSIENT_ERRORS as e:
             self.__logger.error(f"Failed to abort multipart upload: {self.bucket}/{self.key} => {e}")
             return False
         except ClientError as e:
@@ -873,7 +879,7 @@ class S3Object:
                 UploadId=self.__persist.upload_id,
             )
             self.__logger.info(f"Object created {self.bucket}/{self.key}")
-        except EndpointConnectionError as e:
+        except TRANSIENT_ERRORS as e:
             self.__logger.error(f"Failed to complete multipart upload: {self.bucket}/{self.key} => {e}")
             self.__complete_multipart(is_retry=True)
             return
@@ -974,7 +980,7 @@ class S3Object:
                     Prefix=self.target_key,
                     **pagination_options,
                 )
-            except (ClientError, EndpointConnectionError) as e:
+            except (ClientError, *TRANSIENT_ERRORS) as e:
                 self.__logger.error(f"Failed to list multipart uploads: {self.bucket}/{self.key} => {e}")
                 return None
 
@@ -1006,7 +1012,7 @@ class S3Object:
                     Prefix=self.target_key,
                     **pagination_options,
                 )
-            except (ClientError, EndpointConnectionError) as e:
+            except (ClientError, *TRANSIENT_ERRORS) as e:
                 self.__logger.error(f"Failed to list objects: {self.bucket}/{self.key} => {e}")
                 return None
 
