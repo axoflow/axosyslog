@@ -674,6 +674,11 @@ class S3Object:
     def __upload_chunk_cb(self, chunk: S3Chunk, is_retry: bool) -> None:
         try:
             self.__upload_chunk_cb_impl(chunk, is_retry)
+        except Exception:
+            # Nothing reads the Future of this task.  The part stays on disk, so the next start retries it.
+            self.__logger.exception(
+                f"Unexpected error while uploading part: {self.bucket}/{self.key} ({chunk.part_number})"
+            )
         finally:
             # A retry increments the counter before this runs, so it cannot reach 0 too early.
             self.__part_upload_settled()
@@ -839,10 +844,12 @@ class S3Object:
         pending_parts = self.__persist.pending_parts
 
         if len(pending_parts) > 0:
+            # No upload is in flight any more, so these parts were abandoned by an exit request or an
+            # unexpected error.  The persist file stays on disk, so the next start retries the object.
             self.__logger.error(
                 f"Failed to complete multipart upload: {self.bucket}/{self.key} => Part uploads still pending"
             )
-            self.__complete_multipart(is_retry=True)
+            self.__completion_settled.set()
             return
 
         if len(uploaded_parts) == 0:

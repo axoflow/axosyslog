@@ -41,9 +41,12 @@ WAIT_TIMEOUT_SECONDS = 30
 class FakeS3Client:
     """A boto3 S3 client stub that records the calls and injects part upload failures on demand."""
 
-    def __init__(self, transient_failure_part=None, permanent_failure_part=None, failure_gate=None):
+    def __init__(
+        self, transient_failure_part=None, permanent_failure_part=None, unexpected_failure_part=None, failure_gate=None
+    ):
         self.transient_failure_part = transient_failure_part
         self.permanent_failure_part = permanent_failure_part
+        self.unexpected_failure_part = unexpected_failure_part
         self.failure_gate = failure_gate
         self.completed_parts = {}
         self.aborted_keys = []
@@ -78,6 +81,9 @@ class FakeS3Client:
                 {"Error": {"Code": "UnprocessableEntity"}, "ResponseMetadata": {"HTTPStatusCode": 422}},
                 "UploadPart",
             )
+
+        if part_number == self.unexpected_failure_part:
+            raise RuntimeError("unexpected failure injected by the test")
 
         return {"ETag": "etag-%d" % part_number}
 
@@ -248,6 +254,20 @@ def test_completion_does_not_starve_the_upload_pool(tmp_path):
     assert wait_for_uploads(s3_objects), "the completion tasks starved the upload pool"
     assert len(client.completed_parts) == 8
     assert all(parts == [1, 2, 3] for parts in client.completed_parts.values())
+
+
+def test_unexpected_part_upload_error_leaves_the_object_for_the_next_start(tmp_path, caplog):
+    """Regression test: the error went to a Future nobody read, and the completion task resubmitted
+    itself without delay for the pending part until an exit request."""
+    client = FakeS3Client(unexpected_failure_part=1)
+    s3_object = create_s3_object(tmp_path, ThreadPoolExecutor(max_workers=8), client, Event())
+    write_parts(s3_object, 2)
+    s3_object.finish()
+
+    assert wait_for_uploads([s3_object]), "the object did not settle with an abandoned part"
+    assert client.completed_parts == {}
+    assert "unexpected failure injected by the test" in caplog.text
+    assert len(leftover_files(tmp_path)) > 0
 
 
 def test_exit_request_abandons_the_object_and_keeps_the_persist(tmp_path):
