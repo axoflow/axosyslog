@@ -579,6 +579,7 @@ log_reader_fetch_log(LogReader *self)
         case LPS_SUCCESS:
           break;
         case LPS_AGAIN:
+          log_proto_server_apply_replacement(&self->proto);
           break;
         default:
           g_assert_not_reached();

@@ -83,6 +83,12 @@ struct _LogProtoServer
   AckTracker *ack_tracker;
 
   LogProtoServerWakeupCallback wakeup_callback;
+
+  /* To change from one proto implementation to another, store the new one
+   * here and return LPS_AGAIN from fetch().
+   */
+  LogProtoServer *proto_replacement;
+
   LogProtoPrepareAction (*poll_prepare)(LogProtoServer *s, GIOCondition *cond, gint *timeout);
   gboolean (*restart_with_state)(LogProtoServer *s, PersistState *state, const gchar *persist_name);
   LogProtoStatus (*fetch)(LogProtoServer *s, const guchar **msg, gsize *msg_len, gboolean *may_read,
@@ -208,6 +214,28 @@ log_proto_server_set_ack_tracker(LogProtoServer *s, AckTracker *ack_tracker)
 {
   g_assert(ack_tracker);
   s->ack_tracker = ack_tracker;
+}
+
+/* Perform the replacement a fetch() asked for, should be called when fetch
+ * returns LPS_AGAIN.  */
+static inline gboolean
+log_proto_server_apply_replacement(LogProtoServer **proto)
+{
+  LogProtoServer *old_proto = *proto;
+  LogProtoServer *replacement = old_proto->proto_replacement;
+
+  if (!replacement)
+    return FALSE;
+
+  old_proto->proto_replacement = NULL;
+  log_transport_stack_move(&replacement->transport_stack, &old_proto->transport_stack);
+  if (old_proto->ack_tracker)
+    log_proto_server_set_ack_tracker(replacement, old_proto->ack_tracker);
+  replacement->wakeup_callback = old_proto->wakeup_callback;
+  log_proto_server_free(old_proto);
+
+  *proto = replacement;
+  return TRUE;
 }
 
 #define DEFINE_LOG_PROTO_SERVER(prefix, options...) \
