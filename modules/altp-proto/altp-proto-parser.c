@@ -39,9 +39,24 @@ static CfgLexerKeyword altp_proto_keywords[] =
   { "max_sessions",       KW_MAX_SESSIONS },
   { "tls_policy",         KW_TLS_POLICY },
   { "allow_compression",  KW_ALLOW_COMPRESSION },
+  { "compression_level",  KW_COMPRESSION_LEVEL },
   { "required",           KW_REQUIRED },
   { "optional",           KW_OPTIONAL },
   { "none",               KW_NONE },
+
+  /* The spellings of existing ALTP deployments.  A word listed here shadows the
+   * same word of an enclosing context, which is how flush-lines() and
+   * flush-timeout() carry an explanation of their own inside transport(altp()).
+   */
+  { "tls_required",       KW_TLS_REQUIRED },
+  { "allow_plain_compress", KW_ALLOW_COMPRESSION },
+  { "allow_compress",     KW_ALLOW_COMPRESSION, KWS_OBSOLETE, "allow-compression()" },
+  { "compress_level",     KW_COMPRESSION_LEVEL },
+  { "serialization",      KW_SERIALIZATION },
+  { "message_acknowledgement_timeout", KW_ACK_TIMEOUT },
+  { "response_timeout",   KW_RESPONSE_TIMEOUT },
+  { "flush_lines",        KW_FLUSH_LINES, KWS_OBSOLETE, "flush-lines() has no effect on a receiver" },
+  { "flush_timeout",      KW_FLUSH_TIMEOUT, KWS_OBSOLETE, "flush-timeout() has no effect on a receiver" },
   { NULL }
 };
 

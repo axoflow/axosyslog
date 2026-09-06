@@ -39,6 +39,20 @@ static CfgLexerKeyword altp_proto_client_keywords[] =
   { "required",           KW_REQUIRED },
   { "optional",           KW_OPTIONAL },
   { "none",               KW_NONE },
+  { "batch_size",         KW_BATCH_SIZE },
+  { "response_timeout",   KW_RESPONSE_TIMEOUT },
+
+  /* The spellings of existing ALTP deployments.  A word listed here shadows the
+   * same word of an enclosing context, which is how flush-lines() means the
+   * Batch bound of this Sender inside transport(altp()).
+   */
+  { "tls_required",       KW_TLS_REQUIRED },
+  { "allow_plain_compress", KW_COMPRESSION },
+  { "allow_compress",     KW_COMPRESSION, KWS_OBSOLETE, "compression()" },
+  { "compress_level",     KW_COMPRESSION_LEVEL },
+  { "message_acknowledgement_timeout", KW_ACK_TIMEOUT },
+  { "flush_lines",        KW_BATCH_SIZE, KWS_OBSOLETE, "batch-size()" },
+  { "flush_timeout",      KW_FLUSH_TIMEOUT, KWS_OBSOLETE, "flush-timeout() has no effect inside transport(altp())" },
   { NULL }
 };
 

@@ -1181,16 +1181,20 @@ log_proto_altp_client_process_in(LogProtoClient *s)
   return status;
 }
 
-/* flush-lines(), but never more than the 1000 Frames of specification 8.4 */
+/* batch-size(), falling back to flush-lines() of the driver, but never more
+ * than the 1000 Frames of specification 8.4 */
 static guint32
 _batch_frame_bound(LogProtoAltpClient *self)
 {
-  gint flush_lines = self->super.options ? self->super.options->flush_lines : 0;
+  gint bound = self->options.batch_size;
 
-  if (flush_lines <= 0)
+  if (bound <= 0)
+    bound = self->super.options ? self->super.options->flush_lines : 0;
+
+  if (bound <= 0)
     return ALTP_SENDER_MAX_BATCH_FRAMES;
 
-  return MIN((guint32) flush_lines, ALTP_SENDER_MAX_BATCH_FRAMES);
+  return MIN((guint32) bound, ALTP_SENDER_MAX_BATCH_FRAMES);
 }
 
 /* A message above max-frame-size() is dropped rather than sent: a Receiver
@@ -1325,7 +1329,7 @@ log_proto_altp_client_poll_prepare(LogProtoClient *s, GIOCondition *cond, GIOCon
       /* a reply is due, so the queue must not be polled; the timeout is armed
        * here too, or a handshake that never answers would hold the connection
        * -- and every Frame the Session retains -- forever */
-      *timeout = self->options.ack_timeout;
+      *timeout = self->options.response_timeout;
       return TRUE;
 
     case ALTP_SENDER_SYNC_SENT:

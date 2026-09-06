@@ -127,6 +127,7 @@ altp_proto_server_options_defaults(LogProtoServerOptions *s)
   self->altp.max_sessions = ALTP_DEFAULT_MAX_SESSIONS;
   self->altp.tls_policy = ALTP_TLS_POLICY_AUTO;
   self->altp.allow_compression = FALSE;
+  self->altp.compression_level = ALTP_DEFAULT_COMPRESSION_LEVEL;
   self->context = _altp_receiver_context_new();
   self->super.destroy = _options_destroy;
 
@@ -180,10 +181,14 @@ altp_proto_client_options_defaults(LogProtoClientOptions *s)
   /* nobody calls log_proto_client_options_defaults(), the storage of the
    * driver simply arrives zeroed */
   self->altp.ack_timeout = ALTP_DEFAULT_ACK_TIMEOUT;
+  /* the same default, so a configuration that only sets ack-timeout() keeps a
+   * handshake timeout of its own */
+  self->altp.response_timeout = ALTP_DEFAULT_ACK_TIMEOUT;
   self->altp.tls_policy = ALTP_TLS_POLICY_AUTO;
   self->altp.max_frame_size = ALTP_SENDER_DEFAULT_MAX_FRAME_SIZE;
+  self->altp.batch_size = 0;
   self->altp.compression = FALSE;
-  self->altp.compression_level = ALTP_SENDER_DEFAULT_COMPRESSION_LEVEL;
+  self->altp.compression_level = ALTP_DEFAULT_COMPRESSION_LEVEL;
 
   return self;
 }

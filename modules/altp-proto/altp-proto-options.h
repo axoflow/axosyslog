@@ -47,6 +47,12 @@
 #define ALTP_DEFAULT_MAX_SESSIONS 10000
 
 
+/* The deflate level of the direction a peer writes (6.2): a local choice of
+ * each side, never negotiated, and 6 is what zlib calls the default trade.
+ */
+#define ALTP_DEFAULT_COMPRESSION_LEVEL 6
+#define ALTP_MAX_COMPRESSION_LEVEL 9
+
 /* What the Receiver does when its acknowledgement timeout expires while it
  * waits for durability (11, 12.1).  CLOSE, the default, abandons the Batch and
  * PARTIAL_ACK acknowledges the durable prefix; see _abandon_batch() in
@@ -91,6 +97,8 @@ typedef struct _AltpReceiverOptions
    * Receiver that has no say in how much of it a Sender asks for, so it is off
    * unless the user turns it on. */
   gboolean allow_compression;
+  /* the deflate level of the replies we write, 0 to 9 */
+  gint compression_level;
 } AltpReceiverOptions;
 
 /* The per Receiver state shared by every Connection of one driver: it owns the
@@ -148,12 +156,6 @@ LogProtoServerFactory *altp_proto_server_options_get_factory(AltpProtoServerOpti
  */
 #define ALTP_SENDER_MAX_BATCH_FRAMES 1000
 
-/* The deflate level of the direction a Sender writes (6.2): a local choice,
- * never negotiated, and 6 is what zlib calls the default trade.
- */
-#define ALTP_SENDER_DEFAULT_COMPRESSION_LEVEL 6
-#define ALTP_SENDER_MAX_COMPRESSION_LEVEL 9
-
 /* The ALTP specific settings of one Sender.  The proto keeps a copy, as the
  * options belong to the driver, which a configuration reload recreates under a
  * Connection kept alive across it.
@@ -163,10 +165,16 @@ typedef struct _AltpSenderOptions
   /* seconds to wait for `250 Received n` before the Connection is closed and
    * everything unacknowledged retained (9.5) */
   gint ack_timeout;
+  /* seconds to wait for the reply of a command other than the ones a Batch is
+   * acknowledged by; the handshake would otherwise hold the Connection forever */
+  gint response_timeout;
   /* whether STARTTLS is requested when advertised, insisted on, or never sent */
   AltpTlsPolicy tls_policy;
   /* the largest Frame payload written, in octets (8.2) */
   gint max_frame_size;
+  /* The Frames a Batch is bounded by, 0 to derive the bound from flush-lines()
+   * of the driver; ALTP_SENDER_MAX_BATCH_FRAMES caps it either way. */
+  gint batch_size;
   /* Whether ZLIB is requested when the Receiver advertises it (6.2).  A Sender
    * MUST NOT request a Capability that was not advertised, so this only asks. */
   gboolean compression;

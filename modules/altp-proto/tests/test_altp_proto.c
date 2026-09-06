@@ -43,6 +43,7 @@
 #include "stats/stats.h"
 #include "stats/stats-cluster-single.h"
 #include "stats/stats-registry.h"
+#include "transport/transport-factory-zlib.h"
 #include "transport/transport-stack.h"
 
 #include <string.h>
@@ -701,6 +702,79 @@ Test(altp, a_network_source_accepts_the_full_altp_option_block)
 }
 
 /****************************************************************************
+ * The spellings of existing ALTP deployments
+ ****************************************************************************/
+
+Test(altp, tls_required_yes_means_the_required_policy)
+{
+  _parse_altp_transport("altp(tls_required(yes))");
+
+  cr_assert_eq(_get_altp_options()->altp.tls_policy, ALTP_TLS_POLICY_REQUIRED);
+}
+
+Test(altp, tls_required_no_means_the_none_policy)
+{
+  _parse_altp_transport("altp(tls_required(no))");
+
+  cr_assert_eq(_get_altp_options()->altp.tls_policy, ALTP_TLS_POLICY_NONE);
+}
+
+Test(altp, allow_plain_compress_and_compress_level_are_accepted)
+{
+  _parse_altp_transport("altp(allow_plain_compress(yes) compress_level(6))");
+
+  cr_assert(_get_altp_options()->altp.allow_compression);
+  cr_assert_eq(_get_altp_options()->altp.compression_level, 6);
+}
+
+/* the lexer is what warns about an obsoleted keyword, once per process */
+Test(altp, allow_compress_is_accepted_with_a_warning)
+{
+  start_grabbing_messages();
+  _parse_altp_transport("altp(allow_compress(yes))");
+  stop_grabbing_messages();
+
+  cr_assert(_get_altp_options()->altp.allow_compression);
+  assert_grabbed_log_contains("obsoleted keyword");
+}
+
+Test(altp, serialization_is_accepted_and_has_no_effect)
+{
+  _parse_altp_transport("altp(serialization(yes))");
+
+  cr_assert_eq(_get_altp_options()->altp.ack_timeout, 900);
+}
+
+Test(altp, message_acknowledgement_timeout_is_the_acknowledgement_timeout)
+{
+  _parse_altp_transport("altp(message_acknowledgement_timeout(30))");
+
+  cr_assert_eq(_get_altp_options()->altp.ack_timeout, 30);
+}
+
+Test(altp, response_timeout_is_accepted_and_has_no_effect)
+{
+  _parse_altp_transport("altp(response_timeout(30))");
+
+  cr_assert_eq(_get_altp_options()->altp.ack_timeout, 900);
+}
+
+Test(altp, flush_lines_and_flush_timeout_are_accepted_and_have_no_effect)
+{
+  _parse_altp_transport("altp(flush_lines(100) flush_timeout(10))");
+
+  cr_assert_eq(_get_altp_options()->altp.ack_timeout, 900);
+}
+
+Test(altp, a_network_source_accepts_the_legacy_option_block)
+{
+  _assert_network_source_parses("network(port(35514) "
+                                "transport(altp(tls_required(yes) allow_plain_compress(yes) compress_level(6) "
+                                "message_acknowledgement_timeout(30) serialization(yes) response_timeout(30) "
+                                "flush_lines(100) flush_timeout(10))))");
+}
+
+/****************************************************************************
  * The command phase: banner, EHLO, NOOP and the command errors
  ****************************************************************************/
 
@@ -931,6 +1005,32 @@ Test(altp, compression_is_not_allowed_by_default)
   _parse_altp_transport("altp()");
 
   cr_assert_not(_get_altp_options()->altp.allow_compression);
+  cr_assert_eq(_get_altp_options()->altp.compression_level, ALTP_DEFAULT_COMPRESSION_LEVEL);
+}
+
+Test(altp, compression_level_is_parsed)
+{
+  _parse_altp_transport("altp(allow-compression(yes) compression-level(1))");
+
+  cr_assert_eq(_get_altp_options()->altp.compression_level, 1);
+}
+
+/* the level of the direction the Receiver writes is its own choice (6.2) */
+Test(altp, the_receiver_deflates_at_the_configured_level)
+{
+  LogProtoServerFactory *factory = _parse_altp_transport("altp(allow-compression(yes) compression-level(1))");
+  AltpTestConnection conn;
+
+  _connection_init(&conn, factory, log_transport_mock_endless_stream_new("ZLIB\n", -1, LTM_EOF), FALSE);
+  _assert_replies(&conn, ALTP_BANNER "250 Ready to start ZLIB\n");
+
+  LogTransportFactoryZlib *zlib =
+    (LogTransportFactoryZlib *) conn.proto->transport_stack.transport_factories[LOG_TRANSPORT_ZLIB];
+
+  cr_assert_not_null(zlib, "the Receiver did not layer a zlib transport on the stack");
+  cr_assert_eq(zlib->level, 1);
+
+  _connection_deinit(&conn);
 }
 
 Test(altp, ehlo_advertises_zlib_when_compression_is_allowed)

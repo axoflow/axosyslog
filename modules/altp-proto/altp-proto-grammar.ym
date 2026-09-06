@@ -63,6 +63,13 @@ static AltpProtoServerOptions *last_altp_options;
 %token KW_REQUIRED
 %token KW_NONE
 %token KW_ALLOW_COMPRESSION
+%token KW_COMPRESSION_LEVEL
+
+/* the legacy spellings of an ALTP receiver; KW_FLUSH_LINES and KW_FLUSH_TIMEOUT
+ * come from the common declarations */
+%token KW_TLS_REQUIRED
+%token KW_SERIALIZATION
+%token KW_RESPONSE_TIMEOUT
 
 %type <num> altp_ack_timeout_action
 %type <num> altp_tls_policy
@@ -126,6 +133,29 @@ altp_option
           {
             last_altp_options->altp.allow_compression = $3;
           }
+        | KW_COMPRESSION_LEVEL '(' nonnegative_integer ')'
+          {
+            CHECK_ERROR($3 <= ALTP_MAX_COMPRESSION_LEVEL, @3,
+                        "compression-level() must be between 0 and %d", ALTP_MAX_COMPRESSION_LEVEL);
+            last_altp_options->altp.compression_level = $3;
+          }
+        | KW_TLS_REQUIRED '(' yesno ')'
+          {
+            last_altp_options->altp.tls_policy = $3 ? ALTP_TLS_POLICY_REQUIRED : ALTP_TLS_POLICY_NONE;
+          }
+        | KW_SERIALIZATION '(' yesno ')'
+          {
+            msg_notice("serialization() has no effect on an ALTP receiver, "
+                       "frames are always opaque octets (spec 8.2)");
+          }
+        | KW_RESPONSE_TIMEOUT '(' positive_integer ')'
+          {
+            msg_notice("response-timeout() has no effect on an ALTP receiver, "
+                       "which waits for no reply of its own");
+          }
+        /* accepted so that a legacy configuration parses; the lexer warns */
+        | KW_FLUSH_LINES '(' positive_integer ')'
+        | KW_FLUSH_TIMEOUT '(' nonnegative_integer ')'
         ;
 
 altp_ack_timeout_action

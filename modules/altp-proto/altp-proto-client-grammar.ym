@@ -60,6 +60,11 @@ static AltpProtoClientOptions *last_altp_client_options;
 %token KW_TLS_POLICY
 %token KW_REQUIRED
 %token KW_NONE
+%token KW_RESPONSE_TIMEOUT
+
+/* a legacy spelling of an ALTP sender; KW_BATCH_SIZE and KW_FLUSH_TIMEOUT come
+ * from the common declarations */
+%token KW_TLS_REQUIRED
 
 %type <num> altp_client_tls_policy
 
@@ -111,14 +116,30 @@ altp_client_option
           }
         | KW_COMPRESSION_LEVEL '(' nonnegative_integer ')'
           {
-            CHECK_ERROR($3 <= ALTP_SENDER_MAX_COMPRESSION_LEVEL, @3,
-                        "compression-level() must be between 0 and %d", ALTP_SENDER_MAX_COMPRESSION_LEVEL);
+            CHECK_ERROR($3 <= ALTP_MAX_COMPRESSION_LEVEL, @3,
+                        "compression-level() must be between 0 and %d", ALTP_MAX_COMPRESSION_LEVEL);
             last_altp_client_options->altp.compression_level = $3;
           }
         | KW_TLS_POLICY '(' altp_client_tls_policy ')'
           {
             last_altp_client_options->altp.tls_policy = $3;
           }
+        | KW_BATCH_SIZE '(' positive_integer ')'
+          {
+            /* 8.4 bounds a Batch at ALTP_SENDER_MAX_BATCH_FRAMES, which is
+             * applied where the bound is used, not here */
+            last_altp_client_options->altp.batch_size = $3;
+          }
+        | KW_RESPONSE_TIMEOUT '(' positive_integer ')'
+          {
+            last_altp_client_options->altp.response_timeout = $3;
+          }
+        | KW_TLS_REQUIRED '(' yesno ')'
+          {
+            last_altp_client_options->altp.tls_policy = $3 ? ALTP_TLS_POLICY_REQUIRED : ALTP_TLS_POLICY_NONE;
+          }
+        /* accepted so that a legacy configuration parses; the lexer warns */
+        | KW_FLUSH_TIMEOUT '(' nonnegative_integer ')'
         ;
 
 altp_client_tls_policy

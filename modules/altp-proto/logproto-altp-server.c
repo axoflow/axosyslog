@@ -576,7 +576,7 @@ _flush_reply(LogProtoAltpServer *self, LogProtoStatus *status)
        */
       self->start_zlib_after_reply = FALSE;
       log_transport_stack_add_factory(&self->super.transport_stack,
-                                      transport_factory_zlib_new(Z_DEFAULT_COMPRESSION));
+                                      transport_factory_zlib_new(self->options.compression_level));
       if (!log_transport_stack_switch(&self->super.transport_stack, LOG_TRANSPORT_ZLIB))
         {
           msg_error("Error switching the ALTP Connection to ZLIB",

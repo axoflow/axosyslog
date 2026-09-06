@@ -605,6 +605,9 @@ Test(altp_client, an_empty_option_block_yields_the_specification_defaults)
   cr_assert_eq(_get_altp_options()->altp.ack_timeout, ALTP_DEFAULT_ACK_TIMEOUT);
   cr_assert_eq(_get_altp_options()->altp.max_frame_size, ALTP_SENDER_DEFAULT_MAX_FRAME_SIZE);
   cr_assert_eq(_get_altp_options()->altp.tls_policy, ALTP_TLS_POLICY_AUTO);
+  cr_assert_eq(_get_altp_options()->altp.response_timeout, ALTP_DEFAULT_ACK_TIMEOUT);
+  cr_assert_eq(_get_altp_options()->altp.batch_size, 0,
+               "without batch-size() the bound comes from flush-lines() of the driver");
 }
 
 Test(altp_client, the_full_option_block_is_parsed)
@@ -669,6 +672,88 @@ Test(altp_client, a_network_destination_accepts_the_full_altp_option_block)
 Test(altp_client, a_syslog_destination_accepts_transport_altp)
 {
   _assert_destination_parses("syslog(\"localhost\" transport(altp(ack-timeout(60))))");
+}
+
+/****************************************************************************
+ * The spellings of existing ALTP deployments
+ ****************************************************************************/
+
+Test(altp_client, tls_required_yes_means_the_required_policy)
+{
+  _parse_altp_transport("altp(tls_required(yes))");
+
+  cr_assert_eq(_get_altp_options()->altp.tls_policy, ALTP_TLS_POLICY_REQUIRED);
+}
+
+Test(altp_client, tls_required_no_means_the_none_policy)
+{
+  _parse_altp_transport("altp(tls_required(no))");
+
+  cr_assert_eq(_get_altp_options()->altp.tls_policy, ALTP_TLS_POLICY_NONE);
+}
+
+Test(altp_client, allow_plain_compress_and_compress_level_are_accepted)
+{
+  _parse_altp_transport("altp(allow_plain_compress(yes) compress_level(6))");
+
+  cr_assert(_get_altp_options()->altp.compression);
+  cr_assert_eq(_get_altp_options()->altp.compression_level, 6);
+}
+
+/* the lexer is what warns about an obsoleted keyword, once per process */
+Test(altp_client, allow_compress_is_accepted_with_a_warning)
+{
+  start_grabbing_messages();
+  _parse_altp_transport("altp(allow_compress(yes))");
+  stop_grabbing_messages();
+
+  cr_assert(_get_altp_options()->altp.compression);
+  assert_grabbed_log_contains("obsoleted keyword");
+}
+
+Test(altp_client, message_acknowledgement_timeout_is_the_acknowledgement_timeout)
+{
+  _parse_altp_transport("altp(message_acknowledgement_timeout(30))");
+
+  cr_assert_eq(_get_altp_options()->altp.ack_timeout, 30);
+}
+
+Test(altp_client, response_timeout_is_parsed)
+{
+  _parse_altp_transport("altp(response_timeout(30))");
+
+  cr_assert_eq(_get_altp_options()->altp.response_timeout, 30);
+  cr_assert_eq(_get_altp_options()->altp.ack_timeout, ALTP_DEFAULT_ACK_TIMEOUT);
+}
+
+Test(altp_client, batch_size_is_parsed)
+{
+  _parse_altp_transport("altp(batch_size(100))");
+
+  cr_assert_eq(_get_altp_options()->altp.batch_size, 100);
+}
+
+Test(altp_client, flush_lines_inside_the_option_block_is_the_batch_size)
+{
+  _parse_altp_transport("altp(flush_lines(100))");
+
+  cr_assert_eq(_get_altp_options()->altp.batch_size, 100);
+}
+
+Test(altp_client, flush_timeout_is_accepted_and_has_no_effect)
+{
+  _parse_altp_transport("altp(flush_timeout(10))");
+
+  cr_assert_eq(_get_altp_options()->altp.batch_size, 0);
+  cr_assert_eq(_get_altp_options()->altp.ack_timeout, ALTP_DEFAULT_ACK_TIMEOUT);
+}
+
+Test(altp_client, a_network_destination_accepts_the_legacy_option_block)
+{
+  _assert_destination_parses("network(\"localhost\" port(35514) "
+                             "transport(altp(tls_required(yes) allow_plain_compress(yes) compress_level(6) "
+                             "batch_size(100) message_acknowledgement_timeout(30) response_timeout(30) "
+                             "flush_timeout(10))))");
 }
 
 /****************************************************************************
@@ -886,7 +971,7 @@ Test(altp_client, compression_is_off_by_default_and_level_6)
   _parse_altp_transport("altp()");
 
   cr_assert_not(_get_altp_options()->altp.compression);
-  cr_assert_eq(_get_altp_options()->altp.compression_level, ALTP_SENDER_DEFAULT_COMPRESSION_LEVEL);
+  cr_assert_eq(_get_altp_options()->altp.compression_level, ALTP_DEFAULT_COMPRESSION_LEVEL);
 }
 
 Test(altp_client, compression_and_compression_level_are_parsed)
@@ -1146,6 +1231,76 @@ Test(altp_client, the_frame_count_bound_closes_the_batch)
   cr_assert_eq(_post(&sender, "three", &consumed), LPS_SUCCESS);
   cr_assert_not(consumed, "the Sender wrote a Frame into a closed Batch");
   _assert_written(&sender, "");
+
+  _sender_deinit(&sender);
+}
+
+Test(altp_client, batch_size_bounds_the_batch_and_wins_over_flush_lines)
+{
+  AltpTestSender sender;
+
+  LogProtoClientFactory *factory = _parse_altp_transport("altp(batch-size(2))");
+
+  options_storage.super.flush_lines = 10;
+  _sender_init(&sender, factory, FALSE, NULL);
+  g_free(_negotiate(&sender));
+
+  _post_and_assert_consumed(&sender, "one");
+  _post_and_assert_consumed(&sender, "two");
+  _assert_written(&sender, "3 one3 two" ALTP_TERMINATOR);
+
+  gboolean consumed = TRUE;
+  cr_assert_eq(_post(&sender, "three", &consumed), LPS_SUCCESS);
+  cr_assert_not(consumed, "the Sender wrote a Frame into a closed Batch");
+
+  _sender_deinit(&sender);
+}
+
+/* the handshake is what response-timeout() bounds; a Batch keeps waiting for
+ * ack-timeout() (9.5) */
+Test(altp_client, the_handshake_states_wait_for_the_response_timeout)
+{
+  AltpTestSender sender;
+  GIOCondition cond = 0, idle_cond = 0;
+  gint timeout = -1;
+
+  _sender_init(&sender, _parse_altp_transport("altp(ack-timeout(120) response-timeout(30))"), FALSE, NULL);
+
+  cr_assert(log_proto_client_poll_prepare(sender.proto, &cond, &idle_cond, &timeout));
+  cr_assert_eq(timeout, 30, "the banner is a reply like any other of the handshake");
+
+  cr_assert_eq(_reply(&sender, ALTP_BANNER), LPS_SUCCESS);
+  _assert_written(&sender, ALTP_EHLO);
+
+  timeout = -1;
+  cr_assert(log_proto_client_poll_prepare(sender.proto, &cond, &idle_cond, &timeout));
+  cr_assert_eq(timeout, 30);
+
+  /* the SYNC that follows is acknowledged, not answered: ack-timeout() again */
+  cr_assert_eq(_reply(&sender, ALTP_NO_CAPABILITIES), LPS_SUCCESS);
+
+  timeout = -1;
+  cr_assert(log_proto_client_poll_prepare(sender.proto, &cond, &idle_cond, &timeout));
+  cr_assert_eq(timeout, 120);
+
+  _sender_deinit(&sender);
+}
+
+Test(altp_client, a_closed_batch_waits_for_the_acknowledgement_timeout)
+{
+  AltpTestSender sender;
+  GIOCondition cond = 0, idle_cond = 0;
+  gint timeout = -1;
+
+  _sender_init(&sender, _parse_altp_transport("altp(ack-timeout(120) response-timeout(30) batch-size(1))"),
+               FALSE, NULL);
+  g_free(_negotiate(&sender));
+
+  _post_and_assert_consumed(&sender, "one");
+  _assert_written(&sender, "3 one" ALTP_TERMINATOR);
+
+  cr_assert(log_proto_client_poll_prepare(sender.proto, &cond, &idle_cond, &timeout));
+  cr_assert_eq(timeout, 120);
 
   _sender_deinit(&sender);
 }
