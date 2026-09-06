@@ -45,6 +45,7 @@ include modules/redis/Makefile.am
 include modules/riemann/Makefile.am
 include modules/afsnmp/Makefile.am
 include modules/secure-logging/Makefile.am
+include modules/splunk-s2s/Makefile.am
 include modules/stardate/Makefile.am
 include modules/syslogformat/Makefile.am
 include modules/systemd-journal/Makefile.am
