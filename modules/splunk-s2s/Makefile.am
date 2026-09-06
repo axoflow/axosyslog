@@ -15,3 +15,5 @@ modules_splunk_s2s_libsplunk_s2s_protocol_la_LDFLAGS = $(MODULE_LDFLAGS)
 EXTRA_modules_splunk_s2s_libsplunk_s2s_protocol_la_DEPENDENCIES = $(MODULE_DEPS_LIBS)
 
 EXTRA_DIST += modules/splunk-s2s/CMakeLists.txt
+
+include modules/splunk-s2s/tests/Makefile.am
