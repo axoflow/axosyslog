@@ -77,6 +77,18 @@ destroy_write_buffer_element(gpointer d)
     g_free((gchar *)data->iov.iov_base);
 };
 
+/* NOT g_strndup(): that stops copying at the first NUL, mangling binary
+ * protocol payloads stored in the write buffer */
+static gchar *
+dup_write_buffer_bytes(const gchar *buf, gsize len)
+{
+  gchar *copy = g_malloc(len + 1);
+
+  memcpy(copy, buf, len);
+  copy[len] = '\0';
+  return copy;
+}
+
 static GArray *
 clone_write_buffer(GArray *orig_write_buffer)
 {
@@ -86,7 +98,7 @@ clone_write_buffer(GArray *orig_write_buffer)
     {
       data_t *data = &g_array_index(write_buffer, data_t, i);
       if (data->type == DATA_STRING)
-        data->iov.iov_base = g_strndup(data->iov.iov_base, data->iov.iov_len);
+        data->iov.iov_base = dup_write_buffer_bytes(data->iov.iov_base, data->iov.iov_len);
     }
 
   return write_buffer;
@@ -254,7 +266,7 @@ log_transport_mock_write_method(LogTransport *s, const gpointer buf, gsize count
     count = self->write_chunk_limit;
 
   data.type = DATA_STRING;
-  data.iov.iov_base = g_strndup(buf, count);
+  data.iov.iov_base = dup_write_buffer_bytes(buf, count);
   data.iov.iov_len = count;
   g_array_append_val(self->write_buffer, data);
 
@@ -278,7 +290,7 @@ log_transport_mock_writev_method(LogTransport *s, struct iovec *iov, gint iov_co
           sum + iov[i].iov_len > self->write_chunk_limit)
         value.iov.iov_len = self->write_chunk_limit - sum;
 
-      value.iov.iov_base = g_strndup(iov[i].iov_base, value.iov.iov_len);
+      value.iov.iov_base = dup_write_buffer_bytes(iov[i].iov_base, value.iov.iov_len);
 
       g_array_append_val(self->write_buffer, value);
       sum += value.iov.iov_len;
