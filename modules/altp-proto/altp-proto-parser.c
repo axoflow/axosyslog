@@ -41,6 +41,7 @@ static CfgLexerKeyword altp_proto_keywords[] =
   { "allow_compression",  KW_ALLOW_COMPRESSION },
   { "required",           KW_REQUIRED },
   { "optional",           KW_OPTIONAL },
+  { "none",               KW_NONE },
   { NULL }
 };
 

@@ -601,6 +601,54 @@ Test(altp, tls_policy_optional_is_parsed)
   cr_assert_eq(_get_altp_options()->altp.tls_policy, ALTP_TLS_POLICY_OPTIONAL);
 }
 
+Test(altp, tls_policy_none_is_parsed)
+{
+  _parse_altp_transport("altp(tls-policy(none))");
+
+  cr_assert_eq(_get_altp_options()->altp.tls_policy, ALTP_TLS_POLICY_NONE);
+}
+
+/* the policy lives in our options, the TLS factory on the transport stack, so
+ * the two are only brought together once a Connection exists */
+static gboolean
+_validate_options_of_a_connection(const gchar *config_snippet, gboolean with_tls)
+{
+  LogProtoServerFactory *factory = _parse_altp_transport(config_snippet);
+  AltpTestConnection conn;
+
+  _connection_init(&conn, factory, log_transport_mock_stream_new("", 0, LTM_EOF), with_tls);
+
+  gboolean valid = log_proto_server_validate_options(conn.proto);
+
+  _connection_deinit(&conn);
+
+  return valid;
+}
+
+Test(altp, tls_policy_required_without_a_tls_block_is_a_configuration_error)
+{
+  start_grabbing_messages();
+  cr_assert_not(_validate_options_of_a_connection("altp(tls-policy(required))", FALSE));
+  stop_grabbing_messages();
+
+  assert_grabbed_log_contains("needs a tls() block");
+}
+
+Test(altp, tls_policy_optional_without_a_tls_block_is_a_configuration_error)
+{
+  cr_assert_not(_validate_options_of_a_connection("altp(tls-policy(optional))", FALSE));
+}
+
+Test(altp, tls_policy_required_with_a_tls_block_is_accepted)
+{
+  cr_assert(_validate_options_of_a_connection("altp(tls-policy(required))", TRUE));
+}
+
+Test(altp, tls_policy_none_without_a_tls_block_is_accepted)
+{
+  cr_assert(_validate_options_of_a_connection("altp(tls-policy(none))", FALSE));
+}
+
 /* durability is an absolute prefix count, so ALTP needs the consecutive tracker */
 Test(altp, the_options_install_the_consecutive_ack_tracker)
 {
@@ -850,6 +898,18 @@ Test(altp, starttls_without_a_tls_factory_is_answered_502_and_closes)
   _assert_conversation("altp()", "STARTTLS\n", ALTP_BANNER "502 Unknown command\n", FALSE);
 }
 
+/* tls-policy(none) is the policy of 6.1 that knows no STARTTLS verb, even with
+ * the certificates of a tls() block on the driver */
+Test(altp, tls_policy_none_does_not_advertise_starttls)
+{
+  _assert_conversation("altp(tls-policy(none))", "EHLO 1.0\n", ALTP_BANNER "250 \n", TRUE);
+}
+
+Test(altp, starttls_under_tls_policy_none_is_answered_502_and_closes)
+{
+  _assert_conversation("altp(tls-policy(none))", "STARTTLS\n", ALTP_BANNER "502 Unknown command\n", TRUE);
+}
+
 Test(altp, starttls_with_parameters_is_answered_501_and_closes)
 {
   _assert_conversation("altp()", "STARTTLS now\n", ALTP_BANNER "501 Syntax error\n", TRUE);
@@ -1095,16 +1155,18 @@ Test(altp, sync_over_plaintext_is_answered_505_when_the_receiver_requires_tls)
                        ALTP_BANNER "505 STARTTLS required\n", FALSE);
 }
 
-/* tls() selects the required policy unless tls-policy() says otherwise (ADR-0008) */
-Test(altp, tls_configured_without_a_policy_requires_starttls_before_sync)
+/* tls() selects the optional policy unless tls-policy() says otherwise: STARTTLS
+ * is offered and a Sender that does not take it up is still served (ADR-0011) */
+Test(altp, tls_configured_without_a_policy_offers_starttls_and_admits_plaintext)
 {
-  _assert_conversation("altp()", "SYNC s1\n", ALTP_BANNER "505 STARTTLS required\n", TRUE);
+  _assert_conversation("altp()", "EHLO 1.0\nSYNC s1\n",
+                       ALTP_BANNER "250 STARTTLS\n250 Received 0\n", TRUE);
 }
 
 Test(altp, tls_policy_optional_admits_a_plaintext_session)
 {
-  _assert_conversation("altp(tls-policy(optional))", "SYNC s1\n",
-                       ALTP_BANNER "250 Received 0\n", TRUE);
+  _assert_conversation("altp(tls-policy(optional))", "EHLO 1.0\nSYNC s1\n",
+                       ALTP_BANNER "250 STARTTLS\n250 Received 0\n", TRUE);
 }
 
 /****************************************************************************

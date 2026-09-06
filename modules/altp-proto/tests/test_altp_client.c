@@ -24,6 +24,7 @@
 #include <criterion/criterion.h>
 
 #include "libtest/config_parse_lib.h"
+#include "libtest/grab-logging.h"
 #include "libtest/mock-transport.h"
 #include "libtest/persist_lib.h"
 
@@ -603,14 +604,25 @@ Test(altp_client, an_empty_option_block_yields_the_specification_defaults)
 
   cr_assert_eq(_get_altp_options()->altp.ack_timeout, ALTP_DEFAULT_ACK_TIMEOUT);
   cr_assert_eq(_get_altp_options()->altp.max_frame_size, ALTP_SENDER_DEFAULT_MAX_FRAME_SIZE);
+  cr_assert_eq(_get_altp_options()->altp.tls_policy, ALTP_TLS_POLICY_AUTO);
 }
 
 Test(altp_client, the_full_option_block_is_parsed)
 {
-  _parse_altp_transport("altp(ack-timeout(120) max-frame-size(8192))");
+  _parse_altp_transport("altp(ack-timeout(120) max-frame-size(8192) tls-policy(required))");
 
   cr_assert_eq(_get_altp_options()->altp.ack_timeout, 120);
   cr_assert_eq(_get_altp_options()->altp.max_frame_size, 8192);
+  cr_assert_eq(_get_altp_options()->altp.tls_policy, ALTP_TLS_POLICY_REQUIRED);
+}
+
+Test(altp_client, the_tls_policy_values_are_parsed)
+{
+  _parse_altp_transport("altp(tls-policy(optional))");
+  cr_assert_eq(_get_altp_options()->altp.tls_policy, ALTP_TLS_POLICY_OPTIONAL);
+
+  _parse_altp_transport("altp(tls-policy(none))");
+  cr_assert_eq(_get_altp_options()->altp.tls_policy, ALTP_TLS_POLICY_NONE);
 }
 
 Test(altp_client, transport_altp_without_an_option_block_means_all_defaults)
@@ -761,7 +773,25 @@ Test(altp_client, starttls_is_requested_and_the_capabilities_are_read_again_afte
   _sender_deinit(&sender);
 }
 
-Test(altp_client, a_receiver_that_does_not_offer_starttls_is_refused_when_tls_is_configured)
+Test(altp_client, a_receiver_that_does_not_offer_starttls_is_refused_under_tls_policy_required)
+{
+  AltpTestSender sender;
+
+  _sender_init(&sender, _parse_altp_transport("altp(tls-policy(required))"), TRUE, NULL);
+
+  cr_assert_eq(_reply(&sender, ALTP_BANNER), LPS_SUCCESS);
+  _assert_written(&sender, ALTP_EHLO);
+
+  /* the Sender aborts rather than continuing in plaintext (6.1) */
+  cr_assert_eq(_reply(&sender, ALTP_NO_CAPABILITIES), LPS_ERROR);
+  _assert_written(&sender, "");
+
+  _sender_deinit(&sender);
+}
+
+/* tls() alone is the opportunistic policy: STARTTLS when it is on offer, and
+ * the Session in plaintext when it is not (ADR-0011) */
+Test(altp_client, a_receiver_that_does_not_offer_starttls_is_talked_to_in_the_clear)
 {
   AltpTestSender sender;
 
@@ -770,8 +800,59 @@ Test(altp_client, a_receiver_that_does_not_offer_starttls_is_refused_when_tls_is
   cr_assert_eq(_reply(&sender, ALTP_BANNER), LPS_SUCCESS);
   _assert_written(&sender, ALTP_EHLO);
 
-  /* the Sender aborts rather than continuing in plaintext (6.1) */
-  cr_assert_eq(_reply(&sender, ALTP_NO_CAPABILITIES), LPS_ERROR);
+  start_grabbing_messages();
+  cr_assert_eq(_reply(&sender, ALTP_NO_CAPABILITIES), LPS_SUCCESS);
+  stop_grabbing_messages();
+
+  assert_grabbed_log_contains("does not offer the STARTTLS Capability, continuing in plaintext");
+  cr_assert_eq(sender.proto->transport_stack.active_transport, LOG_TRANSPORT_INITIAL);
+
+  gchar *session_id = _extract_session_id(&sender);
+  g_free(session_id);
+  _sender_deinit(&sender);
+}
+
+Test(altp_client, tls_policy_none_ignores_an_advertised_starttls)
+{
+  AltpTestSender sender;
+
+  _sender_init(&sender, _parse_altp_transport("altp(tls-policy(none))"), TRUE, NULL);
+
+  cr_assert_eq(_reply(&sender, ALTP_BANNER), LPS_SUCCESS);
+  _assert_written(&sender, ALTP_EHLO);
+
+  cr_assert_eq(_reply(&sender, ALTP_CAPABILITY_LIST), LPS_SUCCESS);
+  cr_assert_null(strstr(sender.written->str, ALTP_STARTTLS),
+                 "the Sender requested STARTTLS under tls-policy(none): <%s>", sender.written->str);
+
+  gchar *session_id = _extract_session_id(&sender);
+  g_free(session_id);
+  _sender_deinit(&sender);
+}
+
+Test(altp_client, tls_policy_required_without_a_tls_block_is_a_configuration_error)
+{
+  AltpTestSender sender;
+
+  _sender_init(&sender, _parse_altp_transport("altp(tls-policy(required))"), FALSE, NULL);
+
+  start_grabbing_messages();
+  cr_assert_eq(_reply(&sender, ALTP_BANNER), LPS_ERROR);
+  stop_grabbing_messages();
+
+  assert_grabbed_log_contains("needs a tls() block");
+  _assert_written(&sender, "");
+
+  _sender_deinit(&sender);
+}
+
+Test(altp_client, tls_policy_optional_without_a_tls_block_is_a_configuration_error)
+{
+  AltpTestSender sender;
+
+  _sender_init(&sender, _parse_altp_transport("altp(tls-policy(optional))"), FALSE, NULL);
+
+  cr_assert_eq(_reply(&sender, ALTP_BANNER), LPS_ERROR);
   _assert_written(&sender, "");
 
   _sender_deinit(&sender);

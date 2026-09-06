@@ -172,7 +172,8 @@ typedef struct _LogProtoAltpClient
   /* STARTTLS succeeded: the active transport cannot answer that on its own
    * once ZLIB is layered on top of TLS */
   gboolean tls_active;
-  /* the unavailability of compression is said once per Connection */
+  /* the unavailability of STARTTLS and of compression is said once per Connection */
+  gboolean starttls_unavailable_logged;
   gboolean compression_unavailable_logged;
 
   /* the "<driver>.altp.sender" entry, 0 while the state is memory only */
@@ -591,19 +592,53 @@ _is_zlib_active(LogProtoAltpClient *self)
   return self->super.transport_stack.active_transport == LOG_TRANSPORT_ZLIB;
 }
 
-/* A tls() block puts a TLS factory on the stack and means that STARTTLS is
- * required, mirroring the receiver side of ADR-0008; 6.1 demands that such a
- * Sender aborts rather than continuing in plaintext.
- */
+/* a TLS factory on the stack is what tls() on the driver puts there */
 static inline gboolean
-_is_tls_required(LogProtoAltpClient *self)
+_is_tls_configured(LogProtoAltpClient *self)
 {
   return self->super.transport_stack.transport_factories[LOG_TRANSPORT_TLS] != NULL;
+}
+
+/* The AUTO the user gets without an explicit tls-policy() resolves to OPTIONAL
+ * when the driver configured tls() and to NONE otherwise, mirroring the
+ * Receiver (ADR-0011). */
+static inline AltpTlsPolicy
+_resolve_tls_policy(LogProtoAltpClient *self)
+{
+  if (self->options.tls_policy != ALTP_TLS_POLICY_AUTO)
+    return self->options.tls_policy;
+
+  if (_is_tls_configured(self))
+    return ALTP_TLS_POLICY_OPTIONAL;
+
+  return ALTP_TLS_POLICY_NONE;
+}
+
+/* The transport stack is complete by the time the banner arrives, which is the
+ * earliest a Sender can tell whether tls() was configured.
+ */
+static gboolean
+_validate_tls_policy(LogProtoAltpClient *self)
+{
+  AltpTlsPolicy policy = self->options.tls_policy;
+
+  if ((policy == ALTP_TLS_POLICY_REQUIRED || policy == ALTP_TLS_POLICY_OPTIONAL) && !_is_tls_configured(self))
+    {
+      msg_error("The ALTP tls-policy() of this destination needs a tls() block on the driver",
+                evt_tag_str("tls_policy", policy == ALTP_TLS_POLICY_REQUIRED ? "required" : "optional"),
+                evt_tag_int(EVT_TAG_FD, self->super.transport_stack.fd));
+      return FALSE;
+    }
+
+  return TRUE;
 }
 
 static LogProtoStatus
 _send_ehlo(LogProtoAltpClient *self)
 {
+  if (!_validate_tls_policy(self))
+    return LPS_ERROR;
+
   /* every EHLO reply supersedes the previous one (5.2, 5.3) */
   self->starttls_advertised = FALSE;
   self->zlib_advertised = FALSE;
@@ -643,20 +678,35 @@ _send_data(LogProtoAltpClient *self)
 static LogProtoStatus
 _on_capabilities(LogProtoAltpClient *self)
 {
-  if (_is_tls_required(self) && !_is_tls_active(self))
+  AltpTlsPolicy tls_policy = _resolve_tls_policy(self);
+
+  if (tls_policy != ALTP_TLS_POLICY_NONE && !_is_tls_active(self))
     {
-      if (!self->starttls_advertised)
+      if (self->starttls_advertised)
         {
-          msg_error("The ALTP Receiver does not offer the STARTTLS Capability but tls() is configured for this "
-                    "destination, refusing to continue in plaintext",
+          _append_command(self, ALTP_COMMAND_STARTTLS);
+          self->state = ALTP_SENDER_TLS_REQUESTED;
+
+          return LPS_SUCCESS;
+        }
+
+      if (tls_policy == ALTP_TLS_POLICY_REQUIRED)
+        {
+          /* 6.1 demands that such a Sender aborts rather than downgrading */
+          msg_error("The ALTP Receiver does not offer the STARTTLS Capability but tls-policy(required) is "
+                    "configured for this destination, refusing to continue in plaintext",
                     evt_tag_int(EVT_TAG_FD, self->super.transport_stack.fd));
           return LPS_ERROR;
         }
 
-      _append_command(self, ALTP_COMMAND_STARTTLS);
-      self->state = ALTP_SENDER_TLS_REQUESTED;
-
-      return LPS_SUCCESS;
+      /* the opportunistic policy of 15: a downgrade a deployment that must be
+       * protected forbids with tls-policy(required) on both sides */
+      if (!self->starttls_unavailable_logged)
+        {
+          self->starttls_unavailable_logged = TRUE;
+          msg_notice("The ALTP Receiver does not offer the STARTTLS Capability, continuing in plaintext",
+                     evt_tag_int(EVT_TAG_FD, self->super.transport_stack.fd));
+        }
     }
 
   /* TLS is settled by now, so compression is what is left to ask for, and it

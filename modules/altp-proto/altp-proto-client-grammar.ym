@@ -57,6 +57,11 @@ static AltpProtoClientOptions *last_altp_client_options;
 %token KW_MAX_FRAME_SIZE
 %token KW_COMPRESSION
 %token KW_COMPRESSION_LEVEL
+%token KW_TLS_POLICY
+%token KW_REQUIRED
+%token KW_NONE
+
+%type <num> altp_client_tls_policy
 
 %%
 
@@ -110,6 +115,16 @@ altp_client_option
                         "compression-level() must be between 0 and %d", ALTP_SENDER_MAX_COMPRESSION_LEVEL);
             last_altp_client_options->altp.compression_level = $3;
           }
+        | KW_TLS_POLICY '(' altp_client_tls_policy ')'
+          {
+            last_altp_client_options->altp.tls_policy = $3;
+          }
+        ;
+
+altp_client_tls_policy
+        : KW_REQUIRED                           { $$ = ALTP_TLS_POLICY_REQUIRED; }
+        | KW_OPTIONAL                           { $$ = ALTP_TLS_POLICY_OPTIONAL; }
+        | KW_NONE                               { $$ = ALTP_TLS_POLICY_NONE; }
         ;
 
 /* INCLUDE_RULES */

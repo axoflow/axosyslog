@@ -223,23 +223,32 @@ _is_tls_active(LogProtoAltpServer *self)
 
 /* a TLS factory on the stack is what tls() on the driver puts there */
 static gboolean
-_is_starttls_available(LogProtoAltpServer *self)
+_is_tls_configured(LogProtoAltpServer *self)
 {
-  return self->super.transport_stack.transport_factories[LOG_TRANSPORT_TLS] != NULL && !_is_tls_active(self);
+  return self->super.transport_stack.transport_factories[LOG_TRANSPORT_TLS] != NULL;
 }
 
-/* The AUTO the user gets without an explicit tls-policy() resolves to REQUIRED
- * when the driver configured tls() and to NONE otherwise (ADR-0008). */
+/* The AUTO the user gets without an explicit tls-policy() resolves to OPTIONAL
+ * when the driver configured tls() and to NONE otherwise (ADR-0011). */
 static AltpTlsPolicy
 _resolve_tls_policy(LogProtoAltpServer *self)
 {
   if (self->options.tls_policy != ALTP_TLS_POLICY_AUTO)
     return self->options.tls_policy;
 
-  if (self->super.transport_stack.transport_factories[LOG_TRANSPORT_TLS] != NULL)
-    return ALTP_TLS_POLICY_REQUIRED;
+  if (_is_tls_configured(self))
+    return ALTP_TLS_POLICY_OPTIONAL;
 
   return ALTP_TLS_POLICY_NONE;
+}
+
+/* the none policy has no STARTTLS verb even with tls() on the driver (6.1) */
+static gboolean
+_is_starttls_available(LogProtoAltpServer *self)
+{
+  return _is_tls_configured(self)
+         && _resolve_tls_policy(self) != ALTP_TLS_POLICY_NONE
+         && !_is_tls_active(self);
 }
 
 static gboolean
@@ -766,8 +775,8 @@ _on_starttls(LogProtoAltpServer *self, gsize param_len)
 
   if (!_is_starttls_available(self))
     {
-      /* no tls() on the driver: the none policy of 6.1 has no such verb */
-      msg_error("ALTP STARTTLS requested, but TLS is not configured on this Receiver");
+      /* no tls() on the driver, or tls-policy(none): 6.1 knows no such verb */
+      msg_error("ALTP STARTTLS requested, but this Receiver does not offer it");
       _reply_and_close(self, ALTP_REPLY_UNKNOWN_COMMAND);
       return;
     }
@@ -1565,6 +1574,28 @@ log_proto_altp_server_poll_prepare(LogProtoServer *s, GIOCondition *cond, gint *
  * Construction
  ****************************************************************************/
 
+/* The LogReader calls this once the transport stack of the Connection is
+ * complete, which is the earliest a Receiver can tell whether tls() was
+ * configured: the policy lives in our options, the TLS factory on the stack.
+ * A refusal here fails the Connection, not the whole configuration.
+ */
+static gboolean
+log_proto_altp_server_validate_options(LogProtoServer *s)
+{
+  LogProtoAltpServer *self = (LogProtoAltpServer *) s;
+  AltpTlsPolicy policy = self->options.tls_policy;
+
+  if ((policy == ALTP_TLS_POLICY_REQUIRED || policy == ALTP_TLS_POLICY_OPTIONAL) && !_is_tls_configured(self))
+    {
+      msg_error("The ALTP tls-policy() of this source needs a tls() block on the driver",
+                evt_tag_str("tls_policy", policy == ALTP_TLS_POLICY_REQUIRED ? "required" : "optional"),
+                evt_tag_int(EVT_TAG_FD, self->super.transport_stack.fd));
+      return FALSE;
+    }
+
+  return log_proto_server_validate_options_method(s);
+}
+
 static gboolean
 log_proto_altp_server_restart_with_state(LogProtoServer *s, PersistState *state, const gchar *persist_name)
 {
@@ -1631,6 +1662,7 @@ log_proto_altp_server_new(LogTransport *transport, const LogProtoServerOptions *
   log_proto_server_init(&self->super, transport, options);
   self->super.poll_prepare = log_proto_altp_server_poll_prepare;
   self->super.fetch = log_proto_altp_server_fetch;
+  self->super.validate_options = log_proto_altp_server_validate_options;
   self->super.restart_with_state = log_proto_altp_server_restart_with_state;
   self->super.free_fn = log_proto_altp_server_free;
 

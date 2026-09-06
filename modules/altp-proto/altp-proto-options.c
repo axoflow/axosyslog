@@ -180,6 +180,7 @@ altp_proto_client_options_defaults(LogProtoClientOptions *s)
   /* nobody calls log_proto_client_options_defaults(), the storage of the
    * driver simply arrives zeroed */
   self->altp.ack_timeout = ALTP_DEFAULT_ACK_TIMEOUT;
+  self->altp.tls_policy = ALTP_TLS_POLICY_AUTO;
   self->altp.max_frame_size = ALTP_SENDER_DEFAULT_MAX_FRAME_SIZE;
   self->altp.compression = FALSE;
   self->altp.compression_level = ALTP_SENDER_DEFAULT_COMPRESSION_LEVEL;

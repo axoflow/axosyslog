@@ -58,8 +58,11 @@ typedef enum
   ALTP_ACK_TIMEOUT_ACTION_PARTIAL_ACK,
 } AltpAckTimeoutAction;
 
-/* The TLS policy of the Receiver (6.1).  AUTO, the default, resolves to
- * REQUIRED when the driver configured tls() and to NONE otherwise (ADR-0008).
+/* The STARTTLS policy of a Connection (6.1), the same three values on both
+ * sides.  AUTO, the default, resolves to OPTIONAL when the driver configured
+ * tls() and to NONE otherwise: a tls() block offers STARTTLS and uses it when
+ * the peer does too, and refusing plaintext is tls-policy(required)
+ * (ADR-0011).  OPTIONAL and REQUIRED both need a tls() block.
  */
 typedef enum
 {
@@ -82,6 +85,7 @@ typedef struct _AltpReceiverOptions
   gint session_expiration;
   /* the largest number of Session Records of the Receiver, 0 for unlimited */
   gint max_sessions;
+  /* whether STARTTLS is advertised, insisted on, or refused with 502 */
   AltpTlsPolicy tls_policy;
   /* Whether the ZLIB Capability is offered (6.2).  Compression costs CPU on a
    * Receiver that has no say in how much of it a Sender asks for, so it is off
@@ -159,6 +163,8 @@ typedef struct _AltpSenderOptions
   /* seconds to wait for `250 Received n` before the Connection is closed and
    * everything unacknowledged retained (9.5) */
   gint ack_timeout;
+  /* whether STARTTLS is requested when advertised, insisted on, or never sent */
+  AltpTlsPolicy tls_policy;
   /* the largest Frame payload written, in octets (8.2) */
   gint max_frame_size;
   /* Whether ZLIB is requested when the Receiver advertises it (6.2).  A Sender

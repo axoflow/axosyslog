@@ -35,6 +35,10 @@ static CfgLexerKeyword altp_proto_client_keywords[] =
   { "max_frame_size",     KW_MAX_FRAME_SIZE },
   { "compression",        KW_COMPRESSION },
   { "compression_level",  KW_COMPRESSION_LEVEL },
+  { "tls_policy",         KW_TLS_POLICY },
+  { "required",           KW_REQUIRED },
+  { "optional",           KW_OPTIONAL },
+  { "none",               KW_NONE },
   { NULL }
 };
 
