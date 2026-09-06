@@ -10,3 +10,5 @@ add_module(
 )
 
 target_include_directories(splunk-s2s-protocol PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+
+add_test_subdirectory(tests)
