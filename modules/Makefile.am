@@ -94,7 +94,8 @@ modules_test_subdirs	=	\
 	modules_cef modules_diskq modules-add-contextual-data modules_getent \
 	modules_map-value-pairs modules_tagsparser modules_xml modules_appmodel \
 	modules_regexp-parser modules_rate-limit-filter modules_metrics-probe \
-	modules_altp-proto
+	modules_altp-proto \
+	modules_splunk_s2s
 
 EXTRA_DIST += modules/CMakeLists.txt
 
