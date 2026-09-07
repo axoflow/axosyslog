@@ -24,12 +24,15 @@
 #include "plugin-types.h"
 
 #include "splunk-s2s-proto-client.h"
+#include "splunk-s2s-proto-server.h"
 
 DEFINE_LOG_PROTO_CLIENT(log_proto_splunk_s2s, .default_inet_port = 9997);
+DEFINE_LOG_PROTO_SERVER(log_proto_splunk_s2s, .default_inet_port = 9997);
 
 static Plugin splunk_s2s_plugins[] =
 {
   LOG_PROTO_CLIENT_PLUGIN(log_proto_splunk_s2s, "splunk-s2s"),
+  LOG_PROTO_SERVER_PLUGIN(log_proto_splunk_s2s, "splunk-s2s"),
 };
 
 gboolean
