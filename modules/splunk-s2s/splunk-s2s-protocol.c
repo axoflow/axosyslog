@@ -110,11 +110,11 @@ splunk_s2s_format_v3_frame(GString *out, const SplunkS2SStringPair *pairs, gsize
 }
 
 void
-splunk_s2s_format_v3_signature_frame(GString *out)
+splunk_s2s_format_v3_signature_frame(GString *out, const gchar *capabilities)
 {
   SplunkS2SStringPair pairs[] =
   {
-    { "__s2s_capabilities", SPLUNK_S2S_CAPABILITIES_SIGNATURE },
+    { "__s2s_capabilities", capabilities },
   };
   splunk_s2s_format_v3_frame(out, pairs, G_N_ELEMENTS(pairs));
 }
@@ -177,7 +177,8 @@ splunk_s2s_format_open_channel(GString *out, guint64 channel_id, const gchar *so
 
 void
 splunk_s2s_format_event(GString *out, guint64 channel_id, guint64 event_flags, guint64 timestamp,
-                        const SplunkS2SEventField *fields, gsize n_fields, const gchar *raw, gsize raw_len)
+                        guint64 event_id, const SplunkS2SEventField *fields, gsize n_fields,
+                        const gchar *raw, gsize raw_len)
 {
   g_string_append_c(out, (gchar) SPLUNK_S2S_PKT_EVENT);
   splunk_s2s_write_varint(out, channel_id);
@@ -188,11 +189,11 @@ splunk_s2s_format_event(GString *out, guint64 channel_id, guint64 event_flags, g
       splunk_s2s_write_varint(out, 0);  /* stream_id */
       splunk_s2s_write_varint(out, 0);  /* offset */
       splunk_s2s_write_varint(out, 0);  /* suboffset */
-      splunk_s2s_write_varint(out, 0);  /* firstid */
+      splunk_s2s_write_varint(out, event_id);  /* firstid */
       splunk_s2s_write_varint(out, timestamp);
     }
   else
-    splunk_s2s_write_varint(out, 0);  /* firstid */
+    splunk_s2s_write_varint(out, event_id);  /* firstid */
 
   splunk_s2s_write_varint(out, n_fields);
   for (gsize i = 0; i < n_fields; i++)
@@ -229,4 +230,35 @@ splunk_s2s_parse_v3_frame_len(const guchar *buf, gsize buf_len, guint32 *frame_l
   memcpy(&be, buf, 4);
   *frame_len = GUINT32_FROM_BE(be);
   return TRUE;
+}
+
+/* *pos is only advanced when a complete varint was available */
+SplunkS2SParseResult
+splunk_s2s_parse_varint(const guchar *buf, gsize buf_len, gsize *pos, guint64 *value)
+{
+  guint64 result = 0;
+  gsize p = *pos;
+
+  for (guint shift = 0; shift < 64; shift += 7)
+    {
+      if (p >= buf_len)
+        return SPLUNK_S2S_PARSE_MORE;
+
+      guchar b = buf[p++];
+
+      /* the tenth byte can only contribute the topmost value bit, anything
+       * above would silently wrap past 64 bits */
+      if (shift == 63 && (b & 0x7e))
+        return SPLUNK_S2S_PARSE_ERROR;
+
+      result |= ((guint64) (b & 0x7f)) << shift;
+      if (!(b & 0x80))
+        {
+          *pos = p;
+          *value = result;
+          return SPLUNK_S2S_PARSE_OK;
+        }
+    }
+
+  return SPLUNK_S2S_PARSE_ERROR;
 }
