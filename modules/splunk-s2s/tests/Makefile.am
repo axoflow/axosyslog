@@ -1,6 +1,7 @@
 modules_splunk_s2s_tests_TESTS = \
   modules/splunk-s2s/tests/test_splunk_s2s_protocol \
-  modules/splunk-s2s/tests/test_splunk_s2s_proto_client
+  modules/splunk-s2s/tests/test_splunk_s2s_proto_client \
+  modules/splunk-s2s/tests/test_splunk_s2s_proto_server
 
 check_PROGRAMS += ${modules_splunk_s2s_tests_TESTS}
 
@@ -21,6 +22,16 @@ modules_splunk_s2s_tests_test_splunk_s2s_proto_client_CFLAGS = \
   -I$(top_srcdir)/modules/splunk-s2s
 modules_splunk_s2s_tests_test_splunk_s2s_proto_client_LDADD = \
   $(top_builddir)/modules/splunk-s2s/libsplunk_s2s_client.la \
+  $(top_builddir)/modules/splunk-s2s/libsplunk_s2s_protocol.la \
+  $(TEST_LDADD)
+
+modules_splunk_s2s_tests_test_splunk_s2s_proto_server_SOURCES = \
+  modules/splunk-s2s/tests/test_splunk_s2s_proto_server.c
+modules_splunk_s2s_tests_test_splunk_s2s_proto_server_CFLAGS = \
+  $(TEST_CFLAGS) \
+  -I$(top_srcdir)/modules/splunk-s2s
+modules_splunk_s2s_tests_test_splunk_s2s_proto_server_LDADD = \
+  $(top_builddir)/modules/splunk-s2s/libsplunk_s2s_server.la \
   $(top_builddir)/modules/splunk-s2s/libsplunk_s2s_protocol.la \
   $(TEST_LDADD)
 
