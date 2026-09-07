@@ -44,6 +44,11 @@
  * One channel serves the whole connection: the MetaData:* fields on each
  * event override the channel headers on the indexer, so no per-tuple
  * channel bookkeeping is needed.
+ *
+ * The signature requests indexer acknowledgements (ack=1): every event is
+ * assigned an increasing id (the firstid header slot, starting at 2 as
+ * forwarders do) and the indexer confirms durably received ids on the
+ * reverse channel as 0xfb singles and 0xfa inclusive ranges.
  */
 typedef enum
 {
@@ -51,7 +56,14 @@ typedef enum
   SS2S_AWAIT_REPLY,  /* the indexer's v3 signature reply */
   SS2S_SEND_INFO,    /* forwarder info advertising v4 + the default channel */
   SS2S_CONNECTED,
+  SS2S_BROKEN,
 } LogProtoSplunkS2SClientState;
+
+typedef struct _SplunkS2SAckRange
+{
+  guint64 lo;
+  guint64 hi;
+} SplunkS2SAckRange;
 
 typedef struct _LogProtoSplunkS2SClient
 {
@@ -60,11 +72,15 @@ typedef struct _LogProtoSplunkS2SClient
 
   GString *out_buf;
   gsize out_pos;
-  guint pending_acks;
 
   guchar reply_len_buf[4];
   gsize reply_len_pos;
   guint32 reply_remaining;
+
+  GString *in_buf;
+  guint64 next_event_id;
+  guint64 next_unacked_id;
+  GArray *acked_ranges;
 
   gchar guid[48];
   gchar *forwarder_info;
@@ -74,6 +90,20 @@ typedef struct _LogProtoSplunkS2SClient
   NVHandle sourcetype_handle;
   NVHandle host_handle;
 } LogProtoSplunkS2SClient;
+
+/* the connection is going down: whatever the indexer has not confirmed yet
+ * is pushed back to the queue so it is resent on the next connection */
+static LogProtoStatus
+_broken(LogProtoSplunkS2SClient *self, LogProtoStatus status)
+{
+  if (self->state == SS2S_BROKEN)
+    return status;
+
+  self->state = SS2S_BROKEN;
+  if (self->next_unacked_id < self->next_event_id)
+    log_proto_client_msg_rewind(&self->super);
+  return status;
+}
 
 static gboolean
 _out_buf_pending(LogProtoSplunkS2SClient *self)
@@ -107,12 +137,6 @@ _flush_out_buf(LogProtoSplunkS2SClient *self)
 
   g_string_truncate(self->out_buf, 0);
   self->out_pos = 0;
-
-  if (self->pending_acks)
-    {
-      log_proto_client_msg_ack(&self->super, self->pending_acks);
-      self->pending_acks = 0;
-    }
   return LPS_SUCCESS;
 }
 
@@ -120,7 +144,7 @@ static void
 _format_hello(LogProtoSplunkS2SClient *self)
 {
   splunk_s2s_format_header1(self->out_buf, DEFAULT_IDENTIFIER, "0");
-  splunk_s2s_format_v3_signature_frame(self->out_buf);
+  splunk_s2s_format_v3_signature_frame(self->out_buf, SPLUNK_S2S_CAPABILITIES_SIGNATURE_ACK);
 }
 
 static void
@@ -282,13 +306,131 @@ log_proto_splunk_s2s_client_poll_prepare(LogProtoClient *s, GIOCondition *cond, 
     case SS2S_CONNECTED:
       *cond = G_IO_OUT | G_IO_IN;
       return _out_buf_pending(self);
+    case SS2S_BROKEN:
+      *cond = G_IO_IN;
+      return FALSE;
     default:
       g_assert_not_reached();
     }
 }
 
+static gboolean
+_register_ack_range(LogProtoSplunkS2SClient *self, guint64 lo, guint64 hi)
+{
+  if (lo > hi || hi >= self->next_event_id)
+    return FALSE;
+
+  guint i = 0;
+  while (i < self->acked_ranges->len && g_array_index(self->acked_ranges, SplunkS2SAckRange, i).lo < lo)
+    i++;
+  SplunkS2SAckRange range = { lo, hi };
+  g_array_insert_val(self->acked_ranges, i, range);
+
+  for (i = i > 0 ? i - 1 : 0; i + 1 < self->acked_ranges->len; )
+    {
+      SplunkS2SAckRange *current = &g_array_index(self->acked_ranges, SplunkS2SAckRange, i);
+      SplunkS2SAckRange *next = &g_array_index(self->acked_ranges, SplunkS2SAckRange, i + 1);
+
+      if (next->lo <= current->hi + 1)
+        {
+          current->hi = MAX(current->hi, next->hi);
+          g_array_remove_index(self->acked_ranges, i + 1);
+        }
+      else
+        i++;
+    }
+  return TRUE;
+}
+
+/* the indexer acks out of order and coalesces later, only the contiguous
+ * prefix of the id space is safe to report to the writer, whose backlog is
+ * strictly FIFO */
+static guint
+_pop_confirmed_prefix(LogProtoSplunkS2SClient *self)
+{
+  guint count = 0;
+
+  while (self->acked_ranges->len > 0)
+    {
+      SplunkS2SAckRange *first = &g_array_index(self->acked_ranges, SplunkS2SAckRange, 0);
+
+      if (first->lo > self->next_unacked_id)
+        break;
+
+      if (first->hi >= self->next_unacked_id)
+        {
+          count += first->hi - self->next_unacked_id + 1;
+          self->next_unacked_id = first->hi + 1;
+        }
+      g_array_remove_index(self->acked_ranges, 0);
+    }
+  return count;
+}
+
 static LogProtoStatus
-_drain_input(LogProtoSplunkS2SClient *self)
+_parse_ack_stream(LogProtoSplunkS2SClient *self)
+{
+  const guchar *buf = (const guchar *) self->in_buf->str;
+  gsize len = self->in_buf->len;
+  gsize pos = 0;
+
+  while (pos < len)
+    {
+      guchar tag = buf[pos];
+      gsize p = pos + 1;
+      guint64 lo, hi;
+      SplunkS2SParseResult result;
+
+      if (tag == SPLUNK_S2S_PKT_ACK_ONE)
+        {
+          result = splunk_s2s_parse_varint(buf, len, &p, &lo);
+          hi = lo;
+        }
+      else if (tag == SPLUNK_S2S_PKT_ACK_RANGE)
+        {
+          result = splunk_s2s_parse_varint(buf, len, &p, &lo);
+          if (result == SPLUNK_S2S_PARSE_OK)
+            result = splunk_s2s_parse_varint(buf, len, &p, &hi);
+        }
+      else
+        {
+          msg_error("splunk-s2s: unexpected packet from the indexer on the ack channel",
+                    evt_tag_int("fd", self->super.transport_stack.fd),
+                    evt_tag_printf("tag", "0x%02x", tag));
+          return LPS_ERROR;
+        }
+
+      if (result == SPLUNK_S2S_PARSE_ERROR)
+        {
+          msg_error("splunk-s2s: invalid varint from the indexer on the ack channel",
+                    evt_tag_int("fd", self->super.transport_stack.fd));
+          return LPS_ERROR;
+        }
+      if (result != SPLUNK_S2S_PARSE_OK)
+        break;
+
+      if (!_register_ack_range(self, lo, hi))
+        {
+          msg_error("splunk-s2s: indexer acked an event id that was never sent",
+                    evt_tag_int("fd", self->super.transport_stack.fd),
+                    evt_tag_long("lo", lo),
+                    evt_tag_long("hi", hi));
+          return LPS_ERROR;
+        }
+      pos = p;
+    }
+
+  g_string_erase(self->in_buf, 0, pos);
+
+  guint confirmed = _pop_confirmed_prefix(self);
+  if (confirmed)
+    log_proto_client_msg_ack(&self->super, confirmed);
+  return LPS_SUCCESS;
+}
+
+/* consume the indexer's acknowledgements and watch for a closed peer */
+static LogProtoStatus
+_process_acks(LogProtoSplunkS2SClient *self)
 {
   guchar buf[1024];
 
@@ -296,7 +438,13 @@ _drain_input(LogProtoSplunkS2SClient *self)
     {
       gssize rc = log_transport_stack_read(&self->super.transport_stack, buf, sizeof(buf), NULL);
       if (rc > 0)
-        continue;
+        {
+          g_string_append_len(self->in_buf, (const gchar *) buf, rc);
+          LogProtoStatus status = _parse_ack_stream(self);
+          if (status != LPS_SUCCESS)
+            return status;
+          continue;
+        }
       if (rc == 0)
         {
           msg_notice("splunk-s2s: EOF occurred, the indexer closed the connection",
@@ -320,29 +468,41 @@ log_proto_splunk_s2s_client_process_in(LogProtoClient *s)
 {
   LogProtoSplunkS2SClient *self = (LogProtoSplunkS2SClient *) s;
 
+  if (self->state == SS2S_BROKEN)
+    return LPS_ERROR;
+
   /* the indexer's reply arrives as readable input, so the handshake
    * advances from here too */
   if (self->state != SS2S_CONNECTED)
     {
       LogProtoStatus status = _handshake_step(self);
+      if (status == LPS_ERROR || status == LPS_EOF)
+        return _broken(self, status);
       return status == LPS_PARTIAL ? LPS_SUCCESS : status;
     }
 
-  return _drain_input(self);
+  LogProtoStatus status = _process_acks(self);
+  if (status == LPS_ERROR || status == LPS_EOF)
+    return _broken(self, status);
+  return status;
 }
 
 static LogProtoStatus
 log_proto_splunk_s2s_client_flush(LogProtoClient *s)
 {
   LogProtoSplunkS2SClient *self = (LogProtoSplunkS2SClient *) s;
+  LogProtoStatus status;
+
+  if (self->state == SS2S_BROKEN)
+    return LPS_ERROR;
 
   if (self->state != SS2S_CONNECTED)
-    {
-      LogProtoStatus status = _handshake_step(self);
-      return status == LPS_PARTIAL ? LPS_SUCCESS : status;
-    }
+    status = _handshake_step(self);
+  else
+    status = _flush_out_buf(self);
 
-  LogProtoStatus status = _flush_out_buf(self);
+  if (status == LPS_ERROR || status == LPS_EOF)
+    return _broken(self, LPS_ERROR);
   return status == LPS_PARTIAL ? LPS_SUCCESS : status;
 }
 
@@ -367,7 +527,7 @@ _append_prefixed(GString *buffer, const gchar *prefix, const gchar *value, gssiz
 }
 
 static void
-_encode_event(LogProtoSplunkS2SClient *self, LogMessage *msg, const guchar *raw, gsize raw_len)
+_encode_event(LogProtoSplunkS2SClient *self, LogMessage *msg, guint64 event_id, const guchar *raw, gsize raw_len)
 {
   gssize len;
 
@@ -396,13 +556,16 @@ _encode_event(LogProtoSplunkS2SClient *self, LogMessage *msg, const guchar *raw,
 
   SplunkS2SEventField fields[] =
   {
-    { .name = "_MetaData:Index", .value_type = SPLUNK_S2S_VALUE_STR, .str_value = index->str, .str_value_len = index->len },
-    { .name = "MetaData:Sourcetype", .value_type = SPLUNK_S2S_VALUE_STR, .str_value = sourcetype->str, .str_value_len = sourcetype->len },
-    { .name = "MetaData:Source", .value_type = SPLUNK_S2S_VALUE_STR, .str_value = source->str, .str_value_len = source->len },
+    { .name = "_MetaData:Index", .value_type = SPLUNK_S2S_VALUE_STR,
+      .str_value = index->str, .str_value_len = index->len },
+    { .name = "MetaData:Sourcetype", .value_type = SPLUNK_S2S_VALUE_STR,
+      .str_value = sourcetype->str, .str_value_len = sourcetype->len },
+    { .name = "MetaData:Source", .value_type = SPLUNK_S2S_VALUE_STR,
+      .str_value = source->str, .str_value_len = source->len },
     { .name = "MetaData:Host", .value_type = SPLUNK_S2S_VALUE_STR, .str_value = host->str, .str_value_len = host->len },
   };
   splunk_s2s_format_event(self->out_buf, DEFAULT_CHANNEL_ID, SPLUNK_S2S_EVENT_FLAGS_FULL_HEADER,
-                          (guint64) msg->timestamps[LM_TS_STAMP].ut_sec,
+                          (guint64) msg->timestamps[LM_TS_STAMP].ut_sec, event_id,
                           fields, G_N_ELEMENTS(fields), (const gchar *) raw, raw_len);
 }
 
@@ -414,27 +577,32 @@ log_proto_splunk_s2s_client_post(LogProtoClient *s, LogMessage *logmsg, guchar *
 
   *consumed = FALSE;
 
+  if (self->state == SS2S_BROKEN)
+    return LPS_ERROR;
+
   if (self->state != SS2S_CONNECTED)
     {
       LogProtoStatus status = _handshake_step(self);
-      if (status == LPS_ERROR)
-        return status;
+      if (status == LPS_ERROR || status == LPS_EOF)
+        return _broken(self, LPS_ERROR);
       if (self->state != SS2S_CONNECTED)
         return LPS_PARTIAL;
     }
 
   LogProtoStatus status = _flush_out_buf(self);
   if (status == LPS_ERROR)
-    return status;
+    return _broken(self, status);
   if (_out_buf_pending(self))
     return LPS_PARTIAL;
 
-  _encode_event(self, logmsg, msg, msg_len);
+  _encode_event(self, logmsg, self->next_event_id++, msg, msg_len);
   g_free(msg);
   *consumed = TRUE;
-  self->pending_acks++;
 
-  return _flush_out_buf(self);
+  status = _flush_out_buf(self);
+  if (status == LPS_ERROR)
+    return _broken(self, status);
+  return status;
 }
 
 static void
@@ -442,7 +610,13 @@ log_proto_splunk_s2s_client_free(LogProtoClient *s)
 {
   LogProtoSplunkS2SClient *self = (LogProtoSplunkS2SClient *) s;
 
+  /* the proto can be torn down without an I/O error (e.g. a reopen), make
+   * sure unconfirmed messages are requeued in that case too */
+  _broken(self, LPS_SUCCESS);
+
   g_string_free(self->out_buf, TRUE);
+  g_string_free(self->in_buf, TRUE);
+  g_array_free(self->acked_ranges, TRUE);
   g_free(self->forwarder_info);
   log_proto_client_free_method(s);
 }
@@ -473,6 +647,12 @@ log_proto_splunk_s2s_client_new(LogTransport *transport, const LogProtoClientOpt
 
   self->state = SS2S_SEND_HELLO;
   self->out_buf = g_string_sized_new(2048);
+  self->in_buf = g_string_sized_new(256);
+
+  /* a forwarder's first event id is 2 */
+  self->next_event_id = 2;
+  self->next_unacked_id = 2;
+  self->acked_ranges = g_array_new(FALSE, FALSE, sizeof(SplunkS2SAckRange));
 
   uuid_gen_random(self->guid, sizeof(self->guid));
   self->forwarder_info = _format_forwarder_info(self->guid);
