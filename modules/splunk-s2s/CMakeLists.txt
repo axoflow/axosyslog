@@ -25,4 +25,15 @@ add_module(
 
 target_include_directories(splunk-s2s-client PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
+set(SPLUNK_S2S_SOURCES
+    splunk-s2s-plugin.c
+)
+
+add_module(
+  TARGET splunk_s2s
+  DEPENDS splunk-s2s-protocol
+  DEPENDS splunk-s2s-client
+  SOURCES ${SPLUNK_S2S_SOURCES}
+)
+
 add_test_subdirectory(tests)
