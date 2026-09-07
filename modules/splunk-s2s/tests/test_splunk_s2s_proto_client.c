@@ -40,6 +40,7 @@
 #define SERVER_HELLO_LEN 9
 
 static gint acks;
+static gint rewinds;
 
 static void
 _ack(gint num_msg_acked, gpointer user_data)
@@ -50,6 +51,7 @@ _ack(gint num_msg_acked, gpointer user_data)
 static void
 _rewind(gpointer user_data)
 {
+  rewinds++;
 }
 
 static LogProtoClientOptionsStorage options_storage;
@@ -74,7 +76,7 @@ _expected_hello(void)
   GString *expected = g_string_new(NULL);
 
   splunk_s2s_format_header1(expected, "axosyslog", "0");
-  splunk_s2s_format_v3_signature_frame(expected);
+  splunk_s2s_format_v3_signature_frame(expected, SPLUNK_S2S_CAPABILITIES_SIGNATURE_ACK);
   return expected;
 }
 
@@ -186,6 +188,7 @@ setup(void)
   app_startup();
   log_proto_client_options_defaults(&options_storage.super);
   acks = 0;
+  rewinds = 0;
 }
 
 static void
@@ -272,8 +275,8 @@ _test_msg_new(void)
 }
 
 static GString *
-_expected_event(const gchar *index, const gchar *sourcetype, const gchar *source, const gchar *host,
-                const gchar *raw)
+_expected_event(guint64 event_id, const gchar *index, const gchar *sourcetype, const gchar *source,
+                const gchar *host, const gchar *raw)
 {
   GString *sourcetype_buf = g_string_new(NULL);
   GString *source_buf = g_string_new(NULL);
@@ -285,14 +288,18 @@ _expected_event(const gchar *index, const gchar *sourcetype, const gchar *source
 
   SplunkS2SEventField fields[] =
   {
-    { .name = "_MetaData:Index", .value_type = SPLUNK_S2S_VALUE_STR, .str_value = index, .str_value_len = strlen(index) },
-    { .name = "MetaData:Sourcetype", .value_type = SPLUNK_S2S_VALUE_STR, .str_value = sourcetype_buf->str, .str_value_len = sourcetype_buf->len },
-    { .name = "MetaData:Source", .value_type = SPLUNK_S2S_VALUE_STR, .str_value = source_buf->str, .str_value_len = source_buf->len },
-    { .name = "MetaData:Host", .value_type = SPLUNK_S2S_VALUE_STR, .str_value = host_buf->str, .str_value_len = host_buf->len },
+    { .name = "_MetaData:Index", .value_type = SPLUNK_S2S_VALUE_STR,
+      .str_value = index, .str_value_len = strlen(index) },
+    { .name = "MetaData:Sourcetype", .value_type = SPLUNK_S2S_VALUE_STR,
+      .str_value = sourcetype_buf->str, .str_value_len = sourcetype_buf->len },
+    { .name = "MetaData:Source", .value_type = SPLUNK_S2S_VALUE_STR,
+      .str_value = source_buf->str, .str_value_len = source_buf->len },
+    { .name = "MetaData:Host", .value_type = SPLUNK_S2S_VALUE_STR,
+      .str_value = host_buf->str, .str_value_len = host_buf->len },
   };
 
   GString *expected = g_string_new(NULL);
-  splunk_s2s_format_event(expected, 1, SPLUNK_S2S_EVENT_FLAGS_FULL_HEADER, 1700000000,
+  splunk_s2s_format_event(expected, 1, SPLUNK_S2S_EVENT_FLAGS_FULL_HEADER, 1700000000, event_id,
                           fields, G_N_ELEMENTS(fields), raw, strlen(raw));
 
   g_string_free(sourcetype_buf, TRUE);
@@ -319,11 +326,16 @@ Test(splunk_s2s_proto_client, post_encodes_event_with_metadata_nvpairs)
   gboolean consumed = FALSE;
   cr_assert_eq(log_proto_client_post(client, msg, (guchar *) g_strdup(raw), strlen(raw), &consumed), LPS_SUCCESS);
   cr_assert(consumed);
-  cr_assert_eq(acks, 1);
+  cr_assert_eq(acks, 0, "no writer ack before the indexer confirms");
 
   GString *written = _written_bytes(transport);
-  GString *expected = _expected_event("custom-index", "custom-sourcetype", "custom-source", "custom-host", raw);
+  GString *expected = _expected_event(2, "custom-index", "custom-sourcetype", "custom-source", "custom-host", raw);
   _assert_bytes_eq(written->str, written->len, expected->str, expected->len);
+
+  /* the indexer confirms event id 2 */
+  log_transport_mock_inject_data((LogTransportMock *) transport, "\xfb\x02", 2);
+  cr_assert_eq(log_proto_client_process_in(client), LPS_SUCCESS);
+  cr_assert_eq(acks, 1);
 
   g_string_free(written, TRUE);
   g_string_free(expected, TRUE);
@@ -348,7 +360,7 @@ Test(splunk_s2s_proto_client, post_falls_back_to_default_metadata)
   cr_assert(consumed);
 
   GString *written = _written_bytes(transport);
-  GString *expected = _expected_event("main", "axosyslog", "axosyslog", "msg-host", raw);
+  GString *expected = _expected_event(2, "main", "axosyslog", "axosyslog", "msg-host", raw);
   _assert_bytes_eq(written->str, written->len, expected->str, expected->len);
 
   g_string_free(written, TRUE);
@@ -386,4 +398,109 @@ Test(splunk_s2s_proto_client, process_in_detects_eof_when_connected)
   cr_assert_eq(log_proto_client_process_in(client), LPS_EOF);
 
   log_proto_client_free(client);
+}
+
+static LogProtoClient *
+_connected_client_with_posted_events(LogTransport *transport, gint n_events)
+{
+  LogProtoClient *client = _client_new(transport);
+
+  cr_assert(_run_handshake(client, 100));
+
+  for (gint i = 0; i < n_events; i++)
+    {
+      LogMessage *msg = _test_msg_new();
+      gboolean consumed = FALSE;
+      cr_assert_eq(log_proto_client_post(client, msg, (guchar *) g_strdup("payload"), 7, &consumed), LPS_SUCCESS);
+      cr_assert(consumed);
+      log_msg_unref(msg);
+    }
+  return client;
+}
+
+Test(splunk_s2s_proto_client, ack_range_confirms_all_covered_messages)
+{
+  LogTransport *transport = log_transport_mock_endless_stream_new(SERVER_HELLO, SERVER_HELLO_LEN, LTM_EOF);
+  LogProtoClient *client = _connected_client_with_posted_events(transport, 3);
+
+  /* 0xfa lo=2 hi=4: the indexer confirms event ids 2..4 in one range */
+  log_transport_mock_inject_data((LogTransportMock *) transport, "\xfa\x02\x04", 3);
+  cr_assert_eq(log_proto_client_process_in(client), LPS_SUCCESS);
+  cr_assert_eq(acks, 3);
+  cr_assert_eq(rewinds, 0);
+
+  log_proto_client_free(client);
+}
+
+Test(splunk_s2s_proto_client, out_of_order_acks_are_reported_contiguously)
+{
+  LogTransport *transport = log_transport_mock_endless_stream_new(SERVER_HELLO, SERVER_HELLO_LEN, LTM_EOF);
+  LogProtoClient *client = _connected_client_with_posted_events(transport, 3);
+
+  /* id 3 confirmed first: nothing can be acked, the writer backlog is FIFO */
+  log_transport_mock_inject_data((LogTransportMock *) transport, "\xfb\x03", 2);
+  cr_assert_eq(log_proto_client_process_in(client), LPS_SUCCESS);
+  cr_assert_eq(acks, 0);
+
+  /* id 2 fills the gap: ids 2-3 are confirmed now */
+  log_transport_mock_inject_data((LogTransportMock *) transport, "\xfb\x02", 2);
+  cr_assert_eq(log_proto_client_process_in(client), LPS_SUCCESS);
+  cr_assert_eq(acks, 2);
+
+  log_transport_mock_inject_data((LogTransportMock *) transport, "\xfb\x04", 2);
+  cr_assert_eq(log_proto_client_process_in(client), LPS_SUCCESS);
+  cr_assert_eq(acks, 3);
+
+  log_proto_client_free(client);
+}
+
+Test(splunk_s2s_proto_client, ack_of_never_sent_id_fails_loud)
+{
+  LogTransport *transport = log_transport_mock_endless_stream_new(SERVER_HELLO, SERVER_HELLO_LEN, LTM_EOF);
+  LogProtoClient *client = _connected_client_with_posted_events(transport, 1);
+
+  log_transport_mock_inject_data((LogTransportMock *) transport, "\xfb\x09", 2);
+  cr_assert_eq(log_proto_client_process_in(client), LPS_ERROR);
+
+  log_proto_client_free(client);
+}
+
+Test(splunk_s2s_proto_client, unknown_reverse_packet_fails_loud)
+{
+  LogTransport *transport = log_transport_mock_endless_stream_new(SERVER_HELLO, SERVER_HELLO_LEN, LTM_EOF);
+  LogProtoClient *client = _connected_client_with_posted_events(transport, 1);
+
+  log_transport_mock_inject_data((LogTransportMock *) transport, "\xf0\x02", 2);
+  cr_assert_eq(log_proto_client_process_in(client), LPS_ERROR);
+
+  log_proto_client_free(client);
+}
+
+Test(splunk_s2s_proto_client, connection_loss_with_unconfirmed_messages_rewinds)
+{
+  /* non-endless mock: reads hit EOF once the reply is consumed */
+  LogTransport *transport = log_transport_mock_stream_new(SERVER_HELLO, SERVER_HELLO_LEN, LTM_EOF);
+  LogProtoClient *client = _connected_client_with_posted_events(transport, 2);
+
+  cr_assert_eq(log_proto_client_process_in(client), LPS_EOF);
+  cr_assert_eq(rewinds, 1);
+  cr_assert_eq(acks, 0);
+
+  /* the proto is torn down after the failure, no double rewind */
+  log_proto_client_free(client);
+  cr_assert_eq(rewinds, 1);
+}
+
+Test(splunk_s2s_proto_client, freeing_with_unconfirmed_messages_rewinds)
+{
+  LogTransport *transport = log_transport_mock_endless_stream_new(SERVER_HELLO, SERVER_HELLO_LEN, LTM_EOF);
+  LogProtoClient *client = _connected_client_with_posted_events(transport, 2);
+
+  /* id 2 is confirmed, id 3 is still in flight when the proto goes away */
+  log_transport_mock_inject_data((LogTransportMock *) transport, "\xfb\x02", 2);
+  cr_assert_eq(log_proto_client_process_in(client), LPS_SUCCESS);
+  cr_assert_eq(acks, 1);
+
+  log_proto_client_free(client);
+  cr_assert_eq(rewinds, 1);
 }
