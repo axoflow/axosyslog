@@ -43,6 +43,7 @@
 #define SPLUNK_S2S_HEADER1_MAX_MGMT_PORT_LEN 0xf
 
 #define SPLUNK_S2S_CAPABILITIES_SIGNATURE "ack=0;compression=0"
+#define SPLUNK_S2S_CAPABILITIES_SIGNATURE_ACK "ack=1;compression=0"
 #define SPLUNK_S2S_CAPABILITIES_V4 "cli_can_rcv_hb=1;compression=0;pl=7;request_certificate=1;v4=1"
 
 typedef enum
@@ -51,6 +52,11 @@ typedef enum
   SPLUNK_S2S_PKT_OPEN_CHANNEL = 0xfe,
   SPLUNK_S2S_PKT_CLOSE_CHANNEL = 0xfd,
   SPLUNK_S2S_PKT_EVENT = 0xfc,
+
+  /* reverse direction (indexer to forwarder), sent when the forwarder
+   * requested acknowledgements with ack=1 */
+  SPLUNK_S2S_PKT_ACK_ONE = 0xfb,
+  SPLUNK_S2S_PKT_ACK_RANGE = 0xfa,
 } SplunkS2SPacketId;
 
 /* the full/short header event_flags values forwarders emit;
@@ -84,15 +90,27 @@ void splunk_s2s_write_varint(GString *out, guint64 value);
 
 gboolean splunk_s2s_format_header1(GString *out, const gchar *identifier, const gchar *mgmt_port);
 void splunk_s2s_format_v3_frame(GString *out, const SplunkS2SStringPair *pairs, gsize n_pairs);
-void splunk_s2s_format_v3_signature_frame(GString *out);
+void splunk_s2s_format_v3_signature_frame(GString *out, const gchar *capabilities);
 void splunk_s2s_format_v3_forwarder_info_frame(GString *out, const gchar *forwarder_info, const gchar *guid,
                                                guint64 timestamp);
 void splunk_s2s_format_open_channel(GString *out, guint64 channel_id, const gchar *source, const gchar *host,
                                     const gchar *sourcetype);
 void splunk_s2s_format_event(GString *out, guint64 channel_id, guint64 event_flags, guint64 timestamp,
-                             const SplunkS2SEventField *fields, gsize n_fields, const gchar *raw, gsize raw_len);
+                             guint64 event_id, const SplunkS2SEventField *fields, gsize n_fields,
+                             const gchar *raw, gsize raw_len);
 void splunk_s2s_format_close_channel(GString *out, guint64 channel_id);
 
 gboolean splunk_s2s_parse_v3_frame_len(const guchar *buf, gsize buf_len, guint32 *frame_len);
+
+typedef enum
+{
+  SPLUNK_S2S_PARSE_OK,
+  SPLUNK_S2S_PARSE_MORE,
+  SPLUNK_S2S_PARSE_ERROR,
+} SplunkS2SParseResult;
+
+/* SPLUNK_S2S_PARSE_ERROR means the varint ran past the 64-bit ceiling,
+ * which cannot be valid input and must not be waited out */
+SplunkS2SParseResult splunk_s2s_parse_varint(const guchar *buf, gsize buf_len, gsize *pos, guint64 *value);
 
 #endif

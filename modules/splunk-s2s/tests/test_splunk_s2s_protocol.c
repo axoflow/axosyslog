@@ -104,7 +104,7 @@ Test(splunk_s2s_protocol, v3_signature_frame)
 {
   GString *out = g_string_new(NULL);
 
-  splunk_s2s_format_v3_signature_frame(out);
+  splunk_s2s_format_v3_signature_frame(out, SPLUNK_S2S_CAPABILITIES_SIGNATURE);
   _assert_bytes_eq(out, vector_v3_signature_frame, VECTOR_LEN(vector_v3_signature_frame));
 
   g_string_free(out, TRUE);
@@ -140,7 +140,7 @@ Test(splunk_s2s_protocol, event_full_header)
     { .name = "count", .value_type = SPLUNK_S2S_VALUE_NUMBER, .number_value = 42 },
   };
 
-  splunk_s2s_format_event(out, 1, SPLUNK_S2S_EVENT_FLAGS_FULL_HEADER, 1750000000,
+  splunk_s2s_format_event(out, 1, SPLUNK_S2S_EVENT_FLAGS_FULL_HEADER, 1750000000, 0,
                           fields, G_N_ELEMENTS(fields), raw, strlen(raw));
   _assert_bytes_eq(out, vector_event_full_header, VECTOR_LEN(vector_event_full_header));
 
@@ -155,7 +155,7 @@ Test(splunk_s2s_protocol, event_short_header_ignores_timestamp_and_takes_empty_p
     { .name = "_MetaData:Index", .value_type = SPLUNK_S2S_VALUE_STR, .str_value = "main", .str_value_len = 4 },
   };
 
-  splunk_s2s_format_event(out, 3, SPLUNK_S2S_EVENT_FLAGS_SHORT_HEADER, 1750000000,
+  splunk_s2s_format_event(out, 3, SPLUNK_S2S_EVENT_FLAGS_SHORT_HEADER, 1750000000, 0,
                           fields, G_N_ELEMENTS(fields), "", 0);
   _assert_bytes_eq(out, vector_event_short_header, VECTOR_LEN(vector_event_short_header));
 
