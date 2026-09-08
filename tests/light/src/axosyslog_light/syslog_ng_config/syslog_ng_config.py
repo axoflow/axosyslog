@@ -62,6 +62,7 @@ from axosyslog_light.syslog_ng_config.statements.sources.internal_source import 
 from axosyslog_light.syslog_ng_config.statements.sources.network_source import NetworkSource
 from axosyslog_light.syslog_ng_config.statements.sources.opentelemetry_source import OpenTelemetrySource
 from axosyslog_light.syslog_ng_config.statements.sources.pipe_source import PipeSource
+from axosyslog_light.syslog_ng_config.statements.sources.splunk_s2s_source import SplunkS2SSource
 from axosyslog_light.syslog_ng_config.statements.sources.syslog_source import SyslogSource
 from axosyslog_light.syslog_ng_config.statements.sources.unix_dgram_source import UnixDgramSource
 from axosyslog_light.syslog_ng_config.statements.sources.unix_stream_source import UnixStreamSource
@@ -187,6 +188,9 @@ class SyslogNgConfig(object):
 
     def create_network_source(self, **options):
         return NetworkSource(self._stats_handler, self._prometheus_stats_handler, **options)
+
+    def create_splunk_s2s_source(self, **options):
+        return SplunkS2SSource(self._stats_handler, self._prometheus_stats_handler, **options)
 
     def create_syslog_source(self, **options):
         return SyslogSource(self._stats_handler, self._prometheus_stats_handler, **options)
