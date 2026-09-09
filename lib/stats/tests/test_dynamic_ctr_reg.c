@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include <criterion/parameterized.h>
 
 #include "apphook.h"
@@ -40,8 +41,8 @@ Test(stats_dynamic_clusters, unlimited_by_default)
   StatsOptions stats_opts;
   stats_options_defaults(&stats_opts);
   stats_reinit(&stats_opts);
-  cr_assert_eq(stats_check_dynamic_clusters_limit(0), TRUE);
-  cr_assert_eq(stats_check_dynamic_clusters_limit(UINT_MAX), TRUE);
+  cr_assert(stats_check_dynamic_clusters_limit(0));
+  cr_assert(stats_check_dynamic_clusters_limit(UINT_MAX));
 }
 
 Test(stats_dynamic_clusters, limited)
@@ -50,9 +51,9 @@ Test(stats_dynamic_clusters, limited)
   stats_options_defaults(&stats_opts);
   stats_opts.max_dynamic = 2;
   stats_reinit(&stats_opts);
-  cr_assert_eq(stats_check_dynamic_clusters_limit(0), TRUE);
-  cr_assert_eq(stats_check_dynamic_clusters_limit(1), TRUE);
-  cr_assert_eq(stats_check_dynamic_clusters_limit(2), FALSE);
+  cr_assert(stats_check_dynamic_clusters_limit(0));
+  cr_assert(stats_check_dynamic_clusters_limit(1));
+  cr_assert(not(stats_check_dynamic_clusters_limit(2)));
 }
 
 Test(stats_dynamic_clusters, register_limited)
@@ -68,16 +69,16 @@ Test(stats_dynamic_clusters, register_limited)
     stats_cluster_logpipe_key_legacy_set(&sc_key, SCS_HOST | SCS_SENDER, NULL, "testhost1");
     StatsCounterItem *counter = NULL;
     StatsCluster *sc = stats_register_dynamic_counter(1, &sc_key, SC_TYPE_PROCESSED, &counter);
-    cr_assert_not_null(sc);
+    cr_assert(not(zero(ptr, sc)));
     stats_cluster_logpipe_key_legacy_set(&sc_key, SCS_HOST | SCS_SENDER, NULL, "testhost2");
     sc = stats_register_dynamic_counter(1, &sc_key, SC_TYPE_PROCESSED, &counter);
-    cr_assert_not_null(sc);
-    cr_assert_eq(stats_contains_counter(&sc_key, SC_TYPE_PROCESSED), TRUE);
-    cr_assert_eq(counter, stats_get_counter(&sc_key, SC_TYPE_PROCESSED));
+    cr_assert(not(zero(ptr, sc)));
+    cr_assert(stats_contains_counter(&sc_key, SC_TYPE_PROCESSED));
+    cr_assert(eq(ptr, counter, stats_get_counter(&sc_key, SC_TYPE_PROCESSED)));
     stats_cluster_logpipe_key_legacy_set(&sc_key, SCS_HOST | SCS_SENDER, NULL, "testhost3");
     sc = stats_register_dynamic_counter(1, &sc_key, SC_TYPE_PROCESSED, &counter);
-    cr_assert_null(sc);
-    cr_expect_not(stats_contains_counter(&sc_key, SC_TYPE_PROCESSED));
+    cr_assert(zero(ptr, sc));
+    cr_expect(not(stats_contains_counter(&sc_key, SC_TYPE_PROCESSED)));
   }
   stats_unlock();
 }

@@ -20,6 +20,7 @@
  *
  */
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "timeutils/format.h"
 #include "timeutils/unixtime.h"
@@ -39,7 +40,7 @@ static void
 _assert_format(gint64 sec, gint usec, glong gmtoff, gint ts_format, gint frac_digits, const gchar *expected)
 {
   gchar *formatted = _format(sec, usec, gmtoff, ts_format, frac_digits);
-  cr_assert_str_eq(formatted, expected);
+  cr_assert(eq(str, formatted, expected));
   g_free(formatted);
 }
 
