@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/msg_parse_lib.h"
 
 #include "apphook.h"
@@ -47,7 +48,7 @@ assert_log_kmsg_value(LogMessage *message, const gchar *key,
   const gchar *actual_value = log_msg_get_value(message,
                                                 log_msg_get_value_handle(key),
                                                 NULL);
-  cr_assert_str_eq(actual_value, expected_value);
+  cr_assert(eq(str, actual_value, expected_value));
 }
 
 void
@@ -96,7 +97,7 @@ Test(linux_kmsg_format, test_kmsg_single_line)
   LogMessage *parsed_message;
   parsed_message = kmsg_parse_message(msg);
 
-  cr_assert_eq(parsed_message->pri, 5, "Unexpected message priority");
+  cr_assert(eq(u16, parsed_message->pri, 5), "Unexpected message priority");
   assert_log_message_value(parsed_message, LM_V_MSGID, "2");
   msg[sizeof(msg) - 2] = '\0';
   assert_log_message_value(parsed_message, LM_V_MESSAGE, msg + 6);
@@ -113,7 +114,7 @@ Test(linux_kmsg_format, test_kmsg_multi_line)
   LogMessage *parsed_message;
   parsed_message = kmsg_parse_message(msg);
 
-  cr_assert_eq(parsed_message->pri, 6, "Unexpected message priority");
+  cr_assert(eq(u16, parsed_message->pri, 6), "Unexpected message priority");
   assert_log_message_value(parsed_message, LM_V_MSGID, "202");
   assert_log_message_value(parsed_message, LM_V_MESSAGE, "pci_root PNP0A08:00: host bridge window [io  0x0000-0x0cf7]");
   assert_log_kmsg_value(parsed_message, ".linux.SUBSYSTEM", "acpi");
@@ -129,7 +130,7 @@ Test(linux_kmsg_format, test_kmsg_with_extra_fields)
   LogMessage *parsed_message;
   parsed_message = kmsg_parse_message(msg);
 
-  cr_assert_eq(parsed_message->pri, 5, "Unexpected message priority");
+  cr_assert(eq(u16, parsed_message->pri, 5), "Unexpected message priority");
   assert_log_message_value(parsed_message, LM_V_MSGID, "2");
   assert_log_message_value(parsed_message, LM_V_MESSAGE, "And this is the real message");
 

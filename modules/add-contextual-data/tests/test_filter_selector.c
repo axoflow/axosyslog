@@ -20,6 +20,7 @@
  *
  */
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "add-contextual-data-filter-selector.h"
 #include "logmsg/logmsg.h"
@@ -105,7 +106,7 @@ Test(add_contextual_data_filter_selector, test_clone_selector_with_filters)
   LogMessage *msg = _create_log_msg("testmsg", "localhost");
   gchar *resolved_selector = add_contextual_data_selector_resolve(cloned_selector, msg);
 
-  cr_assert_str_eq(resolved_selector, "f_localhost", "Filter name is resolved.");
+  cr_assert(eq(str, resolved_selector, "f_localhost"), "Filter name is resolved.");
   g_free(resolved_selector);
 
   log_msg_unref(msg);
@@ -125,7 +126,7 @@ Test(add_contextual_data_filter_selector, test_matching_host_filter_selection)
   LogMessage *msg = _create_log_msg("testmsg", "localhost");
   gchar *resolved_selector = add_contextual_data_selector_resolve(selector, msg);
 
-  cr_assert_str_eq(resolved_selector, "f_localhost", "Filter name is resolved.");
+  cr_assert(eq(str, resolved_selector, "f_localhost"), "Filter name is resolved.");
   g_free(resolved_selector);
 
   log_msg_unref(msg);
@@ -145,7 +146,7 @@ Test(add_contextual_data_filter_selector, test_matching_msg_filter_selection)
   LogMessage *msg = _create_log_msg("testmsg", "localhost");
   gchar *resolved_selector = add_contextual_data_selector_resolve(selector, msg);
 
-  cr_assert_str_eq(resolved_selector, "f_msg", "Filter name is resolved.");
+  cr_assert(eq(str, resolved_selector, "f_msg"), "Filter name is resolved.");
   g_free(resolved_selector);
 
   log_msg_unref(msg);

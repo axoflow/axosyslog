@@ -21,6 +21,7 @@
 
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include <criterion/parameterized.h>
 
 #include "windows-eventlog-xml-parser.h"
@@ -85,12 +86,12 @@ Test(windows_eventlog_xml_parser, test_windows_eventlog_xml_parser)
   cr_assert(log_parser_process_message(parser, &msg, &path_options));
 
   value = log_msg_get_value_by_name_with_type(msg, ".winlog.Event.EventData.Data", &value_len, &type);
-  cr_assert_eq(type, LM_VT_LIST);
-  cr_assert_str_eq(value, "foo,bar");
+  cr_assert(eq(u8, type, LM_VT_LIST));
+  cr_assert(eq(str, value, "foo,bar"));
 
   value = log_msg_get_value_by_name_with_type(msg, ".winlog.Event.System.EventID", &value_len, &type);
-  cr_assert_eq(type, LM_VT_STRING);
-  cr_assert_str_eq(value, "999");
+  cr_assert(eq(u8, type, LM_VT_STRING));
+  cr_assert(eq(str, value, "999"));
 
   log_msg_unref(msg);
 
@@ -100,24 +101,24 @@ Test(windows_eventlog_xml_parser, test_windows_eventlog_xml_parser)
   cr_assert(log_parser_process_message(parser, &msg, &path_options));
 
   value = log_msg_get_value_by_name_with_type(msg, ".winlog.Event.EventData.Data.param1", &value_len, &type);
-  cr_assert_eq(type, LM_VT_STRING);
-  cr_assert_str_eq(value, "foo");
+  cr_assert(eq(u8, type, LM_VT_STRING));
+  cr_assert(eq(str, value, "foo"));
 
   value = log_msg_get_value_by_name_with_type(msg, ".winlog.Event.EventData.Data.param2", &value_len, &type);
-  cr_assert_eq(type, LM_VT_STRING);
-  cr_assert_str_eq(value, "bar");
+  cr_assert(eq(u8, type, LM_VT_STRING));
+  cr_assert(eq(str, value, "bar"));
 
   value = log_msg_get_value_by_name_with_type(msg, ".winlog.Event.EventData.Data", &value_len, &type);
-  cr_assert_eq(type, LM_VT_NULL);
-  cr_assert_str_eq(value, "");
+  cr_assert(eq(u8, type, LM_VT_NULL));
+  cr_assert(eq(str, value, ""));
 
   value = log_msg_get_value_by_name_with_type(msg, ".winlog.Event.EventData.Data._Name", &value_len, &type);
-  cr_assert_eq(type, LM_VT_NULL);
-  cr_assert_str_eq(value, "");
+  cr_assert(eq(u8, type, LM_VT_NULL));
+  cr_assert(eq(str, value, ""));
 
   value = log_msg_get_value_by_name_with_type(msg, ".winlog.Event.System.EventID", &value_len, &type);
-  cr_assert_eq(type, LM_VT_STRING);
-  cr_assert_str_eq(value, "999");
+  cr_assert(eq(u8, type, LM_VT_STRING));
+  cr_assert(eq(str, value, "999"));
 
   log_msg_unref(msg);
 

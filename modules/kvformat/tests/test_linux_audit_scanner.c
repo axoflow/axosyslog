@@ -20,6 +20,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "scanner/kv-scanner/kv-scanner.h"
 #include "linux-audit-parser.h"
@@ -32,7 +33,7 @@ KVScanner kv_scanner;
 static void
 assert_no_more_tokens(void)
 {
-  cr_assert_not(kv_scanner_scan_next(&kv_scanner), "kv_scanner is expected to return no more key-value pairs");
+  cr_assert(not(kv_scanner_scan_next(&kv_scanner)), "kv_scanner is expected to return no more key-value pairs");
 }
 
 static void
@@ -46,7 +47,7 @@ assert_current_key_is(const gchar *expected_key)
 {
   const gchar *key = kv_scanner_get_current_key(&kv_scanner);
 
-  cr_assert_str_eq(key, expected_key, "current key mismatch, key: %s, expected_key: %s", key, expected_key);
+  cr_assert(eq(str, key, expected_key), "current key mismatch, key: %s, expected_key: %s", key, expected_key);
 }
 
 static void
@@ -54,8 +55,8 @@ assert_current_value_is(const gchar *expected_value)
 {
   const gchar *value = kv_scanner_get_current_value(&kv_scanner);
 
-  cr_assert_str_eq(value, expected_value, "current value mismatch, value: %s, expected_value: %s",
-                   value, expected_value);
+  cr_assert(eq(str, value, expected_value), "current value mismatch, value: %s, expected_value: %s",
+            value, expected_value);
 }
 
 static void

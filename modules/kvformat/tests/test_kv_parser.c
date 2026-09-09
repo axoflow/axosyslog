@@ -20,6 +20,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/msg_parse_lib.h"
 
 #include "kv-parser.h"
@@ -56,7 +57,7 @@ parse_kv_into_log_message(const gchar *kv)
   LogMessage *msg;
 
   msg = parse_kv_into_log_message_no_check(kv);
-  cr_assert_not_null(msg, "expected kv-parser success and it returned failure, kv=%s", kv);
+  cr_assert(not(zero(ptr, msg)), "expected kv-parser success and it returned failure, kv=%s", kv);
   return msg;
 }
 
