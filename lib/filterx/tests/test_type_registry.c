@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/cr_template.h"
 
 #include "filterx/filterx-object.h"
@@ -38,7 +39,7 @@ Test(type_registry, test_type_registry_registering_existing_key_returns_false)
   // first register returns TRUE
   cr_assert(filterx_type_register_private(ht, "base", &FILTERX_TYPE_NAME(dummy_base)));
   // second attampt of register must return FALSE
-  cr_assert(!filterx_type_register_private(ht, "base", &FILTERX_TYPE_NAME(dummy_base)));
+  cr_assert(not(filterx_type_register_private(ht, "base", &FILTERX_TYPE_NAME(dummy_base))));
   filterx_types_deinit_private(ht);
 }
 
@@ -49,16 +50,16 @@ Test(type_registry, test_type_registry_lookup)
 
   // type not found
   FilterXType *fxtype = filterx_type_lookup_private(ht, "base");
-  cr_assert(fxtype == NULL);
+  cr_assert(zero(ptr, fxtype));
 
   // add dummy function
   cr_assert(filterx_type_register_private(ht, "base", &FILTERX_TYPE_NAME(dummy_base)));
 
   // lookup returns dummy function
   fxtype = filterx_type_lookup_private(ht, "base");
-  cr_assert(fxtype != NULL);
+  cr_assert(not(zero(ptr, fxtype)));
 
-  cr_assert_eq(&FILTERX_TYPE_NAME(dummy_base), fxtype);
+  cr_assert(eq(ptr, &FILTERX_TYPE_NAME(dummy_base), fxtype));
 
   filterx_types_deinit_private(ht);
 }

@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/filterx-lib.h"
 
 #include "filterx/expr-regexp.h"
@@ -39,7 +40,7 @@ _check_match(const gchar *lhs, const gchar *pattern)
   FilterXExpr *expr = filterx_expr_regexp_match_new(filterx_literal_new(filterx_string_new(lhs, -1)), pattern);
 
   FilterXObject *result_obj = init_and_eval_expr(expr);
-  cr_assert(result_obj);
+  cr_assert(not(zero(ptr, result_obj)));
   gboolean result;
   cr_assert(filterx_boolean_unwrap(result_obj, &result));
 
@@ -58,13 +59,13 @@ _assert_match(const gchar *lhs, const gchar *pattern)
 static void
 _assert_not_match(const gchar *lhs, const gchar *pattern)
 {
-  cr_assert_not(_check_match(lhs, pattern), "regexp should not match. lhs: %s pattern: %s", lhs, pattern);
+  cr_assert(not(_check_match(lhs, pattern)), "regexp should not match. lhs: %s pattern: %s", lhs, pattern);
 }
 
 static void
 _assert_match_init_error(const gchar *lhs, const gchar *pattern)
 {
-  cr_assert_not(filterx_expr_regexp_match_new(filterx_literal_new(filterx_string_new(lhs, -1)), pattern));
+  cr_assert(zero(ptr, filterx_expr_regexp_match_new(filterx_literal_new(filterx_string_new(lhs, -1)), pattern)));
 }
 
 Test(filterx_expr_regexp, regexp_match)
