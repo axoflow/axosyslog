@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/grab-logging.h"
 
 #include "apphook.h"
@@ -39,7 +40,7 @@ _create_template(const gchar *str)
   LogTemplate *template = log_template_new(cfg, NULL);
   cr_assert(log_template_compile(template, str, &error));
 
-  cr_expect_null(error);
+  cr_expect(zero(ptr, error));
 
   return template;
 }

@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "cfg.h"
 #include "messages.h"
@@ -53,7 +54,7 @@ evaluate_testcase(const gchar *msg,
   LogMessage *log_msg;
   gboolean result;
 
-  cr_assert_not_null(filter_node, "Constructing an in-list filter");
+  cr_assert(not(zero(ptr, filter_node)), "Constructing an in-list filter");
   log_msg = msg_format_parse(&parse_options, (const guchar *) msg, strlen(msg));
   result = filter_expr_eval(filter_node, log_msg);
 
@@ -66,8 +67,8 @@ Test(template_filters, test_filter_returns_false_when_list_is_empty)
 {
   gchar *list_file_with_zero_lines = g_strdup_printf(LIST_FILE_DIR "empty.list", top_srcdir);
 
-  cr_assert_not(evaluate_testcase(MSG_1, filter_in_list_new(list_file_with_zero_lines, "PROGRAM")),
-                "in-list filter matches");
+  cr_assert(not(evaluate_testcase(MSG_1, filter_in_list_new(list_file_with_zero_lines, "PROGRAM"))),
+            "in-list filter matches");
 
   g_free(list_file_with_zero_lines);
 }
@@ -75,24 +76,24 @@ Test(template_filters, test_filter_returns_false_when_list_is_empty)
 Test(template_filters, test_string_searched_for_is_not_in_the_list)
 {
   gchar *list_file_with_one_line = g_strdup_printf(LIST_FILE_DIR "test.list", top_srcdir);
-  cr_assert_not(evaluate_testcase(MSG_2, filter_in_list_new(list_file_with_one_line, "PROGRAM")),
-                "in-list filter matches");
+  cr_assert(not(evaluate_testcase(MSG_2, filter_in_list_new(list_file_with_one_line, "PROGRAM"))),
+            "in-list filter matches");
   g_free(list_file_with_one_line);
 }
 
 Test(template_filters, test_given_macro_is_not_available_in_this_message)
 {
   gchar *list_file_with_one_line = g_strdup_printf(LIST_FILE_DIR "test.list", top_srcdir);
-  cr_assert_not(evaluate_testcase(MSG_2, filter_in_list_new(list_file_with_one_line, "FOO_MACRO")),
-                "in-list filter matches");
+  cr_assert(not(evaluate_testcase(MSG_2, filter_in_list_new(list_file_with_one_line, "FOO_MACRO"))),
+            "in-list filter matches");
   g_free(list_file_with_one_line);
 }
 
 Test(template_filters, test_list_file_doesnt_exist)
 {
   gchar *list_file_which_doesnt_exist = g_strdup_printf(LIST_FILE_DIR "notexisting.list", top_srcdir);
-  cr_assert_null(filter_in_list_new(list_file_which_doesnt_exist, "PROGRAM"),
-                 "in-list filter should fail, when the list file does not exist");
+  cr_assert(zero(ptr, filter_in_list_new(list_file_which_doesnt_exist, "PROGRAM")),
+            "in-list filter should fail, when the list file does not exist");
   g_free(list_file_which_doesnt_exist);
 }
 
@@ -138,7 +139,7 @@ setup(void)
   msg_format_options_defaults(&parse_options);
   msg_format_options_init(&parse_options, configuration);
 
-  cr_assert_not_null(top_srcdir, "The $top_srcdir environment variable MUST NOT be empty!");
+  cr_assert(not(zero(ptr, top_srcdir)), "The $top_srcdir environment variable MUST NOT be empty!");
 }
 
 static void
