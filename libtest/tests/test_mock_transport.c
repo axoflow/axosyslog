@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/mock-transport.h"
 
 #include <errno.h>
@@ -29,7 +30,7 @@ Test(mock_transport, test_mock_transport_read)
 {
 
   LogTransportMock *transport = (LogTransportMock *)log_transport_mock_records_new(LTM_EOF);
-  cr_assert(transport);
+  cr_assert(not(zero(ptr, transport)));
 
   log_transport_mock_inject_data(transport, "chunk1", sizeof("chunk1"));
   log_transport_mock_inject_data(transport, LTM_INJECT_ERROR(EAGAIN));
@@ -37,15 +38,15 @@ Test(mock_transport, test_mock_transport_read)
 
   gchar buffer[100];
   log_transport_read((LogTransport *)transport, buffer, sizeof(buffer), NULL);
-  cr_assert_str_eq(buffer, "chunk1");
+  cr_assert(eq(str, buffer, "chunk1"));
 
   int rc;
   rc = log_transport_read((LogTransport *)transport, buffer, sizeof(buffer), NULL);
-  cr_assert_eq(rc, -1);
-  cr_assert_eq(errno, EAGAIN);
+  cr_assert(eq(int, rc, -1));
+  cr_assert(eq(int, errno, EAGAIN));
 
   log_transport_read((LogTransport *)transport, buffer, sizeof(buffer), NULL);
-  cr_assert_str_eq(buffer, "chunk2");
+  cr_assert(eq(str, buffer, "chunk2"));
 
   log_transport_free((LogTransport *)transport);
 }
@@ -53,13 +54,13 @@ Test(mock_transport, test_mock_transport_read)
 Test(mock_transport, test_mock_transport_simple_write)
 {
   LogTransportMock *transport = (LogTransportMock *)log_transport_mock_records_new(LTM_EOF);
-  cr_assert(transport);
+  cr_assert(not(zero(ptr, transport)));
 
   gchar buffer[100];
 
   log_transport_write((LogTransport *)transport, "chunk", sizeof("chunk"));
   log_transport_mock_read_from_write_buffer(transport, buffer, sizeof(buffer));
-  cr_assert_str_eq(buffer, "chunk");
+  cr_assert(eq(str, buffer, "chunk"));
 
   log_transport_free((LogTransport *)transport);
 }
@@ -67,20 +68,20 @@ Test(mock_transport, test_mock_transport_simple_write)
 Test(mock_transport, test_mock_transport_write_with_chunk_limit)
 {
   LogTransportMock *transport = (LogTransportMock *)log_transport_mock_records_new(LTM_EOF);
-  cr_assert(transport);
+  cr_assert(not(zero(ptr, transport)));
 
   gchar buffer[100];
 
   log_transport_mock_set_write_chunk_limit(transport, 2);
   gssize count = log_transport_write((LogTransport *)transport, "chunk", 6);
-  cr_assert(count == 2);
+  cr_assert(eq(i64, count, 2));
   count = log_transport_write((LogTransport *)transport, "unk", 4);
-  cr_assert(count == 2);
+  cr_assert(eq(i64, count, 2));
   count = log_transport_write((LogTransport *)transport, "k", 2);
-  cr_assert(count == 2);
+  cr_assert(eq(i64, count, 2));
 
   log_transport_mock_read_from_write_buffer(transport, buffer, sizeof(buffer));
-  cr_assert_str_eq(buffer, "chunk");
+  cr_assert(eq(str, buffer, "chunk"));
 
   log_transport_free((LogTransport *)transport);
 }
@@ -88,7 +89,7 @@ Test(mock_transport, test_mock_transport_write_with_chunk_limit)
 Test(mock_transport, test_mock_transport_writev)
 {
   LogTransportMock *transport = (LogTransportMock *)log_transport_mock_records_new(LTM_EOF);
-  cr_assert(transport);
+  cr_assert(not(zero(ptr, transport)));
 
   gchar buffer[100] = "chunkofdata";
 
@@ -97,7 +98,7 @@ Test(mock_transport, test_mock_transport_writev)
   log_transport_writev((LogTransport *)transport, &iov, 1);
   memset(buffer, 0, sizeof(buffer));
   log_transport_mock_read_from_write_buffer(transport, buffer, sizeof(buffer));
-  cr_assert_str_eq(buffer, "chunkofdata");
+  cr_assert(eq(str, buffer, "chunkofdata"));
 
   log_transport_free((LogTransport *)transport);
 }
@@ -105,7 +106,7 @@ Test(mock_transport, test_mock_transport_writev)
 Test(mock_transport, test_mock_transport_writev_with_chunk_limit)
 {
   LogTransportMock *transport = (LogTransportMock *)log_transport_mock_records_new(LTM_EOF);
-  cr_assert(transport);
+  cr_assert(not(zero(ptr, transport)));
 
   gchar buffer[100] = "chunkofdata";
 
@@ -113,17 +114,17 @@ Test(mock_transport, test_mock_transport_writev_with_chunk_limit)
 
   log_transport_mock_set_write_chunk_limit(transport, 2);
   gssize count = log_transport_writev((LogTransport *)transport, &iov, 1);
-  cr_assert(count == 2);
+  cr_assert(eq(i64, count, 2));
 
   log_transport_mock_set_write_chunk_limit(transport, 0);
   iov.iov_base = &buffer[2];
   iov.iov_len -= 2;
   count = log_transport_writev((LogTransport *)transport, &iov, 1);
-  cr_assert(count == 10);
+  cr_assert(eq(i64, count, 10));
 
   memset(buffer, 0, sizeof(buffer));
   log_transport_mock_read_from_write_buffer(transport, buffer, sizeof(buffer));
-  cr_assert_str_eq(buffer, "chunkofdata");
+  cr_assert(eq(str, buffer, "chunkofdata"));
 
   log_transport_free((LogTransport *)transport);
 }
@@ -131,7 +132,7 @@ Test(mock_transport, test_mock_transport_writev_with_chunk_limit)
 Test(mock_transport, test_mock_transport_read_from_write_buffer)
 {
   LogTransportMock *transport = (LogTransportMock *)log_transport_mock_records_new(LTM_EOF);
-  cr_assert(transport);
+  cr_assert(not(zero(ptr, transport)));
 
   gchar buffer[100];
 
@@ -139,9 +140,9 @@ Test(mock_transport, test_mock_transport_read_from_write_buffer)
   log_transport_write((LogTransport *)transport, "chunk2", sizeof("chunk2"));
 
   log_transport_mock_read_from_write_buffer(transport, buffer, sizeof("chunk1"));
-  cr_assert_str_eq(buffer, "chunk1");
+  cr_assert(eq(str, buffer, "chunk1"));
   log_transport_mock_read_from_write_buffer(transport, buffer, sizeof("chunk2"));
-  cr_assert_str_eq(buffer, "chunk2");
+  cr_assert(eq(str, buffer, "chunk2"));
 
   log_transport_free((LogTransport *)transport);
 }
@@ -149,7 +150,7 @@ Test(mock_transport, test_mock_transport_read_from_write_buffer)
 Test(mock_transport, test_mock_transport_read_chunk_from_write_buffer)
 {
   LogTransportMock *transport = (LogTransportMock *)log_transport_mock_records_new(LTM_EOF);
-  cr_assert(transport);
+  cr_assert(not(zero(ptr, transport)));
 
   gchar buffer[100];
   int rc;
@@ -159,19 +160,19 @@ Test(mock_transport, test_mock_transport_read_chunk_from_write_buffer)
   log_transport_write((LogTransport *)transport, "chunk3", sizeof("chunk3"));
 
   rc = log_transport_mock_read_chunk_from_write_buffer(transport, buffer);
-  cr_assert_str_eq(buffer, "chunk1");
-  cr_assert_eq(rc, sizeof("chunk1"));
+  cr_assert(eq(str, buffer, "chunk1"));
+  cr_assert(eq(i64, rc, sizeof("chunk1")));
 
   /* seeking 1 position to step into the middle of the chunk */
   log_transport_mock_read_from_write_buffer(transport, buffer, 1);
 
   rc = log_transport_mock_read_chunk_from_write_buffer(transport, buffer);
-  cr_assert_str_eq(buffer, "hunk2");
-  cr_assert_eq(rc, sizeof("hunk2"));
+  cr_assert(eq(str, buffer, "hunk2"));
+  cr_assert(eq(i64, rc, sizeof("hunk2")));
 
   rc = log_transport_mock_read_chunk_from_write_buffer(transport, buffer);
-  cr_assert_str_eq(buffer, "chunk3");
-  cr_assert_eq(rc, sizeof("chunk3"));
+  cr_assert(eq(str, buffer, "chunk3"));
+  cr_assert(eq(i64, rc, sizeof("chunk3")));
 
   log_transport_free((LogTransport *)transport);
 }
@@ -179,7 +180,7 @@ Test(mock_transport, test_mock_transport_read_chunk_from_write_buffer)
 Test(mock_transport, test_cloning)
 {
   LogTransportMock *transport = (LogTransportMock *)log_transport_mock_records_new(LTM_EOF);
-  cr_assert(transport);
+  cr_assert(not(zero(ptr, transport)));
 
   gchar buffer[100];
 
@@ -189,9 +190,9 @@ Test(mock_transport, test_cloning)
   LogTransportMock *clone = log_transport_mock_clone(transport);
 
   log_transport_mock_read_from_write_buffer(clone, buffer, sizeof("chunk1"));
-  cr_assert_str_eq(buffer, "chunk1");
+  cr_assert(eq(str, buffer, "chunk1"));
   log_transport_mock_read_from_write_buffer(clone, buffer, sizeof("chunk2"));
-  cr_assert_str_eq(buffer, "chunk2");
+  cr_assert(eq(str, buffer, "chunk2"));
 
   log_transport_free((LogTransport *)transport);
   log_transport_free((LogTransport *)clone);

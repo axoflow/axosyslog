@@ -33,6 +33,7 @@
 
 #include <string.h>
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 
 static MsgFormatOptions parse_options;
@@ -187,22 +188,23 @@ assert_template_format_with_escaping_and_context_msgs(const gchar *template, gbo
 
   LogTemplateEvalOptions options = {NULL, LTZ_LOCAL, 999, context_id, LM_VT_STRING};
   log_template_append_format_value_and_type_with_context(templ, msgs, num_messages, &options, res, &type);
-  cr_assert(strncmp(res->str, prefix, prefix_len) == 0,
+  cr_assert(eq(int, strncmp(res->str, prefix, prefix_len), 0),
             "the prefix was overwritten by the template, template=%s, res=%s, expected_prefix=%s",
             template, res->str, prefix);
 
   expected_len = (expected_len >= 0 ? expected_len : strlen(expected));
-  cr_assert_eq(res->len - prefix_len, expected_len,
-               "context template test failed, expected length mismatch, template=%s, actual=%.*s, expected=%.*s",
-               template, (gint) res->len - prefix_len, res->str + prefix_len, (gint) expected_len, expected);
+  cr_assert(eq(i64, res->len - prefix_len, expected_len),
+            "context template test failed, expected length mismatch, template=%s, actual=%.*s, expected=%.*s",
+            template, (gint) res->len - prefix_len, res->str + prefix_len, (gint) expected_len, expected);
 
-  cr_assert_arr_eq(res->str + prefix_len, expected, expected_len,
-                   "context template test failed, template=%s, actual=%.*s, expected=%.*s",
-                   template, (gint) res->len - prefix_len, res->str + prefix_len, (gint) expected_len, expected);
+  cr_assert(eq(mem, ((struct cr_mem){ .data = res->str + prefix_len, .size = expected_len }),
+               ((struct cr_mem){ .data = expected, .size = expected_len })),
+            "context template test failed, template=%s, actual=%.*s, expected=%.*s",
+            template, (gint) res->len - prefix_len, res->str + prefix_len, (gint) expected_len, expected);
   if (expected_type != LM_VT_NONE)
-    cr_assert_eq(type, expected_type,
-                 "expected type does not match template=%s, type=%d, expected_type=%d (value was %.*s)",
-                 template, type, expected_type, (gint) expected_len, expected);
+    cr_assert(eq(u8, type, expected_type),
+              "expected type does not match template=%s, type=%d, expected_type=%d (value was %.*s)",
+              template, type, expected_type, (gint) expected_len, expected);
   log_template_unref(templ);
   g_string_free(res, TRUE);
 }
@@ -299,11 +301,11 @@ assert_template_failure(const gchar *template, const gchar *expected_error)
   LogTemplate *templ = log_template_new(configuration, NULL);
   GError *error = NULL;
 
-  cr_assert_not(log_template_compile(templ, template, &error),
-                "compilation failure expected to template,"
-                " but success was returned, template=%s, expected_error=%s\n",
-                template, expected_error);
-  cr_assert(strstr(error ? error->message : "", expected_error) != NULL,
+  cr_assert(not(log_template_compile(templ, template, &error)),
+            "compilation failure expected to template,"
+            " but success was returned, template=%s, expected_error=%s\n",
+            template, expected_error);
+  cr_assert(not(zero(ptr, strstr(error ? error->message : "", expected_error))),
             "FAIL: compilation error doesn't match, error=%s, expected_error=%s\n",
             error->message, expected_error);
   g_clear_error(&error);
@@ -324,9 +326,9 @@ perftest_template(gchar *template)
   templ = log_template_new(configuration, NULL);
   if (!log_template_compile(templ, template, &error))
     {
-      cr_assert(FALSE, "template expected to compile cleanly,"
-                       " but it didn't, template=%s, error=%s",
-                template, error ? error->message : "(none)");
+      cr_fatal("template expected to compile cleanly,"
+               " but it didn't, template=%s, error=%s",
+               template, error ? error->message : "(none)");
       return;
     }
   msg = create_sample_message();

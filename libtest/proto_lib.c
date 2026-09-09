@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "proto_lib.h"
 #include "grab-logging.h"
 
@@ -34,7 +35,7 @@ LogProtoServerOptions proto_server_options;
 void
 assert_proto_server_status(LogProtoServer *proto, LogProtoStatus status, LogProtoStatus expected_status)
 {
-  cr_assert_eq(status, expected_status, "LogProtoServer expected status mismatch");
+  cr_assert(eq(int, status, expected_status), "LogProtoServer expected status mismatch");
 }
 
 /* One fetch(); a replacement the proto asks for is applied and reported in
@@ -80,7 +81,7 @@ proto_server_fetch(LogProtoServer **proto, const guchar **msg, gsize *msg_len)
 
   saddr = aux.peer_addr;
   if (status != LPS_SUCCESS)
-    cr_assert_null(saddr, "returned saddr must be NULL on failure");
+    cr_assert(zero(ptr, saddr), "returned saddr must be NULL on failure");
 
   log_transport_aux_data_destroy(&aux);
 
@@ -95,7 +96,7 @@ construct_server_proto_plugin(const gchar *name, LogTransport *transport)
 
   log_proto_server_options_init(&proto_server_options, configuration);
   proto_factory = log_proto_server_get_factory(&configuration->plugin_context, name);
-  cr_assert_not_null(proto_factory, "error looking up proto factory");
+  cr_assert(not(zero(ptr, proto_factory)), "error looking up proto factory");
   return log_proto_server_factory_construct(proto_factory, transport, &proto_server_options, NULL);
 }
 
@@ -120,7 +121,7 @@ assert_proto_server_replacement(LogProtoServer **proto, const gchar *detect_mess
     {
       log_transport_aux_data_reinit(&aux);
       status = _fetch_once(proto, &msg, &msg_len, &may_read, &aux, &bookmark, &replaced);
-      cr_assert_null(msg, "a proto that replaces itself must not return a message");
+      cr_assert(zero(ptr, msg), "a proto that replaces itself must not return a message");
     }
   while (status == LPS_SUCCESS && !replaced && may_read);
   log_transport_aux_data_destroy(&aux);
@@ -146,10 +147,11 @@ assert_proto_server_fetch(LogProtoServer **proto, const gchar *expected_msg, gss
   if (expected_msg_len < 0)
     expected_msg_len = strlen(expected_msg);
 
-  cr_assert_eq(msg_len, expected_msg_len, "LogProtoServer expected message mismatch (length) "
-                                          "actual: %" G_GSIZE_FORMAT " expected: %" G_GSIZE_FORMAT, msg_len, expected_msg_len);
-  cr_assert_arr_eq((const gchar *) msg, expected_msg, expected_msg_len,
-                   "LogProtoServer expected message mismatch");
+  cr_assert(eq(i64, msg_len, expected_msg_len), "LogProtoServer expected message mismatch (length) "
+            "actual: %" G_GSIZE_FORMAT " expected: %" G_GSIZE_FORMAT, msg_len, expected_msg_len);
+  cr_assert(eq(mem, ((struct cr_mem){ .data = msg, .size = expected_msg_len }),
+               ((struct cr_mem){ .data = expected_msg, .size = expected_msg_len })),
+            "LogProtoServer expected message mismatch");
 }
 
 void
@@ -173,14 +175,15 @@ assert_proto_server_fetch_single_read(LogProtoServer **proto, const gchar *expec
       if (expected_msg_len < 0)
         expected_msg_len = strlen(expected_msg);
 
-      cr_assert_eq(msg_len, expected_msg_len, "LogProtoServer expected message mismatch (length)");
-      cr_assert_arr_eq((const gchar *) msg, expected_msg, expected_msg_len,
-                       "LogProtoServer expected message mismatch");
+      cr_assert(eq(i64, msg_len, expected_msg_len), "LogProtoServer expected message mismatch (length)");
+      cr_assert(eq(mem, ((struct cr_mem){ .data = msg, .size = expected_msg_len }),
+                   ((struct cr_mem){ .data = expected_msg, .size = expected_msg_len })),
+                "LogProtoServer expected message mismatch");
     }
   else
     {
-      cr_assert_null(msg, "when single-read finds an incomplete message, msg must be NULL");
-      cr_assert_null(aux.peer_addr, "returned saddr must be NULL on success");
+      cr_assert(zero(ptr, msg), "when single-read finds an incomplete message, msg must be NULL");
+      cr_assert(zero(ptr, aux.peer_addr), "returned saddr must be NULL on success");
     }
 
   log_transport_aux_data_destroy(&aux);
@@ -217,8 +220,8 @@ assert_proto_server_fetch_ignored_eof(LogProtoServer **proto)
   log_transport_aux_data_init(&aux);
   status = _fetch_once(proto, &msg, &msg_len, &may_read, &aux, &bookmark, &replaced);
   assert_proto_server_status(*proto, status, LPS_SUCCESS);
-  cr_assert_null(msg, "when an EOF is ignored msg must be NULL");
-  cr_assert_null(aux.peer_addr, "returned saddr must be NULL on success");
+  cr_assert(zero(ptr, msg), "when an EOF is ignored msg must be NULL");
+  cr_assert(zero(ptr, aux.peer_addr), "returned saddr must be NULL on success");
   log_transport_aux_data_destroy(&aux);
   stop_grabbing_messages();
 }
