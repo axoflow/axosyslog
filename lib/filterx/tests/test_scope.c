@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "syslog-ng.h"
 #include "scratch-buffers.h"
@@ -40,7 +41,8 @@ Test(filterx_scope, test_scope_on_heap)
   FilterXScopeVariableLayout *l = filterx_scope_variable_layout_new_from_handles(handles, G_N_ELEMENTS(handles));
 
   FilterXScope *s = filterx_scope_new(NULL, l);
-  cr_assert_null(filterx_scope_lookup_variable(s, filterx_map_varname_to_handle("var", FX_VAR_DECLARED_FLOATING), 0));
+  cr_assert(zero(ptr,
+                 filterx_scope_lookup_variable(s, filterx_map_varname_to_handle("var", FX_VAR_DECLARED_FLOATING), 0)));
   filterx_scope_free(s);
   filterx_scope_variable_layout_free(l);
 }
@@ -57,7 +59,7 @@ Test(filterx_scope, test_scope_stacking)
 
   FilterXScope *s2 = filterx_scope_new(s, l);
 
-  cr_assert_not_null(filterx_scope_lookup_variable(s2, var, 0));
+  cr_assert(not(zero(ptr, filterx_scope_lookup_variable(s2, var, 0))));
 
   filterx_scope_free(s2);
   filterx_scope_free(s);
@@ -87,12 +89,12 @@ Test(filterx_scope, test_scope_sync)
 
   LogMessageValueType type;
   const gchar *value = log_msg_get_value_with_type(msg, filterx_variable_get_nv_handle(v), NULL, &type);
-  cr_assert_eq(type, LM_VT_BOOLEAN);
-  cr_assert_str_eq(value, "true");
+  cr_assert(eq(int, type, LM_VT_BOOLEAN));
+  cr_assert(eq(str, value, "true"));
 
-  cr_assert(filterx_scope_lookup_variable(s, var, 0));
+  cr_assert(not(zero(ptr, filterx_scope_lookup_variable(s, var, 0))));
   log_msg_set_value_by_name(msg, "var", "newvalue", 0);
-  cr_assert_not(filterx_scope_lookup_variable(s, var, 0));
+  cr_assert(zero(ptr, filterx_scope_lookup_variable(s, var, 0)));
 
   log_msg_unref(msg);
   filterx_scope_free(s);
@@ -122,8 +124,8 @@ Test(filterx_scope, test_scope_sync_walks_parent_scopes_until_fork_point)
 
   LogMessageValueType type;
   const gchar *value = log_msg_get_value_with_type(msg, filterx_variable_get_nv_handle(v), NULL, &type);
-  cr_assert_eq(type, LM_VT_BOOLEAN);
-  cr_assert_str_eq(value, "true");
+  cr_assert(eq(int, type, LM_VT_BOOLEAN));
+  cr_assert(eq(str, value, "true"));
 
   log_msg_unref(msg);
   filterx_scope_free(s2);
@@ -134,7 +136,7 @@ Test(filterx_scope, test_scope_sync_walks_parent_scopes_until_fork_point)
 static gboolean
 _assert_var_false(FilterXVariable *variable, gpointer user_data)
 {
-  cr_assert_not(filterx_boolean_get_value(variable->value));
+  cr_assert(not(filterx_boolean_get_value(variable->value)));
   return TRUE;
 }
 

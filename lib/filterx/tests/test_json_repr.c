@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/filterx-lib.h"
 
 #include "filterx/json-repr.h"
@@ -46,8 +47,6 @@ Test(filterx_json_repr, deeply_nested_array_does_not_overflow_stack)
   if (error)
     g_error_free(error);
   g_string_free(deep, TRUE);
-
-  cr_assert(TRUE);
 }
 
 /* the legacy hardcoded jsmn token limit was 65536, use a token count comfortably above that */
@@ -68,12 +67,12 @@ Test(filterx_json_repr, array_exceeding_legacy_max_tokens_is_parsed_successfully
   GError *error = NULL;
   FilterXObject *obj = filterx_object_from_json(large->str, large->len, &error);
 
-  cr_assert_null(error, "%s", error ? error->message : "");
-  cr_assert_not_null(obj);
+  cr_assert(zero(ptr, error), "%s", error ? error->message : "");
+  cr_assert(not(zero(ptr, obj)));
 
   guint64 len = 0;
   cr_assert(filterx_object_len(obj, &len));
-  cr_assert_eq(len, LARGE_ARRAY_ELEMENT_COUNT);
+  cr_assert(eq(u64, len, LARGE_ARRAY_ELEMENT_COUNT));
 
   filterx_object_unref(obj);
   g_string_free(large, TRUE);
