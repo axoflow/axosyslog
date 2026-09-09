@@ -23,6 +23,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/mock-function.h"
 
 #include "apphook.h"
@@ -117,7 +118,7 @@ _init(void)
   test_event = test_deleted_file_state_event_new();
   reader = (WildcardFileReader *)wildcard_file_reader_new(TEST_FILE_NAME, NULL, NULL, NULL, cfg_new_snippet());
   wildcard_file_reader_on_deleted_file_eof(reader, _eof, test_event);
-  cr_assert_eq(log_pipe_init(&reader->super.super), TRUE);
+  cr_assert(log_pipe_init(&reader->super.super));
 }
 
 static void
@@ -133,15 +134,15 @@ TestSuite(test_wildcard_file_reader, .init = _init, .fini = _teardown);
 
 Test(test_wildcard_file_reader, constructor)
 {
-  cr_assert_eq(reader->file_state.last_eof, FALSE);
-  cr_assert_eq(reader->file_state.deleted, FALSE);
+  cr_assert(not(reader->file_state.last_eof));
+  cr_assert(not(reader->file_state.deleted));
 }
 
 Test(test_wildcard_file_reader, notif_deleted)
 {
   log_pipe_queue(&reader->super.super, NULL, &path_options);
   log_pipe_notify(&reader->super.super, NC_FILE_DELETED, NULL);
-  cr_assert_eq(reader->file_state.deleted, TRUE);
+  cr_assert(reader->file_state.deleted);
 }
 
 
@@ -149,25 +150,25 @@ Test(test_wildcard_file_reader, eof_without_deletion_should_not_change_last_eof_
 {
   log_pipe_queue(&reader->super.super, NULL, &path_options);
   log_pipe_notify(&reader->super.super, NC_FILE_EOF, NULL);
-  cr_assert_eq(reader->file_state.last_eof, FALSE);
+  cr_assert(not(reader->file_state.last_eof));
 }
 
 Test(test_wildcard_file_reader, status_change_deleted_not_eof)
 {
   log_pipe_queue(&reader->super.super, NULL, &path_options);
   log_pipe_notify(&reader->super.super, NC_FILE_DELETED, NULL);
-  cr_assert_eq(test_event->deleted_eof_called, FALSE);
+  cr_assert(not(test_event->deleted_eof_called));
 }
 
 Test(test_wildcard_file_reader, status_change_deleted_eof)
 {
   log_pipe_notify(&reader->super.super, NC_FILE_EOF, NULL);
-  cr_assert_eq(test_event->deleted_eof_called, FALSE);
+  cr_assert(not(test_event->deleted_eof_called));
 
   log_pipe_notify(&reader->super.super, NC_FILE_DELETED, NULL);
-  cr_assert_eq(test_event->deleted_eof_called, FALSE);
+  cr_assert(not(test_event->deleted_eof_called));
 
   /* AxoSyslog waits for a last EOF check before deleting the file */
   log_pipe_notify(&reader->super.super, NC_FILE_EOF, NULL);
-  cr_assert_eq(test_event->deleted_eof_called, TRUE);
+  cr_assert(test_event->deleted_eof_called);
 }

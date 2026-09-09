@@ -20,6 +20,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/msg_parse_lib.h"
 
 #include "snmptrapd-parser.h"
@@ -95,7 +96,7 @@ assert_log_message_dropped(const gchar *input)
   LogParser *parser = create_parser(NULL);
   LogMessage *msg = copy_str_into_log_message(input);
 
-  cr_assert_not(_process_log_message(parser, msg));
+  cr_assert(not(_process_log_message(parser, msg)));
 
   log_msg_unref(msg);
   destroy_parser(parser);

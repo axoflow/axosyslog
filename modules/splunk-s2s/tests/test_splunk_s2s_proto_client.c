@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "libtest/mock-transport.h"
 
@@ -124,13 +125,13 @@ _assert_bytes_eq(const gchar *actual, gsize actual_len, const gchar *expected, g
 {
   for (gsize i = 0; i < MIN(actual_len, expected_len); i++)
     {
-      cr_assert_eq((guint8) actual[i], (guint8) expected[i],
-                   "byte mismatch at offset %" G_GSIZE_FORMAT ": actual 0x%02x, expected 0x%02x",
-                   i, (guint8) actual[i], (guint8) expected[i]);
+      cr_assert(eq(u8, (guint8) actual[i], (guint8) expected[i]),
+                "byte mismatch at offset %" G_GSIZE_FORMAT ": actual 0x%02x, expected 0x%02x",
+                i, (guint8) actual[i], (guint8) expected[i]);
     }
-  cr_assert_eq(actual_len, expected_len,
-               "length mismatch: actual %" G_GSIZE_FORMAT ", expected %" G_GSIZE_FORMAT,
-               actual_len, expected_len);
+  cr_assert(eq(sz, actual_len, expected_len),
+            "length mismatch: actual %" G_GSIZE_FORMAT ", expected %" G_GSIZE_FORMAT,
+            actual_len, expected_len);
 }
 
 /* the proto stops asking for handshake I/O once it is connected and idle */
@@ -148,10 +149,10 @@ _run_handshake(LogProtoClient *client, gint max_steps)
 {
   for (gint i = 0; i < max_steps && !_handshake_done(client); i++)
     {
-      cr_assert_eq(log_proto_client_flush(client), LPS_SUCCESS);
+      cr_assert(eq(int, log_proto_client_flush(client), LPS_SUCCESS));
       if (_handshake_done(client))
         break;
-      cr_assert_eq(log_proto_client_process_in(client), LPS_SUCCESS);
+      cr_assert(eq(int, log_proto_client_process_in(client), LPS_SUCCESS));
     }
   return _handshake_done(client);
 }
@@ -163,7 +164,7 @@ _assert_handshake_output(LogTransport *transport)
   GString *hello = _expected_hello();
   GString *channel = _expected_default_channel();
 
-  cr_assert_gt(written->len, hello->len + channel->len);
+  cr_assert(gt(sz, written->len, hello->len + channel->len));
 
   _assert_bytes_eq(written->str, hello->len, hello->str, hello->len);
 
@@ -172,7 +173,7 @@ _assert_handshake_output(LogTransport *transport)
   gsize info_len = written->len - hello->len - channel->len;
   guint32 frame_len;
   cr_assert(splunk_s2s_parse_v3_frame_len((const guchar *) info, info_len, &frame_len));
-  cr_assert_eq(frame_len, info_len - 4, "forwarder info frame length prefix mismatch");
+  cr_assert(eq(sz, frame_len, info_len - 4), "forwarder info frame length prefix mismatch");
   cr_assert(_contains_bytes(info, info_len, "v4=1"), "forwarder info does not advertise v4");
 
   _assert_bytes_eq(written->str + written->len - channel->len, channel->len, channel->str, channel->len);
@@ -208,7 +209,7 @@ Test(splunk_s2s_proto_client, handshake_completes_against_scripted_indexer)
 
   cr_assert(_run_handshake(client, 100), "handshake did not finish");
   _assert_handshake_output(transport);
-  cr_assert_eq(acks, 0, "handshake frames must not be acked as messages");
+  cr_assert(eq(int, acks, 0), "handshake frames must not be acked as messages");
 
   log_proto_client_free(client);
 }
@@ -223,8 +224,8 @@ Test(splunk_s2s_proto_client, handshake_resumes_across_eagain)
                               LTM_EOF);
   LogProtoClient *client = _client_new(transport);
 
-  cr_assert_eq(log_proto_client_flush(client), LPS_SUCCESS);
-  cr_assert_not(_handshake_done(client), "handshake finished before the reply arrived");
+  cr_assert(eq(int, log_proto_client_flush(client), LPS_SUCCESS));
+  cr_assert(not(_handshake_done(client)), "handshake finished before the reply arrived");
 
   cr_assert(_run_handshake(client, 100), "handshake did not finish");
   _assert_handshake_output(transport);
@@ -249,7 +250,7 @@ Test(splunk_s2s_proto_client, handshake_rejects_oversized_reply)
   LogTransport *transport = log_transport_mock_endless_stream_new("\x7f\xff\xff\xff", 4, LTM_EOF);
   LogProtoClient *client = _client_new(transport);
 
-  cr_assert_eq(log_proto_client_flush(client), LPS_ERROR);
+  cr_assert(eq(int, log_proto_client_flush(client), LPS_ERROR));
 
   log_proto_client_free(client);
 }
@@ -260,7 +261,7 @@ Test(splunk_s2s_proto_client, handshake_detects_eof)
   LogTransport *transport = log_transport_mock_stream_new(SERVER_HELLO, 3, LTM_EOF);
   LogProtoClient *client = _client_new(transport);
 
-  cr_assert_eq(log_proto_client_flush(client), LPS_ERROR);
+  cr_assert(eq(int, log_proto_client_flush(client), LPS_ERROR));
 
   log_proto_client_free(client);
 }
@@ -332,9 +333,9 @@ Test(splunk_s2s_proto_client, post_encodes_event_with_metadata_nvpairs)
 
   const gchar *raw = "the raw payload";
   gboolean consumed = FALSE;
-  cr_assert_eq(log_proto_client_post(client, msg, (guchar *) g_strdup(raw), strlen(raw), &consumed), LPS_SUCCESS);
+  cr_assert(eq(int, log_proto_client_post(client, msg, (guchar *) g_strdup(raw), strlen(raw), &consumed), LPS_SUCCESS));
   cr_assert(consumed);
-  cr_assert_eq(acks, 0, "no writer ack before the indexer confirms");
+  cr_assert(eq(int, acks, 0), "no writer ack before the indexer confirms");
 
   GString *written = _written_bytes(transport);
   GString *expected = _expected_event(2, "custom-index", "custom-sourcetype", "custom-source", "custom-host", raw);
@@ -342,8 +343,8 @@ Test(splunk_s2s_proto_client, post_encodes_event_with_metadata_nvpairs)
 
   /* the indexer confirms event id 2 */
   log_transport_mock_inject_data((LogTransportMock *) transport, "\xfb\x02", 2);
-  cr_assert_eq(log_proto_client_process_in(client), LPS_SUCCESS);
-  cr_assert_eq(acks, 1);
+  cr_assert(eq(int, log_proto_client_process_in(client), LPS_SUCCESS));
+  cr_assert(eq(int, acks, 1));
 
   g_string_free(written, TRUE);
   g_string_free(expected, TRUE);
@@ -364,7 +365,7 @@ Test(splunk_s2s_proto_client, post_falls_back_to_default_metadata)
 
   const gchar *raw = "fallback payload";
   gboolean consumed = FALSE;
-  cr_assert_eq(log_proto_client_post(client, msg, (guchar *) g_strdup(raw), strlen(raw), &consumed), LPS_SUCCESS);
+  cr_assert(eq(int, log_proto_client_post(client, msg, (guchar *) g_strdup(raw), strlen(raw), &consumed), LPS_SUCCESS));
   cr_assert(consumed);
 
   GString *written = _written_bytes(transport);
@@ -387,9 +388,9 @@ Test(splunk_s2s_proto_client, post_is_not_consumed_while_handshake_is_pending)
   guchar *payload = (guchar *) g_strdup("queued payload");
   gboolean consumed = FALSE;
 
-  cr_assert_eq(log_proto_client_post(client, msg, payload, strlen((gchar *) payload), &consumed), LPS_PARTIAL);
-  cr_assert_not(consumed, "message must stay in the queue until the handshake finishes");
-  cr_assert_eq(acks, 0);
+  cr_assert(eq(int, log_proto_client_post(client, msg, payload, strlen((gchar *) payload), &consumed), LPS_PARTIAL));
+  cr_assert(not(consumed), "message must stay in the queue until the handshake finishes");
+  cr_assert(eq(int, acks, 0));
 
   g_free(payload);
   log_msg_unref(msg);
@@ -403,7 +404,7 @@ Test(splunk_s2s_proto_client, process_in_detects_eof_when_connected)
   LogProtoClient *client = _client_new(transport);
 
   cr_assert(_run_handshake(client, 100));
-  cr_assert_eq(log_proto_client_process_in(client), LPS_EOF);
+  cr_assert(eq(int, log_proto_client_process_in(client), LPS_EOF));
 
   log_proto_client_free(client);
 }
@@ -419,7 +420,7 @@ _connected_client_with_posted_events(LogTransport *transport, gint n_events)
     {
       LogMessage *msg = _test_msg_new();
       gboolean consumed = FALSE;
-      cr_assert_eq(log_proto_client_post(client, msg, (guchar *) g_strdup("payload"), 7, &consumed), LPS_SUCCESS);
+      cr_assert(eq(int, log_proto_client_post(client, msg, (guchar *) g_strdup("payload"), 7, &consumed), LPS_SUCCESS));
       cr_assert(consumed);
       log_msg_unref(msg);
     }
@@ -433,9 +434,9 @@ Test(splunk_s2s_proto_client, ack_range_confirms_all_covered_messages)
 
   /* 0xfa lo=2 hi=4: the indexer confirms event ids 2..4 in one range */
   log_transport_mock_inject_data((LogTransportMock *) transport, "\xfa\x02\x04", 3);
-  cr_assert_eq(log_proto_client_process_in(client), LPS_SUCCESS);
-  cr_assert_eq(acks, 3);
-  cr_assert_eq(rewinds, 0);
+  cr_assert(eq(int, log_proto_client_process_in(client), LPS_SUCCESS));
+  cr_assert(eq(int, acks, 3));
+  cr_assert(eq(int, rewinds, 0));
 
   log_proto_client_free(client);
 }
@@ -447,17 +448,17 @@ Test(splunk_s2s_proto_client, out_of_order_acks_are_reported_contiguously)
 
   /* id 3 confirmed first: nothing can be acked, the writer backlog is FIFO */
   log_transport_mock_inject_data((LogTransportMock *) transport, "\xfb\x03", 2);
-  cr_assert_eq(log_proto_client_process_in(client), LPS_SUCCESS);
-  cr_assert_eq(acks, 0);
+  cr_assert(eq(int, log_proto_client_process_in(client), LPS_SUCCESS));
+  cr_assert(eq(int, acks, 0));
 
   /* id 2 fills the gap: ids 2-3 are confirmed now */
   log_transport_mock_inject_data((LogTransportMock *) transport, "\xfb\x02", 2);
-  cr_assert_eq(log_proto_client_process_in(client), LPS_SUCCESS);
-  cr_assert_eq(acks, 2);
+  cr_assert(eq(int, log_proto_client_process_in(client), LPS_SUCCESS));
+  cr_assert(eq(int, acks, 2));
 
   log_transport_mock_inject_data((LogTransportMock *) transport, "\xfb\x04", 2);
-  cr_assert_eq(log_proto_client_process_in(client), LPS_SUCCESS);
-  cr_assert_eq(acks, 3);
+  cr_assert(eq(int, log_proto_client_process_in(client), LPS_SUCCESS));
+  cr_assert(eq(int, acks, 3));
 
   log_proto_client_free(client);
 }
@@ -468,7 +469,7 @@ Test(splunk_s2s_proto_client, ack_of_never_sent_id_fails_loud)
   LogProtoClient *client = _connected_client_with_posted_events(transport, 1);
 
   log_transport_mock_inject_data((LogTransportMock *) transport, "\xfb\x09", 2);
-  cr_assert_eq(log_proto_client_process_in(client), LPS_ERROR);
+  cr_assert(eq(int, log_proto_client_process_in(client), LPS_ERROR));
 
   log_proto_client_free(client);
 }
@@ -479,7 +480,7 @@ Test(splunk_s2s_proto_client, unknown_reverse_packet_fails_loud)
   LogProtoClient *client = _connected_client_with_posted_events(transport, 1);
 
   log_transport_mock_inject_data((LogTransportMock *) transport, "\xf0\x02", 2);
-  cr_assert_eq(log_proto_client_process_in(client), LPS_ERROR);
+  cr_assert(eq(int, log_proto_client_process_in(client), LPS_ERROR));
 
   log_proto_client_free(client);
 }
@@ -490,13 +491,13 @@ Test(splunk_s2s_proto_client, connection_loss_with_unconfirmed_messages_rewinds)
   LogTransport *transport = log_transport_mock_stream_new(SERVER_HELLO, SERVER_HELLO_LEN, LTM_EOF);
   LogProtoClient *client = _connected_client_with_posted_events(transport, 2);
 
-  cr_assert_eq(log_proto_client_process_in(client), LPS_EOF);
-  cr_assert_eq(rewinds, 1);
-  cr_assert_eq(acks, 0);
+  cr_assert(eq(int, log_proto_client_process_in(client), LPS_EOF));
+  cr_assert(eq(int, rewinds, 1));
+  cr_assert(eq(int, acks, 0));
 
   /* the proto is torn down after the failure, no double rewind */
   log_proto_client_free(client);
-  cr_assert_eq(rewinds, 1);
+  cr_assert(eq(int, rewinds, 1));
 }
 
 Test(splunk_s2s_proto_client, freeing_with_unconfirmed_messages_rewinds)
@@ -506,9 +507,9 @@ Test(splunk_s2s_proto_client, freeing_with_unconfirmed_messages_rewinds)
 
   /* id 2 is confirmed, id 3 is still in flight when the proto goes away */
   log_transport_mock_inject_data((LogTransportMock *) transport, "\xfb\x02", 2);
-  cr_assert_eq(log_proto_client_process_in(client), LPS_SUCCESS);
-  cr_assert_eq(acks, 1);
+  cr_assert(eq(int, log_proto_client_process_in(client), LPS_SUCCESS));
+  cr_assert(eq(int, acks, 1));
 
   log_proto_client_free(client);
-  cr_assert_eq(rewinds, 1);
+  cr_assert(eq(int, rewinds, 1));
 }

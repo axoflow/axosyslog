@@ -24,6 +24,7 @@
 #include "apphook.h"
 #include "modules/http/http-signals.h"
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 static inline gchar *
 _extract_offending_request(HttpResponseSignalData *data)
@@ -48,11 +49,11 @@ Test(http_adapters, test_splunk_adapter_extract_offending_message)
 
   http_adapter_adapt_response(sa, &data);
 
-  cr_assert_eq(data.result, HTTP_SLOT_CRITICAL_ERROR);
-  cr_assert_eq(data.offending_message, 1);
+  cr_assert(eq(int, data.result, HTTP_SLOT_CRITICAL_ERROR));
+  cr_assert(eq(uint, data.offending_message, 1));
 
   gchar *offending_request = _extract_offending_request(&data);
-  cr_assert_str_eq(offending_request, "foo2");
+  cr_assert(eq(str, offending_request, "foo2"));
   g_free(offending_request);
 
   g_string_free(data.request_body, TRUE);
@@ -74,10 +75,10 @@ Test(http_adapters, test_splunk_adapter_request_is_short)
   };
 
   http_adapter_adapt_response(sa, &data);
-  cr_assert_eq(data.result, HTTP_SLOT_CRITICAL_ERROR);
-  cr_assert_eq(data.offending_message, 3);
-  cr_assert_eq(data.offending_request_start, 0);
-  cr_assert_eq(data.offending_request_len, 0);
+  cr_assert(eq(int, data.result, HTTP_SLOT_CRITICAL_ERROR));
+  cr_assert(eq(uint, data.offending_message, 3));
+  cr_assert(eq(sz, data.offending_request_start, 0));
+  cr_assert(eq(sz, data.offending_request_len, 0));
 
   g_string_free(data.request_body, TRUE);
   g_string_free(data.response_body, TRUE);
@@ -98,10 +99,10 @@ Test(http_adapters, test_splunk_adapter_request_is_even_shorter)
   };
 
   http_adapter_adapt_response(sa, &data);
-  cr_assert_eq(data.result, HTTP_SLOT_CRITICAL_ERROR);
-  cr_assert_eq(data.offending_message, 3);
-  cr_assert_eq(data.offending_request_start, 0);
-  cr_assert_eq(data.offending_request_len, 0);
+  cr_assert(eq(int, data.result, HTTP_SLOT_CRITICAL_ERROR));
+  cr_assert(eq(uint, data.offending_message, 3));
+  cr_assert(eq(sz, data.offending_request_start, 0));
+  cr_assert(eq(sz, data.offending_request_len, 0));
 
   g_string_free(data.request_body, TRUE);
   g_string_free(data.response_body, TRUE);
@@ -121,10 +122,10 @@ Test(http_adapters, test_splunk_adapter_generic_error_uses_default_mapping)
   };
 
   http_adapter_adapt_response(sa, &data);
-  cr_assert_eq(data.result, HTTP_SLOT_SUCCESS);
-  cr_assert_eq(data.offending_message, 0);
-  cr_assert_eq(data.offending_request_start, 0);
-  cr_assert_eq(data.offending_request_len, 0);
+  cr_assert(eq(int, data.result, HTTP_SLOT_SUCCESS));
+  cr_assert(eq(uint, data.offending_message, 0));
+  cr_assert(eq(sz, data.offending_request_start, 0));
+  cr_assert(eq(sz, data.offending_request_len, 0));
 
   g_string_free(data.request_body, TRUE);
   g_string_free(data.response_body, TRUE);
@@ -144,10 +145,10 @@ Test(http_adapters, test_splunk_adapter_non_json_error_uses_default_mapping)
   };
 
   http_adapter_adapt_response(sa, &data);
-  cr_assert_eq(data.result, HTTP_SLOT_SUCCESS);
-  cr_assert_eq(data.offending_message, 0);
-  cr_assert_eq(data.offending_request_start, 0);
-  cr_assert_eq(data.offending_request_len, 0);
+  cr_assert(eq(int, data.result, HTTP_SLOT_SUCCESS));
+  cr_assert(eq(uint, data.offending_message, 0));
+  cr_assert(eq(sz, data.offending_request_start, 0));
+  cr_assert(eq(sz, data.offending_request_len, 0));
 
   g_string_free(data.request_body, TRUE);
   g_string_free(data.response_body, TRUE);

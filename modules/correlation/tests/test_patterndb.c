@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/parameterized.h"
 #include "libtest/msg_parse_lib.h"
 
@@ -92,7 +93,7 @@ _create_pattern_db(const gchar *pdb, gchar **filename)
 
   cr_assert(pattern_db_reload_ruleset(patterndb, configuration, *filename), "Error loading ruleset [[[%s]]]",
             *filename);
-  cr_assert_str_eq(pattern_db_get_ruleset_pub_date(patterndb), "2010-02-22", "Invalid pubdate");
+  cr_assert(eq(str, pattern_db_get_ruleset_pub_date(patterndb), "2010-02-22"), "Invalid pubdate");
 
   return patterndb;
 }
@@ -148,7 +149,8 @@ _advance_time(PatternDB *patterndb, gint timeout)
 static LogMessage *
 _get_output_message(gint ndx)
 {
-  cr_assert(ndx < messages->len, "Expected the %d. message, but no such message was returned by patterndb\n", ndx);
+  cr_assert(lt(i64, ndx, messages->len), "Expected the %d. message, but no such message was returned by patterndb\n",
+            ndx);
   return (LogMessage *) g_ptr_array_index(messages, ndx);
 }
 
@@ -249,7 +251,7 @@ assert_msg_matches_and_output_message_nvpair_equals_with_timeout(PatternDB *patt
 static void
 assert_no_such_output_message(gint ndx)
 {
-  cr_assert(ndx >= messages->len, "Unexpected message generated at %d index\n", ndx);
+  cr_assert(ge(i64, ndx, messages->len), "Unexpected message generated at %d index\n", ndx);
 }
 
 void
@@ -693,8 +695,8 @@ Test(pattern_db, test_tag_outside_of_rule_skeleton)
   g_file_open_tmp("patterndbXXXXXX.xml", &filename, NULL);
   g_file_set_contents(filename, pdb_tag_outside_of_rule_skeleton, strlen(pdb_tag_outside_of_rule_skeleton), NULL);
 
-  cr_assert_not(pattern_db_reload_ruleset(patterndb, configuration, filename),
-                "successfully loaded an invalid patterndb file");
+  cr_assert(not(pattern_db_reload_ruleset(patterndb, configuration, filename)),
+            "successfully loaded an invalid patterndb file");
 
   _destroy_pattern_db(patterndb, filename);
   g_free(filename);
@@ -753,13 +755,13 @@ Test(test_pathutils, test_pdb_get_filenames, .init = test_pdb_get_filenames_setu
   guint expected_len = G_N_ELEMENTS(expected);
   GPtrArray *filenames = pdb_get_filenames("pathutils_get_filenames", TRUE, "*test2*", &error);
 
-  cr_assert(filenames);
-  cr_assert(filenames->len == expected_len);
+  cr_assert(not(zero(ptr, filenames)));
+  cr_assert(eq(uint, filenames->len, expected_len));
 
   pdb_sort_filenames(filenames);
 
   for (guint i = 0; i < filenames->len; ++i)
-    cr_assert_str_eq(g_ptr_array_index(filenames, i), expected[i]);
+    cr_assert(eq(str, g_ptr_array_index(filenames, i), expected[i]));
 
   g_ptr_array_free(filenames, TRUE);
 }
@@ -856,8 +858,8 @@ Test(pattern_db, test_set_at_end_of_input_does_not_match_zero_chars)
   PatternDB *patterndb = _create_pattern_db(pdb_test_set_at_end_of_input, &filename);
 
   LogMessage *msg = _construct_message("prog1", "prefix");
-  cr_assert_not(_process(patterndb, msg),
-                "SET at end-of-input must not match when there are no chars to consume");
+  cr_assert(not(_process(patterndb, msg)),
+            "SET at end-of-input must not match when there are no chars to consume");
   log_msg_unref(msg);
 
   assert_msg_matches_and_nvpair_equals(patterndb, "prefix ", "s", " ");
@@ -881,20 +883,20 @@ Test(pattern_db, test_pdb_rule_set_load_examples_ownership)
 
   cr_assert(pdb_rule_set_load(ruleset, configuration, filename, &examples),
             "pdb_rule_set_load failed");
-  cr_assert_not_null(examples, "caller should receive the examples list");
+  cr_assert(not(zero(ptr, examples)), "caller should receive the examples list");
 
   gint count = 0;
   for (GList *l = examples; l; l = l->next)
     {
       PDBExample *example = (PDBExample *) l->data;
-      cr_assert_not_null(example, "example node holds a NULL pointer");
-      cr_assert_not_null(example->program, "example->program freed by loader");
-      cr_assert_not_null(example->message, "example->message freed by loader");
-      cr_assert_str_eq(example->program, "prog1",
-                       "example->program corrupted: got '%s'", example->program);
+      cr_assert(not(zero(ptr, example)), "example node holds a NULL pointer");
+      cr_assert(not(zero(ptr, example->program)), "example->program freed by loader");
+      cr_assert(not(zero(ptr, example->message)), "example->message freed by loader");
+      cr_assert(eq(str, example->program, "prog1"),
+                "example->program corrupted: got '%s'", example->program);
       count++;
     }
-  cr_assert_eq(count, 2, "expected 2 examples, got %d", count);
+  cr_assert(eq(int, count, 2), "expected 2 examples, got %d", count);
 
   g_list_foreach(examples, (GFunc) pdb_example_free, NULL);
   g_list_free(examples);

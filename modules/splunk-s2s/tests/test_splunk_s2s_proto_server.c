@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "libtest/mock-transport.h"
 #include "libtest/proto_lib.h"
@@ -181,12 +182,19 @@ _fetch(LogProtoServer *proto, FetchedMessage *message)
 static void
 _assert_fetch(LogProtoServer *proto, FetchedMessage *message, const gchar *expected_raw)
 {
-  cr_assert_eq(_fetch(proto, message), LPS_SUCCESS);
-  cr_assert_not_null(message->raw, "expected a message but none was returned: %s", expected_raw);
-  cr_assert_eq(message->raw->len, strlen(expected_raw),
-               "message length mismatch, actual: '%.*s' expected: '%s'",
-               (gint) message->raw->len, message->raw->str, expected_raw);
-  cr_assert_arr_eq(message->raw->str, expected_raw, message->raw->len);
+  cr_assert(eq(int, _fetch(proto, message), LPS_SUCCESS));
+  cr_assert(not(zero(ptr, message->raw)), "expected a message but none was returned: %s", expected_raw);
+  cr_assert(eq(sz, message->raw->len, strlen(expected_raw)),
+            "message length mismatch, actual: '%.*s' expected: '%s'",
+            (gint) message->raw->len, message->raw->str, expected_raw);
+  cr_assert(eq(mem, ((struct cr_mem)
+  {
+    .data = message->raw->str, .size = message->raw->len
+  }),
+  ((struct cr_mem)
+  {
+    .data = expected_raw, .size = message->raw->len
+  })));
 }
 
 static void
@@ -194,8 +202,8 @@ _assert_no_more_messages(LogProtoServer *proto)
 {
   FetchedMessage message;
 
-  cr_assert_eq(_fetch(proto, &message), LPS_EOF);
-  cr_assert_null(message.raw);
+  cr_assert(eq(int, _fetch(proto, &message), LPS_EOF));
+  cr_assert(zero(ptr, message.raw));
 }
 
 static void
@@ -204,9 +212,9 @@ _assert_fetch_fails(LogProtoServer *proto)
   FetchedMessage message;
 
   start_grabbing_messages();
-  cr_assert_eq(_fetch(proto, &message), LPS_ERROR);
+  cr_assert(eq(int, _fetch(proto, &message), LPS_ERROR));
   stop_grabbing_messages();
-  cr_assert_null(message.raw);
+  cr_assert(zero(ptr, message.raw));
 }
 
 Test(splunk_s2s_proto_server, handshake_replies_with_the_capability_grant)
@@ -222,8 +230,15 @@ Test(splunk_s2s_proto_server, handshake_replies_with_the_capability_grant)
 
   GString *written = _written_bytes(transport);
   GString *expected = _expected_hello();
-  cr_assert_eq(written->len, expected->len);
-  cr_assert_arr_eq(written->str, expected->str, expected->len);
+  cr_assert(eq(sz, written->len, expected->len));
+  cr_assert(eq(mem, ((struct cr_mem)
+  {
+    .data = written->str, .size = expected->len
+  }),
+  ((struct cr_mem)
+  {
+    .data = expected->str, .size = expected->len
+  })));
 
   _assert_no_more_messages(proto);
 
@@ -244,12 +259,12 @@ Test(splunk_s2s_proto_server, forwarder_info_is_delivered_as_an_internal_message
 
   FetchedMessage message;
   _assert_fetch(proto, &message, "ForwarderInfo build=test version=10.2.2");
-  cr_assert_str_eq(message.index, "_internal");
-  cr_assert_str_eq(message.source, "fwd");
-  cr_assert_str_eq(message.sourcetype, "fwdinfo");
-  cr_assert_str_eq(message.host, "$decideOnStartup");
-  cr_assert_str_eq(message.host_macro, "$decideOnStartup");
-  cr_assert_eq(message.timestamp, 1700000000);
+  cr_assert(eq(str, message.index, "_internal"));
+  cr_assert(eq(str, message.source, "fwd"));
+  cr_assert(eq(str, message.sourcetype, "fwdinfo"));
+  cr_assert(eq(str, message.host, "$decideOnStartup"));
+  cr_assert(eq(str, message.host_macro, "$decideOnStartup"));
+  cr_assert(eq(u64, message.timestamp, 1700000000));
   _fetched_message_clear(&message);
 
   _assert_no_more_messages(proto);
@@ -289,21 +304,21 @@ Test(splunk_s2s_proto_server, aggregated_events_map_to_one_message_each)
 
   /* channel defaults apply when the event carries no overrides */
   _assert_fetch(proto, &message, "first event\nwith an embedded line break");
-  cr_assert_null(message.index);
-  cr_assert_str_eq(message.source, "/var/log/app.log");
-  cr_assert_str_eq(message.sourcetype, "app_logs");
-  cr_assert_str_eq(message.host, "webserver");
-  cr_assert_str_eq(message.host_macro, "webserver");
-  cr_assert_eq(message.timestamp, 1700000000);
+  cr_assert(zero(ptr, message.index));
+  cr_assert(eq(str, message.source, "/var/log/app.log"));
+  cr_assert(eq(str, message.sourcetype, "app_logs"));
+  cr_assert(eq(str, message.host, "webserver"));
+  cr_assert(eq(str, message.host_macro, "webserver"));
+  cr_assert(eq(u64, message.timestamp, 1700000000));
   _fetched_message_clear(&message);
 
   /* per-event fields override the channel defaults */
   _assert_fetch(proto, &message, "second event");
-  cr_assert_str_eq(message.index, "custom");
-  cr_assert_str_eq(message.source, "/var/log/app.log");
-  cr_assert_str_eq(message.sourcetype, "override_st");
-  cr_assert_str_eq(message.host, "other-host");
-  cr_assert_eq(message.timestamp, 1782963360);
+  cr_assert(eq(str, message.index, "custom"));
+  cr_assert(eq(str, message.source, "/var/log/app.log"));
+  cr_assert(eq(str, message.sourcetype, "override_st"));
+  cr_assert(eq(str, message.host, "other-host"));
+  cr_assert(eq(u64, message.timestamp, 1782963360));
   _fetched_message_clear(&message);
 
   _assert_no_more_messages(proto);
@@ -332,9 +347,9 @@ Test(splunk_s2s_proto_server, raw_chunks_are_reassembled_and_split_on_line_break
   _fetched_message_clear(&message);
 
   _assert_fetch(proto, &message, "line1");
-  cr_assert_str_eq(message.source, "/corpus/access.log");
-  cr_assert_str_eq(message.sourcetype, "access_combined");
-  cr_assert_str_eq(message.host, "forwarder");
+  cr_assert(eq(str, message.source, "/corpus/access.log"));
+  cr_assert(eq(str, message.sourcetype, "access_combined"));
+  cr_assert(eq(str, message.host, "forwarder"));
   _fetched_message_clear(&message);
 
   _assert_fetch(proto, &message, "line2");
@@ -371,7 +386,7 @@ Test(splunk_s2s_proto_server, close_channel_flushes_the_chunk_remainder)
 
   /* events on a closed channel fail loud */
   start_grabbing_messages();
-  cr_assert_eq(_fetch(proto, &message), LPS_ERROR);
+  cr_assert(eq(int, _fetch(proto, &message), LPS_ERROR));
   stop_grabbing_messages();
   assert_grabbed_log_contains("splunk-s2s: event received on a channel that was never opened");
 
@@ -396,8 +411,8 @@ Test(splunk_s2s_proto_server, clone_channel_opens_the_second_channel_id)
   _fetched_message_clear(&message);
 
   _assert_fetch(proto, &message, "cloned channel event");
-  cr_assert_str_eq(message.source, "/var/log/introspection/resource_usage.log");
-  cr_assert_str_eq(message.sourcetype, "splunk_resource_usage");
+  cr_assert(eq(str, message.source, "/var/log/introspection/resource_usage.log"));
+  cr_assert(eq(str, message.sourcetype, "splunk_resource_usage"));
   _fetched_message_clear(&message);
 
   _assert_no_more_messages(proto);
@@ -424,9 +439,9 @@ Test(splunk_s2s_proto_server, clone_channel_with_an_absent_slot)
   _fetched_message_clear(&message);
 
   _assert_fetch(proto, &message, "cloned channel event");
-  cr_assert_str_eq(message.source, "/var/log/introspection/resource_usage.log");
-  cr_assert_str_eq(message.sourcetype, "splunk_resource_usage");
-  cr_assert_null(message.host);
+  cr_assert(eq(str, message.source, "/var/log/introspection/resource_usage.log"));
+  cr_assert(eq(str, message.sourcetype, "splunk_resource_usage"));
+  cr_assert(zero(ptr, message.host));
   _fetched_message_clear(&message);
 
   _assert_no_more_messages(proto);
@@ -451,8 +466,15 @@ Test(splunk_s2s_proto_server, legacy_greeting_is_accepted)
 
   GString *written = _written_bytes(transport);
   GString *expected = _expected_hello();
-  cr_assert_eq(written->len, expected->len);
-  cr_assert_arr_eq(written->str, expected->str, expected->len);
+  cr_assert(eq(sz, written->len, expected->len));
+  cr_assert(eq(mem, ((struct cr_mem)
+  {
+    .data = written->str, .size = expected->len
+  }),
+  ((struct cr_mem)
+  {
+    .data = expected->str, .size = expected->len
+  })));
 
   g_string_free(expected, TRUE);
   g_string_free(written, TRUE);
@@ -496,7 +518,7 @@ Test(splunk_s2s_proto_server, overlong_varint_fails_loud)
   _fetched_message_clear(&message);
 
   start_grabbing_messages();
-  cr_assert_eq(_fetch(proto, &message), LPS_ERROR);
+  cr_assert(eq(int, _fetch(proto, &message), LPS_ERROR));
   stop_grabbing_messages();
   assert_grabbed_log_contains("invalid varint running past the 64-bit ceiling");
 
@@ -521,7 +543,7 @@ Test(splunk_s2s_proto_server, zero_packet_id_is_a_desync)
   _fetched_message_clear(&message);
 
   start_grabbing_messages();
-  cr_assert_eq(_fetch(proto, &message), LPS_ERROR);
+  cr_assert(eq(int, _fetch(proto, &message), LPS_ERROR));
   stop_grabbing_messages();
   assert_grabbed_log_contains("splunk-s2s: unexpected packet");
 
@@ -562,8 +584,15 @@ Test(splunk_s2s_proto_server, decoded_event_ids_are_acknowledged_when_requested)
   splunk_s2s_format_ack(expected, 7, 7);
 
   GString *written = _written_bytes(transport);
-  cr_assert_eq(written->len, expected->len);
-  cr_assert_arr_eq(written->str, expected->str, expected->len);
+  cr_assert(eq(sz, written->len, expected->len));
+  cr_assert(eq(mem, ((struct cr_mem)
+  {
+    .data = written->str, .size = expected->len
+  }),
+  ((struct cr_mem)
+  {
+    .data = expected->str, .size = expected->len
+  })));
 
   g_string_free(expected, TRUE);
   g_string_free(written, TRUE);
@@ -591,8 +620,15 @@ Test(splunk_s2s_proto_server, no_acknowledgements_without_the_capability)
 
   GString *expected = _expected_hello();
   GString *written = _written_bytes(transport);
-  cr_assert_eq(written->len, expected->len);
-  cr_assert_arr_eq(written->str, expected->str, expected->len);
+  cr_assert(eq(sz, written->len, expected->len));
+  cr_assert(eq(mem, ((struct cr_mem)
+  {
+    .data = written->str, .size = expected->len
+  }),
+  ((struct cr_mem)
+  {
+    .data = expected->str, .size = expected->len
+  })));
 
   g_string_free(expected, TRUE);
   g_string_free(written, TRUE);
@@ -613,7 +649,7 @@ Test(splunk_s2s_proto_server, oversized_event_fails_loud)
 
   FetchedMessage message;
   start_grabbing_messages();
-  cr_assert_eq(_fetch(proto, &message), LPS_ERROR);
+  cr_assert(eq(int, _fetch(proto, &message), LPS_ERROR));
   stop_grabbing_messages();
   assert_grabbed_log_contains("splunk-s2s: incoming event larger than log-msg-size()");
 
@@ -675,7 +711,7 @@ Test(splunk_s2s_proto_server, zlib_switch_fails_loud)
   _fetched_message_clear(&message);
 
   start_grabbing_messages();
-  cr_assert_eq(_fetch(proto, &message), LPS_ERROR);
+  cr_assert(eq(int, _fetch(proto, &message), LPS_ERROR));
   stop_grabbing_messages();
   assert_grabbed_log_contains("splunk-s2s: the forwarder switched to stream compression");
 
@@ -698,7 +734,7 @@ Test(splunk_s2s_proto_server, unknown_packet_fails_loud)
   _fetched_message_clear(&message);
 
   start_grabbing_messages();
-  cr_assert_eq(_fetch(proto, &message), LPS_ERROR);
+  cr_assert(eq(int, _fetch(proto, &message), LPS_ERROR));
   stop_grabbing_messages();
   assert_grabbed_log_contains("splunk-s2s: unexpected packet");
 

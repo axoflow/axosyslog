@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "libtest/config_parse_lib.h"
 #include "libtest/grab-logging.h"
@@ -108,42 +109,42 @@ Test(lumberjack, grammar_defaults)
 {
   LogProtoServerFactory *factory = _parse_lumberjack_transport("lumberjack()");
 
-  cr_assert_not_null(factory);
-  cr_assert_eq(factory->default_inet_port, LUMBERJACK_DEFAULT_PORT);
-  cr_assert(!log_proto_server_factory_is_proto_stateful(factory));
-  cr_assert_eq(_options()->lumberjack.max_window_size, LUMBERJACK_DEFAULT_MAX_WINDOW_SIZE);
-  cr_assert_eq(_options()->lumberjack.keepalive_interval, LUMBERJACK_DEFAULT_KEEPALIVE_INTERVAL);
-  cr_assert_eq(_options()->lumberjack.window_timeout, LUMBERJACK_DEFAULT_WINDOW_TIMEOUT);
-  cr_assert_eq(_options()->lumberjack.max_inflated_size, LUMBERJACK_DEFAULT_MAX_INFLATED_SIZE);
+  cr_assert(not(zero(ptr, factory)));
+  cr_assert(eq(int, factory->default_inet_port, LUMBERJACK_DEFAULT_PORT));
+  cr_assert(not(log_proto_server_factory_is_proto_stateful(factory)));
+  cr_assert(eq(int, _options()->lumberjack.max_window_size, LUMBERJACK_DEFAULT_MAX_WINDOW_SIZE));
+  cr_assert(eq(int, _options()->lumberjack.keepalive_interval, LUMBERJACK_DEFAULT_KEEPALIVE_INTERVAL));
+  cr_assert(eq(int, _options()->lumberjack.window_timeout, LUMBERJACK_DEFAULT_WINDOW_TIMEOUT));
+  cr_assert(eq(i64, _options()->lumberjack.max_inflated_size, LUMBERJACK_DEFAULT_MAX_INFLATED_SIZE));
 }
 
 Test(lumberjack, grammar_empty_option_block)
 {
-  cr_assert_not_null(_parse_lumberjack_transport("lumberjack()"));
-  cr_assert_eq(_options()->lumberjack.max_window_size, LUMBERJACK_DEFAULT_MAX_WINDOW_SIZE);
+  cr_assert(not(zero(ptr, _parse_lumberjack_transport("lumberjack()"))));
+  cr_assert(eq(int, _options()->lumberjack.max_window_size, LUMBERJACK_DEFAULT_MAX_WINDOW_SIZE));
 }
 
 Test(lumberjack, grammar_options)
 {
-  cr_assert_not_null(_parse_lumberjack_transport("lumberjack(max-window-size(2048) keepalive-interval(3) "
-                                                 "window-timeout(0) max-inflated-size(1048576))"));
-  cr_assert_eq(_options()->lumberjack.max_window_size, 2048);
-  cr_assert_eq(_options()->lumberjack.keepalive_interval, 3);
-  cr_assert_eq(_options()->lumberjack.window_timeout, 0);
-  cr_assert_eq(_options()->lumberjack.max_inflated_size, 1048576);
+  cr_assert(not(zero(ptr, _parse_lumberjack_transport("lumberjack(max-window-size(2048) keepalive-interval(3) "
+                                                      "window-timeout(0) max-inflated-size(1048576))"))));
+  cr_assert(eq(int, _options()->lumberjack.max_window_size, 2048));
+  cr_assert(eq(int, _options()->lumberjack.keepalive_interval, 3));
+  cr_assert(eq(int, _options()->lumberjack.window_timeout, 0));
+  cr_assert(eq(i64, _options()->lumberjack.max_inflated_size, 1048576));
 }
 
 Test(lumberjack, grammar_zero_disables_the_window_size_limit)
 {
-  cr_assert_not_null(_parse_lumberjack_transport("lumberjack(max_window_size(0))"));
-  cr_assert_eq(_options()->lumberjack.max_window_size, 0);
+  cr_assert(not(zero(ptr, _parse_lumberjack_transport("lumberjack(max_window_size(0))"))));
+  cr_assert(eq(int, _options()->lumberjack.max_window_size, 0));
 }
 
 Test(lumberjack, grammar_installs_the_consecutive_ack_tracker)
 {
   _parse_lumberjack_transport("lumberjack()");
-  cr_assert_not_null(options_storage.super.ack_tracker_factory);
-  cr_assert_eq(ack_tracker_factory_get_type(options_storage.super.ack_tracker_factory), ACK_CONSECUTIVE);
+  cr_assert(not(zero(ptr, options_storage.super.ack_tracker_factory)));
+  cr_assert(eq(int, ack_tracker_factory_get_type(options_storage.super.ack_tracker_factory), ACK_CONSECUTIVE));
 }
 
 /* @tail is the text following the plugin name, up to and including the ')' of
@@ -165,21 +166,21 @@ _parse_lumberjack_transport_tail(const gchar *tail)
   log_proto_server_options_defaults(&options_storage.super);
 
   Plugin *plugin = cfg_find_plugin(configuration, LL_CONTEXT_SERVER_PROTO, "lumberjack");
-  cr_assert_not_null(plugin, "the lumberjack server-proto plugin is not registered");
-  cr_assert_not_null(plugin->parser, "the lumberjack plugin must have a grammar of its own");
+  cr_assert(not(zero(ptr, plugin)), "the lumberjack server-proto plugin is not registered");
+  cr_assert(not(zero(ptr, plugin->parser)), "the lumberjack plugin must have a grammar of its own");
 
   CfgLexer *lexer = cfg_lexer_new_buffer(configuration, tail, strlen(tail));
-  cr_assert_not_null(lexer);
+  cr_assert(not(zero(ptr, lexer)));
   configuration->lexer = lexer;
   cfg_lexer_push_context(lexer, main_parser.context, main_parser.keywords, main_parser.name);
   gpointer result = cfg_parse_plugin(configuration, plugin, &yylloc, &options_storage.super);
   cfg_lexer_pop_context(lexer);
 
-  cr_assert_not_null(result, "the lumberjack grammar did not return a LogProtoServerFactory");
+  cr_assert(not(zero(ptr, result)), "the lumberjack grammar did not return a LogProtoServerFactory");
 
   memset(&yylval, 0, sizeof(yylval));
-  cr_assert_eq(cfg_lexer_lex(lexer, &yylval, &yylloc), ')',
-               "the lumberjack grammar consumed the closing paren of transport()");
+  cr_assert(eq(int, cfg_lexer_lex(lexer, &yylval, &yylloc), ')'),
+            "the lumberjack grammar consumed the closing paren of transport()");
   cfg_lexer_free_token(&yylval);
 
   configuration->lexer = old_lexer;
@@ -195,14 +196,14 @@ Test(lumberjack, grammar_leaves_the_paren_of_transport_alone)
 {
   LogProtoServerFactory *factory = _parse_lumberjack_transport_tail("(max-window-size(5)))");
 
-  cr_assert_eq(factory->default_inet_port, LUMBERJACK_DEFAULT_PORT);
-  cr_assert_eq(_options()->lumberjack.max_window_size, 5);
+  cr_assert(eq(int, factory->default_inet_port, LUMBERJACK_DEFAULT_PORT));
+  cr_assert(eq(int, _options()->lumberjack.max_window_size, 5));
 }
 
 Test(lumberjack, grammar_bare_name_leaves_the_paren_of_transport_alone)
 {
   _parse_lumberjack_transport_tail(")");
-  cr_assert_eq(_options()->lumberjack.max_window_size, LUMBERJACK_DEFAULT_MAX_WINDOW_SIZE);
+  cr_assert(eq(int, _options()->lumberjack.max_window_size, LUMBERJACK_DEFAULT_MAX_WINDOW_SIZE));
 }
 
 /****************************************************************************
@@ -342,7 +343,7 @@ _put_compressed(GString *s, gchar version, const GString *frames, gint level)
   uLongf compressed_len = compressBound(frames->len);
   guchar *compressed = g_malloc(compressed_len);
 
-  cr_assert_eq(compress2(compressed, &compressed_len, (const Bytef *) frames->str, frames->len, level), Z_OK);
+  cr_assert(eq(int, compress2(compressed, &compressed_len, (const Bytef *) frames->str, frames->len, level), Z_OK));
   g_string_append_c(s, version);
   g_string_append_c(s, 'C');
   _put_u32(s, compressed_len);
@@ -519,7 +520,7 @@ _connection_init_full(LumberjackTestConnection *self, const gchar *snippet, GStr
   self->transport = (ObservedTransport *) _observed_transport_new(mock);
 
   self->proto = log_proto_server_factory_construct(factory, &self->transport->super, &options_storage.super, NULL);
-  cr_assert_not_null(self->proto);
+  cr_assert(not(zero(ptr, self->proto)));
 
   if (with_tls)
     log_transport_stack_add_factory(&self->proto->transport_stack, _fake_tls_transport_factory_new());
@@ -600,7 +601,7 @@ _pump_until(LumberjackTestConnection *self, gsize wanted_written, guint wanted_m
       self->cond = 0;
       self->timeout = -1;
       self->action = log_proto_server_poll_prepare(self->proto, &self->cond, &self->timeout);
-      cr_assert_neq(self->action, LPPA_SUSPEND, "the lumberjack proto never suspends itself");
+      cr_assert(ne(int, self->action, LPPA_SUSPEND), "the lumberjack proto never suspends itself");
 
       gboolean wants_write = self->action == LPPA_POLL_IO && self->cond == G_IO_OUT;
 
@@ -617,7 +618,7 @@ _pump_until(LumberjackTestConnection *self, gsize wanted_written, guint wanted_m
 
       if (msg)
         {
-          cr_assert_not_null(bookmark, "a message was delivered with no Bookmark to carry it");
+          cr_assert(not(zero(ptr, bookmark)), "a message was delivered with no Bookmark to carry it");
           g_ptr_array_add(self->messages, msg);
           g_ptr_array_add(self->bookmarks, bookmark);
         }
@@ -632,7 +633,7 @@ _pump_until(LumberjackTestConnection *self, gsize wanted_written, guint wanted_m
         return LUMBERJACK_PUMP_ERROR;
     }
 
-  cr_assert_fail("the lumberjack proto neither went idle nor reached a terminal status");
+  cr_fatal("the lumberjack proto neither went idle nor reached a terminal status");
   return LUMBERJACK_PUMP_ERROR;
 }
 
@@ -646,9 +647,16 @@ static void
 _assert_written(LumberjackTestConnection *self, GString *expected)
 {
   _pump_until(self, expected->len, 0);
-  cr_assert_eq(self->written->len, expected->len, "%u octets were written, %u expected",
-               (guint) self->written->len, (guint) expected->len);
-  cr_assert_arr_eq(self->written->str, expected->str, expected->len);
+  cr_assert(eq(sz, self->written->len, expected->len), "%u octets were written, %u expected",
+            (guint) self->written->len, (guint) expected->len);
+  cr_assert(eq(mem, ((struct cr_mem)
+  {
+    .data = self->written->str, .size = expected->len
+  }),
+  ((struct cr_mem)
+  {
+    .data = expected->str, .size = expected->len
+  })));
   g_string_free(expected, TRUE);
 }
 
@@ -656,26 +664,33 @@ static void
 _assert_nothing_written(LumberjackTestConnection *self)
 {
   _pump(self);
-  cr_assert_eq(self->written->len, 0, "%u octets were written, none expected", (guint) self->written->len);
+  cr_assert(eq(sz, self->written->len, 0), "%u octets were written, none expected", (guint) self->written->len);
 }
 
 static void
 _assert_message(LumberjackTestConnection *self, guint index, const gchar *payload, const gchar *version)
 {
-  cr_assert_gt(self->messages->len, index, "the proto delivered %u messages, not %u",
-               self->messages->len, index + 1);
+  cr_assert(gt(uint, self->messages->len, index), "the proto delivered %u messages, not %u",
+            self->messages->len, index + 1);
 
   LogMessage *msg = (LogMessage *) g_ptr_array_index(self->messages, index);
   gssize len;
   const gchar *value = log_msg_get_value(msg, LM_V_MESSAGE, &len);
 
-  cr_assert_eq((gsize) len, strlen(payload), "message %u is %u octets long, not %u", index, (guint) len,
-               (guint) strlen(payload));
-  cr_assert_arr_eq(value, payload, len);
+  cr_assert(eq(sz, (gsize) len, strlen(payload)), "message %u is %u octets long, not %u", index, (guint) len,
+            (guint) strlen(payload));
+  cr_assert(eq(mem, ((struct cr_mem)
+  {
+    .data = value, .size = len
+  }),
+  ((struct cr_mem)
+  {
+    .data = payload, .size = len
+  })));
 
   value = log_msg_get_value_by_name(msg, ".lumberjack.version", &len);
-  cr_assert_eq(len, 1);
-  cr_assert_eq(value[0], version[0], "message %u carries version %c, not %c", index, value[0], version[0]);
+  cr_assert(eq(i64, len, 1));
+  cr_assert(eq(chr, value[0], version[0]), "message %u carries version %c, not %c", index, value[0], version[0]);
 }
 
 /* as the consecutive ack tracker does on the destination thread, for the last
@@ -683,7 +698,7 @@ _assert_message(LumberjackTestConnection *self, guint index, const gchar *payloa
 static void
 _report_durable(LumberjackTestConnection *self, guint index)
 {
-  cr_assert_gt(self->bookmarks->len, index);
+  cr_assert(gt(uint, self->bookmarks->len, index));
   bookmark_save((Bookmark *) g_ptr_array_index(self->bookmarks, index));
 }
 
@@ -714,7 +729,7 @@ Test(lumberjack, frames_become_messages_as_they_arrive)
   _connection_init(&conn);
   _inject(&conn, _window_of_json(3, "m"));
 
-  cr_assert_eq(_pump_until(&conn, 0, 3), LUMBERJACK_PUMP_MESSAGES);
+  cr_assert(eq(int, _pump_until(&conn, 0, 3), LUMBERJACK_PUMP_MESSAGES));
   _assert_message(&conn, 0, "{\"message\":\"m-1\"}", "2");
   _assert_message(&conn, 1, "{\"message\":\"m-2\"}", "2");
   _assert_message(&conn, 2, "{\"message\":\"m-3\"}", "2");
@@ -754,11 +769,11 @@ Test(lumberjack, ack_is_written_even_when_the_flow_control_window_is_full)
   _report_durable(&conn, 1);
   GIOCondition cond = 0;
   gint timeout = -1;
-  cr_assert_eq(log_proto_server_poll_prepare(conn.proto, &cond, &timeout), LPPA_POLL_IO);
-  cr_assert_eq(cond, G_IO_OUT, "an ACK that is due polls for writability only");
+  cr_assert(eq(int, log_proto_server_poll_prepare(conn.proto, &cond, &timeout), LPPA_POLL_IO));
+  cr_assert(eq(int, cond, G_IO_OUT), "an ACK that is due polls for writability only");
 
   _assert_written(&conn, _ack('2', 2));
-  cr_assert_eq(conn.messages->len, 2, "no message may be delivered while the window is exhausted");
+  cr_assert(eq(uint, conn.messages->len, 2), "no message may be delivered while the window is exhausted");
 
   conn.window_full = FALSE;
   _pump_until(&conn, 0, 3);
@@ -801,7 +816,7 @@ Test(lumberjack, durability_of_the_first_window_acknowledges_the_first_only)
 
   _report_durable(&conn, 3);
   _pump(&conn);
-  cr_assert_eq(conn.written->len, 6, "the second window is not durable yet");
+  cr_assert(eq(sz, conn.written->len, 6), "the second window is not durable yet");
   _connection_deinit(&conn);
 }
 
@@ -831,7 +846,7 @@ Test(lumberjack, frames_arriving_one_octet_at_a_time_are_reassembled)
   /* the stream mock returns a single octet per read */
   _connection_init_stream(&conn, input);
 
-  cr_assert_eq(_pump_until(&conn, 0, 2), LUMBERJACK_PUMP_MESSAGES);
+  cr_assert(eq(int, _pump_until(&conn, 0, 2), LUMBERJACK_PUMP_MESSAGES));
   _assert_message(&conn, 1, "{\"message\":\"slow-2\"}", "2");
   _report_durable(&conn, 1);
   _assert_written(&conn, _ack('2', 2));
@@ -854,8 +869,15 @@ Test(lumberjack, payload_is_delivered_verbatim_including_nuls_and_invalid_utf8)
   LogMessage *msg = (LogMessage *) g_ptr_array_index(conn.messages, 0);
   gssize len;
   const gchar *value = log_msg_get_value(msg, LM_V_MESSAGE, &len);
-  cr_assert_eq((gsize) len, sizeof(payload) - 1);
-  cr_assert_arr_eq(value, payload, len);
+  cr_assert(eq(sz, (gsize) len, sizeof(payload) - 1));
+  cr_assert(eq(mem, ((struct cr_mem)
+  {
+    .data = value, .size = len
+  }),
+  ((struct cr_mem)
+  {
+    .data = payload, .size = len
+  })));
   _connection_deinit(&conn);
 }
 
@@ -870,10 +892,10 @@ Test(lumberjack, eof_in_the_middle_of_a_window_acknowledges_nothing)
   /* the records mock returns EOF once the input is consumed */
   _connection_init_full(&conn, "lumberjack()", input, FALSE, FALSE);
 
-  cr_assert_eq(_pump(&conn), LUMBERJACK_PUMP_EOF);
-  cr_assert_eq(conn.messages->len, 1);
+  cr_assert(eq(int, _pump(&conn), LUMBERJACK_PUMP_EOF));
+  cr_assert(eq(uint, conn.messages->len, 1));
   _report_durable(&conn, 0);
-  cr_assert_eq(conn.written->len, 0);
+  cr_assert(eq(sz, conn.written->len, 0));
   _connection_deinit(&conn);
 }
 
@@ -936,12 +958,12 @@ Test(lumberjack, version1_frame_whose_escaped_form_outgrows_log_msg_size_is_drop
 
   start_grabbing_messages();
   _inject(&conn, input);
-  cr_assert_eq(_pump_until(&conn, 0, 1), LUMBERJACK_PUMP_MESSAGES);
+  cr_assert(eq(int, _pump_until(&conn, 0, 1), LUMBERJACK_PUMP_MESSAGES));
   stop_grabbing_messages();
   assert_grabbed_log_contains("Dropping a message larger than log-msg-size()");
 
   _assert_message(&conn, 0, "{\"k\":\"v\"}", "1");
-  cr_assert_eq(conn.messages->len, 1);
+  cr_assert(eq(uint, conn.messages->len, 1));
   _report_durable(&conn, 0);
   _assert_written(&conn, _ack('1', 2));
   _connection_deinit(&conn);
@@ -963,7 +985,7 @@ Test(lumberjack, version1_escaped_object_of_exactly_log_msg_size_is_accepted)
   for (gint i = 0; i < 15; i++)
     g_string_append(expected, "\\u0001");
   g_string_append(expected, "ab\"}");
-  cr_assert_eq(expected->len, 100);
+  cr_assert(eq(sz, expected->len, 100));
 
   _put_window(input, '1', 1);
   _put_data_frame_1(input, 1, "k", value, 17);
@@ -973,7 +995,7 @@ Test(lumberjack, version1_escaped_object_of_exactly_log_msg_size_is_accepted)
   _connection_init(&conn);
   options_storage.super.max_msg_size = 100;
   _inject(&conn, input);
-  cr_assert_eq(_pump_until(&conn, 0, 1), LUMBERJACK_PUMP_MESSAGES);
+  cr_assert(eq(int, _pump_until(&conn, 0, 1), LUMBERJACK_PUMP_MESSAGES));
   _assert_message(&conn, 0, expected->str, "1");
   g_string_free(expected, TRUE);
 
@@ -985,7 +1007,7 @@ Test(lumberjack, version1_escaped_object_of_exactly_log_msg_size_is_accepted)
   g_string_append_len(acks, second->str, second->len);
   g_string_free(second, TRUE);
   _assert_written(&conn, acks);
-  cr_assert_eq(conn.messages->len, 1);
+  cr_assert(eq(uint, conn.messages->len, 1));
   _connection_deinit(&conn);
 }
 
@@ -1008,7 +1030,7 @@ Test(lumberjack, version1_field_larger_than_the_initial_buffer_is_reassembled)
   _connection_init_stream(&conn, input);
   options_storage.super.init_buffer_size = 16;
   options_storage.super.max_msg_size = 1000;
-  cr_assert_eq(_pump_until(&conn, 0, 1), LUMBERJACK_PUMP_MESSAGES);
+  cr_assert(eq(int, _pump_until(&conn, 0, 1), LUMBERJACK_PUMP_MESSAGES));
   _assert_message(&conn, 0, expected->str, "1");
   g_string_free(expected, TRUE);
   _connection_deinit(&conn);
@@ -1029,12 +1051,19 @@ Test(lumberjack, json_payload_larger_than_the_initial_buffer_is_reassembled)
   _connection_init_stream(&conn, input);
   options_storage.super.init_buffer_size = 16;
   options_storage.super.max_msg_size = 1000;
-  cr_assert_eq(_pump_until(&conn, 0, 1), LUMBERJACK_PUMP_MESSAGES);
+  cr_assert(eq(int, _pump_until(&conn, 0, 1), LUMBERJACK_PUMP_MESSAGES));
   LogMessage *msg = (LogMessage *) g_ptr_array_index(conn.messages, 0);
   gssize len;
   const gchar *value = log_msg_get_value(msg, LM_V_MESSAGE, &len);
-  cr_assert_eq((gsize) len, sizeof(payload));
-  cr_assert_arr_eq(value, payload, sizeof(payload));
+  cr_assert(eq(sz, (gsize) len, sizeof(payload)));
+  cr_assert(eq(mem, ((struct cr_mem)
+  {
+    .data = value, .size = sizeof(payload)
+  }),
+  ((struct cr_mem)
+  {
+    .data = payload, .size = sizeof(payload)
+  })));
   _connection_deinit(&conn);
 }
 
@@ -1090,7 +1119,7 @@ Test(lumberjack, oversize_json_frame_is_dropped_and_still_counted)
 
   start_grabbing_messages();
   _inject(&conn, input);
-  cr_assert_eq(_pump_until(&conn, 0, 2), LUMBERJACK_PUMP_MESSAGES);
+  cr_assert(eq(int, _pump_until(&conn, 0, 2), LUMBERJACK_PUMP_MESSAGES));
   stop_grabbing_messages();
   assert_grabbed_log_contains("Dropping a message larger than log-msg-size()");
 
@@ -1117,7 +1146,7 @@ Test(lumberjack, window_of_dropped_frames_only_is_acknowledged_at_once)
   options_storage.super.max_msg_size = 100;
   _inject(&conn, input);
   _assert_written(&conn, _ack('2', 1));
-  cr_assert_eq(conn.messages->len, 0);
+  cr_assert(eq(uint, conn.messages->len, 0));
   _connection_deinit(&conn);
 }
 
@@ -1157,7 +1186,7 @@ Test(lumberjack, payload_of_exactly_log_msg_size_is_accepted)
   options_storage.super.max_msg_size = 100;
   _inject(&conn, input);
   _pump_until(&conn, 0, 1);
-  cr_assert_eq(conn.messages->len, 1);
+  cr_assert(eq(uint, conn.messages->len, 1));
   _connection_deinit(&conn);
 }
 
@@ -1193,10 +1222,10 @@ Test(lumberjack, window_above_max_window_size_closes_the_connection)
   _connection_init(&conn);
   start_grabbing_messages();
   _inject(&conn, input);
-  cr_assert_eq(_pump(&conn), LUMBERJACK_PUMP_EOF);
+  cr_assert(eq(int, _pump(&conn), LUMBERJACK_PUMP_EOF));
   stop_grabbing_messages();
   assert_grabbed_log_contains("window size exceeds max-window-size()");
-  cr_assert_eq(conn.written->len, 0);
+  cr_assert(eq(sz, conn.written->len, 0));
   _connection_deinit(&conn);
 }
 
@@ -1210,7 +1239,7 @@ Test(lumberjack, max_window_size_zero_is_unlimited)
 
   _connection_init_with(&conn, "lumberjack(max-window-size(0))");
   _inject(&conn, input);
-  cr_assert_eq(_pump_until(&conn, 0, 1), LUMBERJACK_PUMP_MESSAGES);
+  cr_assert(eq(int, _pump_until(&conn, 0, 1), LUMBERJACK_PUMP_MESSAGES));
   _connection_deinit(&conn);
 }
 
@@ -1226,10 +1255,10 @@ _assert_protocol_error(GString *input, const gchar *expected_log)
   _connection_init(&conn);
   start_grabbing_messages();
   _inject(&conn, input);
-  cr_assert_eq(_pump(&conn), LUMBERJACK_PUMP_EOF, "a protocol error must close the connection");
+  cr_assert(eq(int, _pump(&conn), LUMBERJACK_PUMP_EOF), "a protocol error must close the connection");
   stop_grabbing_messages();
   assert_grabbed_log_contains(expected_log);
-  cr_assert_eq(conn.written->len, 0, "nothing is acknowledged on a protocol error");
+  cr_assert(eq(sz, conn.written->len, 0), "nothing is acknowledged on a protocol error");
   _connection_deinit(&conn);
 }
 
@@ -1282,7 +1311,7 @@ Test(lumberjack, out_of_sequence_frames_are_accepted_and_the_last_sequence_is_ec
 
   _connection_init(&conn);
   _inject(&conn, input);
-  cr_assert_eq(_pump_until(&conn, 0, 2), LUMBERJACK_PUMP_MESSAGES);
+  cr_assert(eq(int, _pump_until(&conn, 0, 2), LUMBERJACK_PUMP_MESSAGES));
   _assert_message(&conn, 1, "{\"n\":3}", "2");
 
   _report_durable(&conn, 1);
@@ -1414,7 +1443,7 @@ Test(lumberjack, unknown_frame_type_is_a_protocol_error)
 static void
 _assert_compressed_window_delivered(LumberjackTestConnection *conn, guint32 size, const gchar *prefix)
 {
-  cr_assert_eq(_pump_until(conn, 0, size), LUMBERJACK_PUMP_MESSAGES);
+  cr_assert(eq(int, _pump_until(conn, 0, size), LUMBERJACK_PUMP_MESSAGES));
   for (guint32 i = 1; i <= size; i++)
     {
       gchar *payload = g_strdup_printf("{\"message\":\"%s-%u\"}", prefix, i);
@@ -1456,7 +1485,7 @@ Test(lumberjack, appendix_b6_compressed_frame_vector)
 
   _connection_init(&conn);
   _inject(&conn, input);
-  cr_assert_eq(_pump_until(&conn, 0, 2), LUMBERJACK_PUMP_MESSAGES);
+  cr_assert(eq(int, _pump_until(&conn, 0, 2), LUMBERJACK_PUMP_MESSAGES));
   _assert_message(&conn, 0, "{\"k\":\"v\"}", "2");
   _assert_message(&conn, 1, "{\"n\":1}", "2");
   _report_durable(&conn, 1);
@@ -1497,7 +1526,7 @@ Test(lumberjack, version1_data_frames_inside_a_compressed_frame)
 
   _connection_init(&conn);
   _inject(&conn, input);
-  cr_assert_eq(_pump_until(&conn, 0, 2), LUMBERJACK_PUMP_MESSAGES);
+  cr_assert(eq(int, _pump_until(&conn, 0, 2), LUMBERJACK_PUMP_MESSAGES));
   _assert_message(&conn, 0, "{\"line\":\"first\",\"host\":\"web\"}", "1");
   _assert_message(&conn, 1, "{\"line\":\"second\"}", "1");
   _report_durable(&conn, 1);
@@ -1566,7 +1595,7 @@ Test(lumberjack, compressed_windows_pipelined_are_acknowledged_in_order)
   _connection_init(&conn);
   _inject(&conn, _compressed_window_of_json(2, "a", 3));
   _inject(&conn, _compressed_window_of_json(3, "b", 3));
-  cr_assert_eq(_pump_until(&conn, 0, 5), LUMBERJACK_PUMP_MESSAGES);
+  cr_assert(eq(int, _pump_until(&conn, 0, 5), LUMBERJACK_PUMP_MESSAGES));
   _assert_message(&conn, 4, "{\"message\":\"b-3\"}", "2");
 
   _report_durable(&conn, 4);
@@ -1582,11 +1611,11 @@ Test(lumberjack, flow_control_window_full_inside_a_compressed_frame_resumes)
 
   _connection_init(&conn);
   _inject(&conn, _compressed_window_of_json(3, "fc", 3));
-  cr_assert_eq(_pump_until(&conn, 0, 1), LUMBERJACK_PUMP_MESSAGES);
+  cr_assert(eq(int, _pump_until(&conn, 0, 1), LUMBERJACK_PUMP_MESSAGES));
 
   conn.window_full = TRUE;
-  cr_assert_eq(_pump(&conn), LUMBERJACK_PUMP_IDLE);
-  cr_assert_eq(conn.messages->len, 1);
+  cr_assert(eq(int, _pump(&conn), LUMBERJACK_PUMP_IDLE));
+  cr_assert(eq(uint, conn.messages->len, 1));
 
   conn.window_full = FALSE;
   _assert_compressed_window_delivered(&conn, 3, "fc");
@@ -1616,11 +1645,11 @@ Test(lumberjack, oversize_frame_inside_a_compressed_frame_is_skipped_and_counted
 
   _connection_init(&conn);
   options_storage.super.max_msg_size = 100;
-  cr_assert_lt(input->len, (gsize) 16384, "the bomb did not compress, the test is void");
+  cr_assert(lt(sz, input->len, (gsize) 16384), "the bomb did not compress, the test is void");
 
   start_grabbing_messages();
   _inject(&conn, input);
-  cr_assert_eq(_pump_until(&conn, 0, 2), LUMBERJACK_PUMP_MESSAGES);
+  cr_assert(eq(int, _pump_until(&conn, 0, 2), LUMBERJACK_PUMP_MESSAGES));
   stop_grabbing_messages();
   assert_grabbed_log_contains("Dropping a message larger than log-msg-size()");
 
@@ -1647,7 +1676,7 @@ _compressed_window_with_a_bomb(gsize bomb_len)
   _put_window(input, '2', 2);
   _put_compressed(input, '2', frames, 9);
   g_string_free(frames, TRUE);
-  cr_assert_lt(input->len, (gsize) 16384, "the bomb did not compress, the test is void");
+  cr_assert(lt(sz, input->len, (gsize) 16384), "the bomb did not compress, the test is void");
   return input;
 }
 
@@ -1658,11 +1687,11 @@ Test(lumberjack, compressed_frame_inflating_beyond_max_inflated_size_is_a_protoc
   _connection_init_with(&conn, "lumberjack(max-inflated-size(1048576))");
   start_grabbing_messages();
   _inject(&conn, _compressed_window_with_a_bomb(4 * 1024 * 1024));
-  cr_assert_eq(_pump(&conn), LUMBERJACK_PUMP_EOF);
+  cr_assert(eq(int, _pump(&conn), LUMBERJACK_PUMP_EOF));
   stop_grabbing_messages();
   assert_grabbed_log_contains("inflates beyond max-inflated-size()");
-  cr_assert_eq(conn.messages->len, 0);
-  cr_assert_eq(conn.written->len, 0);
+  cr_assert(eq(uint, conn.messages->len, 0));
+  cr_assert(eq(sz, conn.written->len, 0));
   _connection_deinit(&conn);
 }
 
@@ -1672,7 +1701,7 @@ Test(lumberjack, compressed_frame_within_max_inflated_size_is_accepted)
 
   _connection_init_with(&conn, "lumberjack(max-inflated-size(8388608))");
   _inject(&conn, _compressed_window_with_a_bomb(4 * 1024 * 1024));
-  cr_assert_eq(_pump_until(&conn, 0, 1), LUMBERJACK_PUMP_MESSAGES);
+  cr_assert(eq(int, _pump_until(&conn, 0, 1), LUMBERJACK_PUMP_MESSAGES));
   _assert_message(&conn, 0, "{\"n\":2}", "2");
   _report_durable(&conn, 0);
   _assert_written(&conn, _ack('2', 2));
@@ -1685,7 +1714,7 @@ Test(lumberjack, max_inflated_size_zero_is_unlimited)
 
   _connection_init_with(&conn, "lumberjack(max-inflated-size(0))");
   _inject(&conn, _compressed_window_with_a_bomb(4 * 1024 * 1024));
-  cr_assert_eq(_pump_until(&conn, 0, 1), LUMBERJACK_PUMP_MESSAGES);
+  cr_assert(eq(int, _pump_until(&conn, 0, 1), LUMBERJACK_PUMP_MESSAGES));
   _assert_message(&conn, 0, "{\"n\":2}", "2");
   _connection_deinit(&conn);
 }
@@ -1703,7 +1732,7 @@ _fetch_once(LumberjackTestConnection *self)
   log_transport_aux_data_init(&aux);
   LogProtoStatus status = log_proto_server_fetch_structured(self->proto, &msg, &aux, bookmark);
   log_transport_aux_data_destroy(&aux);
-  cr_assert_null(msg);
+  cr_assert(zero(ptr, msg));
   _free_bookmark(bookmark);
   return status;
 }
@@ -1735,13 +1764,13 @@ Test(lumberjack, compressed_frame_inflating_to_nothing_is_read_within_the_fetch_
     }
 
   /* the first fetch() only starts the connection */
-  cr_assert_eq(_fetch_once(&conn), LPS_SUCCESS);
-  cr_assert_eq(_fetch_once(&conn), LPS_SUCCESS);
-  cr_assert_not(conn.transport->dry, "a single fetch() read every chunk the sender had sent");
+  cr_assert(eq(int, _fetch_once(&conn), LPS_SUCCESS));
+  cr_assert(eq(int, _fetch_once(&conn), LPS_SUCCESS));
+  cr_assert(not(conn.transport->dry), "a single fetch() read every chunk the sender had sent");
 
   /* the stream goes on in later rounds, as an ordinary partial frame */
-  cr_assert_eq(_pump(&conn), LUMBERJACK_PUMP_IDLE);
-  cr_assert_eq(conn.messages->len, 0);
+  cr_assert(eq(int, _pump(&conn), LUMBERJACK_PUMP_IDLE));
+  cr_assert(eq(uint, conn.messages->len, 0));
   _connection_deinit(&conn);
 }
 
@@ -1770,7 +1799,7 @@ Test(lumberjack, padding_after_the_zlib_stream_is_discarded)
 
   _connection_init(&conn);
   _inject(&conn, input);
-  cr_assert_eq(_pump_until(&conn, 0, 3), LUMBERJACK_PUMP_MESSAGES);
+  cr_assert(eq(int, _pump_until(&conn, 0, 3), LUMBERJACK_PUMP_MESSAGES));
   _assert_message(&conn, 2, "{\"after\":true}", "2");
   _report_durable(&conn, 2);
   GString *expected = _ack('2', 2);
@@ -1941,17 +1970,17 @@ Test(lumberjack, keepalive_is_sent_while_a_version2_window_is_stalled_by_flow_co
 
   _connection_init(&conn);
   _inject(&conn, _window_of_json(3, "m"));
-  cr_assert_eq(_pump_until(&conn, 0, 1), LUMBERJACK_PUMP_MESSAGES);
+  cr_assert(eq(int, _pump_until(&conn, 0, 1), LUMBERJACK_PUMP_MESSAGES));
 
   conn.window_full = TRUE;
-  cr_assert_eq(_pump(&conn), LUMBERJACK_PUMP_IDLE);
+  cr_assert(eq(int, _pump(&conn), LUMBERJACK_PUMP_IDLE));
 
   log_proto_lumberjack_server_fire_keepalive(conn.proto);
   _assert_written(&conn, _ack('2', 0));
-  cr_assert_eq(conn.messages->len, 1);
+  cr_assert(eq(uint, conn.messages->len, 1));
 
   conn.window_full = FALSE;
-  cr_assert_eq(_pump_until(&conn, 0, 3), LUMBERJACK_PUMP_MESSAGES);
+  cr_assert(eq(int, _pump_until(&conn, 0, 3), LUMBERJACK_PUMP_MESSAGES));
   _report_durable(&conn, 2);
   GString *expected = _ack('2', 0);
   GString *ack = _ack('2', 3);
@@ -2014,16 +2043,16 @@ Test(lumberjack, waiting_for_a_window_uses_the_idle_timeout_and_a_window_body_th
   _connection_init(&conn);
   options_storage.super.idle_timeout = 600;
   _pump(&conn);
-  cr_assert_eq(conn.cond, G_IO_IN);
-  cr_assert_eq(conn.timeout, 600, "between windows idle-timeout() applies, got %d", conn.timeout);
+  cr_assert(eq(int, conn.cond, G_IO_IN));
+  cr_assert(eq(int, conn.timeout, 600), "between windows idle-timeout() applies, got %d", conn.timeout);
 
   _put_window(input, '2', 2);
   _put_json_frame(input, 1, "{}");
   _inject(&conn, input);
   _pump(&conn);
-  cr_assert_eq(conn.messages->len, 1);
-  cr_assert_eq(conn.timeout, LUMBERJACK_DEFAULT_WINDOW_TIMEOUT,
-               "inside a window window-timeout() applies, got %d", conn.timeout);
+  cr_assert(eq(uint, conn.messages->len, 1));
+  cr_assert(eq(int, conn.timeout, LUMBERJACK_DEFAULT_WINDOW_TIMEOUT),
+            "inside a window window-timeout() applies, got %d", conn.timeout);
   _connection_deinit(&conn);
 }
 
@@ -2038,8 +2067,8 @@ Test(lumberjack, buffered_input_asks_for_an_immediate_fetch)
   _inject(&conn, _window_of_json(2, "m"));
   /* the first fetch reads everything and delivers the first frame */
   _pump_until(&conn, 0, 1);
-  cr_assert_eq(log_proto_server_poll_prepare(conn.proto, &cond, &timeout), LPPA_FORCE_SCHEDULE_FETCH,
-               "a buffered frame needs no poll");
+  cr_assert(eq(int, log_proto_server_poll_prepare(conn.proto, &cond, &timeout), LPPA_FORCE_SCHEDULE_FETCH),
+            "a buffered frame needs no poll");
   _connection_deinit(&conn);
 }
 
@@ -2052,10 +2081,10 @@ Test(lumberjack, tls_is_started_before_the_first_read_when_configured)
   LumberjackTestConnection conn;
 
   _connection_init_full(&conn, "lumberjack()", NULL, FALSE, TRUE);
-  cr_assert_neq(conn.proto->transport_stack.active_transport, LOG_TRANSPORT_TLS);
+  cr_assert(ne(int, conn.proto->transport_stack.active_transport, LOG_TRANSPORT_TLS));
 
   _pump(&conn);
-  cr_assert_eq(conn.proto->transport_stack.active_transport, LOG_TRANSPORT_TLS);
+  cr_assert(eq(int, conn.proto->transport_stack.active_transport, LOG_TRANSPORT_TLS));
 
   _inject(&conn, _window_of_json(1, "tls"));
   _pump_until(&conn, 0, 1);
@@ -2071,7 +2100,7 @@ Test(lumberjack, plaintext_without_tls_configured)
 
   _connection_init(&conn);
   _pump(&conn);
-  cr_assert_eq(conn.proto->transport_stack.active_transport, LOG_TRANSPORT_INITIAL);
+  cr_assert(eq(int, conn.proto->transport_stack.active_transport, LOG_TRANSPORT_INITIAL));
   _connection_deinit(&conn);
 }
 

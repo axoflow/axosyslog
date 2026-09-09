@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 
 #include "mainloop.h"
@@ -97,7 +98,7 @@ notify_signal_slot_finish(void)
 static void
 _check(const gchar *expected_body, HttpRequestSignalData *data)
 {
-  cr_assert_str_eq(data->request_body->str, expected_body);
+  cr_assert(eq(str, data->request_body->str, expected_body));
 
   notify_signal_slot_finish();
 }

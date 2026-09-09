@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "splunk-s2s-protocol.h"
 #include "test_splunk_s2s_protocol_vectors.h"
@@ -32,13 +33,13 @@ _assert_bytes_eq(const GString *actual, const guint8 *expected, gsize expected_l
 {
   for (gsize i = 0; i < MIN(actual->len, expected_len); i++)
     {
-      cr_assert_eq((guint8) actual->str[i], expected[i],
-                   "byte mismatch at offset %" G_GSIZE_FORMAT ": actual 0x%02x, expected 0x%02x",
-                   i, (guint8) actual->str[i], expected[i]);
+      cr_assert(eq(u8, (guint8) actual->str[i], expected[i]),
+                "byte mismatch at offset %" G_GSIZE_FORMAT ": actual 0x%02x, expected 0x%02x",
+                i, (guint8) actual->str[i], expected[i]);
     }
-  cr_assert_eq(actual->len, expected_len,
-               "encoded length mismatch: actual %" G_GSIZE_FORMAT ", expected %" G_GSIZE_FORMAT,
-               actual->len, expected_len);
+  cr_assert(eq(sz, actual->len, expected_len),
+            "encoded length mismatch: actual %" G_GSIZE_FORMAT ", expected %" G_GSIZE_FORMAT,
+            actual->len, expected_len);
 }
 
 Test(splunk_s2s_protocol, varint_edge_values)
@@ -76,7 +77,7 @@ Test(splunk_s2s_protocol, header1)
   GString *out = g_string_new(NULL);
 
   cr_assert(splunk_s2s_format_header1(out, "axosyslog", "0"));
-  cr_assert_eq(out->len, SPLUNK_S2S_HEADER1_SIZE);
+  cr_assert(eq(sz, out->len, SPLUNK_S2S_HEADER1_SIZE));
   _assert_bytes_eq(out, vector_header1, sizeof(vector_header1));
 
   g_string_free(out, TRUE);
@@ -90,12 +91,12 @@ Test(splunk_s2s_protocol, header1_rejects_overlong_fields)
   memset(overlong, 'x', sizeof(overlong));
 
   overlong[SPLUNK_S2S_HEADER1_MAX_IDENTIFIER_LEN + 1] = '\0';
-  cr_assert_not(splunk_s2s_format_header1(out, overlong, "0"));
+  cr_assert(not(splunk_s2s_format_header1(out, overlong, "0")));
 
   overlong[SPLUNK_S2S_HEADER1_MAX_MGMT_PORT_LEN + 1] = '\0';
-  cr_assert_not(splunk_s2s_format_header1(out, "axosyslog", overlong));
+  cr_assert(not(splunk_s2s_format_header1(out, "axosyslog", overlong)));
 
-  cr_assert_eq(out->len, 0);
+  cr_assert(eq(sz, out->len, 0));
 
   g_string_free(out, TRUE);
 }
@@ -180,7 +181,7 @@ Test(splunk_s2s_protocol, parse_v3_frame_len)
     "\xde\xad";         /* the first body bytes */
 
   cr_assert(splunk_s2s_parse_v3_frame_len(buf, VECTOR_LEN(buf), &frame_len));
-  cr_assert_eq(frame_len, 471);
+  cr_assert(eq(u32, frame_len, 471));
 
-  cr_assert_not(splunk_s2s_parse_v3_frame_len(buf, 3, &frame_len));
+  cr_assert(not(splunk_s2s_parse_v3_frame_len(buf, 3, &frame_len)));
 }

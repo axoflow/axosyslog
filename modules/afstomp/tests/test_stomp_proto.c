@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "stomp.h"
 
 static void
@@ -29,19 +30,19 @@ assert_stomp_header(stomp_frame *frame, char *key, char *value)
 {
   char *myvalue = g_hash_table_lookup(frame->headers, key);
 
-  cr_assert_str_eq(myvalue, value, "Stomp header assertion failed!");
+  cr_assert(eq(str, myvalue, value), "Stomp header assertion failed!");
 }
 
 static void
 assert_stomp_command(stomp_frame *frame, char *command)
 {
-  cr_assert_str_eq(frame->command, command, "Stomp command assertion failed");
+  cr_assert(eq(str, frame->command, command), "Stomp command assertion failed");
 }
 
 static void
 assert_stomp_body(stomp_frame *frame, char *body)
 {
-  cr_assert_str_eq(frame->body, body, "Stomp body assertion failed");
+  cr_assert(eq(str, frame->body, body), "Stomp body assertion failed");
 }
 
 Test(stomp_proto, test_only_command)
@@ -101,7 +102,7 @@ Test(stomp_proto, test_generate_gstring_from_frame)
   stomp_frame_add_header(&frame, "header_name", "header_value");
   stomp_frame_set_body(&frame, "body", sizeof("body"));
   actual = create_gstring_from_frame(&frame);
-  cr_assert_str_eq(actual->str, "SEND\nheader_name:header_value\n\nbody", "Generated stomp frame does not match");
+  cr_assert(eq(str, actual->str, "SEND\nheader_name:header_value\n\nbody"), "Generated stomp frame does not match");
   stomp_frame_deinit(&frame);
   g_string_free(actual, TRUE);
 };
@@ -111,7 +112,7 @@ Test(stomp_proto, test_invalid_command)
   stomp_frame frame;
 
   GString *data = g_string_new("CONNECTED\n no-colon\n");
-  cr_assert_not(stomp_parse_frame(data, &frame));
+  cr_assert(not(stomp_parse_frame(data, &frame)));
   stomp_frame_deinit(&frame);
   g_string_free(data, TRUE);
 };
