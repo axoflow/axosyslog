@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/parameterized.h"
 
 #include "apphook.h"
@@ -206,9 +207,9 @@ Test(cluster_query_key, test_global_key)
   StatsClusterKey sc_key;
   stats_cluster_logpipe_key_legacy_set(&sc_key, SCS_DESTINATION|SCS_FILE, "d_file", "instance" );
   StatsCluster *sc = stats_cluster_new(&sc_key);
-  cr_assert_str_eq(sc->query_key, expected_key,
-                   "generated query key(%s) does not match to the expected key(%s)",
-                   sc->query_key, expected_key);
+  cr_assert(eq(str, sc->query_key, expected_key),
+            "generated query key(%s) does not match to the expected key(%s)",
+            sc->query_key, expected_key);
   stats_cluster_free(sc);
 }
 
@@ -228,8 +229,8 @@ StaticParameterizedTest(QueryTestCase *test_cases, test_stats_query_get_log_msg_
 
   stats_query_get(test_cases->pattern, _test_format_log_msg_get, (gpointer)msg);
   actual = log_msg_get_value_by_name(msg, test_cases->pattern, NULL);
-  cr_assert_str_eq(actual, test_cases->expected,
-                   "Counter: '%s'; expected number: '%s';, got: '%s';", test_cases->pattern, test_cases->expected, actual);
+  cr_assert(eq(str, actual, test_cases->expected),
+            "Counter: '%s'; expected number: '%s';, got: '%s';", test_cases->pattern, test_cases->expected, actual);
 
   log_msg_unref(msg);
 }
@@ -257,8 +258,9 @@ StaticParameterizedTest(QueryTestCase *test_cases, test_stats_query_get_str_out_
   GString *result = g_string_new("");
 
   stats_query_get(test_cases->pattern, _test_format_str_get, (gpointer)result);
-  cr_assert_str_eq(result->str, test_cases->expected,
-                   "Pattern: '%s'; expected key and value: '%s';, got: '%s';", test_cases->pattern, test_cases->expected, result->str);
+  cr_assert(eq(str, result->str, test_cases->expected),
+            "Pattern: '%s'; expected key and value: '%s';, got: '%s';", test_cases->pattern, test_cases->expected,
+            result->str);
 
   g_string_free(result, TRUE);
 }
@@ -277,8 +279,8 @@ StaticParameterizedTest(QueryTestCase *test_cases, test_stats_query_get_sum_log_
 
   stats_query_get_sum(test_cases->pattern, _test_format_log_msg_get_sum, (gpointer)msg);
   actual = log_msg_get_value_by_name(msg, "sum", NULL);
-  cr_assert_str_eq(actual, test_cases->expected,
-                   "Pattern: '%s'; expected number: '%s';, got: '%s';", test_cases->pattern, test_cases->expected, actual);
+  cr_assert(eq(str, actual, test_cases->expected),
+            "Pattern: '%s'; expected number: '%s';, got: '%s';", test_cases->pattern, test_cases->expected, actual);
 
   log_msg_unref(msg);
 }
@@ -301,8 +303,9 @@ StaticParameterizedTest(QueryTestCase *test_cases, test_stats_query_get_sum_str_
   GString *result = g_string_new("");
 
   stats_query_get_sum(test_cases->pattern, _test_format_str_get_sum, (gpointer)result);
-  cr_assert_str_eq(result->str, test_cases->expected,
-                   "Pattern: '%s'; expected key and value: '%s';, got: '%s';", test_cases->pattern, test_cases->expected, result->str);
+  cr_assert(eq(str, result->str, test_cases->expected),
+            "Pattern: '%s'; expected key and value: '%s';, got: '%s';", test_cases->pattern, test_cases->expected,
+            result->str);
 
   g_string_free(result, TRUE);
 }
@@ -322,8 +325,8 @@ StaticParameterizedTest(QueryTestCase *test_cases, test_stats_query_list_params,
   GString *result = g_string_new("");
 
   stats_query_list(test_cases->pattern, _test_format_list, (gpointer)result);
-  cr_assert_str_eq(result->str, test_cases->expected,
-                   "Pattern: '%s'; expected key: '%s';, got: '%s';", test_cases->pattern, test_cases->expected, result->str);
+  cr_assert(eq(str, result->str, test_cases->expected),
+            "Pattern: '%s'; expected key: '%s';, got: '%s';", test_cases->pattern, test_cases->expected, result->str);
 
   g_string_free(result, TRUE);
 }
