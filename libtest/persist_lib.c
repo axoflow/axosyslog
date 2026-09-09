@@ -24,6 +24,7 @@
 #include "persist_lib.h"
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include <stdlib.h>
 #include <unistd.h>
 
