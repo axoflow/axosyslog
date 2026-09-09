@@ -37,6 +37,7 @@
 #include "libtest/filterx-lib.h"
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 static const gchar *test_pb_msg_filepath = NULL;
 
@@ -44,12 +45,12 @@ static void
 _helper_create_proto_file(const gchar *proto_content)
 {
   FILE *f = fopen(test_pb_msg_filepath, "wb");
-  cr_assert_not_null(f);
+  cr_assert(not(zero(ptr, f)));
 
   size_t len = strlen(proto_content);
 
   size_t written = fwrite(proto_content, sizeof(gchar), len, f);
-  cr_assert_eq(written, len);
+  cr_assert(eq(sz, written, len));
   fclose(f);
 }
 
@@ -59,8 +60,8 @@ _assert_protobuf_message_init_fail(GList *args)
   GError *err = NULL;
   GError *args_err = NULL;
   FilterXExpr *func = filterx_function_protobuf_message_new(filterx_function_args_new(args, &args_err), &err);
-  cr_assert(!func);
-  cr_assert(err);
+  cr_assert(zero(ptr, func));
+  cr_assert(not(zero(ptr, err)));
   g_error_free(err);
   g_error_free(args_err);
 }
@@ -71,9 +72,9 @@ _assert_protobuf_message_init_success(GList *args)
   GError *err = NULL;
   GError *args_err = NULL;
   FilterXExpr *func = filterx_function_protobuf_message_new(filterx_function_args_new(args, &args_err), &err);
-  cr_assert(!err);
-  cr_assert(!args_err);
-  cr_assert(func);
+  cr_assert(zero(ptr, err));
+  cr_assert(zero(ptr, args_err));
+  cr_assert(not(zero(ptr, func)));
   g_error_free(err);
   g_error_free(args_err);
   return func;
@@ -171,7 +172,7 @@ Test(filterx_protobuf_message, assign_vars)
                           "{\"foo\": \"TIK\", \"bar\": \"TAK\", \"baz\": \"TOE\"}]"
                           "}"
                           , -1, &json_err);
-  cr_assert_null(json_err);
+  cr_assert(zero(ptr, json_err));
 
   FilterXExpr *expr = filterx_object_expr_new(dict);
 
@@ -183,7 +184,7 @@ Test(filterx_protobuf_message, assign_vars)
   FilterXExpr *func = _assert_protobuf_message_init_success(args);
 
   FilterXObject *result = init_and_eval_expr(func);
-  cr_assert(result);
+  cr_assert(not(zero(ptr, result)));
 
   cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(protobuf)));
 

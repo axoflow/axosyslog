@@ -23,6 +23,7 @@
 #include "python-module.h"
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/parameterized.h"
 #include "libtest/msg_parse_lib.h"
 
@@ -67,7 +68,7 @@ _assert_python_variable_value(const gchar *variable_name, const gchar *expected_
       _py_finish_exception_handling();
 
       g_free(script);
-      cr_assert(FALSE);
+      cr_fatal();
     }
 
   g_free(script);
@@ -77,7 +78,7 @@ static PyLogMessage *
 _construct_py_log_msg(PyObject *args)
 {
   PyLogMessage *py_msg = (PyLogMessage *) PyObject_CallFunctionObjArgs((PyObject *) &py_log_message_type, args, NULL);
-  cr_assert_not_null(py_msg);
+  cr_assert(not(zero(ptr, py_msg)));
 
   return (PyLogMessage *) py_msg;
 
@@ -88,7 +89,7 @@ _construct_py_parse_options(void)
 {
   PyObject *py_parse_options = PyCapsule_New(&parse_options, NULL, NULL);
 
-  cr_assert_not_null(py_parse_options);
+  cr_assert(not(zero(ptr, py_parse_options)));
 
   return py_parse_options;
 }
@@ -196,7 +197,7 @@ StaticParameterizedTest(PyLogMessageSetValueTestParams *params, test_python_logm
     if (!PyRun_String(script, Py_file_input, _python_main_dict, _python_main_dict))
       {
         PyErr_Print();
-        cr_assert(FALSE, "Error running Python script >>>%s<<<", script);
+        cr_fatal("Error running Python script >>>%s<<<", script);
       }
 
     g_free(script);
@@ -205,8 +206,8 @@ StaticParameterizedTest(PyLogMessageSetValueTestParams *params, test_python_logm
 
     LogMessageValueType type;
     const gchar *value = log_msg_get_value_by_name_with_type(msg, "test_field", NULL, &type);
-    cr_assert_str_eq(value, params->expected_log_msg_value);
-    cr_assert(type == params->expected_log_msg_type);
+    cr_assert(eq(str, value, params->expected_log_msg_value));
+    cr_assert(eq(int, type, params->expected_log_msg_type));
 
     PyDict_DelItemString(_python_main_dict, "test_msg");
     Py_XDECREF(msg_object);
@@ -222,7 +223,7 @@ _run_scripts(const gchar *script)
   if (!PyRun_String(script, Py_file_input, _python_main_dict, _python_main_dict))
     {
       PyErr_Print();
-      cr_assert(FALSE, "Error running Python script >>>%s<<<", script);
+      cr_fatal("Error running Python script >>>%s<<<", script);
     }
 }
 
@@ -242,9 +243,9 @@ Test(python_log_message, test_python_logmessage_subscript)
     _run_scripts("result = test_msg['field']");
     _assert_python_variable_value("result", "25");
 
-    cr_assert_null(PyRun_String("result = test_msg['nonexistent']", Py_file_input,
-                                _python_main_dict, _python_main_dict));
-    cr_assert_not_null(PyErr_Occurred());
+    cr_assert(zero(ptr, PyRun_String("result = test_msg['nonexistent']", Py_file_input,
+                                     _python_main_dict, _python_main_dict)));
+    cr_assert(not(zero(ptr, PyErr_Occurred())));
     cr_assert(PyErr_ExceptionMatches(PyExc_KeyError));
 
     PyDict_DelItemString(_python_main_dict, "test_msg");
@@ -548,7 +549,7 @@ Test(python_log_message, test_python_logmessage_set_value_no_typing_support)
     PyDict_SetItemString(_python_main_dict, "test_msg", msg_object);
 
     const gchar *script = "test_msg['test_field'] = 42\n";
-    cr_assert_not(PyRun_String(script, Py_file_input, _python_main_dict, _python_main_dict));
+    cr_assert(zero(ptr, PyRun_String(script, Py_file_input, _python_main_dict, _python_main_dict)));
 
     PyDict_DelItemString(_python_main_dict, "test_msg");
     Py_XDECREF(msg_object);
@@ -584,8 +585,8 @@ Test(python_log_message, test_python_logmessage_get_value_no_typing_support)
     const gchar *value = log_msg_get_value_by_name_with_type(msg, "test_field", NULL, &type);
 
     // in LogMessage it is INTEGER
-    cr_assert(type == LM_VT_INTEGER);
-    cr_assert_str_eq(value, "42");
+    cr_assert(eq(int, type, LM_VT_INTEGER));
+    cr_assert(eq(str, value, "42"));
 
     PyDict_DelItemString(_python_main_dict, "test_msg");
     Py_XDECREF(msg_object);
@@ -636,7 +637,7 @@ Test(python_log_message, test_py_is_log_message)
   PyObject *msg_object = py_log_message_new(msg, configuration);
 
   cr_assert(py_is_log_message(msg_object));
-  cr_assert_not(py_is_log_message(_python_main));
+  cr_assert(not(py_is_log_message(_python_main)));
 
   log_msg_unref(msg);
   Py_DECREF(msg_object);
@@ -657,8 +658,8 @@ Test(python_log_message, test_py_log_message_constructor_with_str)
   gssize msg_length;
   const gchar *msg = log_msg_get_value(py_msg->msg, LM_V_MESSAGE, &msg_length);
 
-  cr_assert_eq(msg_length, strlen(test_str_msg));
-  cr_assert_str_eq(msg, test_str_msg);
+  cr_assert(eq(i64, msg_length, strlen(test_str_msg)));
+  cr_assert(eq(str, msg, test_str_msg));
 
   Py_DECREF(py_msg);
   PyGILState_Release(gstate);
@@ -678,8 +679,9 @@ Test(python_log_message, test_py_log_message_constructor_with_binary)
   gssize msg_length;
   const gchar *msg = log_msg_get_value(py_msg->msg, LM_V_MESSAGE, &msg_length);
 
-  cr_assert_eq(msg_length, sizeof(test_binary_msg));
-  cr_assert_arr_eq(msg, test_binary_msg, sizeof(test_binary_msg));
+  cr_assert(eq(i64, msg_length, sizeof(test_binary_msg)));
+  cr_assert(eq(mem, ((struct cr_mem){ .data = msg, .size = sizeof(test_binary_msg) }),
+               ((struct cr_mem){ .data = test_binary_msg, .size = sizeof(test_binary_msg) })));
 
   Py_DECREF(py_msg);
   PyGILState_Release(gstate);
@@ -698,19 +700,19 @@ Test(python_log_message, test_py_log_message_set_pri)
   PyObject *ret = _py_invoke_method_by_name((PyObject *) py_msg, "set_pri", arg, NULL, NULL);
   Py_XDECREF(ret);
 
-  cr_assert_eq(py_msg->msg->pri, pri);
+  cr_assert(eq(int, py_msg->msg->pri, pri));
 
   ret = _py_invoke_method_by_name((PyObject *) py_msg, "get_pri", NULL, NULL, NULL);
   pri = PyLong_AsLong(ret);
   Py_XDECREF(ret);
 
-  cr_assert_eq(py_msg->msg->pri, pri);
+  cr_assert(eq(int, py_msg->msg->pri, pri));
   py_msg->msg->pri = 55;
 
   ret = _py_invoke_method_by_name((PyObject *) py_msg, "get_pri", NULL, NULL, NULL);
   pri = PyLong_AsLong(ret);
   Py_XDECREF(ret);
-  cr_assert_eq(py_msg->msg->pri, pri);
+  cr_assert(eq(int, py_msg->msg->pri, pri));
 
   Py_DECREF(py_msg);
   Py_DECREF(arg);
@@ -726,21 +728,21 @@ Test(python_log_message, test_py_log_message_set_timestamp)
   PyLogMessage *py_msg = _construct_py_log_msg(NULL);
 
   PyObject *ret = _py_invoke_method_by_name((PyObject *) py_msg, "set_timestamp", arg, NULL, NULL);
-  cr_assert(ret);
+  cr_assert(not(zero(ptr, ret)));
   Py_XDECREF(ret);
 
-  cr_assert_eq(py_msg->msg->timestamps[LM_TS_STAMP].ut_sec, 1664890194);
-  cr_assert_eq(py_msg->msg->timestamps[LM_TS_STAMP].ut_usec, 123000);
+  cr_assert(eq(i64, py_msg->msg->timestamps[LM_TS_STAMP].ut_sec, 1664890194));
+  cr_assert(eq(u32, py_msg->msg->timestamps[LM_TS_STAMP].ut_usec, 123000));
 
   UnixTime ut;
 
   py_msg->msg->timestamps[LM_TS_STAMP].ut_sec++;
   ret = _py_invoke_method_by_name((PyObject *) py_msg, "get_timestamp", NULL, NULL, NULL);
-  cr_assert(ret);
+  cr_assert(not(zero(ptr, ret)));
   py_datetime_to_unix_time(ret, &ut);
 
-  cr_assert_eq(ut.ut_sec, 1664890195);
-  cr_assert_eq(ut.ut_usec, 123000);
+  cr_assert(eq(i64, ut.ut_sec, 1664890195));
+  cr_assert(eq(u32, ut.ut_usec, 123000));
   Py_XDECREF(ret);
 
   Py_DECREF(py_msg);
@@ -757,25 +759,25 @@ Test(python_log_message, test_py_log_message_parse)
   PyObject *arg = Py_BuildValue("s", "<34>Oct 11 22:14:15 mymachine su: 'su root' failed for lonvick on /dev/pts/8");
 
   PyObject *parse_method = _py_get_attr_or_null((PyObject *) &py_log_message_type, "parse");
-  cr_assert_not_null(parse_method);
+  cr_assert(not(zero(ptr, parse_method)));
 
   PyLogMessage *py_msg = (PyLogMessage *) PyObject_CallFunctionObjArgs(parse_method, arg, py_parse_options, NULL);
-  cr_assert_not_null(py_msg);
+  cr_assert(not(zero(ptr, py_msg)));
 
   Py_DECREF(parse_method);
   Py_DECREF(arg);
   Py_DECREF(py_parse_options);
 
   const gchar *msg = log_msg_get_value(py_msg->msg, LM_V_MESSAGE, NULL);
-  cr_assert_str_eq(msg, "'su root' failed for lonvick on /dev/pts/8");
+  cr_assert(eq(str, msg, "'su root' failed for lonvick on /dev/pts/8"));
 
   const gchar *host = log_msg_get_value(py_msg->msg, LM_V_HOST, NULL);
-  cr_assert_str_eq(host, "mymachine");
+  cr_assert(eq(str, host, "mymachine"));
 
   const gchar *program = log_msg_get_value(py_msg->msg, LM_V_PROGRAM, NULL);
-  cr_assert_str_eq(program, "su");
+  cr_assert(eq(str, program, "su"));
 
-  cr_assert_eq(py_msg->msg->pri, 34);
+  cr_assert(eq(int, py_msg->msg->pri, 34));
 
   Py_DECREF(py_msg);
   PyGILState_Release(gstate);
@@ -793,7 +795,7 @@ Test(python_log_message, test_python_logmessage_keys)
   PyObject *py_msg = py_log_message_new(msg, configuration);
 
   PyObject *keys = _py_invoke_method_by_name(py_msg, "keys", NULL, "PyLogMessageTest", NULL);
-  cr_assert_not_null(keys);
+  cr_assert(not(zero(ptr, keys)));
   cr_assert(PyList_Check(keys));
 
   for (Py_ssize_t i = 0; i < PyList_Size(keys); ++i)
@@ -801,14 +803,14 @@ Test(python_log_message, test_python_logmessage_keys)
       PyObject *py_key = PyList_GetItem(keys, i);
       const gchar *key;
       py_bytes_or_string_to_string(py_key, &key);
-      cr_assert_not_null(key);
+      cr_assert(not(zero(ptr, key)));
 
       NVHandle handle = log_msg_get_value_handle(key);
-      cr_assert(g_strcmp0(key, expected_key) == 0
-                || log_msg_is_handle_macro(handle)
-                || handle == LM_V_MESSAGE
-                || handle == LM_V_PROGRAM
-                || handle == LM_V_PID, "Unexpected key found in PyLogMessage: %s", key);
+      cr_assert(any(eq(str, key, expected_key),
+                    log_msg_is_handle_macro(handle),
+                    eq(u32, handle, LM_V_MESSAGE),
+                    eq(u32, handle, LM_V_PROGRAM),
+                    eq(u32, handle, LM_V_PID)), "Unexpected key found in PyLogMessage: %s", key);
     }
 
   Py_XDECREF(keys);

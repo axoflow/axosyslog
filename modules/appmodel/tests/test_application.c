@@ -21,6 +21,7 @@
  *
  */
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "application.h"
 
@@ -40,10 +41,10 @@ Test(application, filter_can_be_set_and_queried)
 
   app = application_new("foobar", "*");
   application_set_filter(app, filter_expr, NULL);
-  cr_assert_str_eq(app->filter_expr, filter_expr);
+  cr_assert(eq(str, app->filter_expr, filter_expr));
 
   application_set_filter(app, filter_expr2, NULL);
-  cr_assert_str_eq(app->filter_expr, filter_expr2);
+  cr_assert(eq(str, app->filter_expr, filter_expr2));
   appmodel_object_free(&app->super);
 }
 
@@ -55,9 +56,9 @@ Test(application, parser_can_be_set_and_queried)
 
   app = application_new("foobar", "*");
   application_set_parser(app, parser_expr, NULL);
-  cr_assert_str_eq(app->parser_expr, parser_expr);
+  cr_assert(eq(str, app->parser_expr, parser_expr));
 
   application_set_parser(app, parser_expr2, NULL);
-  cr_assert_str_eq(app->parser_expr, parser_expr2);
+  cr_assert(eq(str, app->parser_expr, parser_expr2));
   appmodel_object_free(&app->super);
 }

@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "timerwheel.h"
 
@@ -41,13 +42,13 @@ timer_callback(TimerWheel *self, guint64 now, gpointer user_data, gpointer calle
 {
   guint64 expires = *(guint64 *) user_data;
 
-  cr_assert_eq(now, expires, "Expected time is not matching current time in callback, "
-                             "now=%" G_GUINT64_FORMAT ", expires=%" G_GUINT64_FORMAT "\n",
-               now, expires);
+  cr_assert(eq(u64, now, expires), "Expected time is not matching current time in callback, "
+            "now=%" G_GUINT64_FORMAT ", expires=%" G_GUINT64_FORMAT "\n",
+            now, expires);
 
-  cr_expect_leq(prev_now, now, "Callback current time is not monotonically increasing, "
-                               "prev_now=%" G_GUINT64_FORMAT ", now=%" G_GUINT64_FORMAT "\n",
-                prev_now, now);
+  cr_expect(le(u64, prev_now, now), "Callback current time is not monotonically increasing, "
+            "prev_now=%" G_GUINT64_FORMAT ", now=%" G_GUINT64_FORMAT "\n",
+            prev_now, now);
 
   prev_now = now;
   num_callbacks++;
@@ -59,9 +60,9 @@ static void
 _test_assoc_data(TimerWheel *wheel)
 {
   timer_wheel_set_associated_data(wheel, g_strdup(ASSOC_DATA_STRING), (GDestroyNotify) g_free);
-  cr_expect_str_eq(timer_wheel_get_associated_data(wheel), ASSOC_DATA_STRING,
-                   "Associated data mismatch, found=%s, expected=%s",
-                   (gchar *) timer_wheel_get_associated_data(wheel), ASSOC_DATA_STRING);
+  cr_expect(eq(str, timer_wheel_get_associated_data(wheel), ASSOC_DATA_STRING),
+            "Associated data mismatch, found=%s, expected=%s",
+            (gchar *) timer_wheel_get_associated_data(wheel), ASSOC_DATA_STRING);
 }
 
 void
@@ -120,9 +121,9 @@ test_wheel(gint seed)
         }
     }
   timer_wheel_set_time(wheel, latest + 1, NULL);
-  cr_assert_eq(num_callbacks, expected_callbacks, "Error: not enough callbacks received, "
-                                                  "num_callbacks=%d, expected=%d\n",
-               num_callbacks, expected_callbacks);
+  cr_assert(eq(int, num_callbacks, expected_callbacks), "Error: not enough callbacks received, "
+            "num_callbacks=%d, expected=%d\n",
+            num_callbacks, expected_callbacks);
 
   timer_wheel_free(wheel);
 }
