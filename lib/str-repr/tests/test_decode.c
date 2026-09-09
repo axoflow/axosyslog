@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "str-repr/decode.h"
 
 GString *value;
@@ -33,7 +34,7 @@ assert_decode_equals(const gchar *input, const gchar *expected)
   const gchar *end;
 
   cr_assert(str_repr_decode(str, input, &end), "Decode operation failed while success was expected, input=%s", input);
-  cr_assert_str_eq(str->str, expected, "Decoded value does not match expected");
+  cr_assert(eq(str, str->str, expected), "Decoded value does not match expected");
   g_string_free(str, TRUE);
 }
 
@@ -43,9 +44,9 @@ assert_decode_equals_and_fails(const gchar *input, const gchar *expected)
   GString *str = g_string_new("");
   const gchar *end;
 
-  cr_assert_not(str_repr_decode(str, input, &end), "Decode operation succeeded while failure was expected, input=%s",
-                input);
-  cr_assert_str_eq(str->str, expected, "Decoded value does not match expected");
+  cr_assert(not(str_repr_decode(str, input, &end)), "Decode operation succeeded while failure was expected, input=%s",
+            input);
+  cr_assert(eq(str, str->str, expected), "Decoded value does not match expected");
   g_string_free(str, TRUE);
 }
 
@@ -68,7 +69,7 @@ assert_decode_with_three_tabs_as_delimiter_equals(const gchar *input, const gcha
   const gchar *end;
 
   str_repr_decode_with_options(str, input, &end, &options);
-  cr_assert_str_eq(str->str, expected, "Decoded value does not match expected");
+  cr_assert(eq(str, str->str, expected), "Decoded value does not match expected");
   g_string_free(str, TRUE);
 }
 

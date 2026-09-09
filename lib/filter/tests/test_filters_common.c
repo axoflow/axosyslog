@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "filter/filter-expr.h"
 #include "filter/filter-expr-grammar.h"
@@ -148,11 +149,11 @@ testcase_with_socket(const gchar *msg, const gchar *sockaddr,
   log_msg_set_saddr_ref(logmsg, _get_sockaddr(sockaddr));
 
   res = filter_expr_eval(f, logmsg);
-  cr_assert_eq(res, expected_result, "Filter test failed; msg='%s'\n", msg);
+  cr_assert(eq(int, res, expected_result), "Filter test failed; msg='%s'\n", msg);
 
   f->comp = !f->comp;
   res = filter_expr_eval(f, logmsg);
-  cr_assert_eq(res, !expected_result, "Filter test failed (negated); msg='%s'\n", msg);
+  cr_assert(eq(int, res, !expected_result), "Filter test failed (negated); msg='%s'\n", msg);
 
   log_msg_unref(logmsg);
   filter_expr_unref(f);
@@ -194,29 +195,29 @@ testcase_with_backref_chk(const gchar *msg,
 
   LogMessagePin pin = log_msg_pin_payload(logmsg);
   res = filter_expr_eval(f, logmsg);
-  cr_assert_eq(res, expected_result, "Filter test failed; msg='%s'\n", msg);
+  cr_assert(eq(int, res, expected_result), "Filter test failed; msg='%s'\n", msg);
   log_msg_unpin_payload(logmsg, pin);
   f->comp = 1;
 
   pin = log_msg_pin_payload(logmsg);
   res = filter_expr_eval(f, logmsg);
-  cr_assert_eq(res, !expected_result, "Filter test failed (negated); msg='%s'\n", msg);
+  cr_assert(eq(int, res, !expected_result), "Filter test failed (negated); msg='%s'\n", msg);
 
   value_msg = log_msg_get_value_by_name(logmsg, name, &length);
   log_msg_unpin_payload(logmsg, pin);
   if(value == NULL || value[0] == 0)
     {
-      cr_assert_not(value_msg != NULL
-                    && value_msg[0] != 0, "Filter test failed (NULL value chk); msg='%s', expected_value='%s', value_in_msg='%s'",
-                    msg, value, value_msg);
+      cr_assert(not(value_msg != NULL && value_msg[0] != 0),
+                "Filter test failed (NULL value chk); msg='%s', expected_value='%s', value_in_msg='%s'",
+                msg, value, value_msg);
     }
   else
     {
       const gint value_len = strlen(value);
-      cr_assert_eq(length, value_len);
-      cr_assert_eq(strncmp(value_msg, value, value_len), 0,
-                   "Filter test failed (value chk); msg='%s', expected_value='%s', value_in_msg='%s'",
-                   msg, value, value_msg);
+      cr_assert(eq(i64, length, value_len));
+      cr_assert(eq(int, strncmp(value_msg, value, value_len), 0),
+                "Filter test failed (value chk); msg='%s', expected_value='%s', value_in_msg='%s'",
+                msg, value, value_msg);
     }
   log_msg_unref(logmsg);
   filter_expr_unref(f);
