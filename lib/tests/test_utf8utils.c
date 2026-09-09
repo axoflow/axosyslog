@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/parameterized.h"
 
 #include "utf8utils.h"
@@ -62,7 +63,8 @@ StaticParameterizedTest(StringValueList *string_value_list, test_escaped_binary_
   append_unsafe_utf8_as_escaped_binary(escaped_str, string_value_list->str, string_value_list->str_len,
                                        string_value_list->unsafe_flags);
 
-  cr_assert_str_eq(escaped_str->str, string_value_list->expected_escaped_str, "Escaped UTF-8 string is not as expected");
+  cr_assert(eq(str, escaped_str->str, string_value_list->expected_escaped_str),
+            "Escaped UTF-8 string is not as expected");
   g_string_free(escaped_str, TRUE);
 }
 
@@ -88,10 +90,10 @@ StaticParameterizedTest(StringValueList *string_value_list, test_escaped_text_pa
   gchar *escaped_str = convert_unsafe_utf8_to_escaped_text(string_value_list->str, string_value_list->str_len,
                                                            string_value_list->unsafe_flags);
 
-  cr_assert_str_eq(escaped_str, string_value_list->expected_escaped_str, "Escaped UTF-8 string is not as expected");
+  cr_assert(eq(str, escaped_str, string_value_list->expected_escaped_str), "Escaped UTF-8 string is not as expected");
 
   gboolean escaping_was_applied = strcmp(escaped_str, string_value_list->str) != 0;
-  cr_assert_eq(unsafe_utf8_is_escaping_needed(string_value_list->str, string_value_list->str_len,
-                                              string_value_list->unsafe_flags), escaping_was_applied);
+  cr_assert(eq(int, unsafe_utf8_is_escaping_needed(string_value_list->str, string_value_list->str_len,
+                                                   string_value_list->unsafe_flags), escaping_was_applied));
   g_free(escaped_str);
 }

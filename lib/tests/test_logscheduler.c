@@ -20,6 +20,7 @@
  *
  */
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/cr_template.h"
 
 #include "logscheduler.h"
@@ -100,7 +101,7 @@ Test(logscheduler, test_log_scheduler_can_be_constructed)
   msg = create_sample_message();
   log_scheduler_push(s, msg, &path_options);
 
-  cr_assert(test_pipe->messages_count == 2);
+  cr_assert(eq(sz, test_pipe->messages_count, 2));
   log_scheduler_free(s);
   _destroy_test_pipe(test_pipe);
 }

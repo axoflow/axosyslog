@@ -26,6 +26,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "host-resolve.h"
 #include "apphook.h"
@@ -46,8 +47,8 @@ assert_sockaddr_to_hostname(GSockAddr *sa, const gchar *expected)
   result = resolve_sockaddr_to_hostname(&result_len, sa, &host_resolve_options);
   g_sockaddr_unref(sa);
 
-  cr_assert_str_eq(result, expected, "resolved name mismatch");
-  cr_assert_eq(result_len, strlen(result), "returned length is not true");
+  cr_assert(eq(str, result, expected), "resolved name mismatch");
+  cr_assert(eq(sz, result_len, strlen(result)), "returned length is not true");
 }
 
 static void
@@ -105,8 +106,8 @@ assert_hostname_to_sockaddr(gint family, const gchar *hostname, const gchar *exp
     }
 
   cr_assert(result, "unexpected error return");
-  cr_assert_not_null(sa, "sockaddr can't be NULL for successful returns");
-  cr_assert_str_eq(ip, expected_ip, "resolved address mismatch");
+  cr_assert(not(zero(ptr, sa)), "sockaddr can't be NULL for successful returns");
+  cr_assert(eq(str, ip, expected_ip), "resolved address mismatch");
 }
 
 static void
@@ -118,8 +119,8 @@ assert_hostname_to_sockaddr_fails(gint family, const gchar *hostname)
   result = resolve_hostname_to_sockaddr(&sa, family, hostname);
   g_sockaddr_unref(sa);
 
-  cr_assert_null(sa, "returned sockaddr is non-NULL");
-  cr_assert_not(result, "unexpected success returned");
+  cr_assert(zero(ptr, sa), "returned sockaddr is non-NULL");
+  cr_assert(not(result), "unexpected success returned");
 }
 
 static void
@@ -129,8 +130,8 @@ assert_hostname_to_hostname_len(gsize buflen, const gchar *hostname, const gchar
   gsize result_len = 9999;
 
   result = resolve_hostname_to_hostname(&result_len, hostname, &host_resolve_options);
-  cr_assert_str_eq(result, expected, "hostname to hostname result mismatch");
-  cr_assert_eq(result_len, strlen(result), "returned length is not true");
+  cr_assert(eq(str, result, expected), "hostname to hostname result mismatch");
+  cr_assert(eq(sz, result_len, strlen(result)), "returned length is not true");
 }
 
 static void
