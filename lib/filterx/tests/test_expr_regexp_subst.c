@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/filterx-lib.h"
 
 #include "filterx/expr-regexp.h"
@@ -73,7 +74,7 @@ _build_subst_func(const gchar *pattern, const gchar *repr, const gchar *str, Fil
 
   GError *err = NULL;
   FilterXExpr *func = filterx_function_regexp_subst_new(filterx_function_args_new(args, NULL), &err);
-  cr_assert_null(err);
+  cr_assert(zero(ptr, err));
 
   func = filterx_expr_optimize(func);
   cr_assert(filterx_expr_init(func, configuration));
@@ -103,7 +104,7 @@ Test(filterx_expr_regexp_subst, regexp_subst_single_replace)
   FilterXObject *result = _sub("oo", "X", "foobarbaz", opts);
   cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(string)));
   const gchar *res = filterx_string_get_value_as_cstr(result);
-  cr_assert_str_eq(res, "fXbarbaz");
+  cr_assert(eq(str, res, "fXbarbaz"));
   filterx_object_unref(result);
 }
 
@@ -113,7 +114,7 @@ Test(filterx_expr_regexp_subst, regexp_subst_single_replace_with_global)
   FilterXObject *result = _sub("oo", "X", "foobarbaz", opts);
   cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(string)));
   const gchar *res = filterx_string_get_value_as_cstr(result);
-  cr_assert_str_eq(res, "fXbarbaz");
+  cr_assert(eq(str, res, "fXbarbaz"));
   filterx_object_unref(result);
 }
 
@@ -123,7 +124,7 @@ Test(filterx_expr_regexp_subst, regexp_subst_multi_replace)
   FilterXObject *result = _sub("a", "X", "foobarbaz", opts);
   cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(string)));
   const gchar *res = filterx_string_get_value_as_cstr(result);
-  cr_assert_str_eq(res, "foobXrbaz");
+  cr_assert(eq(str, res, "foobXrbaz"));
   filterx_object_unref(result);
 }
 
@@ -133,7 +134,7 @@ Test(filterx_expr_regexp_subst, regexp_subst_multi_replace_with_global)
   FilterXObject *result = _sub("a", "X", "foobarbaz", opts);
   cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(string)));
   const gchar *res = filterx_string_get_value_as_cstr(result);
-  cr_assert_str_eq(res, "foobXrbXz");
+  cr_assert(eq(str, res, "foobXrbXz"));
   filterx_object_unref(result);
 }
 
@@ -143,7 +144,7 @@ Test(filterx_expr_regexp_subst, regexp_subst_zero_length_matches)
   FilterXObject *result = _sub("u*", "X", "foobarbaz", opts);
   cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(string)));
   const gchar *res = filterx_string_get_value_as_cstr(result);
-  cr_assert_str_eq(res, "XfoobarbazX");
+  cr_assert(eq(str, res, "XfoobarbazX"));
   filterx_object_unref(result);
 }
 
@@ -153,7 +154,7 @@ Test(filterx_expr_regexp_subst, regexp_subst_zero_length_matches_with_global)
   FilterXObject *result = _sub("u*", "X", "foobarbaz", opts);
   cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(string)));
   const gchar *res = filterx_string_get_value_as_cstr(result);
-  cr_assert_str_eq(res, "XfXoXoXbXaXrXbXaXzX");
+  cr_assert(eq(str, res, "XfXoXoXbXaXrXbXaXzX"));
   filterx_object_unref(result);
 }
 
@@ -163,7 +164,7 @@ Test(filterx_expr_regexp_subst, regexp_subst_zero_length_matches_with_char_match
   FilterXObject *result = _sub("a*", "X", "foobarbaz", opts);
   cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(string)));
   const gchar *res = filterx_string_get_value_as_cstr(result);
-  cr_assert_str_eq(res, "XfoobarbazX");
+  cr_assert(eq(str, res, "XfoobarbazX"));
   filterx_object_unref(result);
 }
 
@@ -173,7 +174,7 @@ Test(filterx_expr_regexp_subst, regexp_subst_zero_length_matches_with_char_match
   FilterXObject *result = _sub("a*", "X", "foobarbaz", opts);
   cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(string)));
   const gchar *res = filterx_string_get_value_as_cstr(result);
-  cr_assert_str_eq(res, "XfXoXoXbXXrXbXXzX");
+  cr_assert(eq(str, res, "XfXoXoXbXXrXbXXzX"));
   filterx_object_unref(result);
 }
 
@@ -183,7 +184,7 @@ Test(filterx_expr_regexp_subst, regexp_subst_at_beginning)
   FilterXObject *result = _sub("fo", "X", "foobarbaz", opts);
   cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(string)));
   const gchar *res = filterx_string_get_value_as_cstr(result);
-  cr_assert_str_eq(res, "Xobarbaz");
+  cr_assert(eq(str, res, "Xobarbaz"));
   filterx_object_unref(result);
 }
 
@@ -193,7 +194,7 @@ Test(filterx_expr_regexp_subst, regexp_subst_at_beginning_with_global)
   FilterXObject *result = _sub("fo", "X", "foobarbaz", opts);
   cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(string)));
   const gchar *res = filterx_string_get_value_as_cstr(result);
-  cr_assert_str_eq(res, "Xobarbaz");
+  cr_assert(eq(str, res, "Xobarbaz"));
   filterx_object_unref(result);
 }
 
@@ -203,7 +204,7 @@ Test(filterx_expr_regexp_subst, regexp_subst_at_the_end)
   FilterXObject *result = _sub("az", "X", "foobarbaz", opts);
   cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(string)));
   const gchar *res = filterx_string_get_value_as_cstr(result);
-  cr_assert_str_eq(res, "foobarbX");
+  cr_assert(eq(str, res, "foobarbX"));
   filterx_object_unref(result);
 }
 
@@ -213,7 +214,7 @@ Test(filterx_expr_regexp_subst, regexp_subst_at_the_end_with_global)
   FilterXObject *result = _sub("az", "X", "foobarbaz", opts);
   cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(string)));
   const gchar *res = filterx_string_get_value_as_cstr(result);
-  cr_assert_str_eq(res, "foobarbX");
+  cr_assert(eq(str, res, "foobarbX"));
   filterx_object_unref(result);
 }
 
@@ -223,7 +224,7 @@ Test(filterx_expr_regexp_subst, regexp_subst_multi_replace_multi_pattern)
   FilterXObject *result = _sub("(a|o)", "X", "foobarbaz", opts);
   cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(string)));
   const gchar *res = filterx_string_get_value_as_cstr(result);
-  cr_assert_str_eq(res, "fXobarbaz");
+  cr_assert(eq(str, res, "fXobarbaz"));
   filterx_object_unref(result);
 }
 
@@ -233,7 +234,7 @@ Test(filterx_expr_regexp_subst, regexp_subst_multi_replace_multi_pattern_with_gl
   FilterXObject *result = _sub("(a|o)", "X", "foobarbaz", opts);
   cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(string)));
   const gchar *res = filterx_string_get_value_as_cstr(result);
-  cr_assert_str_eq(res, "fXXbXrbXz");
+  cr_assert(eq(str, res, "fXXbXrbXz"));
   filterx_object_unref(result);
 }
 
@@ -243,7 +244,7 @@ Test(filterx_expr_regexp_subst, regexp_subst_accept_end_literal)
   FilterXObject *result = _sub("ba.$", "X", "foobarbaz", opts);
   cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(string)));
   const gchar *res = filterx_string_get_value_as_cstr(result);
-  cr_assert_str_eq(res, "foobarX");
+  cr_assert(eq(str, res, "foobarX"));
   filterx_object_unref(result);
 }
 
@@ -253,7 +254,7 @@ Test(filterx_expr_regexp_subst, regexp_subst_accept_end_literal_with_global)
   FilterXObject *result = _sub("ba.$", "X", "foobarbaz", opts);
   cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(string)));
   const gchar *res = filterx_string_get_value_as_cstr(result);
-  cr_assert_str_eq(res, "foobarX");
+  cr_assert(eq(str, res, "foobarX"));
   filterx_object_unref(result);
 }
 
@@ -263,7 +264,7 @@ Test(filterx_expr_regexp_subst, regexp_subst_accept_groups)
   FilterXObject *result = _sub("(o)*(ba)", "X", "foobarbaz", opts);
   cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(string)));
   const gchar *res = filterx_string_get_value_as_cstr(result);
-  cr_assert_str_eq(res, "fXrbaz");
+  cr_assert(eq(str, res, "fXrbaz"));
   filterx_object_unref(result);
 }
 
@@ -273,7 +274,7 @@ Test(filterx_expr_regexp_subst, regexp_subst_accept_groups_with_global)
   FilterXObject *result = _sub("(o)*(ba)", "X", "foobarbaz", opts);
   cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(string)));
   const gchar *res = filterx_string_get_value_as_cstr(result);
-  cr_assert_str_eq(res, "fXrXz");
+  cr_assert(eq(str, res, "fXrXz"));
   filterx_object_unref(result);
 }
 
@@ -281,15 +282,15 @@ Test(filterx_expr_regexp_subst, regexp_subst_nojit_arg)
 {
   FilterXFuncRegexpSubstOpts opts = {.jit = TRUE};
   FilterXExpr *func = _build_subst_func("o", "X", "foobarbaz", opts);
-  cr_assert_not_null(func);
+  cr_assert(not(zero(ptr, func)));
   cr_assert(filterx_regexp_subst_is_jit_enabled(func));
   filterx_expr_deinit(func, configuration);
   filterx_expr_unref(func);
 
   FilterXFuncRegexpSubstOpts opts_nojit = {};
   FilterXExpr *func_nojit = _build_subst_func("o", "X", "foobarbaz", opts_nojit);
-  cr_assert_not_null(func_nojit);
-  cr_assert(!filterx_regexp_subst_is_jit_enabled(func_nojit));
+  cr_assert(not(zero(ptr, func_nojit)));
+  cr_assert(not(filterx_regexp_subst_is_jit_enabled(func_nojit)));
   filterx_expr_deinit(func_nojit, configuration);
   filterx_expr_unref(func_nojit);
 }
@@ -300,14 +301,14 @@ Test(filterx_expr_regexp_subst, regexp_subst_match_opt_ignorecase)
   FilterXObject *result = _sub("(O|A)", "X", "foobarbaz", opts);
   cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(string)));
   const gchar *res = filterx_string_get_value_as_cstr(result);
-  cr_assert_str_eq(res, "foobarbaz");
+  cr_assert(eq(str, res, "foobarbaz"));
   filterx_object_unref(result);
 
   FilterXFuncRegexpSubstOpts opts_alt = {.ignorecase = TRUE, .global = TRUE};
   FilterXObject *result_alt = _sub("(O|A)", "X", "foobarbaz", opts_alt);
   cr_assert(filterx_object_is_type(result_alt, &FILTERX_TYPE_NAME(string)));
   const gchar *res_alt = filterx_string_get_value_as_cstr(result_alt);
-  cr_assert_str_eq(res_alt, "fXXbXrbXz");
+  cr_assert(eq(str, res_alt, "fXXbXrbXz"));
   filterx_object_unref(result_alt);
 }
 
@@ -318,14 +319,14 @@ Test(filterx_expr_regexp_subst, regexp_subst_match_opt_ignorecase_nojit)
   FilterXObject *result = _sub("(O|A)", "X", "foobarbaz", opts);
   cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(string)));
   const gchar *res = filterx_string_get_value_as_cstr(result);
-  cr_assert_str_eq(res, "foobarbaz");
+  cr_assert(eq(str, res, "foobarbaz"));
   filterx_object_unref(result);
 
   FilterXFuncRegexpSubstOpts opts_alt = {.ignorecase = TRUE, .global = TRUE, .jit = TRUE};
   FilterXObject *result_alt = _sub("(O|A)", "X", "foobarbaz", opts_alt);
   cr_assert(filterx_object_is_type(result_alt, &FILTERX_TYPE_NAME(string)));
   const gchar *res_alt = filterx_string_get_value_as_cstr(result_alt);
-  cr_assert_str_eq(res_alt, "fXXbXrbXz");
+  cr_assert(eq(str, res_alt, "fXXbXrbXz"));
   filterx_object_unref(result_alt);
 }
 
@@ -335,14 +336,14 @@ Test(filterx_expr_regexp_subst, regexp_subst_group_subst)
   FilterXObject *result = _sub("(\\d{2})-(\\d{2})-(\\d{4})", "\\3-\\2-\\1", "25-02-2022", opts);
   cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(string)));
   const gchar *res = filterx_string_get_value_as_cstr(result);
-  cr_assert_str_eq(res, "\\3-\\2-\\1");
+  cr_assert(eq(str, res, "\\3-\\2-\\1"));
   filterx_object_unref(result);
 
   FilterXFuncRegexpSubstOpts opts_alt = {.groups = TRUE};
   FilterXObject *result_alt = _sub("(\\d{2})-(\\d{2})-(\\d{4})", "\\3-\\2-\\1", "25-02-2022", opts_alt);
   cr_assert(filterx_object_is_type(result_alt, &FILTERX_TYPE_NAME(string)));
   const gchar *res_alt = filterx_string_get_value_as_cstr(result_alt);
-  cr_assert_str_eq(res_alt, "2022-02-25");
+  cr_assert(eq(str, res_alt, "2022-02-25"));
   filterx_object_unref(result_alt);
 }
 
@@ -352,7 +353,7 @@ Test(filterx_expr_regexp_subst, regexp_subst_group_subst_without_ref)
   FilterXObject *result = _sub("(\\d{2})-(\\d{2})-(\\d{4})", "group without ref", "25-02-2022", opts);
   cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(string)));
   const gchar *res = filterx_string_get_value_as_cstr(result);
-  cr_assert_str_eq(res, "group without ref");
+  cr_assert(eq(str, res, "group without ref"));
   filterx_object_unref(result);
 }
 
@@ -364,7 +365,7 @@ Test(filterx_expr_regexp_subst, regexp_subst_group_reference_with_multiple_digit
          "\\12-\\11-\\10-\\9\\8\\7\\6\\5\\4\\3\\2\\1", "010203040506070809101112", opts);
   cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(string)));
   const gchar *res = filterx_string_get_value_as_cstr(result);
-  cr_assert_str_eq(res, "12-11-10-090807060504030201");
+  cr_assert(eq(str, res, "12-11-10-090807060504030201"));
   filterx_object_unref(result);
 }
 
@@ -375,7 +376,7 @@ Test(filterx_expr_regexp_subst, regexp_subst_group_do_not_replace_unknown_ref)
                                "\\3\\20\\1", "010203", opts);
   cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(string)));
   const gchar *res = filterx_string_get_value_as_cstr(result);
-  cr_assert_str_eq(res, "03\\2001");
+  cr_assert(eq(str, res, "03\\2001"));
   filterx_object_unref(result);
 }
 
@@ -385,7 +386,7 @@ Test(filterx_expr_regexp_subst, regexp_subst_group_limited_digits_and_zero_prefi
   FilterXObject *result = _sub("(\\w+),(\\w+),(\\w+)", "\\3\\02\\0013.14", "baz,bar,foo", opts);
   cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(string)));
   const gchar *res = filterx_string_get_value_as_cstr(result);
-  cr_assert_str_eq(res, "foobarbaz3.14");
+  cr_assert(eq(str, res, "foobarbaz3.14"));
   filterx_object_unref(result);
 }
 
@@ -394,7 +395,7 @@ Test(filterx_expr_regexp_subst, empty_subject_empty_match_pattern)
   FilterXFuncRegexpSubstOpts opts = {};
   FilterXObject *result = _sub("\\s*", "", "", opts);
   cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(string)));
-  cr_assert_str_eq(filterx_string_get_value_as_cstr(result), "");
+  cr_assert(eq(str, filterx_string_get_value_as_cstr(result), ""));
   filterx_object_unref(result);
 }
 
@@ -403,7 +404,7 @@ Test(filterx_expr_regexp_subst, empty_subject_empty_match_pattern_global)
   FilterXFuncRegexpSubstOpts opts = {.global = TRUE};
   FilterXObject *result = _sub("\\s*", "", "", opts);
   cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(string)));
-  cr_assert_str_eq(filterx_string_get_value_as_cstr(result), "");
+  cr_assert(eq(str, filterx_string_get_value_as_cstr(result), ""));
   filterx_object_unref(result);
 }
 

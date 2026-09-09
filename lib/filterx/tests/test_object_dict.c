@@ -20,6 +20,7 @@
  *
  */
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/filterx-lib.h"
 
 #include "filterx/object-dict.h"
@@ -116,10 +117,10 @@ Test(filterx_dict, test_dict_function)
   filterx_object_unref(fobj);
 
   fobj = _exec_dict_func(filterx_message_value_new("{\"foo\": 1}", -1, LM_VT_JSON));
-  cr_assert(fobj == NULL);
+  cr_assert(zero(ptr, fobj));
 
   fobj = _exec_dict_func(filterx_message_value_new("{\"foo\": 1}", -1, LM_VT_STRING));
-  cr_assert(fobj == NULL);
+  cr_assert(zero(ptr, fobj));
 
   fobj = _exec_dict_func(filterx_object_from_json("{\"foo\": 1}", -1, NULL));
   cr_assert(filterx_object_is_type_or_ref(fobj, &FILTERX_TYPE_NAME(dict)));
@@ -128,19 +129,19 @@ Test(filterx_dict, test_dict_function)
 
   /* dict does not accept a list */
   fobj = _exec_dict_func(filterx_object_from_json("[1, 2]", -1, NULL));
-  cr_assert(fobj == NULL);
+  cr_assert(zero(ptr, fobj));
 
   fobj = _exec_dict_func(filterx_string_new("[1, 2]", -1));
-  cr_assert(fobj == NULL);
+  cr_assert(zero(ptr, fobj));
 
   fobj = _exec_dict_func(filterx_message_value_new("[1, 2]", -1, LM_VT_STRING));
-  cr_assert(fobj == NULL);
+  cr_assert(zero(ptr, fobj));
 
   fobj = _exec_dict_func(filterx_message_value_new("[1, 2]", -1, LM_VT_JSON));
-  cr_assert(fobj == NULL);
+  cr_assert(zero(ptr, fobj));
 
   fobj = _exec_dict_func(filterx_message_value_new("foo,bar", -1, LM_VT_LIST));
-  cr_assert(fobj == NULL);
+  cr_assert(zero(ptr, fobj));
 }
 
 Test(filterx_dict, test_list_function)
@@ -160,13 +161,13 @@ Test(filterx_dict, test_list_function)
   /* no need to handle MessageValue arguments, those will be unmarshalled at
    * evaluation before passing them to the list() function */
   fobj = _exec_list_func(filterx_message_value_new("[1, 2]", -1, LM_VT_JSON));
-  cr_assert(fobj == NULL);
+  cr_assert(zero(ptr, fobj));
 
   fobj = _exec_list_func(filterx_message_value_new("foo,bar", -1, LM_VT_LIST));
-  cr_assert(fobj == NULL);
+  cr_assert(zero(ptr, fobj));
 
   fobj = _exec_list_func(filterx_message_value_new("[1, 2]", -1, LM_VT_STRING));
-  cr_assert(fobj == NULL);
+  cr_assert(zero(ptr, fobj));
 
   fobj = _exec_list_func(filterx_object_from_json("[1, 2]", -1, NULL));
   cr_assert(filterx_object_is_type_or_ref(fobj, &FILTERX_TYPE_NAME(list)));
@@ -174,16 +175,16 @@ Test(filterx_dict, test_list_function)
   filterx_object_unref(fobj);
 
   fobj = _exec_list_func(filterx_object_from_json("{\"foo\":\"bar\"}", -1, NULL));
-  cr_assert(fobj == NULL);
+  cr_assert(zero(ptr, fobj));
 
   fobj = _exec_list_func(filterx_string_new("{\"foo\":\"bar\"}", -1));
-  cr_assert(fobj == NULL);
+  cr_assert(zero(ptr, fobj));
 
   fobj = _exec_list_func(filterx_message_value_new("{\"foo\":\"bar\"}", -1, LM_VT_STRING));
-  cr_assert(fobj == NULL);
+  cr_assert(zero(ptr, fobj));
 
   fobj = _exec_list_func(filterx_message_value_new("{\"foo\":\"bar\"}", -1, LM_VT_JSON));
-  cr_assert(fobj == NULL);
+  cr_assert(zero(ptr, fobj));
 }
 
 Test(filterx_dict, test_list_dedup)
@@ -193,15 +194,15 @@ Test(filterx_dict, test_list_dedup)
 
   filterx_config_dedup_object(configuration, &list);
 
-  cr_assert_eq(list, orig_list);
+  cr_assert(eq(ptr, list, orig_list));
 
   FilterXObject *val_0 = filterx_sequence_get_subscript(list, 0);
   FilterXObject *val_1 = filterx_sequence_get_subscript(list, 1);
   FilterXObject *val_2 = filterx_sequence_get_subscript(list, 2);
 
-  cr_assert_eq(val_0, val_2);
-  cr_assert_neq(val_0, val_1);
-  cr_assert_not(filterx_object_is_preserved(val_0));
+  cr_assert(eq(ptr, val_0, val_2));
+  cr_assert(ne(ptr, val_0, val_1));
+  cr_assert(not(filterx_object_is_preserved(val_0)));
 
   filterx_object_unref(val_2);
   filterx_object_unref(val_1);
@@ -216,7 +217,7 @@ Test(filterx_dict, test_dict_dedup)
 
   filterx_config_dedup_object(configuration, &dict);
 
-  cr_assert_eq(dict, orig_dict);
+  cr_assert(eq(ptr, dict, orig_dict));
 
   FilterXObject *a = filterx_string_new("a", -1);
   FilterXObject *b = filterx_string_new("b", -1);
@@ -226,9 +227,9 @@ Test(filterx_dict, test_dict_dedup)
   FilterXObject *val_b = filterx_object_get_subscript(dict, b);
   FilterXObject *val_c = filterx_object_get_subscript(dict, c);
 
-  cr_assert_eq(val_a, val_c);
-  cr_assert_neq(val_a, val_b);
-  cr_assert_not(filterx_object_is_preserved(val_a));
+  cr_assert(eq(ptr, val_a, val_c));
+  cr_assert(ne(ptr, val_a, val_b));
+  cr_assert(not(filterx_object_is_preserved(val_a)));
 
   filterx_object_unref(val_c);
   filterx_object_unref(val_b);
@@ -246,14 +247,14 @@ Test(filterx_dict, test_list_freeze)
 
   filterx_config_freeze_object(configuration, &list);
 
-  cr_assert_eq(list, orig_list);
+  cr_assert(eq(ptr, list, orig_list));
 
   FilterXObject *val_0 = filterx_sequence_get_subscript(list, 0);
   FilterXObject *val_1 = filterx_sequence_get_subscript(list, 1);
   FilterXObject *val_2 = filterx_sequence_get_subscript(list, 2);
 
-  cr_assert_eq(val_0, val_2);
-  cr_assert_neq(val_0, val_1);
+  cr_assert(eq(ptr, val_0, val_2));
+  cr_assert(ne(ptr, val_0, val_1));
   cr_assert(filterx_object_is_preserved(val_0));
 
   filterx_object_unref(val_2);
@@ -273,12 +274,12 @@ Test(filterx_dict, test_adding_to_a_frozen_floating_list_leaves_it_intact)
   cr_assert(filterx_sequence_append(other, &elem));
 
   FilterXObject *sum = filterx_object_add(frozen, other);
-  cr_assert_not_null(sum);
-  cr_assert_neq(sum, frozen);
+  cr_assert(not(zero(ptr, sum)));
+  cr_assert(ne(ptr, sum, frozen));
 
   guint64 len = 1;
   cr_assert(filterx_object_len(frozen, &len));
-  cr_assert_eq(len, 0);
+  cr_assert(eq(u64, len, 0));
 
   filterx_object_unref(sum);
   filterx_object_unref(other);
@@ -292,7 +293,7 @@ Test(filterx_dict, test_dict_freeze)
 
   filterx_config_freeze_object(configuration, &dict);
 
-  cr_assert_eq(dict, orig_dict);
+  cr_assert(eq(ptr, dict, orig_dict));
 
   FilterXObject *a = filterx_string_new("a", -1);
   FilterXObject *b = filterx_string_new("b", -1);
@@ -302,8 +303,8 @@ Test(filterx_dict, test_dict_freeze)
   FilterXObject *val_b = filterx_object_get_subscript(dict, b);
   FilterXObject *val_c = filterx_object_get_subscript(dict, c);
 
-  cr_assert_eq(val_a, val_c);
-  cr_assert_neq(val_a, val_b);
+  cr_assert(eq(ptr, val_a, val_c));
+  cr_assert(ne(ptr, val_a, val_b));
   cr_assert(filterx_object_is_preserved(val_a));
 
   filterx_object_unref(val_c);
@@ -321,9 +322,9 @@ Test(filterx_dict, filterx_dict_object_repr)
   GString *repr = scratch_buffers_alloc();
   g_string_assign(repr, "foo");
   cr_assert(filterx_object_repr(obj, repr));
-  cr_assert_str_eq("{\"foo\":\"foovalue\"}", repr->str);
+  cr_assert(eq(str, "{\"foo\":\"foovalue\"}", repr->str));
   cr_assert(filterx_object_repr_append(obj, repr));
-  cr_assert_str_eq("{\"foo\":\"foovalue\"}{\"foo\":\"foovalue\"}", repr->str);
+  cr_assert(eq(str, "{\"foo\":\"foovalue\"}{\"foo\":\"foovalue\"}", repr->str));
   filterx_object_unref(obj);
 }
 
@@ -333,9 +334,9 @@ Test(filterx_dict, filterx_dict_array_repr)
   GString *repr = scratch_buffers_alloc();
   g_string_assign(repr, "foo");
   cr_assert(filterx_object_repr(obj, repr));
-  cr_assert_str_eq(repr->str, "[\"foo\",\"bar\"]");
+  cr_assert(eq(str, repr->str, "[\"foo\",\"bar\"]"));
   cr_assert(filterx_object_repr_append(obj, repr));
-  cr_assert_str_eq(repr->str, "[\"foo\",\"bar\"][\"foo\",\"bar\"]");
+  cr_assert(eq(str, repr->str, "[\"foo\",\"bar\"][\"foo\",\"bar\"]"));
   filterx_object_unref(obj);
 }
 
@@ -343,7 +344,7 @@ Test(filterx_dict, filterx_dict_object_copying_double)
 {
   FilterXObject *obj = filterx_object_from_json("{\"foo\": 3.14}", -1, NULL);
   FilterXObject *obj_clone = filterx_object_copy(obj);
-  cr_assert_not_null(obj_clone);
+  cr_assert(not(zero(ptr, obj_clone)));
   filterx_object_unref(obj_clone);
   filterx_object_unref(obj);
 }
@@ -351,11 +352,11 @@ Test(filterx_dict, filterx_dict_object_copying_double)
 Test(filterx_dict, move_key_on_empty_dict_returns_null)
 {
   FilterXObject *dict = filterx_dict_new();
-  cr_assert_not_null(dict);
+  cr_assert(not(zero(ptr, dict)));
 
   FilterXObject *key = filterx_string_new("foo", -1);
   FilterXObject *moved = filterx_object_move_key(dict, key);
-  cr_assert_null(moved);
+  cr_assert(zero(ptr, moved));
 
   filterx_object_unref(key);
   filterx_object_unref(dict);
@@ -387,7 +388,7 @@ Test(filterx_dict, test_empty_dict_membership_is_false)
   gboolean is_member = TRUE;
   cr_assert(result);
   cr_assert(filterx_boolean_unwrap(result, &is_member));
-  cr_assert_not(is_member);
+  cr_assert(not(is_member));
 
   filterx_object_unref(result);
   filterx_object_unref(member);

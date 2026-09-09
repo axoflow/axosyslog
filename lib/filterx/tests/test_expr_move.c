@@ -21,6 +21,7 @@
  *
  */
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/filterx-lib.h"
 
 #include "filterx/expr-variable.h"
@@ -40,7 +41,7 @@ Test(filterx_expr_move, moving_a_macro_fails_without_leaking_its_value)
   set_libtest_filterx_scope(filterx_scope_new(NULL, layout));
   cr_assert(filterx_expr_init(block, configuration));
 
-  cr_assert_null(filterx_expr_move(var));
+  cr_assert(zero(ptr, filterx_expr_move(var)));
   filterx_eval_clear_errors();
 
   filterx_expr_deinit(block, configuration);
