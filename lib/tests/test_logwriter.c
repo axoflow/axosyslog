@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "logwriter.h"
 #include "logmsg/logmsg.h"
@@ -180,8 +181,8 @@ _assert_logwriter_output(LogWriterTestCase c)
   log_writer_set_queue(writer, queue);
   cr_assert(log_pipe_init((LogPipe *)writer), "LogWriter initialization failed");
   log_writer_format_log(writer, msg, result_msg);
-  cr_assert_str_eq(result_msg->str, c.expected_value, "Expected: %s, actual: %s (truncate_size:%d)",
-                   c.expected_value, result_msg->str, c.truncate_size);
+  cr_assert(eq(str, result_msg->str, c.expected_value), "Expected: %s, actual: %s (truncate_size:%d)",
+            c.expected_value, result_msg->str, c.truncate_size);
 
   _tear_down(writer, msg, queue, result_msg, &opt);
 }

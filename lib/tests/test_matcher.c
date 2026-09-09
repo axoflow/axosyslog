@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/msg_parse_lib.h"
 #include "libtest/cr_template.h"
 
@@ -81,9 +82,9 @@ testcase_match(const gchar *log, const gchar *pattern, gboolean expected_result,
   value = log_msg_get_value(msg, nonasciiz, &msglen);
   result = log_matcher_match(m, msg, nonasciiz, value, msglen);
 
-  cr_assert_eq(result, expected_result,
-               "pattern=%s, result=%d, expected=%d\n",
-               pattern, result, expected_result);
+  cr_assert(eq(int, result, expected_result),
+            "pattern=%s, result=%d, expected=%d\n",
+            pattern, result, expected_result);
 
   log_matcher_unref(m);
   log_msg_unref(msg);
@@ -112,9 +113,11 @@ testcase_replace(const gchar *log, const gchar *re, gchar *replacement, const gc
   value = log_msg_get_value(msg, nonasciiz, &msglen);
   log_msg_unpin_payload(msg, pin);
 
-  cr_assert_arr_eq((result ? result : value), expected_result, (result ? length : msglen),
-                   "pattern=%s, result=%.*s, expected=%s\n",
-                   re, (int) length, (result ? result : value), expected_result);
+  struct cr_mem result_mem = { .data = (result ? result : value), .size = (result ? length : msglen) };
+  struct cr_mem expected_mem = { .data = expected_result, .size = (result ? length : msglen) };
+  cr_assert(eq(mem, result_mem, expected_mem),
+            "pattern=%s, result=%.*s, expected=%s\n",
+            re, (int) length, (result ? result : value), expected_result);
 
   g_free(result);
 
@@ -279,7 +282,7 @@ Test(matcher, test_matcher_sets_num_matches_upon_successful_matching)
 
   msg = _create_log_message(msg_payload);
 
-  cr_assert_eq(msg->num_matches, 0);
+  cr_assert(eq(u8, msg->num_matches, 0));
 
   log_matcher_options_defaults(&matcher_options);
   matcher_options.flags = LMF_STORE_MATCHES;
@@ -296,7 +299,7 @@ Test(matcher, test_matcher_sets_num_matches_upon_successful_matching)
   assert_log_message_match_value(msg, 0, value);
   assert_log_message_match_value(msg, 1, "kiwi");
 
-  cr_assert_eq(msg->num_matches, 2);
+  cr_assert(eq(u8, msg->num_matches, 2));
 
   /* another match, number of capture groups is 3, producing $0, $1, $2 */
   log_matcher_compile(m, "^(ki)(wi).*", NULL);
@@ -308,7 +311,7 @@ Test(matcher, test_matcher_sets_num_matches_upon_successful_matching)
   assert_log_message_match_value(msg, 0, value);
   assert_log_message_match_value(msg, 1, "ki");
   assert_log_message_match_value(msg, 2, "wi");
-  cr_assert_eq(msg->num_matches, 3);
+  cr_assert(eq(u8, msg->num_matches, 3));
 
   /* another match, decreasing the number of matches, going back to 2 capture groups */
   log_matcher_compile(m, "^(kiwi).*", NULL);
@@ -319,7 +322,7 @@ Test(matcher, test_matcher_sets_num_matches_upon_successful_matching)
   assert_log_message_value(msg, LM_V_MESSAGE, msg_payload);
   assert_log_message_match_value(msg, 0, value);
   assert_log_message_match_value(msg, 1, "kiwi");
-  cr_assert_eq(msg->num_matches, 2);
+  cr_assert(eq(u8, msg->num_matches, 2));
 
   log_matcher_unref(m);
   log_msg_unref(msg);
@@ -504,7 +507,7 @@ Test(matcher, test_matcher_optional_matches_are_unset)
 
   LogMessageValueType type;
   log_msg_get_match_with_type(msg, 1, NULL, &type);
-  cr_assert_eq(type, LM_VT_NULL);
+  cr_assert(eq(u8, type, LM_VT_NULL));
 
   assert_log_message_match_value(msg, 2, "bar");
 
@@ -539,9 +542,10 @@ Test(matcher, test_replace_works_correctly_if_capture_group_overwrites_the_input
                                       replace_template, &result_len);
   log_msg_unpin_payload(msg, pin);
   cr_log_info("replace result value: %s, length(%ld)", result, result_len);
-  cr_assert_arr_eq(result, expected_result, strlen(expected_result),
-                   "replace failed; result: %s (length %ld), expected: %s (length %ld)",
-                   result, result_len, expected_result, strlen(expected_result));
+  cr_assert(eq(mem, ((struct cr_mem){ .data = result, .size = strlen(expected_result) }),
+               ((struct cr_mem){ .data = expected_result, .size = strlen(expected_result) })),
+            "replace failed; result: %s (length %ld), expected: %s (length %ld)",
+            result, result_len, expected_result, strlen(expected_result));
 
   g_free(result);
   log_template_unref(replace_template);
@@ -576,9 +580,10 @@ Test(matcher, test_replace_works_correctly_if_named_capture_group_overwrites_the
                                       replace_template, &result_len);
   log_msg_unpin_payload(msg, pin);
   cr_log_info("replace result value: %s, length(%ld)", result, result_len);
-  cr_assert_arr_eq(result, expected_result, strlen(expected_result),
-                   "replace failed; result: %s (length %ld), expected: %s (length %ld)",
-                   result, result_len, expected_result, strlen(expected_result));
+  cr_assert(eq(mem, ((struct cr_mem){ .data = result, .size = strlen(expected_result) }),
+               ((struct cr_mem){ .data = expected_result, .size = strlen(expected_result) })),
+            "replace failed; result: %s (length %ld), expected: %s (length %ld)",
+            result, result_len, expected_result, strlen(expected_result));
 
   g_free(result);
   log_template_unref(replace_template);
@@ -613,9 +618,10 @@ Test(matcher, test_replace_works_correctly_if_input_is_a_match_value_that_gets_t
                                       replace_template, &result_len);
   log_msg_unpin_payload(msg, pin);
   cr_log_info("replace result value: %s, length(%ld)", result, result_len);
-  cr_assert_arr_eq(result, expected_result, strlen(expected_result),
-                   "replace failed; result: %s (length %ld), expected: %s (length %ld)",
-                   result, result_len, expected_result, strlen(expected_result));
+  cr_assert(eq(mem, ((struct cr_mem){ .data = result, .size = strlen(expected_result) }),
+               ((struct cr_mem){ .data = expected_result, .size = strlen(expected_result) })),
+            "replace failed; result: %s (length %ld), expected: %s (length %ld)",
+            result, result_len, expected_result, strlen(expected_result));
 
   g_free(result);
   log_template_unref(replace_template);
