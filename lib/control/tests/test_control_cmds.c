@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "messages.h"
 #include "control/control.h"
@@ -132,12 +133,12 @@ Test(control_cmds, test_log)
   _run_command("LOG VERBOSE ON", &response);
   cr_assert(first_line_eq(response, "OK syslog-ng log level set to 1"),
             "Bad reply: [%s]", response);
-  cr_assert_eq(verbose_flag, 1, "Flag isn't changed");
+  cr_assert(eq(int, verbose_flag, 1), "Flag isn't changed");
 
   _run_command("LOG VERBOSE OFF", &response);
   cr_assert(first_line_eq(response, "OK syslog-ng log level set to 0"),
             "Bad reply: [%s]", response);
-  cr_assert_eq(verbose_flag, 0, "Flag isn't changed");
+  cr_assert(eq(int, verbose_flag, 0), "Flag isn't changed");
 
 
   msg_set_log_level(1);
@@ -148,12 +149,12 @@ Test(control_cmds, test_log)
   _run_command("LOG DEBUG ON", &response);
   cr_assert(first_line_eq(response, "OK syslog-ng log level set to 2"),
             "Bad reply: [%s]", response);
-  cr_assert_eq(debug_flag, 1, "Flag isn't changed");
+  cr_assert(eq(int, debug_flag, 1), "Flag isn't changed");
 
   _run_command("LOG DEBUG OFF", &response);
   cr_assert(first_line_eq(response, "OK syslog-ng log level set to 1"),
             "Bad reply: [%s]", response);
-  cr_assert_eq(debug_flag, 0, "Flag isn't changed");
+  cr_assert(eq(int, debug_flag, 0), "Flag isn't changed");
 
   msg_set_log_level(2);
   _run_command("LOG TRACE", &response);
@@ -163,12 +164,12 @@ Test(control_cmds, test_log)
   _run_command("LOG TRACE ON", &response);
   cr_assert(first_line_eq(response, "OK syslog-ng log level set to 3"),
             "Bad reply: [%s]", response);
-  cr_assert_eq(trace_flag, 1, "Flag isn't changed");
+  cr_assert(eq(int, trace_flag, 1), "Flag isn't changed");
 
   _run_command("LOG TRACE OFF", &response);
   cr_assert(first_line_eq(response, "OK syslog-ng log level set to 2"),
             "Bad reply: [%s]", response);
-  cr_assert_eq(trace_flag, 0, "Flag isn't changed");
+  cr_assert(eq(int, trace_flag, 0), "Flag isn't changed");
 
 }
 
@@ -208,8 +209,8 @@ Test(control_cmds, test_stats)
   _run_command("STATS", &response);
 
   stats_result = g_strsplit(response, "\n", 2);
-  cr_assert_str_eq(stats_result[0], "SourceName;SourceId;SourceInstance;State;Type;Number",
-                   "Bad reply");
+  cr_assert(eq(str, stats_result[0], "SourceName;SourceId;SourceInstance;State;Type;Number"),
+            "Bad reply");
   g_strfreev(stats_result);
 }
 
@@ -229,9 +230,9 @@ Test(control_cmds, test_reset_stats)
   cr_assert(first_line_eq(response, "OK The statistics of syslog-ng have been reset to 0."), "Bad reply");
 
   _run_command("STATS", &response);
-  cr_assert_str_eq(response,
-                   "SourceName;SourceId;SourceInstance;State;Type;Number\ncenter;id;received;a;processed;0\n.\n",
-                   "Bad reply");
+  cr_assert(eq(str, response,
+               "SourceName;SourceId;SourceInstance;State;Type;Number\ncenter;id;received;a;processed;0\n.\n"),
+            "Bad reply");
 }
 
 static void
@@ -247,9 +248,9 @@ _new_replace(ControlConnection *cc, GString *result, gpointer user_data, gboolea
 static void
 _assert_control_command_eq(ControlCommand *cmd, ControlCommand *cmd_other)
 {
-  cr_assert_eq(cmd->func, cmd_other->func);
-  cr_assert_str_eq(cmd->command_name, cmd_other->command_name);
-  cr_assert_eq(cmd->user_data, cmd_other->user_data);
+  cr_assert(eq(ptr, cmd->func, cmd_other->func));
+  cr_assert(eq(str, cmd->command_name, cmd_other->command_name));
+  cr_assert(eq(ptr, cmd->user_data, cmd_other->user_data));
 }
 
 Test(control_cmds, test_replace_existing_command)
