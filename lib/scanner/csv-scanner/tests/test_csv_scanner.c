@@ -20,6 +20,7 @@
  *
  */
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include <stdio.h>
 
 #include "scratch-buffers.h"
@@ -102,22 +103,22 @@ Test(csv_scanner, simple_comma_separate_values)
   csv_scanner_set_expected_columns(&scanner, 3);
 
   cr_expect(_column_index_equals(0));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
   cr_expect(_column_equals(0, "val1"));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
   cr_expect(_column_equals(1, "val2"));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
   cr_expect(_column_equals(2, "val3"));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   /* go past the last column */
-  cr_expect(!_scan_next());
+  cr_expect(not(_scan_next()));
   cr_expect(_scan_complete());
   csv_scanner_deinit(&scanner);
 }
@@ -130,22 +131,22 @@ Test(csv_scanner, null_value)
   csv_scanner_set_expected_columns(&scanner, 3);
 
   cr_expect(_column_index_equals(0));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
   cr_expect(_column_equals(0, "val1"));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
   cr_expect(_column_equals(1, ""));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
   cr_expect(_column_equals(2, "val3"));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   /* go past the last column */
-  cr_expect(!_scan_next());
+  cr_expect(not(_scan_next()));
   cr_expect(_scan_complete());
   csv_scanner_deinit(&scanner);
 }
@@ -156,10 +157,10 @@ Test(csv_scanner, empty_input_with_some_expected_columns)
   csv_scanner_set_expected_columns(&scanner, 3);
 
   cr_expect(_column_index_equals(0));
-  cr_expect(!_scan_complete());
-  cr_expect(!_scan_next());
+  cr_expect(not(_scan_complete()));
+  cr_expect(not(_scan_next()));
   cr_expect(_column_index_equals(0));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
   csv_scanner_deinit(&scanner);
 }
 
@@ -169,8 +170,8 @@ Test(csv_scanner, empty_input_with_no_columns)
   csv_scanner_set_expected_columns(&scanner, 0);
 
   cr_expect(_column_index_equals(0));
-  cr_expect(!_scan_complete());
-  cr_expect(!_scan_next());
+  cr_expect(not(_scan_complete()));
+  cr_expect(not(_scan_next()));
   cr_expect(_column_index_equals(0));
   cr_expect(_scan_complete());
   csv_scanner_deinit(&scanner);
@@ -182,23 +183,23 @@ Test(csv_scanner, partial_input)
   csv_scanner_set_expected_columns(&scanner, 3);
 
   cr_expect(_column_index_equals(0));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
   cr_expect(_column_equals(0, "val1"));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
   cr_expect(_column_equals(1, "val2"));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
-  cr_expect(!_scan_next());
+  cr_expect(not(_scan_next()));
   cr_expect(_column_index_equals(2));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   /* go past the last column */
-  cr_expect(!_scan_next());
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_next()));
+  cr_expect(not(_scan_complete()));
   cr_expect(_column_index_equals(2));
   csv_scanner_deinit(&scanner);
 }
@@ -210,22 +211,22 @@ Test(csv_scanner, strip_whitespace_will_not_strip_delimiter_characters)
   csv_scanner_options_set_delimiters(&options, "\t");
 
   cr_expect(_column_index_equals(0));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
   cr_expect(_column_equals(0, "foo"));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
   cr_expect(_column_equals(1, ""));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
   cr_expect(_column_equals(2, "baz"));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   /* go past the last column */
-  cr_expect(!_scan_next());
+  cr_expect(not(_scan_next()));
   cr_expect(_scan_complete());
   csv_scanner_deinit(&scanner);
 }
@@ -238,22 +239,22 @@ Test(csv_scanner, strip_whitespace_will_strips_spaces_while_not_stripping_delimi
   csv_scanner_options_set_delimiters(&options, "\t");
 
   cr_expect(_column_index_equals(0));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
   cr_expect(_column_equals(0, "foo"));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
   cr_expect(_column_equals(1, ""));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
   cr_expect(_column_equals(2, "baz"));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   /* go past the last column */
-  cr_expect(!_scan_next());
+  cr_expect(not(_scan_next()));
   cr_expect(_scan_complete());
   csv_scanner_deinit(&scanner);
 }
@@ -265,22 +266,22 @@ Test(csv_scanner, strip_whitespace_and_quoted_values_will_strip_embedded_whitesp
   csv_scanner_options_set_delimiters(&options, "\t");
 
   cr_expect(_column_index_equals(0));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
   cr_expect(_column_equals(0, "foo"));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
   cr_expect(_column_equals(1, ""));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
   cr_expect(_column_equals(2, "baz"));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   /* go past the last column */
-  cr_expect(!_scan_next());
+  cr_expect(not(_scan_next()));
   cr_expect(_scan_complete());
   csv_scanner_deinit(&scanner);
 }
@@ -291,19 +292,19 @@ Test(csv_scanner, greedy_column)
   csv_scanner_set_expected_columns(&scanner, 2);
 
   cr_expect(_column_index_equals(0));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
   cr_expect(_column_index_equals(0));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
   cr_expect(_column_index_equals(1));
   cr_expect(_column_equals(1, "bar,baz"));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   /* go past the last column */
-  cr_expect(!_scan_next());
+  cr_expect(not(_scan_next()));
   cr_expect(_scan_complete());
   csv_scanner_deinit(&scanner);
 }
@@ -313,24 +314,24 @@ Test(csv_scanner, append_rest)
   csv_scanner_init(&scanner, _default_options(), "foo,bar,baz");
 
   cr_expect(_column_index_equals(0));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
   cr_expect(_column_index_equals(0));
   cr_expect(_column_equals(0, "foo"));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_append_rest());
   cr_expect(_column_index_equals(0));
   cr_expect(_column_equals(0, "foo,bar,baz"));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_append_rest());
   cr_expect(_column_index_equals(0));
   cr_expect(_column_equals(0, "foo,bar,baz"));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
-  cr_expect(!_scan_next());
+  cr_expect(not(_scan_next()));
   cr_expect(_scan_complete());
 
   csv_scanner_deinit(&scanner);
@@ -343,19 +344,19 @@ Test(csv_scanner, greedy_column_strip_whitespace)
   csv_scanner_set_expected_columns(&scanner, 2);
 
   cr_expect(_column_index_equals(0));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
   cr_expect(_column_index_equals(0));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
   cr_expect(_column_index_equals(1));
   cr_expect(_column_equals(1, "bar,baz"));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   /* go past the last column */
-  cr_expect(!_scan_next());
+  cr_expect(not(_scan_next()));
   cr_expect(_scan_complete());
   csv_scanner_deinit(&scanner);
 }
@@ -369,19 +370,19 @@ Test(csv_scanner, greedy_column_null_value)
   csv_scanner_set_expected_columns(&scanner, 2);
 
   cr_expect(_column_index_equals(0));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
   cr_expect(_column_index_equals(0));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
   cr_expect(_column_index_equals(1));
   cr_expect(_column_equals(1, ""));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   /* go past the last column */
-  cr_expect(!_scan_next());
+  cr_expect(not(_scan_next()));
   cr_expect(_scan_complete());
   csv_scanner_deinit(&scanner);
 }
@@ -395,19 +396,19 @@ Test(csv_scanner, escape_double_char)
   csv_scanner_set_expected_columns(&scanner, 2);
 
   cr_expect(_column_index_equals(0));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
   cr_expect(_column_index_equals(0));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
   cr_expect(_column_index_equals(1));
   cr_expect(_column_equals(1, "this is a single quote \" character"));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   /* go past the last column */
-  cr_expect(!_scan_next());
+  cr_expect(not(_scan_next()));
   cr_expect(_scan_complete());
   csv_scanner_deinit(&scanner);
 }
@@ -421,19 +422,19 @@ Test(csv_scanner, escape_backslash)
   csv_scanner_set_expected_columns(&scanner, 2);
 
   cr_expect(_column_index_equals(0));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
   cr_expect(_column_index_equals(0));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
   cr_expect(_column_index_equals(1));
   cr_expect(_column_equals(1, "this is a single quote \" charactern"));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   /* go past the last column */
-  cr_expect(!_scan_next());
+  cr_expect(not(_scan_next()));
   cr_expect(_scan_complete());
   csv_scanner_deinit(&scanner);
 }
@@ -447,19 +448,19 @@ Test(csv_scanner, escape_backslash_sequences)
   csv_scanner_set_expected_columns(&scanner, 2);
 
   cr_expect(_column_index_equals(0));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
   cr_expect(_column_index_equals(0));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
   cr_expect(_column_index_equals(1));
   cr_expect(_column_equals(1, "\"\a\t\v\r\n\""));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   /* go past the last column */
-  cr_expect(!_scan_next());
+  cr_expect(not(_scan_next()));
   cr_expect(_scan_complete());
   csv_scanner_deinit(&scanner);
 }
@@ -473,19 +474,19 @@ Test(csv_scanner, escape_backslash_x_sequences)
   csv_scanner_set_expected_columns(&scanner, 2);
 
   cr_expect(_column_index_equals(0));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
   cr_expect(_column_index_equals(0));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
   cr_expect(_column_index_equals(1));
   cr_expect(_column_equals(1, "A\x00@"));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   /* go past the last column */
-  cr_expect(!_scan_next());
+  cr_expect(not(_scan_next()));
   cr_expect(_scan_complete());
   csv_scanner_deinit(&scanner);
 }
@@ -500,19 +501,19 @@ Test(csv_scanner, escape_backslash_invalid_x_sequence)
   csv_scanner_set_expected_columns(&scanner, 2);
 
   cr_expect(_column_index_equals(0));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
   cr_expect(_column_index_equals(0));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
   cr_expect(_column_index_equals(1));
   cr_expect(_column_equals(1, "x4Q"));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   /* go past the last column */
-  cr_expect(!_scan_next());
+  cr_expect(not(_scan_next()));
   cr_expect(_scan_complete());
   csv_scanner_deinit(&scanner);
 }
@@ -522,22 +523,22 @@ Test(csv_scanner, columnless_no_flags)
   csv_scanner_init(&scanner, _default_options(), "val1,val2,val3");
   csv_scanner_set_expected_columns(&scanner, 0);
 
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
-  cr_expect(strcmp(csv_scanner_get_current_value(&scanner), "val1")==0);
-  cr_expect(!_scan_complete());
+  cr_expect(eq(str, csv_scanner_get_current_value(&scanner), "val1"));
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
-  cr_expect(strcmp(csv_scanner_get_current_value(&scanner), "val2")==0);
-  cr_expect(!_scan_complete());
+  cr_expect(eq(str, csv_scanner_get_current_value(&scanner), "val2"));
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
-  cr_expect(strcmp(csv_scanner_get_current_value(&scanner), "val3")==0);
-  cr_expect(!_scan_complete());
+  cr_expect(eq(str, csv_scanner_get_current_value(&scanner), "val3"));
+  cr_expect(not(_scan_complete()));
 
   /* go past the last column */
-  cr_expect(!_scan_next());
+  cr_expect(not(_scan_next()));
   cr_expect(_scan_complete());
   csv_scanner_deinit(&scanner);
 }
@@ -552,21 +553,21 @@ Test(csv_scanner, escaped_unquoted_delimiter)
   csv_scanner_set_expected_columns(&scanner, 3);
 
   cr_expect(_column_index_equals(0));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
   cr_expect(_column_equals(0, "first"));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
   cr_expect(_column_equals(1, "foo|bar|ba\\z"));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
   cr_expect(_column_equals(2, "last"));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
-  cr_expect(!_scan_next());
+  cr_expect(not(_scan_next()));
   cr_expect(_scan_complete());
   csv_scanner_deinit(&scanner);
 }
@@ -580,17 +581,17 @@ Test(csv_scanner, escaped_unquoted_default_comma_delimiter)
   csv_scanner_set_expected_columns(&scanner, 2);
 
   cr_expect(_column_index_equals(0));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
   cr_expect(_column_equals(0, "foo,bar"));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
   cr_expect(_column_equals(1, "last"));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
-  cr_expect(!_scan_next());
+  cr_expect(not(_scan_next()));
   cr_expect(_scan_complete());
   csv_scanner_deinit(&scanner);
 }
@@ -604,17 +605,17 @@ Test(csv_scanner, escaped_unquoted_default_comma_multiple_quoted_delimiters)
   csv_scanner_set_expected_columns(&scanner, 2);
 
   cr_expect(_column_index_equals(0));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
   cr_expect(_column_equals(0, "foo,bar,baz"));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
   cr_expect(_column_equals(1, "last"));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
-  cr_expect(!_scan_next());
+  cr_expect(not(_scan_next()));
   cr_expect(_scan_complete());
   csv_scanner_deinit(&scanner);
 }
@@ -628,21 +629,21 @@ Test(csv_scanner, escaped_unquoted_default_comma_backslash_in_value)
   csv_scanner_set_expected_columns(&scanner, 3);
 
   cr_expect(_column_index_equals(0));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
   cr_expect(_column_equals(0, "foo'"));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
   cr_expect(_column_equals(1, "bar"));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
   cr_expect(_column_equals(2, "last"));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
-  cr_expect(!_scan_next());
+  cr_expect(not(_scan_next()));
   cr_expect(_scan_complete());
   csv_scanner_deinit(&scanner);
 }
@@ -656,17 +657,17 @@ Test(csv_scanner, escaped_unquoted_default_comma_backslash_outside_of_the_value)
   csv_scanner_set_expected_columns(&scanner, 2);
 
   cr_expect(_column_index_equals(0));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
   cr_expect(_column_equals(0, "foo"));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
   cr_expect(_scan_next());
   cr_expect(_column_equals(1, "bar,last"));
-  cr_expect(!_scan_complete());
+  cr_expect(not(_scan_complete()));
 
-  cr_expect(!_scan_next());
+  cr_expect(not(_scan_next()));
   cr_expect(_scan_complete());
   csv_scanner_deinit(&scanner);
 }

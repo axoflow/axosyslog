@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "logmsg/logmsg.h"
 #include "logmsg/timestamp-serialize.h"
@@ -37,8 +38,8 @@ Test(template_timestamp, test_normal_working)
   cr_assert(timestamp_serialize(sa, input_timestamps), "Failed to serialize timestamps");
   cr_assert(timestamp_deserialize(sa, output_timestamps), "Failed to deserialize timestamps");
 
-  cr_assert_str_eq((const gchar *)input_timestamps, (const gchar *)output_timestamps,
-                   "The serialized and the deserialized timestamps are not equal");
+  cr_assert(eq(str, (const gchar *)input_timestamps, (const gchar *)output_timestamps),
+            "The serialized and the deserialized timestamps are not equal");
 }
 
 Test(template_timestamp, test_derializing_injured_timestamp)
@@ -46,19 +47,19 @@ Test(template_timestamp, test_derializing_injured_timestamp)
   cr_assert(timestamp_serialize(sa, input_timestamps), "Failed to serialize timestamps");
 
   g_string_truncate(stream, 0);
-  cr_assert_not(timestamp_deserialize(sa, output_timestamps), "Should be failed");
+  cr_assert(not(timestamp_deserialize(sa, output_timestamps)), "Should be failed");
 
   serialize_archive_free(sa);
   sa = serialize_string_archive_new(stream);
   cr_assert(timestamp_serialize(sa, input_timestamps), "Failed to serialize timestamps");
   g_string_truncate(stream, sizeof(guint64));
-  cr_assert_not(timestamp_deserialize(sa, output_timestamps), "Should be failed");
+  cr_assert(not(timestamp_deserialize(sa, output_timestamps)), "Should be failed");
 
   serialize_archive_free(sa);
   sa = serialize_string_archive_new(stream);
   cr_assert(timestamp_serialize(sa, input_timestamps), "Failed to serialize timestamps");
   g_string_truncate(stream, sizeof(guint64) + sizeof(guint32));
-  cr_assert_not(timestamp_deserialize(sa, output_timestamps), "Should be failed");
+  cr_assert(not(timestamp_deserialize(sa, output_timestamps)), "Should be failed");
 }
 
 static void

@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/fake-time.h"
 
 #include "template/macros.h"
@@ -37,8 +38,8 @@ assert_macro_value(gint id, LogMessage *msg, const gchar *expected_value, LogMes
 
   gboolean result = log_macro_expand_simple(id, msg, resolved, &type);
   cr_assert(result);
-  cr_assert_str_eq(resolved->str, expected_value);
-  cr_assert_eq(type, expected_type);
+  cr_assert(eq(str, resolved->str, expected_value));
+  cr_assert(eq(int, type, expected_type));
 
   g_string_free(resolved, TRUE);
 }
@@ -111,8 +112,8 @@ Test(macro, test_context_id_type_is_returned)
 
   gboolean result = log_macro_expand(M_CONTEXT_ID, &options, msg, resolved, &type);
   cr_assert(result);
-  cr_assert_str_eq(resolved->str, "5678");
-  cr_assert_eq(type, LM_VT_INTEGER);
+  cr_assert(eq(str, resolved->str, "5678"));
+  cr_assert(eq(int, type, LM_VT_INTEGER));
 
   g_string_free(resolved, TRUE);
   log_msg_unref(msg);

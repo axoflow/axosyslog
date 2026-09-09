@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "logmsg/nvhandle-descriptors.h"
 
@@ -38,12 +39,12 @@ Test(nvhandle_desc_array, add_elements)
   nvhandle_desc_array_append(array, &desc1);
   nvhandle_desc_array_append(array, &desc2);
   nvhandle_desc_array_append(array, &desc3);
-  cr_assert_eq(array->len, 4);
+  cr_assert(eq(uint, array->len, 4));
 
   NVHandleDesc *candidate = &nvhandle_desc_array_index(array, 2);
-  cr_assert_eq(candidate->flags, 2);
-  cr_assert_str_eq(candidate->name, "test2");
-  cr_assert_eq(candidate->name_len, strlen("test2"));
+  cr_assert(eq(u16, candidate->flags, 2));
+  cr_assert(eq(str, candidate->name, "test2"));
+  cr_assert(eq(sz, candidate->name_len, strlen("test2")));
 
   nvhandle_desc_array_free(array);
 }

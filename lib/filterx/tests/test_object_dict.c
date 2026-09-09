@@ -386,7 +386,7 @@ Test(filterx_dict, test_empty_dict_membership_is_false)
 
   FilterXObject *result = filterx_object_is_member_of(dict, member);
   gboolean is_member = TRUE;
-  cr_assert(result);
+  cr_assert(not(zero(ptr, result)));
   cr_assert(filterx_boolean_unwrap(result, &is_member));
   cr_assert(not(is_member));
 

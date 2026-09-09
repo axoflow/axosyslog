@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "transport/transport-stack.h"
 #include "apphook.h"
@@ -84,22 +85,22 @@ Test(transport_stack, test_switch_transport)
   LogTransportStack stack;
   log_transport_stack_init(&stack, default_transport_new(fd));
 
-  cr_assert(stack.fd == fd);
+  cr_assert(eq(int, stack.fd, fd));
 
   LogTransport *active_transport = log_transport_stack_get_active(&stack);
 
-  cr_expect_eq(active_transport->read, default_read);
-  cr_expect_eq(active_transport->write, default_write);
-  cr_expect_str_eq(active_transport->name, "default");
+  cr_expect(eq(ptr, active_transport->read, default_read));
+  cr_expect(eq(ptr, active_transport->write, default_write));
+  cr_expect(eq(str, active_transport->name, "default"));
 
   log_transport_stack_add_factory(&stack, fake_factory);
 
   cr_expect(log_transport_stack_switch(&stack, LOG_TRANSPORT_TLS));
   active_transport = log_transport_stack_get_active(&stack);
 
-  cr_expect_eq(active_transport->read, fake_read);
-  cr_expect_eq(active_transport->write, fake_write);
-  cr_expect_str_eq(active_transport->name, "fake");
+  cr_expect(eq(ptr, active_transport->read, fake_read));
+  cr_expect(eq(ptr, active_transport->write, fake_write));
+  cr_expect(eq(str, active_transport->name, "fake"));
 
   log_transport_stack_deinit(&stack);
 }

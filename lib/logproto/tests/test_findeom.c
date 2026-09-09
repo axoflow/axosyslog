@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/parameterized.h"
 
 #include "logproto/logproto-server.h"
@@ -71,7 +72,7 @@ StaticParameterizedTest(struct testcase_tuple *tup, test_success_params, findeom
 
   eom = find_eom((guchar *) msg, tup-> msg_len);
 
-  cr_assert(eom - msg == tup->eom_ofs,
+  cr_assert(eq(long, eom - msg, tup->eom_ofs),
             "EOM is at wrong location. msg=%s, eom_ofs=%d, eom=%s\n",
             msg, tup->eom_ofs, eom);
 }
@@ -113,7 +114,7 @@ StaticParameterizedTest(struct testcase_tuple *tup, test_failed_params, findeom,
 
   eom = find_eom((guchar *) msg, tup-> msg_len);
 
-  cr_assert_null(eom,
-                 "EOM returned is not NULL, which was expected. eom_ofs=%d, eom=%s\n",
-                 tup->eom_ofs, eom);
+  cr_assert(zero(ptr, eom),
+            "EOM returned is not NULL, which was expected. eom_ofs=%d, eom=%s\n",
+            tup->eom_ofs, eom);
 }

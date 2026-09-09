@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/mock-transport.h"
 #include "libtest/proto_lib.h"
 #include "libtest/msg_parse_lib.h"
@@ -46,9 +47,9 @@ assert_detection_pending(LogProtoServer *proto)
   log_transport_aux_data_destroy(&aux);
 
   assert_proto_server_status(proto, status, LPS_AGAIN);
-  cr_assert_null(msg, "the auto server must never return a message of its own");
-  cr_assert_null(proto->proto_replacement,
-                 "detection must not conclude before it has enough data to tell the framing apart");
+  cr_assert(zero(ptr, msg), "the auto server must never return a message of its own");
+  cr_assert(zero(ptr, proto->proto_replacement),
+            "detection must not conclude before it has enough data to tell the framing apart");
 }
 
 Test(log_proto, test_log_proto_initial_framing_too_long)

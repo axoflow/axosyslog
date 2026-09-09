@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include <criterion/parameterized.h>
 
 #include "xml-scanner.h"
@@ -101,7 +102,7 @@ _destroy_xml_scanner(XMLScanner *scanner)
 static void
 _report_possible_parse_error(GError *error, gint line)
 {
-  cr_expect(error == NULL, "Unexpected error happened in %d", line);
+  cr_expect(zero(ptr, error), "Unexpected error happened in %d", line);
   if (error)
     {
       fprintf(stderr, "Parsing error happened: %s\n", error->message);
@@ -134,7 +135,7 @@ Test(xml_scanner, shouldreverse)
   no_joker_or_wildcard = g_list_append(no_joker_or_wildcard, "tag1");
   no_joker_or_wildcard = g_list_append(no_joker_or_wildcard, "tag2");
   no_joker_or_wildcard = g_list_append(no_joker_or_wildcard, "tag3");
-  cr_assert_not(joker_or_wildcard(no_joker_or_wildcard));
+  cr_assert(not(joker_or_wildcard(no_joker_or_wildcard)));
   g_list_free(no_joker_or_wildcard);
 
 }
@@ -150,8 +151,8 @@ _test_strip(const gchar *name, const gchar *value, gssize value_length, gpointer
 
   fprintf(stderr, "Name-value pushed!!! name:%s\tvalue:%s (value_len:%ld)\n", name, value, value_length);
 
-  cr_assert_str_eq(name, expected_pairs[times_called].name);
-  cr_assert_str_eq(value, expected_pairs[times_called].value);
+  cr_assert(eq(str, name, expected_pairs[times_called].name));
+  cr_assert(eq(str, value, expected_pairs[times_called].value));
   times_called++;
 }
 
