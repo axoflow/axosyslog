@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/cr_template.h"
 #include "libtest/filterx-lib.h"
 
@@ -59,8 +60,8 @@ Test(builtin_functions, test_builtin_simple_functions_registering_existing_key_r
   cr_assert(filterx_builtin_simple_function_register_private(ht, TEST_BUILTIN_FUNCTION_NAME,
                                                              test_builtin_simple_dummy_function));
   // second attampt of register must return FALSE
-  cr_assert(!filterx_builtin_simple_function_register_private(ht, TEST_BUILTIN_FUNCTION_NAME,
-                                                              test_builtin_simple_dummy_function));
+  cr_assert(not(filterx_builtin_simple_function_register_private(ht, TEST_BUILTIN_FUNCTION_NAME,
+                                                                 test_builtin_simple_dummy_function)));
   filterx_builtin_simple_functions_deinit_private(ht);
 }
 
@@ -71,7 +72,7 @@ Test(builtin_functions, test_builtin_simple_functions_lookup)
 
   // func not found
   FilterXSimpleFunctionProto func = filterx_builtin_simple_function_lookup_private(ht, TEST_BUILTIN_FUNCTION_NAME);
-  cr_assert(func == NULL);
+  cr_assert(zero(ptr, func));
 
   // add dummy function
   cr_assert(filterx_builtin_simple_function_register_private(ht, TEST_BUILTIN_FUNCTION_NAME,
@@ -79,15 +80,15 @@ Test(builtin_functions, test_builtin_simple_functions_lookup)
 
   // lookup returns dummy function
   func = filterx_builtin_simple_function_lookup_private(ht, TEST_BUILTIN_FUNCTION_NAME);
-  cr_assert(func != NULL);
+  cr_assert(not(zero(ptr, func)));
 
   // check dummy function as result
   FilterXObject *res = func(NULL, NULL, 0);
-  cr_assert(res != NULL);
+  cr_assert(not(zero(ptr, res)));
   cr_assert(filterx_object_is_type(res, &FILTERX_TYPE_NAME(string)));
 
   const gchar *str = filterx_string_get_value_as_cstr(res);
-  cr_assert(strcmp(str, "test-builtin-functions") == 0);
+  cr_assert(eq(str, str, "test-builtin-functions"));
 
   filterx_builtin_simple_functions_deinit_private(ht);
   filterx_object_unref(res);
@@ -126,8 +127,8 @@ Test(builtin_functions, test_builtin_function_ctors_registering_existing_key_ret
   cr_assert(filterx_builtin_function_ctor_register_private(ht, TEST_BUILTIN_FUNCTION_NAME,
                                                            _test_builtin_dummy_function_ctor));
   // second attampt of register must return FALSE
-  cr_assert(!filterx_builtin_function_ctor_register_private(ht, TEST_BUILTIN_FUNCTION_NAME,
-                                                            _test_builtin_dummy_function_ctor));
+  cr_assert(not(filterx_builtin_function_ctor_register_private(ht, TEST_BUILTIN_FUNCTION_NAME,
+                                                               _test_builtin_dummy_function_ctor)));
   filterx_builtin_function_ctors_deinit_private(ht);
 }
 
@@ -138,7 +139,7 @@ Test(builtin_functions, test_builtin_function_ctors_lookup)
 
   // func not found
   FilterXFunctionCtor ctor = filterx_builtin_function_ctor_lookup_private(ht, TEST_BUILTIN_FUNCTION_NAME);
-  cr_assert(ctor == NULL);
+  cr_assert(zero(ptr, ctor));
 
   // add dummy function
   cr_assert(filterx_builtin_function_ctor_register_private(ht, TEST_BUILTIN_FUNCTION_NAME,
@@ -146,17 +147,17 @@ Test(builtin_functions, test_builtin_function_ctors_lookup)
 
   // lookup returns dummy ctor
   ctor = filterx_builtin_function_ctor_lookup_private(ht, TEST_BUILTIN_FUNCTION_NAME);
-  cr_assert(ctor != NULL);
+  cr_assert(not(zero(ptr, ctor)));
 
   // check dummy ctor as result
   FilterXExpr *func_expr = ctor(filterx_function_args_new(NULL, NULL), NULL);
-  cr_assert(func_expr != NULL);
+  cr_assert(not(zero(ptr, func_expr)));
 
   FilterXObject *res = init_and_eval_expr(func_expr);
   cr_assert(filterx_object_is_type(res, &FILTERX_TYPE_NAME(string)));
   const gchar *str = filterx_string_get_value_as_cstr(res);
 
-  cr_assert(strcmp(str, "test-builtin-functions") == 0);
+  cr_assert(eq(str, str, "test-builtin-functions"));
 
   filterx_builtin_function_ctors_deinit_private(ht);
   filterx_object_unref(res);

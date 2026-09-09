@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/filterx-lib.h"
 
 #include "filterx/object-ip.h"
@@ -39,7 +40,7 @@
 Test(filterx_object_ip, ipv4_valid)
 {
   FilterXObject *obj = filterx_ip_new_from_string("192.168.1.1");
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(ip)));
   filterx_object_unref(obj);
 }
@@ -47,7 +48,7 @@ Test(filterx_object_ip, ipv4_valid)
 Test(filterx_object_ip, ipv6_valid)
 {
   FilterXObject *obj = filterx_ip_new_from_string("2001:db8::1");
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(ip)));
   filterx_object_unref(obj);
 }
@@ -55,33 +56,33 @@ Test(filterx_object_ip, ipv6_valid)
 Test(filterx_object_ip, ipv4_loopback)
 {
   FilterXObject *obj = filterx_ip_new_from_string("127.0.0.1");
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   filterx_object_unref(obj);
 }
 
 Test(filterx_object_ip, ipv6_loopback)
 {
   FilterXObject *obj = filterx_ip_new_from_string("::1");
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   filterx_object_unref(obj);
 }
 
 Test(filterx_object_ip, rejects_invalid_string)
 {
   FilterXObject *obj = filterx_ip_new_from_string("not-an-ip");
-  cr_assert_null(obj);
+  cr_assert(zero(ptr, obj));
 }
 
 Test(filterx_object_ip, rejects_cidr_notation)
 {
   FilterXObject *obj = filterx_ip_new_from_string("192.168.0.0/24");
-  cr_assert_null(obj);
+  cr_assert(zero(ptr, obj));
 }
 
 Test(filterx_object_ip, rejects_ipv6_cidr_notation)
 {
   FilterXObject *obj = filterx_ip_new_from_string("2001:db8::/32");
-  cr_assert_null(obj);
+  cr_assert(zero(ptr, obj));
 }
 
 /* Truthy */
@@ -89,22 +90,22 @@ Test(filterx_object_ip, rejects_ipv6_cidr_notation)
 Test(filterx_object_ip, ip_is_always_truthy)
 {
   FilterXObject *obj = filterx_ip_new_from_string("192.168.1.1");
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_truthy(obj));
   filterx_object_unref(obj);
 
   obj = filterx_ip_new_from_string("0.0.0.0");
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_truthy(obj));
   filterx_object_unref(obj);
 
   obj = filterx_ip_new_from_string("::1");
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_truthy(obj));
   filterx_object_unref(obj);
 
   obj = filterx_ip_new_from_string("::");
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_truthy(obj));
   filterx_object_unref(obj);
 }
@@ -114,7 +115,7 @@ Test(filterx_object_ip, ip_is_always_truthy)
 Test(filterx_object_ip, ipv4_marshal)
 {
   FilterXObject *obj = filterx_ip_new_from_string("10.0.0.1");
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   assert_marshaled_object(obj, "10.0.0.1", LM_VT_STRING);
   filterx_object_unref(obj);
 }
@@ -122,7 +123,7 @@ Test(filterx_object_ip, ipv4_marshal)
 Test(filterx_object_ip, ipv6_marshal)
 {
   FilterXObject *obj = filterx_ip_new_from_string("2001:db8::1");
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   assert_marshaled_object(obj, "2001:db8::1", LM_VT_STRING);
   filterx_object_unref(obj);
 }
@@ -130,7 +131,7 @@ Test(filterx_object_ip, ipv6_marshal)
 Test(filterx_object_ip, ipv4_repr)
 {
   FilterXObject *obj = filterx_ip_new_from_string("192.168.0.1");
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   assert_object_repr_equals(obj, "ip('192.168.0.1')");
   filterx_object_unref(obj);
 }
@@ -138,7 +139,7 @@ Test(filterx_object_ip, ipv4_repr)
 Test(filterx_object_ip, ipv4_format_json)
 {
   FilterXObject *obj = filterx_ip_new_from_string("172.16.0.1");
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   assert_object_json_equals(obj, "\"172.16.0.1\"");
   filterx_object_unref(obj);
 }
@@ -151,7 +152,7 @@ Test(filterx_object_ip, ipv4_ip_member_of_subnet)
   FilterXObject *ip = filterx_ip_new_from_string("192.168.0.100");
 
   FilterXObject *result = filterx_object_is_member_of(subnet, ip);
-  cr_assert_not_null(result);
+  cr_assert(not(zero(ptr, result)));
 
   gboolean b;
   cr_assert(filterx_boolean_unwrap(result, &b));
@@ -168,11 +169,11 @@ Test(filterx_object_ip, ipv4_ip_not_member_of_subnet)
   FilterXObject *ip = filterx_ip_new_from_string("192.168.1.1");
 
   FilterXObject *result = filterx_object_is_member_of(subnet, ip);
-  cr_assert_not_null(result);
+  cr_assert(not(zero(ptr, result)));
 
   gboolean b;
   cr_assert(filterx_boolean_unwrap(result, &b));
-  cr_assert_not(b);
+  cr_assert(not(b));
 
   filterx_object_unref(result);
   filterx_object_unref(ip);
@@ -185,7 +186,7 @@ Test(filterx_object_ip, ipv6_ip_member_of_subnet)
   FilterXObject *ip = filterx_ip_new_from_string("2001:db8::1");
 
   FilterXObject *result = filterx_object_is_member_of(subnet, ip);
-  cr_assert_not_null(result);
+  cr_assert(not(zero(ptr, result)));
 
   gboolean b;
   cr_assert(filterx_boolean_unwrap(result, &b));
@@ -202,11 +203,11 @@ Test(filterx_object_ip, ipv6_ip_not_member_of_subnet)
   FilterXObject *ip = filterx_ip_new_from_string("2001:db9::1");
 
   FilterXObject *result = filterx_object_is_member_of(subnet, ip);
-  cr_assert_not_null(result);
+  cr_assert(not(zero(ptr, result)));
 
   gboolean b;
   cr_assert(filterx_boolean_unwrap(result, &b));
-  cr_assert_not(b);
+  cr_assert(not(b));
 
   filterx_object_unref(result);
   filterx_object_unref(ip);
@@ -219,7 +220,7 @@ Test(filterx_object_ip, ipv4_subnet_rejects_ipv6_ip)
   FilterXObject *ip = filterx_ip_new_from_string("2001:db8::1");
 
   FilterXObject *result = filterx_object_is_member_of(subnet, ip);
-  cr_assert_not_null(result);
+  cr_assert(not(zero(ptr, result)));
   cr_assert(filterx_object_falsy(result));
 
   filterx_object_unref(ip);
@@ -232,7 +233,7 @@ Test(filterx_object_ip, ipv6_subnet_rejects_ipv4_ip)
   FilterXObject *ip = filterx_ip_new_from_string("192.168.0.1");
 
   FilterXObject *result = filterx_object_is_member_of(subnet, ip);
-  cr_assert_not_null(result);
+  cr_assert(not(zero(ptr, result)));
   cr_assert(filterx_object_falsy(result));
 
   filterx_object_unref(ip);
@@ -246,7 +247,7 @@ Test(filterx_object_ip, typecast_from_string)
   FilterXObject *args[] = { filterx_string_new("192.168.0.1", -1) };
 
   FilterXObject *obj = filterx_typecast_ip(NULL, args, G_N_ELEMENTS(args));
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(ip)));
   assert_marshaled_object(obj, "192.168.0.1", LM_VT_STRING);
 
@@ -259,7 +260,7 @@ Test(filterx_object_ip, typecast_ipv6_from_string)
   FilterXObject *args[] = { filterx_string_new("::1", -1) };
 
   FilterXObject *obj = filterx_typecast_ip(NULL, args, G_N_ELEMENTS(args));
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(ip)));
   assert_marshaled_object(obj, "::1", LM_VT_STRING);
 
@@ -273,8 +274,8 @@ Test(filterx_object_ip, typecast_identity)
   FilterXObject *args[] = { filterx_object_ref(ip) };
 
   FilterXObject *obj = filterx_typecast_ip(NULL, args, G_N_ELEMENTS(args));
-  cr_assert_not_null(obj);
-  cr_assert(obj == ip);
+  cr_assert(not(zero(ptr, obj)));
+  cr_assert(eq(ptr, obj, ip));
 
   filterx_object_unref(obj);
   filterx_object_unref(ip);
@@ -286,7 +287,7 @@ Test(filterx_object_ip, typecast_rejects_integer)
   FilterXObject *args[] = { filterx_integer_new(42) };
 
   FilterXObject *obj = filterx_typecast_ip(NULL, args, G_N_ELEMENTS(args));
-  cr_assert_null(obj);
+  cr_assert(zero(ptr, obj));
 
   filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
 }
@@ -296,7 +297,7 @@ Test(filterx_object_ip, typecast_rejects_cidr_string)
   FilterXObject *args[] = { filterx_string_new("192.168.0.0/24", -1) };
 
   FilterXObject *obj = filterx_typecast_ip(NULL, args, G_N_ELEMENTS(args));
-  cr_assert_null(obj);
+  cr_assert(zero(ptr, obj));
 
   filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
 }
@@ -306,7 +307,7 @@ Test(filterx_object_ip, typecast_rejects_invalid_string)
   FilterXObject *args[] = { filterx_string_new("not-an-ip", -1) };
 
   FilterXObject *obj = filterx_typecast_ip(NULL, args, G_N_ELEMENTS(args));
-  cr_assert_null(obj);
+  cr_assert(zero(ptr, obj));
 
   filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
 }
@@ -314,7 +315,7 @@ Test(filterx_object_ip, typecast_rejects_invalid_string)
 Test(filterx_object_ip, typecast_rejects_empty_args)
 {
   FilterXObject *obj = filterx_typecast_ip(NULL, NULL, 0);
-  cr_assert_null(obj);
+  cr_assert(zero(ptr, obj));
 }
 
 static void
