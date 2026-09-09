@@ -20,6 +20,7 @@
  *
  */
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/cr_template.h"
 #include "libtest/mock-transport.h"
 
@@ -59,15 +60,15 @@ Test(file_writer, write_single_message_and_flush_is_expected_to_dump_the_payload
   log_proto_client_set_client_flow_control(fw, &flow_control_funcs);
 
   status = log_proto_client_post(fw, msg, (guchar *) g_strdup(payload), strlen(payload) + 1, &consumed);
-  cr_assert(status == LPS_SUCCESS);
-  cr_assert(consumed == TRUE);
+  cr_assert(eq(int, status, LPS_SUCCESS));
+  cr_assert(consumed);
 
   status = log_proto_client_flush(fw);
-  cr_assert(status == LPS_SUCCESS);
+  cr_assert(eq(int, status, LPS_SUCCESS));
 
   log_transport_mock_read_from_write_buffer((LogTransportMock *) transport, output_buffer, sizeof(output_buffer));
-  cr_assert_str_eq(output_buffer, "PAYLOAD");
-  cr_assert(messages_acked == 1);
+  cr_assert(eq(str, output_buffer, "PAYLOAD"));
+  cr_assert(eq(int, messages_acked, 1));
 
   log_proto_client_free(fw);
 }
@@ -82,22 +83,22 @@ Test(file_writer, batches_of_messages_should_be_flushed_to_the_output)
   for (gint i = 0; i < MESSAGE_COUNT; i++)
     {
       status = log_proto_client_post(fw, msg, (guchar *) g_strdup(payload), strlen(payload) + 1, &consumed);
-      cr_assert(status == LPS_SUCCESS);
-      cr_assert(consumed == TRUE);
+      cr_assert(eq(int, status, LPS_SUCCESS));
+      cr_assert(consumed);
     }
 
   status = log_proto_client_flush(fw);
-  cr_assert(status == LPS_SUCCESS);
+  cr_assert(eq(int, status, LPS_SUCCESS));
 
   count = log_transport_mock_read_from_write_buffer((LogTransportMock *) transport, output_buffer, sizeof(output_buffer));
-  cr_assert_eq(count, MESSAGE_COUNT * (strlen(payload) + 1));
+  cr_assert(eq(i64, count, MESSAGE_COUNT * (strlen(payload) + 1)));
 
   for (gint i = 0; i < MESSAGE_COUNT; i++)
     {
       const gchar *output_element = output_buffer + i * (strlen(payload) + 1);
-      cr_assert_str_eq(output_element, "PAYLOAD");
+      cr_assert(eq(str, output_element, "PAYLOAD"));
     }
-  cr_assert_eq(messages_acked, MESSAGE_COUNT);
+  cr_assert(eq(int, messages_acked, MESSAGE_COUNT));
 
   log_proto_client_free(fw);
 }
@@ -111,21 +112,21 @@ Test(file_writer, messages_should_be_flushed_automatically_once_we_reach_batch_s
   for (gint i = 0; i < BATCH_SIZE - 1; i++)
     {
       status = log_proto_client_post(fw, msg, (guchar *) g_strdup(payload), strlen(payload) + 1, &consumed);
-      cr_assert(status == LPS_SUCCESS);
-      cr_assert(consumed == TRUE);
+      cr_assert(eq(int, status, LPS_SUCCESS));
+      cr_assert(consumed);
     }
 
   count = log_transport_mock_read_from_write_buffer((LogTransportMock *) transport, output_buffer, sizeof(output_buffer));
-  cr_assert_eq(count, 0);
+  cr_assert(eq(i64, count, 0));
 
   /* Push an extra item, which causes the BATCH_SIZE limit to be reached. There's an automatic flush in this case. */
   status = log_proto_client_post(fw, msg, (guchar *) g_strdup(payload), strlen(payload) + 1, &consumed);
-  cr_assert(status == LPS_SUCCESS);
-  cr_assert(consumed == TRUE);
+  cr_assert(eq(int, status, LPS_SUCCESS));
+  cr_assert(consumed);
 
   count = log_transport_mock_read_from_write_buffer((LogTransportMock *) transport, output_buffer, sizeof(output_buffer));
-  cr_assert_eq(count, BATCH_SIZE * (strlen(payload) + 1));
-  cr_assert_eq(messages_acked, BATCH_SIZE);
+  cr_assert(eq(i64, count, BATCH_SIZE * (strlen(payload) + 1)));
+  cr_assert(eq(int, messages_acked, BATCH_SIZE));
 
   log_proto_client_free(fw);
 }
@@ -140,24 +141,24 @@ Test(file_writer, batches_of_messages_are_flushed_even_if_the_underlying_transpo
   for (gint i = 0; i < BATCH_SIZE; i++)
     {
       status = log_proto_client_post(fw, msg, (guchar *) g_strdup(payload), strlen(payload) + 1, &consumed);
-      cr_assert(status == LPS_SUCCESS, "status=%d", status);
-      cr_assert(consumed == TRUE);
+      cr_assert(eq(int, status, LPS_SUCCESS), "status=%d", status);
+      cr_assert(consumed);
     }
 
   while ((status = log_proto_client_flush(fw)) == LPS_PARTIAL)
     ;
 
-  cr_assert(status == LPS_SUCCESS);
+  cr_assert(eq(int, status, LPS_SUCCESS));
 
   count = log_transport_mock_read_from_write_buffer((LogTransportMock *) transport, output_buffer, sizeof(output_buffer));
-  cr_assert_eq(count, BATCH_SIZE * (strlen(payload) + 1));
+  cr_assert(eq(i64, count, BATCH_SIZE * (strlen(payload) + 1)));
 
   for (gint i = 0; i < BATCH_SIZE; i++)
     {
       const gchar *output_element = output_buffer + i * (strlen(payload) + 1);
-      cr_assert_str_eq(output_element, "PAYLOAD");
+      cr_assert(eq(str, output_element, "PAYLOAD"));
     }
-  cr_assert_eq(messages_acked, BATCH_SIZE);
+  cr_assert(eq(int, messages_acked, BATCH_SIZE));
 
   log_proto_client_free(fw);
 }

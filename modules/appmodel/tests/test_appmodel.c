@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/config_parse_lib.h"
 
 #include "appmodel.h"
@@ -47,9 +48,9 @@ Test(appmodel, empty_application_can_be_parsed_properly)
   Application *app;
 
   app = _parse_application("application foobar[*] {};", "foobar", "*");
-  cr_assert(app != NULL);
-  cr_assert_str_eq(app->super.name, "foobar");
-  cr_assert_str_eq(app->super.instance, "*");
+  cr_assert(not(zero(ptr, app)));
+  cr_assert(eq(str, app->super.name, "foobar"));
+  cr_assert(eq(str, app->super.instance, "*"));
 }
 
 Test(appmodel, name_is_parsed_into_name_member)
@@ -57,7 +58,7 @@ Test(appmodel, name_is_parsed_into_name_member)
   Application *app;
 
   app = _parse_application("application name[*] {};", "name", "*");
-  cr_assert(app != NULL);
+  cr_assert(not(zero(ptr, app)));
 }
 
 Test(appmodel, topic_in_brackets_is_parsed_into_topic)
@@ -65,8 +66,8 @@ Test(appmodel, topic_in_brackets_is_parsed_into_topic)
   Application *app;
 
   app = _parse_application("application name[port514] {};", "name", "port514");
-  cr_assert(app != NULL);
-  cr_assert_str_eq(app->super.instance, "port514");
+  cr_assert(not(zero(ptr, app)));
+  cr_assert(eq(str, app->super.instance, "port514"));
 }
 
 Test(appmodel, filter_expressions_can_be_specified_with_a_filter_keyword)
@@ -79,9 +80,9 @@ Test(appmodel, filter_expressions_can_be_specified_with_a_filter_keyword)
           "  parser { kv-parser(); };"
           "};",
           "name", "port514");
-  cr_assert(app != NULL);
-  cr_assert_str_eq(app->super.instance, "port514");
-  cr_assert_str_eq(app->filter_expr, " program(\"kernel\"); ");
+  cr_assert(not(zero(ptr, app)));
+  cr_assert(eq(str, app->super.instance, "port514"));
+  cr_assert(eq(str, app->filter_expr, " program(\"kernel\"); "));
 }
 
 Test(appmodel, parser_expressions_can_be_specified_with_a_parser_keyword)
@@ -94,9 +95,9 @@ Test(appmodel, parser_expressions_can_be_specified_with_a_parser_keyword)
           "  filter { program(\"kernel\"); };"
           "};",
           "name", "port514");
-  cr_assert(app != NULL);
-  cr_assert_str_eq(app->super.instance, "port514");
-  cr_assert_str_eq(app->parser_expr, " kv-parser(); ");
+  cr_assert(not(zero(ptr, app)));
+  cr_assert(eq(str, app->super.instance, "port514"));
+  cr_assert(eq(str, app->parser_expr, " kv-parser(); "));
 }
 
 static void

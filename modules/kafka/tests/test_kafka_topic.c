@@ -23,6 +23,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/parameterized.h"
 
 #include "kafka-dest-driver.h"
@@ -96,8 +97,8 @@ static struct valid_topic_test_params valid_topic_tests_params[] =
 StaticParameterizedTest(struct valid_topic_test_params *param, valid_topic_tests_params, kafka_topic, valid_topic_tests)
 {
   GError *error = NULL;
-  cr_assert_eq(kafka_dd_validate_topic_name(param->topic_name, &error), TRUE);
-  cr_assert_null(error);
+  cr_assert(kafka_dd_validate_topic_name(param->topic_name, &error));
+  cr_assert(zero(ptr, error));
 }
 
 static struct invalid_topic_test_params invalid_topic_tests_params[] =
@@ -125,10 +126,10 @@ StaticParameterizedTest(struct invalid_topic_test_params *param, invalid_topic_t
                         invalid_topic_tests)
 {
   GError *error = NULL;
-  cr_assert_eq(kafka_dd_validate_topic_name(param->topic_name, &error), FALSE);
-  cr_assert_eq(error->domain, TOPIC_NAME_ERROR);
-  cr_assert_eq(error->code, param->type);
-  cr_assert_not_null(error);
+  cr_assert(not(kafka_dd_validate_topic_name(param->topic_name, &error)));
+  cr_assert(eq(u32, error->domain, TOPIC_NAME_ERROR));
+  cr_assert(eq(int, error->code, param->type));
+  cr_assert(not(zero(ptr, error)));
   g_error_free(error);
 }
 
@@ -148,11 +149,11 @@ Test(kafka_topic, test_resolve_template_topic_name)
 
   LogMessage *msg = log_msg_new_empty();
   log_msg_set_value_by_name(msg, "kafka_topic", "valid_template_topic", -1);
-  cr_assert_str_eq(kafka_dest_worker_resolve_template_topic_name(worker, msg), "valid_template_topic");
+  cr_assert(eq(str, kafka_dest_worker_resolve_template_topic_name(worker, msg), "valid_template_topic"));
 
   log_msg_set_value_by_name(msg, "kafka_topic", "invalid name", -1);
 
-  cr_assert_str_eq(kafka_dest_worker_resolve_template_topic_name(worker, msg), "fallbacktopicname");
+  cr_assert(eq(str, kafka_dest_worker_resolve_template_topic_name(worker, msg), "fallbacktopicname"));
 
   log_msg_unref(msg);
 
@@ -181,11 +182,12 @@ Test(kafka_topic, test_calculate_topic_from_template)
   cr_assert(kafka_dd_is_topic_name_a_template(kafka_driver));
 
   log_msg_set_value_by_name(msg, "kafka_topic", "validtopic", -1);
-  cr_assert_str_eq(rd_kafka_topic_name(kafka_dest_worker_calculate_topic_from_template(worker, msg)), "validtopic");
+  cr_assert(eq(str, rd_kafka_topic_name(kafka_dest_worker_calculate_topic_from_template(worker, msg)), "validtopic"));
 
   log_msg_set_value_by_name(msg, "kafka_topic", "invalid name", -1);
 
-  cr_assert_str_eq(rd_kafka_topic_name(kafka_dest_worker_calculate_topic_from_template(worker, msg)), "fallbackhere");
+  cr_assert(eq(str, rd_kafka_topic_name(kafka_dest_worker_calculate_topic_from_template(worker, msg)),
+               "fallbackhere"));
 
   log_msg_unref(msg);
 
@@ -208,10 +210,10 @@ Test(kafka_topic, test_get_literal_topic)
 
   KafkaDestWorker *worker = (KafkaDestWorker *) kafka_dest_worker_new(&kafka_driver->super, 0);
 
-  cr_assert_not(kafka_dd_is_topic_name_a_template(kafka_driver));
+  cr_assert(not(kafka_dd_is_topic_name_a_template(kafka_driver)));
 
   LogMessage *msg = log_msg_new_empty();
-  cr_assert_str_eq(rd_kafka_topic_name(kafka_dest_worker_get_literal_topic(worker)), "topicname");
+  cr_assert(eq(str, rd_kafka_topic_name(kafka_dest_worker_get_literal_topic(worker)), "topicname"));
 
   log_msg_unref(msg);
   log_threaded_dest_worker_free(&worker->super);
@@ -239,11 +241,11 @@ Test(kafka_topic, test_calculate_topic)
   cr_assert(kafka_dd_is_topic_name_a_template(kafka_driver));
 
   log_msg_set_value_by_name(msg, "kafka_topic", "validtopic", -1);
-  cr_assert_str_eq(rd_kafka_topic_name(kafka_dest_worker_calculate_topic(worker, msg)), "validtopic");
+  cr_assert(eq(str, rd_kafka_topic_name(kafka_dest_worker_calculate_topic(worker, msg)), "validtopic"));
 
   log_msg_set_value_by_name(msg, "kafka_topic", "invalid name", -1);
 
-  cr_assert_str_eq(rd_kafka_topic_name(kafka_dest_worker_calculate_topic(worker, msg)), "fallbackhere");
+  cr_assert(eq(str, rd_kafka_topic_name(kafka_dest_worker_calculate_topic(worker, msg)), "fallbackhere"));
 
   log_msg_unref(msg);
 

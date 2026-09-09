@@ -24,6 +24,7 @@
 #include "python-module.h"
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include <criterion/parameterized.h>
 #include "libtest/msg_parse_lib.h"
 
@@ -101,13 +102,13 @@ Test(python_ack_tracker, test_instant_ack_tracker_factory)
                                                              factory_args);
   Py_XDECREF(factory_args);
 
-  cr_assert_not_null(py_ack_tracker_factory_obj);
+  cr_assert(not(zero(ptr, py_ack_tracker_factory_obj)));
   cr_assert(py_is_ack_tracker_factory(py_ack_tracker_factory_obj));
 
   PyAckTrackerFactory *py_ack_tracker_factory = (PyAckTrackerFactory *) py_ack_tracker_factory_obj;
-  cr_assert_not_null(py_ack_tracker_factory->ack_tracker_factory);
-  cr_assert_eq(ack_tracker_factory_get_type(py_ack_tracker_factory->ack_tracker_factory),
-               ACK_INSTANT);
+  cr_assert(not(zero(ptr, py_ack_tracker_factory->ack_tracker_factory)));
+  cr_assert(eq(int, ack_tracker_factory_get_type(py_ack_tracker_factory->ack_tracker_factory),
+               ACK_INSTANT));
 
   Py_XDECREF(py_ack_tracker_factory);
   PyGILState_Release(gstate);
@@ -124,13 +125,13 @@ Test(python_ack_tracker, test_consecutive_ack_tracker_factory)
                                                              factory_args);
   Py_XDECREF(factory_args);
 
-  cr_assert_not_null(py_ack_tracker_factory_obj);
+  cr_assert(not(zero(ptr, py_ack_tracker_factory_obj)));
   cr_assert(py_is_ack_tracker_factory(py_ack_tracker_factory_obj));
 
   PyAckTrackerFactory *py_ack_tracker_factory = (PyAckTrackerFactory *) py_ack_tracker_factory_obj;
-  cr_assert_not_null(py_ack_tracker_factory->ack_tracker_factory);
-  cr_assert_eq(ack_tracker_factory_get_type(py_ack_tracker_factory->ack_tracker_factory),
-               ACK_CONSECUTIVE);
+  cr_assert(not(zero(ptr, py_ack_tracker_factory->ack_tracker_factory)));
+  cr_assert(eq(int, ack_tracker_factory_get_type(py_ack_tracker_factory->ack_tracker_factory),
+               ACK_CONSECUTIVE));
 
   Py_XDECREF(py_ack_tracker_factory);
   PyGILState_Release(gstate);

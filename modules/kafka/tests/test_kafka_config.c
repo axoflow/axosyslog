@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/grab-logging.h"
 
 #include "apphook.h"
@@ -44,7 +45,7 @@ Test(kafka_config, test_topic_is_mandatory)
 {
   LogDriver *driver = kafka_dd_new(configuration);
   kafka_dd_set_bootstrap_servers(driver, "localhost:9092");
-  cr_assert_not(log_pipe_init(&driver->super));
+  cr_assert(not(log_pipe_init(&driver->super)));
   assert_grabbed_log_contains("kafka: the topic() argument is required for kafka destinations");
 
   log_pipe_deinit(&driver->super);
@@ -55,7 +56,7 @@ Test(kafka_config, test_bootstrap_server_is_mandatory)
 {
   LogDriver *driver = kafka_dd_new(configuration);
   _setup_topic(driver, "test-topic");
-  cr_assert_not(log_pipe_init(&driver->super));
+  cr_assert(not(log_pipe_init(&driver->super)));
   assert_grabbed_log_contains("kafka: the bootstrap-servers() option is required for kafka destinations");
 
   log_pipe_deinit(&driver->super);
@@ -85,12 +86,12 @@ static void
 _assert_configured_property(KafkaDestDriver *kafka_driver, const gchar *property_name, const gchar *expected_value)
 {
   const rd_kafka_conf_t *kafka_conf = rd_kafka_conf(kafka_driver->kafka);
-  cr_assert(kafka_conf != NULL);
+  cr_assert(not(zero(ptr, kafka_conf)));
 
   gchar configured_property[1024];
   size_t prop_size = 0;
   rd_kafka_conf_get(kafka_conf, property_name, configured_property, &prop_size);
-  cr_assert_str_eq(configured_property, expected_value);
+  cr_assert(eq(str, configured_property, expected_value));
 }
 
 Test(kafka_config, cannot_override_protected_property)

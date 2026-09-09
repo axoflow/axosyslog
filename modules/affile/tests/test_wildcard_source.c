@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/parameterized.h"
 #include "libtest/config_parse_lib.h"
 #include "libtest/grab-logging.h"
@@ -62,9 +63,9 @@ _create_wildcard_filesource(const gchar *wildcard_config)
   cr_assert(_parse_config(wildcard_config), "Parsing the given configuration failed");
   cr_assert(cfg_init(configuration), "Config initialization failed");
   LogExprNode *expr_node = cfg_tree_get_object(&configuration->tree, ENC_SOURCE, "s_test");
-  cr_assert(expr_node != NULL);
+  cr_assert(not(zero(ptr, expr_node)));
   WildcardSourceDriver *driver = (WildcardSourceDriver *)expr_node->children->children->object;
-  cr_assert(driver != NULL);
+  cr_assert(not(zero(ptr, driver)));
   return driver;
 }
 
@@ -78,12 +79,12 @@ Test(wildcard_source, initial_test)
                                                              "max-files(100)"
                                                              "monitor-method(poll)"
                                                              "monitor-freq(5)");
-  cr_assert_str_eq(driver->base_dir, "/test_non_existent_dir");
-  cr_assert_str_eq(driver->filename_pattern, "*.log");
-  cr_assert_eq(driver->max_files, 100);
-  cr_assert_eq(driver->recursive, TRUE);
-  cr_assert_eq(driver->monitor_method, MM_POLL);
-  cr_assert_eq(driver->monitor_freq, 5000);
+  cr_assert(eq(str, driver->base_dir, "/test_non_existent_dir"));
+  cr_assert(eq(str, driver->filename_pattern, "*.log"));
+  cr_assert(eq(u32, driver->max_files, 100));
+  cr_assert(driver->recursive);
+  cr_assert(eq(int, driver->monitor_method, MM_POLL));
+  cr_assert(eq(int, driver->monitor_freq, 5000));
 }
 
 Test(wildcard_source, test_option_inheritance_multiline)
@@ -97,13 +98,11 @@ Test(wildcard_source, test_option_inheritance_multiline)
                                                              "multi-line-mode(regexp)"
                                                              "multi-line-prefix('\\d+')"
                                                              "multi-line-garbage(garbage)");
-  cr_assert_eq(driver->file_reader_options.follow_freq, 10000);
-  cr_assert_eq(file_reader_options_get_log_proto_options(&driver->file_reader_options)->multi_line_options.mode,
-               MLM_REGEXP_PREFIX_GARBAGE);
-  cr_assert(file_reader_options_get_log_proto_options(&driver->file_reader_options)->multi_line_options.regexp.prefix !=
-            NULL);
-  cr_assert(file_reader_options_get_log_proto_options(&driver->file_reader_options)->multi_line_options.regexp.garbage !=
-            NULL);
+  cr_assert(eq(int, driver->file_reader_options.follow_freq, 10000));
+  LogProtoFileReaderOptions *proto_options = file_reader_options_get_log_proto_options(&driver->file_reader_options);
+  cr_assert(eq(int, proto_options->multi_line_options.mode, MLM_REGEXP_PREFIX_GARBAGE));
+  cr_assert(not(zero(ptr, proto_options->multi_line_options.regexp.prefix)));
+  cr_assert(not(zero(ptr, proto_options->multi_line_options.regexp.garbage)));
 }
 
 Test(wildcard_source, test_option_inheritance_padded)
@@ -113,7 +112,7 @@ Test(wildcard_source, test_option_inheritance_padded)
                                                              "recursive(yes)"
                                                              "max-files(100)"
                                                              "pad-size(5)");
-  cr_assert_eq(file_reader_options_get_log_proto_options(&driver->file_reader_options)->pad_size, 5);
+  cr_assert(eq(int, file_reader_options_get_log_proto_options(&driver->file_reader_options)->pad_size, 5));
 }
 
 Test(wildcard_source, test_option_duplication)
@@ -122,15 +121,15 @@ Test(wildcard_source, test_option_duplication)
                                                              "filename-pattern(*.txt)"
                                                              "base-dir(/test_non_existent_dir)"
                                                              "filename-pattern(*.log)");
-  cr_assert_str_eq(driver->base_dir, "/test_non_existent_dir");
-  cr_assert_str_eq(driver->filename_pattern, "*.log");
+  cr_assert(eq(str, driver->base_dir, "/test_non_existent_dir"));
+  cr_assert(eq(str, driver->filename_pattern, "*.log"));
 }
 
 Test(wildcard_source, test_filename_pattern_required_options)
 {
   start_grabbing_messages();
   cr_assert(_parse_config("base-dir(/tmp)"));
-  cr_assert(!cfg_init(configuration), "Config initialization should be failed");
+  cr_assert(not(cfg_init(configuration)), "Config initialization should be failed");
   stop_grabbing_messages();
   assert_grabbed_log_contains("filename-pattern() option is required");
   reset_grabbed_messages();
@@ -140,7 +139,7 @@ Test(wildcard_source, test_base_dir_required_options)
 {
   start_grabbing_messages();
   cr_assert(_parse_config("filename-pattern(/tmp)"));
-  cr_assert(!cfg_init(configuration), "Config initialization should be failed");
+  cr_assert(not(cfg_init(configuration)), "Config initialization should be failed");
   stop_grabbing_messages();
   assert_grabbed_log_contains("base-dir() option is required");
   reset_grabbed_messages();
@@ -153,7 +152,7 @@ Test(wildcard_source, test_minimum_window_size)
                                                              "recursive(yes)"
                                                              "max_files(100)"
                                                              "log_iw_size(1000)");
-  cr_assert_eq(driver->file_reader_options.reader_options.super.init_window_size, 100);
+  cr_assert(eq(i64, driver->file_reader_options.reader_options.super.init_window_size, 100));
 }
 
 Test(wildcard_source, test_window_size)
@@ -164,7 +163,7 @@ Test(wildcard_source, test_window_size)
                                                              "recursive(yes)"
                                                              "max_files(10)"
                                                              "log_iw_size(10000)");
-  cr_assert_eq(driver->file_reader_options.reader_options.super.init_window_size, 1000);
+  cr_assert(eq(i64, driver->file_reader_options.reader_options.super.init_window_size, 1000));
 }
 
 
@@ -193,8 +192,8 @@ StaticParameterizedTest(struct LegacyWildcardTestParams *params, test_legacy_wil
 {
   WildcardSourceDriver *driver = (WildcardSourceDriver *) wildcard_sd_legacy_new(params->path, configuration);
 
-  cr_assert_str_eq(driver->base_dir, params->expected_base_dir);
-  cr_assert_str_eq(driver->filename_pattern, params->expected_filename_pattern);
+  cr_assert(eq(str, driver->base_dir, params->expected_base_dir));
+  cr_assert(eq(str, driver->filename_pattern, params->expected_filename_pattern));
 
   log_pipe_unref(&driver->super.super.super);
 }

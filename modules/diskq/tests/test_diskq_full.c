@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/queue_utils_lib.h"
 #include "test_diskq_tools.h"
 
@@ -78,11 +79,11 @@ test_diskq_become_full(gboolean reliable, const gchar *filename)
   log_queue_disk_start(q);
   feed_messages_without_flow_control(q, 1000);
 
-  cr_assert_eq(atomic_gssize_racy_get(&q->metrics.shared.dropped_messages->value), 1000,
-               "Bad dropped message number (reliable: %s): actual: %"G_GSSIZE_FORMAT", expected: %d",
-               reliable ? "TRUE" : "FALSE",
-               atomic_gssize_racy_get(&q->metrics.shared.dropped_messages->value),
-               1000);
+  cr_assert(eq(i64, atomic_gssize_racy_get(&q->metrics.shared.dropped_messages->value), 1000),
+            "Bad dropped message number (reliable: %s): actual: %"G_GSSIZE_FORMAT", expected: %d",
+            reliable ? "TRUE" : "FALSE",
+            atomic_gssize_racy_get(&q->metrics.shared.dropped_messages->value),
+            1000);
 
   gboolean persistent;
   log_queue_disk_stop(q, &persistent);
@@ -121,16 +122,16 @@ Test(diskq_full, diskq_non_reliable_flow_control)
   const int expected_dropped = 1000;
   feed_messages_without_flow_control(q, expected_dropped);
 
-  cr_assert_eq(atomic_gssize_racy_get(&q->metrics.shared.dropped_messages->value), expected_dropped,
-               "Bad dropped message number: actual: %"G_GSSIZE_FORMAT", expected: %d",
-               atomic_gssize_racy_get(&q->metrics.shared.dropped_messages->value),
-               expected_dropped);
+  cr_assert(eq(i64, atomic_gssize_racy_get(&q->metrics.shared.dropped_messages->value), expected_dropped),
+            "Bad dropped message number: actual: %"G_GSSIZE_FORMAT", expected: %d",
+            atomic_gssize_racy_get(&q->metrics.shared.dropped_messages->value),
+            expected_dropped);
 
   feed_some_messages(q, 10);
-  cr_assert_eq(atomic_gssize_racy_get(&q->metrics.shared.dropped_messages->value), expected_dropped,
-               "Flow-controlled messages should never be dropped: actual: %"G_GSSIZE_FORMAT", expected: %d",
-               atomic_gssize_racy_get(&q->metrics.shared.dropped_messages->value),
-               expected_dropped);
+  cr_assert(eq(i64, atomic_gssize_racy_get(&q->metrics.shared.dropped_messages->value), expected_dropped),
+            "Flow-controlled messages should never be dropped: actual: %"G_GSSIZE_FORMAT", expected: %d",
+            atomic_gssize_racy_get(&q->metrics.shared.dropped_messages->value),
+            expected_dropped);
 
   gboolean persistent;
   log_queue_disk_stop(q, &persistent);

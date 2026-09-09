@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/queue_utils_lib.h"
 #include "test_diskq_tools.h"
 
@@ -66,9 +67,9 @@ _init_diskq_for_test(const gchar *filename, gint64 size, gint64 membuf_size)
   dq = (LogQueueDiskReliable *)q;
   lseek(dq->super.qdisk->fd, size - 1, SEEK_SET);
   ssize_t written = write(dq->super.qdisk->fd, "", 1);
-  cr_assert_eq(written, 1, "%s", "Can't write to diskq file");
+  cr_assert(eq(i64, written, 1), "%s", "Can't write to diskq file");
   fstat(dq->super.qdisk->fd, &st);
-  cr_assert_eq(st.st_size, size, "%s", "INITIALIZATION FAILED");
+  cr_assert(eq(i64, st.st_size, size), "%s", "INITIALIZATION FAILED");
   return dq;
 }
 
@@ -132,11 +133,11 @@ _prepare_eof_test(LogQueueDiskReliable *dq, LogMessage **msg1, LogMessage **msg2
   log_queue_push_tail(&dq->super.super, *msg1, &local_path_options);
   log_queue_push_tail(&dq->super.super, *msg2, &local_path_options);
 
-  cr_assert_eq(dq->flow_control_window->length, NUMBER_MESSAGES_IN_QUEUE(2), "%s",
-               "Messages aren't in flow_control_window");
-  cr_assert_eq(dq->super.qdisk->hdr->write_head, QDISK_RESERVED_SPACE + mark_message_serialized_size,
-               "%s", "Bad write head");
-  cr_assert_eq(num_of_ack, 0, "%s", "Messages are acked");
+  cr_assert(eq(uint, dq->flow_control_window->length, NUMBER_MESSAGES_IN_QUEUE(2)), "%s",
+            "Messages aren't in flow_control_window");
+  cr_assert(eq(i64, dq->super.qdisk->hdr->write_head, QDISK_RESERVED_SPACE + mark_message_serialized_size),
+            "%s", "Bad write head");
+  cr_assert(eq(int, num_of_ack, 0), "%s", "Messages are acked");
 
   dq->super.qdisk->hdr->read_head = start_pos;
   dq->super.qdisk->hdr->backlog_head = dq->super.qdisk->hdr->read_head;
@@ -151,15 +152,15 @@ test_read_over_eof(LogQueueDiskReliable *dq, LogMessage *msg1, LogMessage *msg2)
   LogMessage *read_message2;
 
   read_message1 = log_queue_pop_head(&dq->super.super, &read_options);
-  cr_assert_not_null(read_message1, "%s", "Can't read message from queue");
+  cr_assert(not(zero(ptr, read_message1)), "%s", "Can't read message from queue");
   read_message2 = log_queue_pop_head(&dq->super.super, &read_options);
-  cr_assert_not_null(read_message2, "%s", "Can't read message from queue");
-  cr_assert_eq(dq->flow_control_window->length, 0, "%s", "Queue reliable isn't empty");
-  cr_assert_eq(dq->backlog->length, NUMBER_MESSAGES_IN_QUEUE(2), "%s", "Messages aren't in the backlog");
-  cr_assert_eq(dq->super.qdisk->hdr->read_head, dq->super.qdisk->hdr->write_head,
-               "%s", "Read head in bad position");
-  cr_assert_eq(msg1, read_message1, "%s", "Message 1 isn't read from flow_control_window");
-  cr_assert_eq(msg2, read_message2, "%s", "Message 2 isn't read from flow_control_window");
+  cr_assert(not(zero(ptr, read_message2)), "%s", "Can't read message from queue");
+  cr_assert(eq(uint, dq->flow_control_window->length, 0), "%s", "Queue reliable isn't empty");
+  cr_assert(eq(uint, dq->backlog->length, NUMBER_MESSAGES_IN_QUEUE(2)), "%s", "Messages aren't in the backlog");
+  cr_assert(eq(i64, dq->super.qdisk->hdr->read_head, dq->super.qdisk->hdr->write_head),
+            "%s", "Read head in bad position");
+  cr_assert(eq(ptr, msg1, read_message1), "%s", "Message 1 isn't read from flow_control_window");
+  cr_assert(eq(ptr, msg2, read_message2), "%s", "Message 2 isn't read from flow_control_window");
 }
 
 static void
@@ -174,22 +175,22 @@ test_rewind_over_eof(LogQueueDiskReliable *dq)
   log_queue_push_tail(&dq->super.super, msg3, &local_path_options);
   gint64 previous_read_head = dq->super.qdisk->hdr->read_head;
   read_message3 = log_queue_pop_head(&dq->super.super, &local_path_options);
-  cr_assert_not_null(read_message3, "%s", "Can't read message from queue");
-  cr_assert_eq(dq->super.qdisk->hdr->read_head, dq->super.qdisk->hdr->write_head,
-               "%s", "Read head in bad position");
+  cr_assert(not(zero(ptr, read_message3)), "%s", "Can't read message from queue");
+  cr_assert(eq(i64, dq->super.qdisk->hdr->read_head, dq->super.qdisk->hdr->write_head),
+            "%s", "Read head in bad position");
 
-  cr_assert_eq(msg3, read_message3, "%s", "Message 3 isn't read from flow_control_window");
+  cr_assert(eq(ptr, msg3, read_message3), "%s", "Message 3 isn't read from flow_control_window");
   log_msg_unref(read_message3);
 
   log_queue_rewind_backlog(&dq->super.super, 1);
 
-  cr_assert_eq(dq->super.qdisk->hdr->read_head, previous_read_head, "%s", "Read head is corrupted");
+  cr_assert(eq(i64, dq->super.qdisk->hdr->read_head, previous_read_head), "%s", "Read head is corrupted");
 
   read_message3 = log_queue_pop_head(&dq->super.super, &local_path_options);
-  cr_assert_not_null(read_message3, "%s", "Can't read message from queue");
-  cr_assert_eq(dq->super.qdisk->hdr->read_head, dq->super.qdisk->hdr->write_head,
-               "%s", "Read head in bad position");
-  cr_assert_eq(msg3, read_message3, "%s", "Message 3 isn't read from flow_control_window");
+  cr_assert(not(zero(ptr, read_message3)), "%s", "Can't read message from queue");
+  cr_assert(eq(i64, dq->super.qdisk->hdr->read_head, dq->super.qdisk->hdr->write_head),
+            "%s", "Read head in bad position");
+  cr_assert(eq(ptr, msg3, read_message3), "%s", "Message 3 isn't read from flow_control_window");
 
   log_msg_drop(msg3, &local_path_options, AT_PROCESSED);
 }
@@ -198,9 +199,9 @@ static void
 test_ack_over_eof(LogQueueDiskReliable *dq, LogMessage *msg1, LogMessage *msg2)
 {
   log_queue_ack_backlog(&dq->super.super, 3);
-  cr_assert_eq(dq->backlog->length, 0, "%s", "Messages are in the backlog");
-  cr_assert_eq(dq->super.qdisk->hdr->backlog_head, dq->super.qdisk->hdr->read_head,
-               "%s", "Backlog head in bad position");
+  cr_assert(eq(uint, dq->backlog->length, 0), "%s", "Messages are in the backlog");
+  cr_assert(eq(i64, dq->super.qdisk->hdr->backlog_head, dq->super.qdisk->hdr->read_head),
+            "%s", "Backlog head in bad position");
 }
 
 /* TestCase:
@@ -233,7 +234,7 @@ Test(diskq_reliable, test_over_EOF)
 
   log_msg_drop(msg1, &read_options, AT_PROCESSED);
   log_msg_drop(msg2, &read_options, AT_PROCESSED);
-  cr_assert_eq(num_of_ack, 2, "%s", "Messages aren't acked");
+  cr_assert(eq(int, num_of_ack, 2), "%s", "Messages aren't acked");
   _common_cleanup(dq, file_name);
 }
 
@@ -268,8 +269,8 @@ _prepare_rewind_backlog_test(LogQueueDiskReliable *dq, gint64 *start_pos)
 
   /* Ack the messages which are not in the backlog */
   log_queue_ack_backlog(&dq->super.super, 5);
-  cr_assert_eq(dq->backlog->length, NUMBER_MESSAGES_IN_QUEUE(3),
-               "%s", "Incorrect number of items in the backlog");
+  cr_assert(eq(uint, dq->backlog->length, NUMBER_MESSAGES_IN_QUEUE(3)),
+            "%s", "Incorrect number of items in the backlog");
 
   *start_pos = dq->super.qdisk->hdr->read_head;
 
@@ -287,16 +288,16 @@ _prepare_rewind_backlog_test(LogQueueDiskReliable *dq, gint64 *start_pos)
       mark_message->ack_func = _dummy_ack;
       log_queue_push_tail(&dq->super.super, mark_message, &path_options);
       mark_message = log_queue_pop_head(&dq->super.super, &path_options);
-      cr_assert_eq(dq->flow_control_window->length, 0,
-                   "%s", "Incorrect number of items in the flow_control_window");
-      cr_assert_eq(dq->backlog->length, NUMBER_MESSAGES_IN_QUEUE(3),
-                   "%s", "Incorrect number of items in the backlog");
+      cr_assert(eq(uint, dq->flow_control_window->length, 0),
+                "%s", "Incorrect number of items in the flow_control_window");
+      cr_assert(eq(uint, dq->backlog->length, NUMBER_MESSAGES_IN_QUEUE(3)),
+                "%s", "Incorrect number of items in the backlog");
       log_msg_unref(mark_message);
     }
-  cr_assert_eq(dq->super.qdisk->hdr->backlog_len, 6,
-               "%s", "Incorrect number of messages in the backlog");
-  cr_assert_eq(dq->super.qdisk->hdr->length, 0,
-               "%s", "Reliable diskq isn't empty");
+  cr_assert(eq(i64, dq->super.qdisk->hdr->backlog_len, 6),
+            "%s", "Incorrect number of messages in the backlog");
+  cr_assert(eq(i64, dq->super.qdisk->hdr->length, 0),
+            "%s", "Reliable diskq isn't empty");
 }
 
 void
@@ -308,11 +309,11 @@ test_rewind_backlog_without_using_backlog(LogQueueDiskReliable *dq, gint64 old_r
      * - the backlog and flow_control_window should be untouched
      */
   log_queue_rewind_backlog(&dq->super.super, 2);
-  cr_assert_eq(dq->super.qdisk->hdr->read_head, old_read_pos + mark_message_serialized_size,
-               "%s", "Bad reader position");
-  cr_assert_eq(dq->flow_control_window->length, 0, "%s", "Incorrect number of items in the flow_control_window");
-  cr_assert_eq(dq->backlog->length, NUMBER_MESSAGES_IN_QUEUE(3),
-               "%s", "Incorrect number of items in the backlog");
+  cr_assert(eq(i64, dq->super.qdisk->hdr->read_head, old_read_pos + mark_message_serialized_size),
+            "%s", "Bad reader position");
+  cr_assert(eq(uint, dq->flow_control_window->length, 0), "%s", "Incorrect number of items in the flow_control_window");
+  cr_assert(eq(uint, dq->backlog->length, NUMBER_MESSAGES_IN_QUEUE(3)),
+            "%s", "Incorrect number of items in the backlog");
 }
 
 void
@@ -325,12 +326,12 @@ test_rewind_backlog_partially_used_backlog(LogQueueDiskReliable *dq, gint64 old_
    * - the backlog should contain 2 items
    */
   log_queue_rewind_backlog(&dq->super.super, 2);
-  cr_assert_eq(dq->super.qdisk->hdr->read_head, old_read_pos - mark_message_serialized_size,
-               "%s", "Bad reader position");
-  cr_assert_eq(dq->flow_control_window->length, NUMBER_MESSAGES_IN_QUEUE(1),
-               "%s", "Incorrect number of items in the flow_control_window");
-  cr_assert_eq(dq->backlog->length, NUMBER_MESSAGES_IN_QUEUE(2),
-               "%s", "Incorrect number of items in the backlog");
+  cr_assert(eq(i64, dq->super.qdisk->hdr->read_head, old_read_pos - mark_message_serialized_size),
+            "%s", "Bad reader position");
+  cr_assert(eq(uint, dq->flow_control_window->length, NUMBER_MESSAGES_IN_QUEUE(1)),
+            "%s", "Incorrect number of items in the flow_control_window");
+  cr_assert(eq(uint, dq->backlog->length, NUMBER_MESSAGES_IN_QUEUE(2)),
+            "%s", "Incorrect number of items in the backlog");
 }
 
 void
@@ -343,12 +344,12 @@ test_rewind_backlog_use_whole_backlog(LogQueueDiskReliable *dq)
    * - the qbackbacklog should be empty
    */
   log_queue_rewind_backlog(&dq->super.super, 2);
-  cr_assert_eq(dq->super.qdisk->hdr->read_head, dq->super.qdisk->hdr->backlog_head,
-               "%s", "Bad reader position");
-  cr_assert_eq(dq->flow_control_window->length, NUMBER_MESSAGES_IN_QUEUE(3),
-               "%s", "Incorrect number of items in the flow_control_window");
-  cr_assert_eq(dq->backlog->length, 0,
-               "%s", "Incorrect number of items in the backlog");
+  cr_assert(eq(i64, dq->super.qdisk->hdr->read_head, dq->super.qdisk->hdr->backlog_head),
+            "%s", "Bad reader position");
+  cr_assert(eq(uint, dq->flow_control_window->length, NUMBER_MESSAGES_IN_QUEUE(3)),
+            "%s", "Incorrect number of items in the flow_control_window");
+  cr_assert(eq(uint, dq->backlog->length, 0),
+            "%s", "Incorrect number of items in the backlog");
 
 }
 

@@ -21,6 +21,7 @@
  *
  */
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/parameterized.h"
 
 #include "apphook.h"
@@ -70,7 +71,7 @@ _assert_pattern(PatternDB *patterndb, const gchar *pattern, const gchar *rule, g
     }
   else
     {
-      cr_assert_not(result, "Value '%s' is matching for pattern '%s'\n", rule, pattern);
+      cr_assert(not(result), "Value '%s' is matching for pattern '%s'\n", rule, pattern);
     }
 
   log_msg_unref(msg);
@@ -85,7 +86,7 @@ _load_pattern_db_from_string(const gchar *pdb, gchar **filename)
   g_file_set_contents(*filename, pdb, strlen(pdb), NULL);
 
   cr_assert(pattern_db_reload_ruleset(patterndb, configuration, *filename), "Error loading ruleset [[[%s]]]", pdb);
-  cr_assert_str_eq(pattern_db_get_ruleset_pub_date(patterndb), "2010-02-22", "Invalid pubdate");
+  cr_assert(eq(str, pattern_db_get_ruleset_pub_date(patterndb), "2010-02-22"), "Invalid pubdate");
 
   return patterndb;
 }
