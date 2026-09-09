@@ -1,8 +1,5 @@
 /*
- * Copyright (c) 2018 Kokan <kokaipeter@gmail.com>
- * Copyright (c) 2014 Pierre-Yves Ritschard <pyr@spootnik.org>
- * Copyright (c) 2019 Balabit
- * Copyright (c) 2019 Balazs Scheidler
+ * Copyright (c) 2025 Hofi <hofione@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
@@ -23,20 +20,18 @@
  *
  */
 
-#ifndef KAFKA_PROPS_H_INCLUDED
-#define KAFKA_PROPS_H_INCLUDED
+/*
+ * Original implementation sourced from https://github.com/syslog-ng/syslog-ng/pull/5564.
+ * The license has been upgraded from GPL-2.0-or-later to GPL-3.0-or-later.
+ */
 
-#include "syslog-ng.h"
+#ifndef KAFKA_SOURCE_WORKER_H_INCLUDED
+#define KAFKA_SOURCE_WORKER_H_INCLUDED
 
-typedef struct _KafkaProperty
-{
-  gchar *name;
-  gchar *value;
-} KafkaProperty;
+#include "logthrsource/logthrsourcedrv.h"
 
-KafkaProperty *kafka_property_new(const gchar *name, const gchar *value);
-void kafka_property_free(KafkaProperty *self);
-void kafka_property_list_free(GList *l);
-KafkaProperty *kafka_property_list_find_not_empty(GList *l, const gchar *name);
+typedef struct _KafkaSourceWorker KafkaSourceWorker;
+
+LogThreadedSourceWorker *kafka_src_worker_new(LogThreadedSourceDriver *owner, gint worker_index);
 
 #endif
