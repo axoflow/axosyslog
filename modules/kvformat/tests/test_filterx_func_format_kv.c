@@ -20,6 +20,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/filterx-lib.h"
 
 #include "filterx-func-format-kv.h"
@@ -39,8 +40,8 @@ _assert_format_kv_init_fail(GList *args)
   GError *err = NULL;
   GError *args_err = NULL;
   FilterXExpr *func = filterx_function_format_kv_new(filterx_function_args_new(args, &args_err), &err);
-  cr_assert(!func);
-  cr_assert(err);
+  cr_assert(zero(ptr, func));
+  cr_assert(not(zero(ptr, err)));
   g_error_free(err);
 }
 
@@ -50,15 +51,15 @@ _assert_format_kv(GList *args, const gchar *expected_output)
   GError *err = NULL;
   GError *args_err = NULL;
   FilterXExpr *func = filterx_function_format_kv_new(filterx_function_args_new(args, &args_err), &err);
-  cr_assert(!err);
+  cr_assert(zero(ptr, err));
 
   FilterXObject *obj = init_and_eval_expr(func);
-  cr_assert(obj);
+  cr_assert(not(zero(ptr, obj)));
 
   const gchar *output = filterx_string_get_value_as_cstr(obj);
-  cr_assert(output);
+  cr_assert(not(zero(ptr, output)));
 
-  cr_assert_str_eq(output, expected_output);
+  cr_assert(eq(str, output, expected_output));
 
   filterx_object_unref(obj);
   filterx_expr_unref(func);
