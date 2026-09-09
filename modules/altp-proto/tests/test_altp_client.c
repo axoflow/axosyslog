@@ -830,7 +830,7 @@ Test(altp_client, an_empty_capability_list_is_followed_by_sync_with_the_session_
   _assert_written(&sender, expected);
   cr_assert(eq(sz, strlen(session_id), 32), "a Session ID is 16 octets of hexadecimal: <%s>", session_id);
   for (gsize i = 0; i < strlen(session_id); i++)
-    cr_assert(g_ascii_isxdigit(session_id[i]) && !g_ascii_isupper(session_id[i]),
+    cr_assert(not(zero(int, g_ascii_isxdigit(session_id[i]) && !g_ascii_isupper(session_id[i]))),
               "a Session ID is lowercase hexadecimal: <%s>", session_id);
 
   g_free(expected);
@@ -1762,7 +1762,7 @@ Test(altp_client, a_frame_counts_as_sent_only_once_it_is_written_whole)
   GIOCondition cond = 0, idle_cond = 0;
   gint timeout = -1;
   cr_assert(log_proto_client_poll_prepare(sender.proto, &cond, &idle_cond, &timeout));
-  cr_assert(cond & G_IO_OUT, "the Sender does not ask to be woken up when it may write again");
+  cr_assert(not(zero(int, cond & G_IO_OUT)), "the Sender does not ask to be woken up when it may write again");
 
   sender.throttle->write_budget = -1;
   cr_assert(eq(int, _flush(&sender), LPS_SUCCESS));

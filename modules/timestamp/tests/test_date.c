@@ -23,6 +23,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/parameterized.h"
 #include "libtest/fake-time.h"
 
@@ -192,9 +193,9 @@ StaticParameterizedTest(struct date_params *params, test_date_parser_params, dat
 
   append_format_unix_time(&logmsg->timestamps[params->time_stamp], res, TS_FMT_ISO, -1, 0);
 
-  cr_assert_str_eq(res->str, params->expected,
-                   "incorrect date parsed msg=%s format=%s, result=%s, expected=%s",
-                   params->msg, params->format, res->str, params->expected);
+  cr_assert(eq(str, res->str, params->expected),
+            "incorrect date parsed msg=%s format=%s, result=%s, expected=%s",
+            params->msg, params->format, res->str, params->expected);
 
   g_string_free(res, TRUE);
   log_pipe_unref(&parser->super);
@@ -211,7 +212,7 @@ Test(date, test_date_with_additional_text_at_the_end)
   gboolean success = log_parser_process(parser, &logmsg, &path_options, log_msg_get_value(logmsg, LM_V_MESSAGE, NULL),
                                         -1);
 
-  cr_assert_not(success, "successfully parsed but expected failure, msg=%s", msg);
+  cr_assert(not(success), "successfully parsed but expected failure, msg=%s", msg);
 
   log_pipe_unref(&parser->super);
   log_msg_unref(logmsg);
@@ -251,7 +252,7 @@ StaticParameterizedTest(struct date_with_multiple_formats_params *params, test_d
 
   cr_assert(success, "unable to parse msg=%s with a list of formats", params->msg);
 
-  cr_assert(logmsg->timestamps[LM_TS_STAMP].ut_usec == params->expected_usec, "expected %d us, got %d",
+  cr_assert(eq(i64, logmsg->timestamps[LM_TS_STAMP].ut_usec, params->expected_usec), "expected %d us, got %d",
             params->expected_usec,
             logmsg->timestamps[LM_TS_STAMP].ut_usec);
   log_msg_unref(logmsg);
@@ -277,9 +278,9 @@ Test(date, test_date_with_guess_timezone)
   append_format_unix_time(&logmsg->timestamps[LM_TS_STAMP], res, TS_FMT_ISO, -1, 0);
 
   /* this should fix up the timezone */
-  cr_assert_str_eq(res->str, "2015-12-30T12:00:00+01:00",
-                   "incorrect date parsed msg=%s result=%s",
-                   msg, res->str);
+  cr_assert(eq(str, res->str, "2015-12-30T12:00:00+01:00"),
+            "incorrect date parsed msg=%s result=%s",
+            msg, res->str);
 
   log_pipe_unref(&parser->super);
   log_msg_unref(logmsg);

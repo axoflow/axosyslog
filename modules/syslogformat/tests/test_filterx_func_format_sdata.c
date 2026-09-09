@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/filterx-lib.h"
 
 #include "filterx-func-format-sdata.h"
@@ -40,7 +41,7 @@ _eval_format_sdata(const gchar *sdata_json)
   FilterXExpr *sdata = filterx_literal_new(filterx_object_from_json(sdata_json, -1, NULL));
   GList *args = g_list_append(NULL, filterx_function_arg_new(NULL, sdata));
   FilterXExpr *func = filterx_function_format_sdata_new(filterx_function_args_new(args, &args_err), &err);
-  cr_assert(!err);
+  cr_assert(zero(ptr, err));
 
   FilterXObject *obj = init_and_eval_expr(func);
   filterx_expr_unref(func);
@@ -51,8 +52,8 @@ static void
 _assert_format_sdata(const gchar *sdata_json, const gchar *expected_output)
 {
   FilterXObject *obj = _eval_format_sdata(sdata_json);
-  cr_assert(obj);
-  cr_assert_str_eq(filterx_string_get_value_as_cstr(obj), expected_output);
+  cr_assert(not(zero(ptr, obj)));
+  cr_assert(eq(str, filterx_string_get_value_as_cstr(obj), expected_output));
   filterx_object_unref(obj);
 }
 
@@ -71,8 +72,8 @@ Test(filterx_func_format_sdata, test_escaping)
 
 Test(filterx_func_format_sdata, test_invalid_input)
 {
-  cr_assert_null(_eval_format_sdata("\"not a dict\""));
-  cr_assert_null(_eval_format_sdata("{\"foo\":\"bar\"}"));
+  cr_assert(zero(ptr, _eval_format_sdata("\"not a dict\"")));
+  cr_assert(zero(ptr, _eval_format_sdata("{\"foo\":\"bar\"}")));
 }
 
 static void

@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/msg_parse_lib.h"
 
 #include "dot-notation.h"
@@ -37,7 +38,7 @@ compile_json(const gchar *json)
 
   tok = json_tokener_new();
   jso = json_tokener_parse_ex(tok, json, strlen(json));
-  cr_assert(tok->err == json_tokener_success, "expected to parse input json, but couldn't, json=%s", json);
+  cr_assert(eq(int, tok->err, json_tokener_success), "expected to parse input json, but couldn't, json=%s", json);
   json_tokener_free(tok);
   return jso;
 }
@@ -49,7 +50,7 @@ assert_json_equals(struct json_object *a, struct json_object *b, const gchar *su
 
   a_str = json_object_to_json_string(a);
   b_str = json_object_to_json_string(b);
-  cr_assert_str_eq(a_str, b_str, "extraction didn't return the expected subscript of the object: %s", subscript);
+  cr_assert(eq(str, a_str, b_str), "extraction didn't return the expected subscript of the object: %s", subscript);
 }
 
 static void
@@ -73,7 +74,7 @@ assert_dot_notation_eval_fails(const gchar *input_json, const gchar *subscript)
 
   input = compile_json(input_json);
   sub = json_extract(input, subscript);
-  cr_assert_null(sub, "extracted JSON is not NULL as expected, json=%s, subscript=%s", input_json, subscript);
+  cr_assert(zero(ptr, sub), "extracted JSON is not NULL as expected, json=%s, subscript=%s", input_json, subscript);
   json_object_put(input);
 }
 

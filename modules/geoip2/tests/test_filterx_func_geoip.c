@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/parameterized.h"
 #include "libtest/msg_parse_lib.h"
 #include "libtest/filterx-lib.h"
@@ -71,7 +72,7 @@ _construct(const gchar *ip, const gchar *database, const gchar *field, GError **
 
   GError *args_err = NULL;
   FilterXExpr *func = filterx_function_geoip_new(filterx_function_args_new(args, &args_err), error);
-  cr_assert_null(args_err);
+  cr_assert(zero(ptr, args_err));
 
   return func;
 }
@@ -82,10 +83,10 @@ Test(filterx_func_geoip, test_empty_args_error)
   GError *args_err = NULL;
   FilterXExpr *func = filterx_function_geoip_new(filterx_function_args_new(NULL, &args_err), &err);
 
-  cr_assert_null(func);
-  cr_assert_null(args_err);
-  cr_assert_not_null(err);
-  cr_assert(strstr(err->message, FILTERX_FUNC_GEOIP_USAGE) != NULL);
+  cr_assert(zero(ptr, func));
+  cr_assert(zero(ptr, args_err));
+  cr_assert(not(zero(ptr, err)));
+  cr_assert(not(zero(ptr, strstr(err->message, FILTERX_FUNC_GEOIP_USAGE))));
   g_error_free(err);
 }
 
@@ -94,8 +95,8 @@ Test(filterx_func_geoip, test_nonexistent_database_error)
   GError *err = NULL;
   FilterXExpr *func = _construct(TEST_IP, "/nonexistent/geoip-test-database.mmdb", NULL, &err);
 
-  cr_assert_null(func);
-  cr_assert_not_null(err);
+  cr_assert(zero(ptr, func));
+  cr_assert(not(zero(ptr, err)));
   g_error_free(err);
 }
 
@@ -112,7 +113,7 @@ _construct_with_kind(const gchar *kind, const gchar *database, GError **error)
 
   GError *args_err = NULL;
   FilterXExpr *func = filterx_function_geoip_new(filterx_function_args_new(args, &args_err), error);
-  cr_assert_null(args_err);
+  cr_assert(zero(ptr, args_err));
 
   return func;
 }
@@ -122,9 +123,9 @@ Test(filterx_func_geoip, test_kind_and_database_are_mutually_exclusive)
   GError *err = NULL;
   FilterXExpr *func = _construct_with_kind("country", TEST_DATABASE, &err);
 
-  cr_assert_null(func);
-  cr_assert_not_null(err);
-  cr_assert(strstr(err->message, "mutually exclusive") != NULL, "%s", err->message);
+  cr_assert(zero(ptr, func));
+  cr_assert(not(zero(ptr, err)));
+  cr_assert(not(zero(ptr, strstr(err->message, "mutually exclusive"))), "%s", err->message);
   g_error_free(err);
 }
 
@@ -133,9 +134,9 @@ Test(filterx_func_geoip, test_unknown_kind_error)
   GError *err = NULL;
   FilterXExpr *func = _construct_with_kind("no-such-kind", NULL, &err);
 
-  cr_assert_null(func);
-  cr_assert_not_null(err);
-  cr_assert(strstr(err->message, "unknown GeoIP database kind no-such-kind") != NULL, "%s", err->message);
+  cr_assert(zero(ptr, func));
+  cr_assert(not(zero(ptr, err)));
+  cr_assert(not(zero(ptr, strstr(err->message, "unknown GeoIP database kind no-such-kind"))), "%s", err->message);
   g_error_free(err);
 }
 
@@ -144,7 +145,7 @@ _write_map_file(const gchar *contents)
 {
   gchar *map_file = NULL;
   gint fd = g_file_open_tmp("geoip-databases-XXXXXX.tsv", &map_file, NULL);
-  cr_assert(fd >= 0);
+  cr_assert(ge(int, fd, 0));
   close(fd);
   cr_assert(g_file_set_contents(map_file, contents, -1, NULL));
   return map_file;
@@ -178,10 +179,10 @@ Test(filterx_func_geoip, test_database_map_first_existing_path_wins)
                                "country\t/nonexistent/later.mmdb\n",
                                "country", candidates, &err);
 
-  cr_assert_null(err);
-  cr_assert_str_eq(path, TEST_DATABASE);
-  cr_assert_eq(candidates->len, 1);
-  cr_assert_str_eq(g_ptr_array_index(candidates, 0), "/nonexistent/country.mmdb");
+  cr_assert(zero(ptr, err));
+  cr_assert(eq(str, path, TEST_DATABASE));
+  cr_assert(eq(uint, candidates->len, 1));
+  cr_assert(eq(str, g_ptr_array_index(candidates, 0), "/nonexistent/country.mmdb"));
 
   g_free(path);
   g_ptr_array_free(candidates, TRUE);
@@ -195,10 +196,10 @@ Test(filterx_func_geoip, test_database_map_skips_directories)
                                "country\t" TEST_DATABASE "\n",
                                "country", candidates, &err);
 
-  cr_assert_null(err);
-  cr_assert_str_eq(path, TEST_DATABASE);
-  cr_assert_eq(candidates->len, 1);
-  cr_assert_str_eq(g_ptr_array_index(candidates, 0), TOP_SRCDIR "/modules/geoip2/tests");
+  cr_assert(zero(ptr, err));
+  cr_assert(eq(str, path, TEST_DATABASE));
+  cr_assert(eq(uint, candidates->len, 1));
+  cr_assert(eq(str, g_ptr_array_index(candidates, 0), TOP_SRCDIR "/modules/geoip2/tests"));
 
   g_free(path);
   g_ptr_array_free(candidates, TRUE);
@@ -211,17 +212,17 @@ Test(filterx_func_geoip, test_database_map_skips_unreadable_files)
     return;
 
   gchar *unreadable = _write_map_file("");
-  cr_assert_eq(g_chmod(unreadable, 0), 0);
+  cr_assert(eq(int, g_chmod(unreadable, 0), 0));
 
   gchar *map_contents = g_strdup_printf("country\t%s\ncountry\t" TEST_DATABASE "\n", unreadable);
   GPtrArray *candidates = g_ptr_array_new_with_free_func(g_free);
   GError *err = NULL;
   gchar *path = _find_database(map_contents, "country", candidates, &err);
 
-  cr_assert_null(err);
-  cr_assert_str_eq(path, TEST_DATABASE);
-  cr_assert_eq(candidates->len, 1);
-  cr_assert_str_eq(g_ptr_array_index(candidates, 0), unreadable);
+  cr_assert(zero(ptr, err));
+  cr_assert(eq(str, path, TEST_DATABASE));
+  cr_assert(eq(uint, candidates->len, 1));
+  cr_assert(eq(str, g_ptr_array_index(candidates, 0), unreadable));
 
   g_free(path);
   g_ptr_array_free(candidates, TRUE);
@@ -238,10 +239,10 @@ Test(filterx_func_geoip, test_database_map_no_existing_path)
                                "asn /nonexistent/b.mmdb\n",
                                "asn", candidates, &err);
 
-  cr_assert_null(err);
-  cr_assert_null(path);
-  cr_assert_eq(candidates->len, 2);
-  cr_assert_str_eq(g_ptr_array_index(candidates, 1), "/nonexistent/b.mmdb");
+  cr_assert(zero(ptr, err));
+  cr_assert(zero(ptr, path));
+  cr_assert(eq(uint, candidates->len, 2));
+  cr_assert(eq(str, g_ptr_array_index(candidates, 1), "/nonexistent/b.mmdb"));
 
   g_ptr_array_free(candidates, TRUE);
 }
@@ -252,9 +253,9 @@ Test(filterx_func_geoip, test_database_map_unknown_kind)
   GError *err = NULL;
   gchar *path = _find_database("country\t" TEST_DATABASE "\n", "city", candidates, &err);
 
-  cr_assert_null(err);
-  cr_assert_null(path);
-  cr_assert_eq(candidates->len, 0);
+  cr_assert(zero(ptr, err));
+  cr_assert(zero(ptr, path));
+  cr_assert(eq(uint, candidates->len, 0));
 
   g_ptr_array_free(candidates, TRUE);
 }
@@ -265,13 +266,13 @@ Test(filterx_func_geoip, test_database_map_invalid_line)
   GError *err = NULL;
   gchar *path = _find_database("country\trelative/path.mmdb\n", "country", candidates, &err);
 
-  cr_assert_null(path);
-  cr_assert_not_null(err);
+  cr_assert(zero(ptr, path));
+  cr_assert(not(zero(ptr, err)));
   g_clear_error(&err);
 
   path = _find_database("country\n", "country", candidates, &err);
-  cr_assert_null(path);
-  cr_assert_not_null(err);
+  cr_assert(zero(ptr, path));
+  cr_assert(not(zero(ptr, err)));
   g_error_free(err);
 
   g_ptr_array_free(candidates, TRUE);
@@ -283,8 +284,8 @@ Test(filterx_func_geoip, test_database_map_missing_file)
   GError *err = NULL;
   gchar *path = mmdb_find_database_by_kind("/nonexistent/geoip-databases.tsv", "country", candidates, &err);
 
-  cr_assert_null(path);
-  cr_assert_not_null(err);
+  cr_assert(zero(ptr, path));
+  cr_assert(not(zero(ptr, err)));
   g_error_free(err);
   g_ptr_array_free(candidates, TRUE);
 }
@@ -296,11 +297,11 @@ Test(filterx_func_geoip, test_kind_uses_database_map)
 
   GError *err = NULL;
   FilterXExpr *func = _construct_with_kind("country", NULL, &err);
-  cr_assert_null(err);
-  cr_assert_not_null(func);
+  cr_assert(zero(ptr, err));
+  cr_assert(not(zero(ptr, func)));
 
   FilterXObject *obj = init_and_eval_expr(func);
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   assert_marshaled_object(obj, "GB", LM_VT_STRING);
 
   filterx_object_unref(obj);
@@ -309,22 +310,22 @@ Test(filterx_func_geoip, test_kind_uses_database_map)
 
 Test(filterx_func_geoip, test_database_map_in_sysconfdir_takes_precedence)
 {
-  cr_assert_str_eq(mmdb_database_map_file(), database_map_file);
+  cr_assert(eq(str, mmdb_database_map_file(), database_map_file));
 }
 
 Test(filterx_func_geoip, test_database_map_falls_back_to_the_shipped_one)
 {
   g_unlink(database_map_file);
   cr_assert(g_file_set_contents(shipped_database_map_file, "country\t" TEST_DATABASE "\n", -1, NULL));
-  cr_assert_str_eq(mmdb_database_map_file(), shipped_database_map_file);
+  cr_assert(eq(str, mmdb_database_map_file(), shipped_database_map_file));
 
   GError *err = NULL;
   FilterXExpr *func = _construct_with_kind("country", NULL, &err);
-  cr_assert_null(err);
-  cr_assert_not_null(func);
+  cr_assert(zero(ptr, err));
+  cr_assert(not(zero(ptr, func)));
 
   FilterXObject *obj = init_and_eval_expr(func);
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   assert_marshaled_object(obj, "GB", LM_VT_STRING);
 
   filterx_object_unref(obj);
@@ -338,10 +339,10 @@ Test(filterx_func_geoip, test_unknown_kind_in_shipped_map_suggests_a_copy)
   GError *err = NULL;
   FilterXExpr *func = _construct_with_kind("no-such-kind", NULL, &err);
 
-  cr_assert_null(func);
-  cr_assert_not_null(err);
-  cr_assert(strstr(err->message, "copy") != NULL, "%s", err->message);
-  cr_assert(strstr(err->message, database_map_file) != NULL, "%s", err->message);
+  cr_assert(zero(ptr, func));
+  cr_assert(not(zero(ptr, err)));
+  cr_assert(not(zero(ptr, strstr(err->message, "copy"))), "%s", err->message);
+  cr_assert(not(zero(ptr, strstr(err->message, database_map_file))), "%s", err->message);
   g_error_free(err);
 }
 
@@ -351,13 +352,13 @@ Test(filterx_func_geoip, test_kind_without_existing_database_returns_null)
 
   GError *err = NULL;
   FilterXExpr *func = _construct_with_kind("country", NULL, &err);
-  cr_assert_null(err);
-  cr_assert_not_null(func);
+  cr_assert(zero(ptr, err));
+  cr_assert(not(zero(ptr, func)));
 
   FilterXObject *obj = init_and_eval_expr(func);
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(null)));
-  cr_assert_eq(filterx_eval_get_error_count(), 0);
+  cr_assert(eq(int, filterx_eval_get_error_count(), 0));
 
   filterx_object_unref(obj);
   filterx_expr_unref(func);
@@ -370,8 +371,8 @@ Test(filterx_func_geoip, test_shipped_database_map_is_valid)
   GError *err = NULL;
 
   gchar *path = mmdb_find_database_by_kind(map_file, "no-such-kind", candidates, &err);
-  cr_assert_null(err, "%s: %s", map_file, err ? err->message : "");
-  cr_assert_null(path);
+  cr_assert(zero(ptr, err), "%s: %s", map_file, err ? err->message : "");
+  cr_assert(zero(ptr, path));
 
   g_ptr_array_free(candidates, TRUE);
 }
@@ -388,10 +389,10 @@ Test(filterx_func_geoip, test_field_argument_must_be_string_literal)
   GError *args_err = NULL;
   FilterXExpr *func = filterx_function_geoip_new(filterx_function_args_new(args, &args_err), &err);
 
-  cr_assert_null(func);
-  cr_assert_null(args_err);
-  cr_assert_not_null(err);
-  cr_assert(strstr(err->message, FILTERX_FUNC_GEOIP_USAGE) != NULL);
+  cr_assert(zero(ptr, func));
+  cr_assert(zero(ptr, args_err));
+  cr_assert(not(zero(ptr, err)));
+  cr_assert(not(zero(ptr, strstr(err->message, FILTERX_FUNC_GEOIP_USAGE))));
   g_error_free(err);
 }
 
@@ -400,12 +401,12 @@ Test(filterx_func_geoip, test_default_field_is_country_iso_code)
   GError *err = NULL;
   FilterXExpr *func = _construct(TEST_IP, TEST_DATABASE, NULL, &err);
 
-  cr_assert_null(err);
-  cr_assert_not_null(func);
+  cr_assert(zero(ptr, err));
+  cr_assert(not(zero(ptr, func)));
 
   FilterXObject *obj = init_and_eval_expr(func);
 
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   assert_marshaled_object(obj, "GB", LM_VT_STRING);
 
   filterx_object_unref(obj);
@@ -417,12 +418,12 @@ Test(filterx_func_geoip, test_integer_field)
   GError *err = NULL;
   FilterXExpr *func = _construct(TEST_IP, TEST_DATABASE, "country.geoname_id", &err);
 
-  cr_assert_null(err);
-  cr_assert_not_null(func);
+  cr_assert(zero(ptr, err));
+  cr_assert(not(zero(ptr, func)));
 
   FilterXObject *obj = init_and_eval_expr(func);
 
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   assert_marshaled_object(obj, "2635167", LM_VT_INTEGER);
 
   filterx_object_unref(obj);
@@ -434,12 +435,12 @@ Test(filterx_func_geoip, test_boolean_field)
   GError *err = NULL;
   FilterXExpr *func = _construct(TEST_IP, TEST_DATABASE, "country.is_in_european_union", &err);
 
-  cr_assert_null(err);
-  cr_assert_not_null(func);
+  cr_assert(zero(ptr, err));
+  cr_assert(not(zero(ptr, func)));
 
   FilterXObject *obj = init_and_eval_expr(func);
 
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   assert_marshaled_object(obj, "true", LM_VT_BOOLEAN);
 
   filterx_object_unref(obj);
@@ -451,12 +452,12 @@ Test(filterx_func_geoip, test_double_field)
   GError *err = NULL;
   FilterXExpr *func = _construct(TEST_IP, TEST_DATABASE, "location.latitude", &err);
 
-  cr_assert_null(err);
-  cr_assert_not_null(func);
+  cr_assert(zero(ptr, err));
+  cr_assert(not(zero(ptr, func)));
 
   FilterXObject *obj = init_and_eval_expr(func);
 
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   assert_object_json_equals(obj, "51.75");
 
   filterx_object_unref(obj);
@@ -468,12 +469,12 @@ Test(filterx_func_geoip, test_nested_dict_field)
   GError *err = NULL;
   FilterXExpr *func = _construct(TEST_IP, TEST_DATABASE, "postal", &err);
 
-  cr_assert_null(err);
-  cr_assert_not_null(func);
+  cr_assert(zero(ptr, err));
+  cr_assert(not(zero(ptr, func)));
 
   FilterXObject *obj = init_and_eval_expr(func);
 
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(filterx_ref_unwrap_ro(obj), &FILTERX_TYPE_NAME(mapping)));
   assert_object_json_equals(obj, "{\"code\":\"OX1\",\"confidence\":20}");
 
@@ -486,26 +487,26 @@ Test(filterx_func_geoip, test_array_field)
   GError *err = NULL;
   FilterXExpr *func = _construct(TEST_IP, TEST_DATABASE, "subdivisions", &err);
 
-  cr_assert_null(err);
-  cr_assert_not_null(func);
+  cr_assert(zero(ptr, err));
+  cr_assert(not(zero(ptr, func)));
 
   FilterXObject *obj = init_and_eval_expr(func);
 
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(filterx_ref_unwrap_ro(obj), &FILTERX_TYPE_NAME(sequence)));
 
   guint64 len;
   cr_assert(filterx_object_len(obj, &len));
-  cr_assert_eq(len, 2);
+  cr_assert(eq(u64, len, 2));
 
   FilterXObject *index_zero = filterx_integer_new(0);
   FilterXObject *first = filterx_object_get_subscript(obj, index_zero);
-  cr_assert_not_null(first);
+  cr_assert(not(zero(ptr, first)));
   cr_assert(filterx_object_is_type(filterx_ref_unwrap_ro(first), &FILTERX_TYPE_NAME(mapping)));
 
   FilterXObject *iso_code_key = filterx_string_new("iso_code", -1);
   FilterXObject *iso_code = filterx_object_get_subscript(first, iso_code_key);
-  cr_assert_not_null(iso_code);
+  cr_assert(not(zero(ptr, iso_code)));
   assert_marshaled_object(iso_code, "ENG", LM_VT_STRING);
 
   filterx_object_unref(iso_code);
@@ -521,17 +522,17 @@ Test(filterx_func_geoip, test_whole_entry)
   GError *err = NULL;
   FilterXExpr *func = _construct(TEST_IP, TEST_DATABASE, "", &err);
 
-  cr_assert_null(err);
-  cr_assert_not_null(func);
+  cr_assert(zero(ptr, err));
+  cr_assert(not(zero(ptr, func)));
 
   FilterXObject *obj = init_and_eval_expr(func);
 
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(filterx_ref_unwrap_ro(obj), &FILTERX_TYPE_NAME(mapping)));
 
   FilterXObject *country_key = filterx_string_new("country", -1);
   FilterXObject *country = filterx_object_get_subscript(obj, country_key);
-  cr_assert_not_null(country);
+  cr_assert(not(zero(ptr, country)));
   cr_assert(filterx_object_is_type(filterx_ref_unwrap_ro(country), &FILTERX_TYPE_NAME(mapping)));
 
   filterx_object_unref(country);
@@ -545,12 +546,12 @@ Test(filterx_func_geoip, test_ipv6_lookup)
   GError *err = NULL;
   FilterXExpr *func = _construct("2001:218::", TEST_DATABASE, NULL, &err);
 
-  cr_assert_null(err);
-  cr_assert_not_null(func);
+  cr_assert(zero(ptr, err));
+  cr_assert(not(zero(ptr, func)));
 
   FilterXObject *obj = init_and_eval_expr(func);
 
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   assert_marshaled_object(obj, "JP", LM_VT_STRING);
 
   filterx_object_unref(obj);
@@ -562,12 +563,12 @@ Test(filterx_func_geoip, test_ipv4_mapped_ipv6_lookup)
   GError *err = NULL;
   FilterXExpr *func = _construct("::ffff:" TEST_IP, TEST_DATABASE, NULL, &err);
 
-  cr_assert_null(err);
-  cr_assert_not_null(func);
+  cr_assert(zero(ptr, err));
+  cr_assert(not(zero(ptr, func)));
 
   FilterXObject *obj = init_and_eval_expr(func);
 
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   assert_marshaled_object(obj, "GB", LM_VT_STRING);
 
   filterx_object_unref(obj);
@@ -590,13 +591,13 @@ StaticParameterizedTest(const gchar **ip, invalid_ips, filterx_func_geoip, test_
   GError *err = NULL;
   FilterXExpr *func = _construct(*ip, TEST_DATABASE, NULL, &err);
 
-  cr_assert_null(err);
-  cr_assert_not_null(func);
+  cr_assert(zero(ptr, err));
+  cr_assert(not(zero(ptr, func)));
 
   FilterXObject *obj = init_and_eval_expr(func);
 
-  cr_assert_null(obj, "ip=%s", *ip);
-  cr_assert(filterx_eval_get_last_error(), "ip=%s", *ip);
+  cr_assert(zero(ptr, obj), "ip=%s", *ip);
+  cr_assert(not(zero(ptr, filterx_eval_get_last_error())), "ip=%s", *ip);
 
   filterx_eval_clear_errors();
   filterx_expr_unref(func);
@@ -607,12 +608,12 @@ Test(filterx_func_geoip, test_unknown_ip_returns_null)
   GError *err = NULL;
   FilterXExpr *func = _construct("127.0.0.1", TEST_DATABASE, NULL, &err);
 
-  cr_assert_null(err);
-  cr_assert_not_null(func);
+  cr_assert(zero(ptr, err));
+  cr_assert(not(zero(ptr, func)));
 
   FilterXObject *obj = init_and_eval_expr(func);
 
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(null)));
 
   filterx_object_unref(obj);
@@ -624,12 +625,12 @@ Test(filterx_func_geoip, test_unknown_field_returns_null)
   GError *err = NULL;
   FilterXExpr *func = _construct(TEST_IP, TEST_DATABASE, "does.not.exist", &err);
 
-  cr_assert_null(err);
-  cr_assert_not_null(func);
+  cr_assert(zero(ptr, err));
+  cr_assert(not(zero(ptr, func)));
 
   FilterXObject *obj = init_and_eval_expr(func);
 
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(null)));
 
   filterx_object_unref(obj);

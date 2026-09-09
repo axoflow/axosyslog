@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/parameterized.h"
 
 #include "regexp-parser.h"
@@ -101,17 +102,17 @@ StaticParameterizedTest(RegexpParserTestParam *parser_param, parser_params, rege
 
   LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
   result = log_parser_process_message(p, &msg, &path_options);
-  cr_assert_not((result && !parser_param->expected_result), "unexpected match; msg=%s\n", parser_param->msg);
-  cr_assert_not((!result && parser_param->expected_result), "unexpected non-match; msg=%s\n", parser_param->msg);
+  cr_assert(not(result && !parser_param->expected_result), "unexpected match; msg=%s\n", parser_param->msg);
+  cr_assert(not(parser_param->expected_result && !result), "unexpected non-match; msg=%s\n", parser_param->msg);
 
   if (parser_param->name)
     {
       gssize len = -1;
       const gchar *value = log_msg_get_value_by_name(msg, parser_param->name, &len);
-      cr_assert_str_eq(value, parser_param->value, "name: %s | value: %.*s, should be %s",
-                       parser_param->name,
-                       (gint) len, value,
-                       parser_param->value);
+      cr_assert(eq(str, value, parser_param->value), "name: %s | value: %.*s, should be %s",
+                parser_param->name,
+                (gint) len, value,
+                parser_param->value);
     }
 
   log_pipe_unref(&p->super);
@@ -135,7 +136,7 @@ Test(regexp_parser, test_regexp_parser_with_multiple_patterns)
 
   gssize len;
   const gchar *value = log_msg_get_value_by_name(msg, "key", &len);
-  cr_assert(strncmp(value, "abc", 3) == 0,
+  cr_assert(eq(int, strncmp(value, "abc", 3), 0),
             "Test regexp parser with multiple patterns failed: name: %s | value: %.*s, should be %s",
             "key",
             (gint) len, value,

@@ -20,6 +20,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/msg_parse_lib.h"
 
 #include "geoip-parser.h"
@@ -43,7 +44,7 @@ static void
 _override_map_file(void)
 {
   gint fd = g_file_open_tmp("geoip-databases-XXXXXX.tsv", &map_file, NULL);
-  cr_assert(fd >= 0);
+  cr_assert(ge(int, fd, 0));
   close(fd);
   override_installation_path_for(MMDB_DATABASE_MAP_FILE, map_file);
 }
@@ -116,7 +117,8 @@ parse_geoip_into_log_message(const gchar *template_format)
   LogMessage *msg;
 
   msg = parse_geoip_into_log_message_no_check(template_format);
-  cr_assert_not_null(msg, "expected geoip-parser success and it returned failure, template_format=%s", template_format);
+  cr_assert(not(zero(ptr, msg)), "expected geoip-parser success and it returned failure, template_format=%s",
+            template_format);
   return msg;
 }
 
@@ -124,7 +126,7 @@ Test(geoip2, template_is_mandatory)
 {
   LogParser *geoip2_parser = maxminddb_parser_new(configuration);
 
-  cr_assert_not(log_pipe_init(&geoip2_parser->super));
+  cr_assert(not(log_pipe_init(&geoip2_parser->super)));
 
   log_pipe_unref(&geoip2_parser->super);
 }
@@ -229,14 +231,14 @@ Test(geoip2, test_unknown_kind_is_an_error)
   _use_map_file("country\t" TEST_DATABASE "\n");
 
   cr_assert(_init_parser_with_kind("country", NULL));
-  cr_assert_not(_init_parser_with_kind("city", NULL));
+  cr_assert(not(_init_parser_with_kind("city", NULL)));
 }
 
 Test(geoip2, test_kind_and_database_are_mutually_exclusive)
 {
   _use_map_file("country\t" TEST_DATABASE "\n");
 
-  cr_assert_not(_init_parser_with_kind("country", TEST_DATABASE));
+  cr_assert(not(_init_parser_with_kind("country", TEST_DATABASE)));
 }
 
 TestSuite(geoip2, .init = setup, .fini = teardown);
