@@ -103,9 +103,13 @@ log_proto_auto_server_poll_prepare(LogProtoServer *s, GIOCondition *cond, gint *
 }
 
 static LogProtoStatus
-log_proto_auto_handshake(LogProtoServer *s, gboolean *handshake_finished, LogProtoServer **proto_replacement)
+log_proto_auto_server_fetch(LogProtoServer *s, const guchar **msg, gsize *msg_len,
+                            gboolean *may_read, LogTransportAuxData *aux, Bookmark *bookmark)
 {
   LogProtoAutoServer *self = (LogProtoAutoServer *) s;
+
+  *msg = NULL;
+  *msg_len = 0;
 
   gint rc;
   const gchar *detect_buffer = log_transport_stack_look_ahead(&self->super.transport_stack, &rc);
@@ -119,11 +123,9 @@ log_proto_auto_handshake(LogProtoServer *s, gboolean *handshake_finished, LogPro
       return LPS_ERROR;
     }
 
-  *proto_replacement = _construct_detected_proto(self, detect_buffer, rc);
-  if (!*proto_replacement)
-    return LPS_AGAIN;
+  self->super.proto_replacement = _construct_detected_proto(self, detect_buffer, rc);
 
-  return LPS_SUCCESS;
+  return LPS_AGAIN;
 }
 
 static void
@@ -147,7 +149,7 @@ log_proto_auto_server_new(LogTransport *transport, const LogProtoServerOptions *
    * the LogProto implementation once we finished with detection */
 
   log_proto_server_init(&self->super, transport, options);
-  self->super.handshake = log_proto_auto_handshake;
+  self->super.fetch = log_proto_auto_server_fetch;
   self->super.poll_prepare = log_proto_auto_server_poll_prepare;
   self->super.free_fn = log_proto_auto_server_free;
   self->kb = kb ? stats_cluster_key_builder_clone(kb) : NULL;

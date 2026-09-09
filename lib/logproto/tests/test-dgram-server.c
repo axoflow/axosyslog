@@ -51,24 +51,24 @@ Test(log_proto, test_log_proto_dgram_server_no_encoding)
               "01234", 5,
               LTM_EOF),
             get_inited_proto_server_options());
-  assert_proto_server_fetch(proto, "0123456789ABCDEF0123456789ABCDEF", -1);
-  assert_proto_server_fetch(proto, "01234567\n", -1);
-  assert_proto_server_fetch(proto, "01234567\0", 9);
+  assert_proto_server_fetch(&proto, "0123456789ABCDEF0123456789ABCDEF", -1);
+  assert_proto_server_fetch(&proto, "01234567\n", -1);
+  assert_proto_server_fetch(&proto, "01234567\0", 9);
 
   /* no encoding: utf8 remains utf8 */
-  assert_proto_server_fetch(proto, "árvíztűrőtükörfúrógép\n\n", -1);
+  assert_proto_server_fetch(&proto, "árvíztűrőtükörfúrógép\n\n", -1);
 
   /* no encoding: iso-8859-2 remains iso-8859-2 */
-  assert_proto_server_fetch(proto,
+  assert_proto_server_fetch(&proto,
                             "\xe1\x72\x76\xed\x7a\x74\xfb\x72\xf5\x74\xfc\x6b\xf6\x72\x66\xfa" /*  |.rv.zt.r.t.k.rf.| */
                             "\x72\xf3\x67\xe9\x70\n",                                          /*  |r.g.p|            */
                             -1);
   /* no encoding, ucs4 becomes a string with embedded NULs */
-  assert_proto_server_fetch(proto,
+  assert_proto_server_fetch(&proto,
                             "\x00\x00\x00\xe1\x00\x00\x00\x72\x00\x00\x00\x76\x00\x00\x00\xed"       /* |...á...r...v...í| */
                             "\x00\x00\x00\x7a\x00\x00\x00\x74\x00\x00\x01\x71\x00\x00\x00\x72", 32); /* |...z...t...ű...r|  */
 
-  assert_proto_server_fetch(proto, "01234", -1);
+  assert_proto_server_fetch(&proto, "01234", -1);
 
   log_proto_server_free(proto);
 }
@@ -92,8 +92,8 @@ Test(log_proto, test_log_proto_dgram_server_ucs4)
 
               LTM_EOF),
             get_inited_proto_server_options());
-  assert_proto_server_fetch(proto, "árvíztűr", -1);
-  assert_proto_server_fetch(proto, "árvíztű\n", -1);
+  assert_proto_server_fetch(&proto, "árvíztűr", -1);
+  assert_proto_server_fetch(&proto, "árvíztű\n", -1);
   log_proto_server_free(proto);
 }
 
@@ -111,7 +111,7 @@ Test(log_proto, test_log_proto_dgram_server_invalid_ucs4)
               "\x00\x00\x00\x7a\x00\x00\x00\x74\x00\x00\x01\x71\x00\x00\x00", 31, /* |...z...t...ű...r|  */
               LTM_EOF),
             get_inited_proto_server_options());
-  assert_proto_server_fetch_failure(proto, LPS_ERROR,
+  assert_proto_server_fetch_failure(&proto, LPS_ERROR,
                                     "Byte sequence too short, cannot convert an individual frame in its entirety");
   log_proto_server_free(proto);
 }
@@ -132,8 +132,8 @@ Test(log_proto, test_log_proto_dgram_server_iso_8859_2)
               "\x72\xf3\x67\xe9\x70\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9", -1,  /*  |rógépééééééééééé| */
               LTM_EOF),
             get_inited_proto_server_options());
-  assert_proto_server_fetch(proto, "árvíztűrőtükörfúrógépééééééééééé", -1);
-  assert_proto_server_fetch_ignored_eof(proto);
+  assert_proto_server_fetch(&proto, "árvíztűrőtükörfúrógépééééééééééé", -1);
+  assert_proto_server_fetch_ignored_eof(&proto);
   log_proto_server_free(proto);
 }
 
@@ -149,9 +149,9 @@ Test(log_proto, test_log_proto_dgram_server_eof_handling)
 
               LTM_EOF),
             get_inited_proto_server_options());
-  assert_proto_server_fetch(proto, "01234567", -1);
-  assert_proto_server_fetch_ignored_eof(proto);
-  assert_proto_server_fetch_ignored_eof(proto);
-  assert_proto_server_fetch_ignored_eof(proto);
+  assert_proto_server_fetch(&proto, "01234567", -1);
+  assert_proto_server_fetch_ignored_eof(&proto);
+  assert_proto_server_fetch_ignored_eof(&proto);
+  assert_proto_server_fetch_ignored_eof(&proto);
   log_proto_server_free(proto);
 }

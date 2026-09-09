@@ -54,9 +54,9 @@ test_proper_multiline(LogTransportMockConstructor log_transport_mock_new)
               LTM_EOF),
             get_inited_proto_server_options());
 
-  assert_proto_server_fetch(proto, "0\n"
-                                   " 1=2\n"
-                                   " 3=4", -1);
+  assert_proto_server_fetch(&proto, "0\n"
+                                    " 1=2\n"
+                                    " 3=4", -1);
 
   log_proto_server_free(proto);
 }
@@ -84,8 +84,8 @@ test_line_without_continuation(LogTransportMockConstructor log_transport_mock_ne
               LTM_EOF),
             get_inited_proto_server_options());
 
-  assert_proto_server_fetch(proto, "01234567", -1);
-  assert_proto_server_fetch(proto, "01234567", -1);
+  assert_proto_server_fetch(&proto, "01234567", -1);
+  assert_proto_server_fetch(&proto, "01234567", -1);
 
   log_proto_server_free(proto);
 }
@@ -113,8 +113,8 @@ test_input_starts_with_continuation(LogTransportMockConstructor log_transport_mo
               LTM_EOF),
             get_inited_proto_server_options());
 
-  assert_proto_server_fetch(proto, " 01234567", -1);
-  assert_proto_server_fetch(proto, "01234567", -1);
+  assert_proto_server_fetch(&proto, " 01234567", -1);
+  assert_proto_server_fetch(&proto, "01234567", -1);
 
   log_proto_server_free(proto);
 }
@@ -141,10 +141,10 @@ test_multiline_at_eof(LogTransportMockConstructor log_transport_mock_new)
               LTM_EOF),
             get_inited_proto_server_options());
 
-  assert_proto_server_fetch(proto, "01234567\n"
-                                   " 01234567\n"
-                                   " end", -1);
-  assert_proto_server_fetch_failure(proto, LPS_EOF, NULL);
+  assert_proto_server_fetch(&proto, "01234567\n"
+                                    " 01234567\n"
+                                    " end", -1);
+  assert_proto_server_fetch_failure(&proto, LPS_EOF, NULL);
 
   log_proto_server_free(proto);
 }
