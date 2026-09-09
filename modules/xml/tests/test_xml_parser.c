@@ -21,6 +21,7 @@
 
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/parameterized.h"
 
 #include "xml.h"
@@ -103,7 +104,7 @@ StaticParameterizedTest(XMLFailTestCase *test_case, invalid_inputs_params, xmlpa
   log_msg_set_value(msg, LM_V_MESSAGE, test_case->input, -1);
 
   LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
-  cr_assert_not(log_parser_process_message(xml_parser, &msg, &path_options));
+  cr_assert(not(log_parser_process_message(xml_parser, &msg, &path_options)));
 
   log_pipe_deinit((LogPipe *)xml_parser);
   log_pipe_unref((LogPipe *)xml_parser);
@@ -141,8 +142,8 @@ StaticParameterizedTest(ValidXMLTestCase *test_cases, valid_inputs_params, xmlpa
 
   const gchar *value = log_msg_get_value_by_name(msg, test_cases->key, NULL);
 
-  cr_assert_str_eq(value, test_cases->value, "key: %s | value: %s != %s (expected)", test_cases->key, value,
-                   test_cases->value);
+  cr_assert(eq(str, value, test_cases->value), "key: %s | value: %s != %s (expected)", test_cases->key, value,
+            test_cases->value);
 
   log_pipe_deinit((LogPipe *)xml_parser);
   log_pipe_unref((LogPipe *)xml_parser);
@@ -219,8 +220,8 @@ StaticParameterizedTest(ListCreateTestCase *test_cases, list_quoting_array_eleme
 
   const gchar *value = log_msg_get_value_by_name(msg, test_cases->key, NULL);
 
-  cr_assert_str_eq(value, test_cases->value, "key: %s | value: %s != %s (expected)", test_cases->key, value,
-                   test_cases->value);
+  cr_assert(eq(str, value, test_cases->value), "key: %s | value: %s != %s (expected)", test_cases->key, value,
+            test_cases->value);
 
   log_pipe_deinit((LogPipe *)xml_parser);
   log_pipe_unref((LogPipe *)xml_parser);
@@ -236,7 +237,7 @@ Test(xmlparser, test_drop_invalid)
 
   LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
   xml_parser_set_forward_invalid(xml_parser, FALSE);
-  cr_assert_not(log_parser_process_message(xml_parser, &msg, &path_options));
+  cr_assert(not(log_parser_process_message(xml_parser, &msg, &path_options)));
 
   xml_parser_set_forward_invalid(xml_parser, TRUE);
   cr_assert(log_parser_process_message(xml_parser, &msg, &path_options));
@@ -316,8 +317,8 @@ StaticParameterizedTest(SingleExcludeTagTestCase *test_cases, single_exclude_tag
   log_parser_process_message(xml_parser, &msg, &path_options);
 
   const gchar *value = log_msg_get_value_by_name(msg, test_cases->key, NULL);
-  cr_assert_str_eq(value, test_cases->value, "key: %s | value: %s, should be %s", test_cases->key, value,
-                   test_cases->value);
+  cr_assert(eq(str, value, test_cases->value), "key: %s | value: %s, should be %s", test_cases->key, value,
+            test_cases->value);
 
   log_pipe_deinit((LogPipe *)xml_parser);
   log_pipe_unref((LogPipe *)xml_parser);
@@ -347,13 +348,13 @@ Test(xmlparser, test_multiple_exclude_tags)
   log_parser_process_message(xml_parser, &msg, &path_options);
 
   value = log_msg_get_value_by_name(msg, ".xml.tag1", NULL);
-  cr_assert_str_eq(value, "");
+  cr_assert(eq(str, value, ""));
   value = log_msg_get_value_by_name(msg, ".xml.tag2", NULL);
-  cr_assert_str_eq(value, "");
+  cr_assert(eq(str, value, ""));
   value = log_msg_get_value_by_name(msg, ".xml.tag3", NULL);
-  cr_assert_str_eq(value, "Text3");
+  cr_assert(eq(str, value, "Text3"));
   value = log_msg_get_value_by_name(msg, ".xml.tag3.innertag", NULL);
-  cr_assert_str_eq(value, "");
+  cr_assert(eq(str, value, ""));
 
   log_pipe_deinit((LogPipe *)xml_parser);
   log_pipe_unref((LogPipe *)xml_parser);
@@ -378,7 +379,7 @@ Test(xmlparser, test_strip_whitespaces)
   log_parser_process_message(xml_parser, &msg, &path_options);
 
   value = log_msg_get_value_by_name(msg, ".xml.tag", NULL);
-  cr_assert_str_eq(value, "part1part2");
+  cr_assert(eq(str, value, "part1part2"));
 
   log_pipe_deinit((LogPipe *)xml_parser);
   log_pipe_unref((LogPipe *)xml_parser);
@@ -418,7 +419,7 @@ StaticParameterizedTest(PrefixTestCase *test_cases, test_prefix_params, xmlparse
   log_parser_process_message(xml_parser, &msg, &path_options);
 
   const gchar *value = log_msg_get_value_by_name(msg, test_cases->key, NULL);
-  cr_assert_str_eq(value, test_cases->value);
+  cr_assert(eq(str, value, test_cases->value));
 
   log_pipe_deinit((LogPipe *)xml_parser);
   log_pipe_unref((LogPipe *)xml_parser);

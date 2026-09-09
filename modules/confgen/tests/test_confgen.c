@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/grab-logging.h"
 #include "libtest/mock-cfg-parser.h"
 
@@ -50,12 +51,14 @@ _current_token(void)
 }
 
 #define assert_token_type(expected)                                     \
-  cr_assert_eq(_current_token()->type, expected, "Unexpected token type %d != %d", _current_token()->type, expected);
+  cr_assert(eq(int, _current_token()->type, expected), "Unexpected token type %d != %d",                    \
+            _current_token()->type, expected);
 
 #define assert_parser_string(expected)                          \
   _next_token();                                                        \
   assert_token_type(LL_STRING);                                        \
-  cr_assert_str_eq(_current_token()->cptr, expected, "Unexpected string value parsed >>>%s<<< != >>>%s<<<", _current_token()->cptr, expected);
+  cr_assert(eq(str, _current_token()->cptr, expected), "Unexpected string value parsed >>>%s<<< != >>>%s<<<",  \
+            _current_token()->cptr, expected);
 
 #define assert_parser_character_token(expected)                          \
   _next_token();                                                        \
@@ -64,7 +67,8 @@ _current_token(void)
 #define assert_parser_identifier(expected) \
   _next_token();                                                        \
   assert_token_type(LL_IDENTIFIER);                                         \
-  cr_assert_str_eq(_current_token()->cptr, expected, "Unexpected identifier parsed >>>%s<<< != >>>%s<<<", _current_token()->cptr, expected);
+  cr_assert(eq(str, _current_token()->cptr, expected), "Unexpected identifier parsed >>>%s<<< != >>>%s<<<",    \
+            _current_token()->cptr, expected);
 
 
 Test(confgen, confgen_script_output_is_included_into_the_config)
