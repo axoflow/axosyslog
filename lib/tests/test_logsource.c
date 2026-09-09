@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/parameterized.h"
 #include "libtest/mock-function.h"
 
@@ -127,7 +128,7 @@ test_pipe_ack_messages_with_type(TestPipe *pipe, gsize ack_count, AckType ack_ty
   for (gsize i = 0; i < ack_count; ++i)
     {
       LogMessage *msg = g_queue_pop_head(pipe->messages);
-      cr_assert(msg);
+      cr_assert(not(zero(ptr, msg)));
       pipe->messages_count--;
 
       LogPathOptions path_options = { .ack_needed = TRUE };
@@ -206,7 +207,7 @@ StaticParameterizedTest(MangleHostnameParams *test_params, test_mangle_hostname_
   log_source_mangle_hostname(source, msg);
 
   const gchar *actual_hostname = log_msg_get_value(msg, LM_V_HOST, NULL);
-  cr_assert_str_eq(actual_hostname, test_params->expected_hostname);
+  cr_assert(eq(str, actual_hostname, test_params->expected_hostname));
 
   log_msg_unref(msg);
   test_source_destroy(source);
@@ -225,7 +226,7 @@ _mangle_hostname_of_msg_from(LogSource *source, const gchar *ip, guint16 port, g
       g_sockaddr_unref(saddr);
     }
   log_source_mangle_hostname(source, msg);
-  cr_assert_str_eq(log_msg_get_value(msg, LM_V_HOST_FROM, NULL), "resolved-test-host");
+  cr_assert(eq(str, log_msg_get_value(msg, LM_V_HOST_FROM, NULL), "resolved-test-host"));
   log_msg_unref(msg);
 }
 
@@ -236,26 +237,26 @@ Test(log_source, test_peer_hostname_is_resolved_once_per_address_and_second)
   resolve_count = 0;
   _mangle_hostname_of_msg_from(source, "10.0.0.1", 514, 1000);
   _mangle_hostname_of_msg_from(source, "10.0.0.1", 514, 1000);
-  cr_assert_eq(resolve_count, 1);
+  cr_assert(eq(int, resolve_count, 1));
 
   /* the name does not depend on the port, e.g. of a udp() sender */
   _mangle_hostname_of_msg_from(source, "10.0.0.1", 40000, 1000);
-  cr_assert_eq(resolve_count, 1);
+  cr_assert(eq(int, resolve_count, 1));
 
   _mangle_hostname_of_msg_from(source, "10.0.0.2", 514, 1000);
-  cr_assert_eq(resolve_count, 2);
+  cr_assert(eq(int, resolve_count, 2));
 
   _mangle_hostname_of_msg_from(source, "10.0.0.2", 514, 1001);
   _mangle_hostname_of_msg_from(source, "10.0.0.2", 514, 1001);
-  cr_assert_eq(resolve_count, 3);
+  cr_assert(eq(int, resolve_count, 3));
 
   _mangle_hostname_of_msg_from(source, NULL, 0, 1001);
   _mangle_hostname_of_msg_from(source, NULL, 0, 1001);
-  cr_assert_eq(resolve_count, 4);
+  cr_assert(eq(int, resolve_count, 4));
 
   log_source_set_options(source, &source_options, TEST_STATS_ID, NULL, TRUE, NULL);
   _mangle_hostname_of_msg_from(source, NULL, 0, 1001);
-  cr_assert_eq(resolve_count, 5);
+  cr_assert(eq(int, resolve_count, 5));
 
   test_source_destroy(source);
 }
@@ -276,8 +277,15 @@ Test(log_source, test_chain_hostname_truncates_long_chained_hostnames)
   const gchar *actual_hostname = log_msg_get_value(msg, LM_V_HOST, NULL);
   gsize expected_hostname_len = 255;
 
-  cr_assert_eq(strlen(actual_hostname), expected_hostname_len);
-  cr_assert_arr_eq(actual_hostname, long_hostname, expected_hostname_len);
+  cr_assert(eq(sz, strlen(actual_hostname), expected_hostname_len));
+  cr_assert(eq(mem, ((struct cr_mem)
+  {
+    .data = actual_hostname, .size = expected_hostname_len
+  }),
+  ((struct cr_mem)
+  {
+    .data = long_hostname, .size = expected_hostname_len
+  })));
 
   log_msg_unref(msg);
   test_source_destroy(source);
@@ -297,9 +305,9 @@ Test(log_source, test_host_and_program_override)
   log_source_post(source, msg);
 
   const gchar *actual_hostname = log_msg_get_value(msg, LM_V_HOST, NULL);
-  cr_expect_str_eq(actual_hostname, source_options.host_override);
+  cr_expect(eq(str, actual_hostname, source_options.host_override));
   const gchar *actual_program = log_msg_get_value(msg, LM_V_PROGRAM, NULL);
-  cr_expect_str_eq(actual_program, source_options.program_override);
+  cr_expect(eq(str, actual_program, source_options.program_override));
 
   log_msg_unref(msg);
   test_source_destroy(source);
@@ -345,14 +353,14 @@ Test(log_source, test_suspend)
   TestPipe *next_pipe = test_pipe_init();
   log_pipe_append(&source->super, &next_pipe->super);
 
-  cr_assert_eq(log_source_get_init_window_size(source), 3);
+  cr_assert(eq(sz, log_source_get_init_window_size(source), 3));
   cr_assert(log_source_free_to_send(source));
 
   _post_messages(source, 1);
   cr_assert(log_source_free_to_send(source));
 
   _post_messages(source, 2);
-  cr_assert_not(log_source_free_to_send(source));
+  cr_assert(not(log_source_free_to_send(source)));
 
   test_pipe_ack_messages(next_pipe, 2);
   cr_assert(log_source_free_to_send(source));
@@ -410,23 +418,23 @@ Test(log_source, test_dropped_message_is_acknowledged_in_order_and_returns_its_w
 
   _fill_bookmark(ack_tracker_request_bookmark(source->ack_tracker), &posted_saved);
   log_source_post(source, log_msg_new_empty());
-  cr_assert_eq(window_size_counter_get(&source->window_size, NULL), 2);
+  cr_assert(eq(sz, window_size_counter_get(&source->window_size, NULL), 2));
 
   _fill_bookmark(ack_tracker_request_bookmark(source->ack_tracker), &dropped_saved);
   log_source_drop(source, log_msg_new_empty());
-  cr_assert_eq(dropped_saved, 0, "a dropped message waits for the posted one before it");
-  cr_assert_eq(window_size_counter_get(&source->window_size, NULL), 1,
-               "a dropped message holds its window slot until the range it is in is released");
+  cr_assert(eq(uint, dropped_saved, 0), "a dropped message waits for the posted one before it");
+  cr_assert(eq(sz, window_size_counter_get(&source->window_size, NULL), 1),
+            "a dropped message holds its window slot until the range it is in is released");
 
   test_pipe_ack_messages(next_pipe, 1);
-  cr_assert_eq(dropped_saved, 1, "the dropped message is the last of the acknowledged range");
-  cr_assert_eq(posted_saved, 0);
-  cr_assert_eq(window_size_counter_get(&source->window_size, NULL), 3);
+  cr_assert(eq(uint, dropped_saved, 1), "the dropped message is the last of the acknowledged range");
+  cr_assert(eq(uint, posted_saved, 0));
+  cr_assert(eq(sz, window_size_counter_get(&source->window_size, NULL), 3));
 
   _fill_bookmark(ack_tracker_request_bookmark(source->ack_tracker), &dropped_saved);
   log_source_drop(source, log_msg_new_empty());
-  cr_assert_eq(dropped_saved, 2, "a dropped message with nothing before it is acknowledged at once");
-  cr_assert_eq(window_size_counter_get(&source->window_size, NULL), 3);
+  cr_assert(eq(uint, dropped_saved, 2), "a dropped message with nothing before it is acknowledged at once");
+  cr_assert(eq(sz, window_size_counter_get(&source->window_size, NULL), 3));
 
   test_pipe_destroy(next_pipe);
   test_source_destroy(source);
@@ -443,30 +451,30 @@ Test(log_source, test_wakeup)
   log_pipe_append(&source->super, &next_pipe->super);
 
   _post_messages(source, 20);
-  cr_expect_not(log_source_free_to_send(source));
+  cr_expect(not(log_source_free_to_send(source)));
 
   test_pipe_ack_messages(next_pipe, 1);
-  cr_assert_eq(((TestSource *) source)->wakeup_count, 0);
+  cr_assert(eq(sz, ((TestSource *) source)->wakeup_count, 0));
   cr_expect(log_source_free_to_send(source));
 
   test_pipe_ack_messages(next_pipe, 1);
-  cr_assert_eq(((TestSource *) source)->wakeup_count, 0);
+  cr_assert(eq(sz, ((TestSource *) source)->wakeup_count, 0));
   cr_expect(log_source_free_to_send(source));
 
   /* crossing the wakeup threshold, which is 20/4 == 5 in our case */
   test_pipe_ack_messages(next_pipe, 4);
-  cr_assert_eq(((TestSource *) source)->wakeup_count, 1);
+  cr_assert(eq(sz, ((TestSource *) source)->wakeup_count, 1));
   cr_expect(log_source_free_to_send(source));
 
   test_pipe_ack_messages(next_pipe, 14);
-  cr_assert_eq(((TestSource *) source)->wakeup_count, 1);
+  cr_assert(eq(sz, ((TestSource *) source)->wakeup_count, 1));
   cr_expect(log_source_free_to_send(source));
 
   _post_messages(source, 20);
-  cr_expect_not(log_source_free_to_send(source));
+  cr_expect(not(log_source_free_to_send(source)));
 
   test_pipe_ack_messages(next_pipe, 20);
-  cr_assert_eq(((TestSource *) source)->wakeup_count, 2);
+  cr_assert(eq(sz, ((TestSource *) source)->wakeup_count, 2));
 
   test_pipe_destroy(next_pipe);
   test_source_destroy(source);
@@ -481,13 +489,13 @@ Test(log_source, test_wakeup_small_window)
   log_pipe_append(&source->super, &next_pipe->super);
 
   _post_messages(source, 3);
-  cr_expect_not(log_source_free_to_send(source));
+  cr_expect(not(log_source_free_to_send(source)));
 
   test_pipe_ack_messages(next_pipe, 2);
-  cr_assert_eq(((TestSource *) source)->wakeup_count, 1);
+  cr_assert(eq(sz, ((TestSource *) source)->wakeup_count, 1));
 
   test_pipe_ack_messages(next_pipe, 1);
-  cr_assert_eq(((TestSource *) source)->wakeup_count, 1);
+  cr_assert(eq(sz, ((TestSource *) source)->wakeup_count, 1));
 
   test_pipe_destroy(next_pipe);
   test_source_destroy(source);
@@ -503,30 +511,31 @@ Test(log_source, test_acks_in_a_batch_are_applied_at_its_end)
   gint ref_cnt = g_atomic_counter_get(&source->super.ref_cnt);
 
   _post_messages(source, 20);
-  cr_assert_eq(g_atomic_counter_get(&source->super.ref_cnt), ref_cnt + 20);
+  cr_assert(eq(int, g_atomic_counter_get(&source->super.ref_cnt), ref_cnt + 20));
 
   log_source_ack_batch_begin();
   log_source_ack_batch_begin();
   test_pipe_ack_messages(next_pipe, 10);
   log_source_ack_batch_end();
-  cr_assert_eq(window_size_counter_get(&source->window_size, NULL), 0, "acks are deferred until the outermost end");
-  cr_assert_eq(g_atomic_counter_get(&source->super.ref_cnt), ref_cnt + 20);
+  cr_assert(eq(sz, window_size_counter_get(&source->window_size, NULL), 0),
+            "acks are deferred until the outermost end");
+  cr_assert(eq(int, g_atomic_counter_get(&source->super.ref_cnt), ref_cnt + 20));
   log_source_ack_batch_end();
 
-  cr_assert_eq(window_size_counter_get(&source->window_size, NULL), 10);
-  cr_assert_eq(g_atomic_counter_get(&source->super.ref_cnt), ref_cnt + 10);
-  cr_assert_eq(((TestSource *) source)->wakeup_count, 1);
+  cr_assert(eq(sz, window_size_counter_get(&source->window_size, NULL), 10));
+  cr_assert(eq(int, g_atomic_counter_get(&source->super.ref_cnt), ref_cnt + 10));
+  cr_assert(eq(sz, ((TestSource *) source)->wakeup_count, 1));
 
   log_source_ack_batch_begin();
   test_pipe_ack_messages(next_pipe, 5);
   test_pipe_ack_messages_with_type(next_pipe, 1, AT_SUSPENDED);
-  cr_assert_eq(window_size_counter_get(&source->window_size, NULL), 16,
-               "a suspended ack flushes the pending ones before it");
+  cr_assert(eq(sz, window_size_counter_get(&source->window_size, NULL), 16),
+            "a suspended ack flushes the pending ones before it");
   test_pipe_ack_messages(next_pipe, 4);
   log_source_ack_batch_end();
 
-  cr_assert_eq(window_size_counter_get(&source->window_size, NULL), 20);
-  cr_assert_eq(g_atomic_counter_get(&source->super.ref_cnt), ref_cnt);
+  cr_assert(eq(sz, window_size_counter_get(&source->window_size, NULL), 20));
+  cr_assert(eq(int, g_atomic_counter_get(&source->super.ref_cnt), ref_cnt));
 
   test_pipe_destroy(next_pipe);
   test_source_destroy(source);
@@ -539,15 +548,15 @@ Test(log_source, test_forced_suspend_and_wakeup)
   cr_assert(log_source_free_to_send(source));
 
   log_source_flow_control_suspend(source);
-  cr_assert_not(log_source_free_to_send(source));
+  cr_assert(not(log_source_free_to_send(source)));
 
   log_source_flow_control_adjust_when_suspended(source, 1);
-  cr_assert_not(log_source_free_to_send(source));
-  cr_assert_eq(((TestSource *) source)->wakeup_count, 0);
+  cr_assert(not(log_source_free_to_send(source)));
+  cr_assert(eq(sz, ((TestSource *) source)->wakeup_count, 0));
 
   log_source_flow_control_adjust(source, 1);
   cr_assert(log_source_free_to_send(source));
-  cr_assert_eq(((TestSource *) source)->wakeup_count, 1);
+  cr_assert(eq(sz, ((TestSource *) source)->wakeup_count, 1));
 
   test_source_destroy(source);
 }
@@ -566,7 +575,7 @@ Test(log_source, test_dynamic_window_is_disabled_by_default)
 {
   LogSource *source = test_source_init(&source_options);
 
-  cr_assert_not(log_source_is_dynamic_window_enabled(source));
+  cr_assert(not(log_source_is_dynamic_window_enabled(source)));
 
   test_source_destroy(source);
 }
@@ -578,7 +587,7 @@ Test(log_source, test_dynamic_window)
   LogSource *source = test_source_init(&source_options);
   log_source_set_name(source, "test-source-name");
 
-  cr_assert_not(log_source_free_to_send(source));
+  cr_assert(not(log_source_free_to_send(source)));
 
   const gsize pool_size = 1000;
   DynamicWindowPool *pool = test_dynamic_window_pool_init(pool_size);
@@ -592,7 +601,7 @@ Test(log_source, test_dynamic_window)
   log_source_dynamic_window_realloc(source);
   cr_assert(log_source_free_to_send(source),
             "Source should not be suspended as it should own free dynamic window slots");
-  cr_assert_eq(pool->free_window, pool->pool_size - pool->balanced_window);
+  cr_assert(eq(sz, pool->free_window, pool->pool_size - pool->balanced_window));
 
   dynamic_window_pool_unref(pool);
   test_source_destroy(source);
@@ -619,20 +628,20 @@ Test(log_source, test_dynamic_window_reclaim)
 
   const gsize num_of_pending_messages = pool->pool_size + source_options.init_window_size;
   _post_messages(source, num_of_pending_messages);
-  cr_assert_not(log_source_free_to_send(source),
-                "Source should be suspended, its window is filled with pending messages");
+  cr_assert(not(log_source_free_to_send(source)),
+            "Source should be suspended, its window is filled with pending messages");
 
   _try_to_reclaim_all_dynamic_window_slots(source, pool);
-  cr_assert_not(log_source_free_to_send(source));
-  cr_assert_eq(pool->free_window, 0,
-               "Incorrect free pool size; window should not be released, the source has pending messages");
+  cr_assert(not(log_source_free_to_send(source)));
+  cr_assert(eq(sz, pool->free_window, 0),
+            "Incorrect free pool size; window should not be released, the source has pending messages");
 
   test_pipe_ack_messages(next_pipe, num_of_pending_messages);
 
   _try_to_reclaim_all_dynamic_window_slots(source, pool);
   cr_assert(log_source_free_to_send(source), "The initial static window should be available");
-  cr_assert_eq(pool->free_window, pool->pool_size,
-               "Incorrect free pool size; window should be reclaimed");
+  cr_assert(eq(sz, pool->free_window, pool->pool_size),
+            "Incorrect free pool size; window should be reclaimed");
 
   dynamic_window_pool_unref(pool);
   test_pipe_destroy(next_pipe);

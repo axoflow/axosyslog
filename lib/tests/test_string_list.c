@@ -21,6 +21,7 @@
  *
  */
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "string-list.h"
 
@@ -36,10 +37,10 @@ Test(string_list, test_string_array_to_list_converts_to_an_equivalent_glist)
   GList *l;
 
   l = string_array_to_list(arr);
-  cr_assert_eq(g_list_length(l), 3, "converted list is not the expected length");
-  cr_assert_str_eq(l->data, "foo", "first element is expected to be foo");
-  cr_assert_str_eq(l->next->data, "bar", "second element is expected to be bar");
-  cr_assert_str_eq(l->next->next->data, "baz", "third element is expected to be baz");
+  cr_assert(eq(uint, g_list_length(l), 3), "converted list is not the expected length");
+  cr_assert(eq(str, l->data, "foo"), "first element is expected to be foo");
+  cr_assert(eq(str, l->next->data, "bar"), "second element is expected to be bar");
+  cr_assert(eq(str, l->next->next->data, "baz"), "third element is expected to be baz");
   string_list_free(l);
 }
 
@@ -48,10 +49,10 @@ Test(string_list, test_string_varargs_to_list_converts_to_an_equivalent_glist)
   GList *l;
 
   l = string_vargs_to_list("foo", "bar", "baz", NULL);
-  cr_assert_eq(g_list_length(l), 3, "converted list is not the expected length");
-  cr_assert_str_eq(l->data, "foo", "first element is expected to be foo");
-  cr_assert_str_eq(l->next->data, "bar", "second element is expected to be bar");
-  cr_assert_str_eq(l->next->next->data, "baz", "third element is expected to be baz");
+  cr_assert(eq(uint, g_list_length(l), 3), "converted list is not the expected length");
+  cr_assert(eq(str, l->data, "foo"), "first element is expected to be foo");
+  cr_assert(eq(str, l->next->data, "bar"), "second element is expected to be bar");
+  cr_assert(eq(str, l->next->next->data, "baz"), "third element is expected to be baz");
   string_list_free(l);
 }
 
@@ -72,14 +73,14 @@ Test(string_list, test_clone_string_array_duplicates_elements_while_leaving_toke
   l2 = string_list_clone(l);
   string_list_free(l);
 
-  cr_assert_eq(g_list_length(l2), 5, "converted list is not the expected length");
-  cr_assert_str_eq(l2->data, "foo", "first element is expected to be foo");
-  cr_assert_str_eq(l2->next->data, "bar", "second element is expected to be bar");
-  cr_assert_str_eq(l2->next->next->data, "baz", "third element is expected to be baz");
-  cr_assert_eq(GPOINTER_TO_UINT(l2->next->next->next->data), 1,
-               "fourth element is expected to be a token, with a value of 1");
-  cr_assert_eq(GPOINTER_TO_UINT(l2->next->next->next->next->data), 2,
-               "fifth element is expected to be a token, with a value of 2");
+  cr_assert(eq(uint, g_list_length(l2), 5), "converted list is not the expected length");
+  cr_assert(eq(str, l2->data, "foo"), "first element is expected to be foo");
+  cr_assert(eq(str, l2->next->data, "bar"), "second element is expected to be bar");
+  cr_assert(eq(str, l2->next->next->data, "baz"), "third element is expected to be baz");
+  cr_assert(eq(uint, GPOINTER_TO_UINT(l2->next->next->next->data), 1),
+            "fourth element is expected to be a token, with a value of 1");
+  cr_assert(eq(uint, GPOINTER_TO_UINT(l2->next->next->next->next->data), 2),
+            "fifth element is expected to be a token, with a value of 2");
 
   string_list_free(l2);
 }

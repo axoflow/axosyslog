@@ -20,6 +20,7 @@
  *
  */
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "mainloop.h"
 #include "scratch-buffers.h"
@@ -42,9 +43,9 @@ Test(scratch_buffers, alloc_returns_a_gstring_instance)
 {
   GString *str = scratch_buffers_alloc();
 
-  cr_assert_not_null(str);
+  cr_assert(not(zero(ptr, str)));
   _do_something_with_a_gstring(str);
-  cr_assert_eq(scratch_buffers_get_local_usage_count(), 1);
+  cr_assert(eq(int, scratch_buffers_get_local_usage_count(), 1));
 }
 
 Test(scratch_buffers, reclaim_allocations_drops_all_allocs)
@@ -52,12 +53,12 @@ Test(scratch_buffers, reclaim_allocations_drops_all_allocs)
   for (gint i = 0; i < ITERATIONS; i++)
     {
       GString *str = scratch_buffers_alloc();
-      cr_assert_not_null(str);
+      cr_assert(not(zero(ptr, str)));
       _do_something_with_a_gstring(str);
     }
-  cr_assert_eq(scratch_buffers_get_local_usage_count(), ITERATIONS);
+  cr_assert(eq(int, scratch_buffers_get_local_usage_count(), ITERATIONS));
   scratch_buffers_reclaim_allocations();
-  cr_assert_eq(scratch_buffers_get_local_usage_count(), 0);
+  cr_assert(eq(int, scratch_buffers_get_local_usage_count(), 0));
 }
 
 Test(scratch_buffers, reclaim_marked_allocs)
@@ -66,7 +67,7 @@ Test(scratch_buffers, reclaim_marked_allocs)
   GString *str;
 
   str = scratch_buffers_alloc();
-  cr_assert_not_null(str);
+  cr_assert(not(zero(ptr, str)));
   _do_something_with_a_gstring(str);
 
   scratch_buffers_mark(&marker);
@@ -74,12 +75,12 @@ Test(scratch_buffers, reclaim_marked_allocs)
   for (gint i = 0; i < ITERATIONS; i++)
     {
       str = scratch_buffers_alloc();
-      cr_assert_not_null(str);
+      cr_assert(not(zero(ptr, str)));
       _do_something_with_a_gstring(str);
     }
-  cr_assert_eq(scratch_buffers_get_local_usage_count(), ITERATIONS + 1);
+  cr_assert(eq(int, scratch_buffers_get_local_usage_count(), ITERATIONS + 1));
   scratch_buffers_reclaim_marked(marker);
-  cr_assert_eq(scratch_buffers_get_local_usage_count(), 1);
+  cr_assert(eq(int, scratch_buffers_get_local_usage_count(), 1));
 }
 
 Test(scratch_buffers, reclaim_up_to_a_marked_alloc)
@@ -88,22 +89,22 @@ Test(scratch_buffers, reclaim_up_to_a_marked_alloc)
   GString *str;
 
   str = scratch_buffers_alloc();
-  cr_assert_not_null(str);
+  cr_assert(not(zero(ptr, str)));
   _do_something_with_a_gstring(str);
 
   str = scratch_buffers_alloc_and_mark(&marker);
-  cr_assert_not_null(str);
+  cr_assert(not(zero(ptr, str)));
   _do_something_with_a_gstring(str);
 
   for (gint i = 0; i < ITERATIONS; i++)
     {
       str = scratch_buffers_alloc();
-      cr_assert_not_null(str);
+      cr_assert(not(zero(ptr, str)));
       _do_something_with_a_gstring(str);
     }
-  cr_assert_eq(scratch_buffers_get_local_usage_count(), ITERATIONS + 2);
+  cr_assert(eq(int, scratch_buffers_get_local_usage_count(), ITERATIONS + 2));
   scratch_buffers_reclaim_marked(marker);
-  cr_assert_eq(scratch_buffers_get_local_usage_count(), 1);
+  cr_assert(eq(int, scratch_buffers_get_local_usage_count(), 1));
 }
 
 Test(scratch_buffers, local_usage_metrics_measure_allocs)
@@ -111,17 +112,17 @@ Test(scratch_buffers, local_usage_metrics_measure_allocs)
   GString *str;
 
   str = scratch_buffers_alloc();
-  cr_assert_not_null(str);
+  cr_assert(not(zero(ptr, str)));
   _do_something_with_a_gstring(str);
 
-  cr_assert_eq(scratch_buffers_get_local_usage_count(), 1);
-  cr_assert_eq(scratch_buffers_get_local_allocation_bytes(), DEFAULT_ALLOC_SIZE);
+  cr_assert(eq(int, scratch_buffers_get_local_usage_count(), 1));
+  cr_assert(eq(i64, scratch_buffers_get_local_allocation_bytes(), DEFAULT_ALLOC_SIZE));
 
   str = scratch_buffers_alloc();
-  cr_assert_not_null(str);
+  cr_assert(not(zero(ptr, str)));
   _do_something_with_a_gstring(str);
-  cr_assert_eq(scratch_buffers_get_local_usage_count(), 2);
-  cr_assert_eq(scratch_buffers_get_local_allocation_bytes(), 2*DEFAULT_ALLOC_SIZE);
+  cr_assert(eq(int, scratch_buffers_get_local_usage_count(), 2));
+  cr_assert(eq(i64, scratch_buffers_get_local_allocation_bytes(), 2*DEFAULT_ALLOC_SIZE));
 }
 
 /* not published via the header */
@@ -136,48 +137,48 @@ Test(scratch_buffers_stats, stats_counters_are_updated)
   for (gint i = 1; i <= ITERATIONS; i++)
     {
       str = scratch_buffers_alloc();
-      cr_assert_not_null(str);
+      cr_assert(not(zero(ptr, str)));
       allocated_counter++;
 
       /* check through accessor functions */
-      cr_assert_eq(scratch_buffers_get_local_usage_count(), allocated_counter,
-                   "get_local_usage_count() not returning proper value, value=%d, expected=%d",
-                   scratch_buffers_get_local_usage_count(), allocated_counter);
+      cr_assert(eq(int, scratch_buffers_get_local_usage_count(), allocated_counter),
+                "get_local_usage_count() not returning proper value, value=%d, expected=%d",
+                scratch_buffers_get_local_usage_count(), allocated_counter);
 
-      cr_assert_eq(scratch_buffers_get_local_allocation_bytes(), allocated_counter * DEFAULT_ALLOC_SIZE,
-                   "get_local_allocation_bytes() not returning proper value, value=%ld, expected=%ld",
-                   scratch_buffers_get_local_allocation_bytes(), allocated_counter * DEFAULT_ALLOC_SIZE);
+      cr_assert(eq(i64, scratch_buffers_get_local_allocation_bytes(), allocated_counter * DEFAULT_ALLOC_SIZE),
+                "get_local_allocation_bytes() not returning proper value, value=%ld, expected=%ld",
+                scratch_buffers_get_local_allocation_bytes(), allocated_counter * DEFAULT_ALLOC_SIZE);
 
       /* check through metrics */
-      cr_assert_eq(stats_counter_get(stats_scratch_buffers_count), allocated_counter,
-                   "Statistic scratch_buffers_count is not updated properly, value=%d, expected=%d",
-                   (gint) stats_counter_get(stats_scratch_buffers_count), allocated_counter);
+      cr_assert(eq(sz, stats_counter_get(stats_scratch_buffers_count), allocated_counter),
+                "Statistic scratch_buffers_count is not updated properly, value=%d, expected=%d",
+                (gint) stats_counter_get(stats_scratch_buffers_count), allocated_counter);
 
       /* check if byte counter is updated */
       scratch_buffers_update_stats();
-      cr_assert_eq(stats_counter_get(stats_scratch_buffers_bytes), allocated_counter * DEFAULT_ALLOC_SIZE);
+      cr_assert(eq(sz, stats_counter_get(stats_scratch_buffers_bytes), allocated_counter * DEFAULT_ALLOC_SIZE));
 
       /* Check internal state is as expected */
-      cr_assert_eq(scratch_buffers_get_local_allocation_count(), allocated_counter,
-                   "Local allocation count is not updated properly, value=%ld, expected=%d",
-                   scratch_buffers_get_local_allocation_count(), allocated_counter);
+      cr_assert(eq(i64, scratch_buffers_get_local_allocation_count(), allocated_counter),
+                "Local allocation count is not updated properly, value=%ld, expected=%d",
+                scratch_buffers_get_local_allocation_count(), allocated_counter);
     }
 
   scratch_buffers_explicit_gc();
-  cr_assert_eq(scratch_buffers_get_local_usage_count(), 0,
-               "get_local_usage_count() failed to reset to 0, value=%d, expected=%d",
-               scratch_buffers_get_local_usage_count(), 0);
-  cr_assert_eq(scratch_buffers_get_local_allocation_count(), allocated_counter,
-               "Local allocation count is not updated properly, value=%ld, expected=%d",
-               scratch_buffers_get_local_allocation_count(), allocated_counter);
-  cr_assert_eq(stats_counter_get(stats_scratch_buffers_count), allocated_counter,
-               "Statistic scratch_buffers_count should not be changed, value=%d, expected=%d",
-               (gint) stats_counter_get(stats_scratch_buffers_count), allocated_counter);
+  cr_assert(eq(int, scratch_buffers_get_local_usage_count(), 0),
+            "get_local_usage_count() failed to reset to 0, value=%d, expected=%d",
+            scratch_buffers_get_local_usage_count(), 0);
+  cr_assert(eq(i64, scratch_buffers_get_local_allocation_count(), allocated_counter),
+            "Local allocation count is not updated properly, value=%ld, expected=%d",
+            scratch_buffers_get_local_allocation_count(), allocated_counter);
+  cr_assert(eq(sz, stats_counter_get(stats_scratch_buffers_count), allocated_counter),
+            "Statistic scratch_buffers_count should not be changed, value=%d, expected=%d",
+            (gint) stats_counter_get(stats_scratch_buffers_count), allocated_counter);
 
   scratch_buffers_allocator_deinit();
-  cr_assert_eq(stats_counter_get(stats_scratch_buffers_count), 0,
-               "Statistic scratch_buffers_count failed to reset to 0, value=%ld, expected=%d",
-               stats_counter_get(stats_scratch_buffers_count), 0);
+  cr_assert(eq(sz, stats_counter_get(stats_scratch_buffers_count), 0),
+            "Statistic scratch_buffers_count failed to reset to 0, value=%ld, expected=%d",
+            stats_counter_get(stats_scratch_buffers_count), 0);
 }
 
 static void

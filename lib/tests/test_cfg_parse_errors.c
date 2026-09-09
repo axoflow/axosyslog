@@ -21,6 +21,7 @@
  *
  */
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/config_parse_lib.h"
 
 #include "cfg.h"
@@ -47,19 +48,19 @@ _parse(const gchar *config)
 
 Test(cfg_parse_errors, syntax_error_at_the_end_of_an_in_memory_config_is_reported)
 {
-  cr_assert_not(_parse("log { filterx { x = ("));
+  cr_assert(not(_parse("log { filterx { x = (")));
 }
 
 Test(cfg_parse_errors, multi_line_error_location_past_the_line_end_is_reported)
 {
-  cr_assert_not(_parse("log { filterx "
+  cr_assert(not(_parse("log { filterx "
                        "{ a =' d?\327\337? ;=\" \"\"bot0b\012; \012\027\027\027\027\027\027\027\027\027\027\027\027\027\027\027\027\027\027\027\027\027\027\027 a =' d?\327\337? ;=\" \"; }"
-                       " };"));
+                       " };")));
 }
 
 Test(cfg_parse_errors, invalid_regexp_in_a_match_sub_expression_is_a_parse_error)
 {
-  cr_assert_not(_parse("log { filterx { x = (\"a\" =~ \"(\"); }; };"));
+  cr_assert(not(_parse("log { filterx { x = (\"a\" =~ \"(\"); }; };")));
 }
 
 static void

@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "dynamic-window.h"
 
@@ -28,16 +29,16 @@ Test(dynamic_window, window_stat_reset)
 {
   DynamicWindow win;
   dynamic_window_stat_reset(&win.stat);
-  cr_expect_eq(win.stat.sum, 0);
-  cr_expect_eq(win.stat.n, 0);
+  cr_expect(eq(u64, win.stat.sum, 0));
+  cr_expect(eq(sz, win.stat.n, 0));
 }
 
 Test(dynamic_window, window_stat_reset_when_pool_is_set)
 {
   DynamicWindow win;
   dynamic_window_set_pool(&win, NULL);
-  cr_expect_eq(win.stat.sum, 0);
-  cr_expect_eq(win.stat.n, 0);
+  cr_expect(eq(u64, win.stat.sum, 0));
+  cr_expect(eq(sz, win.stat.n, 0));
 }
 
 Test(dynamic_window, window_stat_avg)
@@ -46,10 +47,10 @@ Test(dynamic_window, window_stat_avg)
   dynamic_window_stat_reset(&win.stat);
   dynamic_window_stat_update(&win.stat, 12);
   dynamic_window_stat_update(&win.stat, 4);
-  cr_expect_eq(dynamic_window_stat_get_avg(&win.stat), 8);
-  cr_expect_eq(dynamic_window_stat_get_number_of_samples(&win.stat), 2);
-  cr_expect_eq(dynamic_window_stat_get_sum(&win.stat), 16);
-  cr_expect_eq(dynamic_window_stat_get_avg(&win.stat),
-               dynamic_window_stat_get_sum(&win.stat) / dynamic_window_stat_get_number_of_samples(&win.stat));
+  cr_expect(eq(sz, dynamic_window_stat_get_avg(&win.stat), 8));
+  cr_expect(eq(sz, dynamic_window_stat_get_number_of_samples(&win.stat), 2));
+  cr_expect(eq(u64, dynamic_window_stat_get_sum(&win.stat), 16));
+  cr_expect(eq(sz, dynamic_window_stat_get_avg(&win.stat),
+               dynamic_window_stat_get_sum(&win.stat) / dynamic_window_stat_get_number_of_samples(&win.stat)));
 }
 

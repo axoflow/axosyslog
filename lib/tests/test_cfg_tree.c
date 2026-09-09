@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/parameterized.h"
 
 #include "cfg-tree.h"
@@ -120,15 +121,15 @@ StaticParameterizedTest(PipeParameter *test_data, test_data_list, cfg_tree, test
 
   cr_assert(cfg_tree_compile (&tree));
 
-  cr_assert_eq(cfg_tree_start(&tree), test_data->tree_start_expected,
-               "cfg_tree_start() did not return the expected value");
-  cr_assert_eq(cfg_tree_stop(&tree), test_data->tree_stop_expected,
-               "cfg_tree_stop() did not return the epxected value");
+  cr_assert(eq(int, cfg_tree_start(&tree), test_data->tree_start_expected),
+            "cfg_tree_start() did not return the expected value");
+  cr_assert(eq(int, cfg_tree_stop(&tree), test_data->tree_stop_expected),
+            "cfg_tree_stop() did not return the epxected value");
 
-  cr_assert_eq(pipe->init_called, test_data->was_init_called,
-               "->init was called state");
-  cr_assert_eq(pipe->deinit_called, test_data->was_deinit_called,
-               "->deinit was called state");
+  cr_assert(eq(int, pipe->init_called, test_data->was_init_called),
+            "->init was called state");
+  cr_assert(eq(int, pipe->deinit_called, test_data->was_deinit_called),
+            "->deinit was called state");
 
   cfg_tree_free_instance(&tree);
 }
@@ -166,8 +167,8 @@ Test(cfg_tree, test_pipe_init_multi_with_bad_node)
 
   cr_assert(cfg_tree_compile (&tree));
 
-  cr_assert_not(cfg_tree_start (&tree),
-                "Starting a tree of all-good nodes works");
+  cr_assert(not(cfg_tree_start (&tree)),
+            "Starting a tree of all-good nodes works");
   cr_assert(cfg_tree_stop (&tree),
             "Stopping a tree of all-good nodes works");
 
@@ -175,15 +176,15 @@ Test(cfg_tree, test_pipe_init_multi_with_bad_node)
             "The initializer of the first good pipe is called");
   cr_assert(pipe2->init_called,
             "The initializer of the bad pipe is called");
-  cr_assert_not(pipe3->init_called,
-                "The initializer of the second good pipe is NOT called");
+  cr_assert(not(pipe3->init_called),
+            "The initializer of the second good pipe is NOT called");
 
   cr_assert(pipe1->deinit_called,
             "The deinitializer of the first good pipe is called");
-  cr_assert_not(pipe2->deinit_called,
-                "The deinitializer of the bad pipe is NOT called");
-  cr_assert_not(pipe3->deinit_called,
-                "The deinitializer of the second good pipe is NOT called");
+  cr_assert(not(pipe2->deinit_called),
+            "The deinitializer of the bad pipe is NOT called");
+  cr_assert(not(pipe3->deinit_called),
+            "The deinitializer of the second good pipe is NOT called");
 
   cfg_tree_free_instance (&tree);
 }

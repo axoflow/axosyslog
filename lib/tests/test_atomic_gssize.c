@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "atomic-gssize.h"
 
@@ -28,34 +29,34 @@ Test(test_atomic_gssize, set_min_value)
 {
   atomic_gssize min;
   atomic_gssize_set(&min, G_MINSSIZE);
-  cr_assert_eq(atomic_gssize_get(&min), G_MINSSIZE);
+  cr_assert(eq(i64, atomic_gssize_get(&min), G_MINSSIZE));
   atomic_gssize_inc(&min);
-  cr_assert_eq(atomic_gssize_get(&min), G_MINSSIZE+1);
+  cr_assert(eq(i64, atomic_gssize_get(&min), G_MINSSIZE+1));
   atomic_gssize_sub(&min, 2);
-  cr_assert_eq(atomic_gssize_get(&min), G_MAXSSIZE);
+  cr_assert(eq(i64, atomic_gssize_get(&min), G_MAXSSIZE));
 }
 
 Test(test_atomic_gssize, set_max_value)
 {
   atomic_gssize max;
   atomic_gssize_set(&max, G_MAXSSIZE);
-  cr_assert_eq(atomic_gssize_get(&max), G_MAXSSIZE);
+  cr_assert(eq(i64, atomic_gssize_get(&max), G_MAXSSIZE));
   atomic_gssize_dec(&max);
-  cr_assert_eq(atomic_gssize_get(&max), G_MAXSSIZE - 1);
+  cr_assert(eq(i64, atomic_gssize_get(&max), G_MAXSSIZE - 1));
   gssize old = atomic_gssize_add(&max, 2);
-  cr_assert_eq(old, G_MAXSSIZE - 1);
-  cr_assert_eq(atomic_gssize_get(&max), G_MINSSIZE);
+  cr_assert(eq(i64, old, G_MAXSSIZE - 1));
+  cr_assert(eq(i64, atomic_gssize_get(&max), G_MINSSIZE));
 }
 
 Test(test_atomic_gssize, use_as_unsigned)
 {
   atomic_gssize a;
   atomic_gssize_set(&a, G_MAXSIZE);
-  cr_assert_eq(atomic_gssize_get_unsigned(&a), G_MAXSIZE);
+  cr_assert(eq(sz, atomic_gssize_get_unsigned(&a), G_MAXSIZE));
   atomic_gssize_inc(&a);
-  cr_assert_eq(atomic_gssize_get_unsigned(&a), 0);
+  cr_assert(eq(sz, atomic_gssize_get_unsigned(&a), 0));
   atomic_gssize_dec(&a);
-  cr_assert_eq(atomic_gssize_get_unsigned(&a), G_MAXSIZE);
+  cr_assert(eq(sz, atomic_gssize_get_unsigned(&a), G_MAXSIZE));
 }
 
 Test(test_atomic_gssize, or_xor_and)
@@ -63,10 +64,10 @@ Test(test_atomic_gssize, or_xor_and)
   atomic_gssize a;
   atomic_gssize_set(&a, 1);
   atomic_gssize_or(&a, 2);
-  cr_assert_eq(atomic_gssize_get_unsigned(&a), 3);
+  cr_assert(eq(sz, atomic_gssize_get_unsigned(&a), 3));
   atomic_gssize_xor(&a, 3);
-  cr_assert_eq(atomic_gssize_get_unsigned(&a), 0);
+  cr_assert(eq(sz, atomic_gssize_get_unsigned(&a), 0));
   atomic_gssize_set(&a, 3);
   atomic_gssize_and(&a, 2);
-  cr_assert_eq(atomic_gssize_get_unsigned(&a), 2);
+  cr_assert(eq(sz, atomic_gssize_get_unsigned(&a), 2));
 }

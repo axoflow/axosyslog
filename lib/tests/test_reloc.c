@@ -20,6 +20,7 @@
  *
  */
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/parameterized.h"
 
 #include "reloc.h"
@@ -46,8 +47,8 @@ StaticParameterizedTest(LookupParameter *test_data, test_data_list, reloc, test_
 {
   const gchar *result;
   result = cache_lookup(cache, test_data->template);
-  cr_assert_str_eq(result, test_data->expected, "Expanded install path (%s) doesn't match expected value (%s)", result,
-                   test_data->expected);
+  cr_assert(eq(str, result, test_data->expected), "Expanded install path (%s) doesn't match expected value (%s)",
+            result, test_data->expected);
 }
 
 static void
