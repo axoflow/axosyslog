@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/parameterized.h"
 
 #include "syslog-ng.h"
@@ -85,9 +86,9 @@ assert_if_tokenizer_concatenated_result_not_match(STRTOK_R_FUN tokenizer,
     result_ref = result;
 
   if (NULL == expected)
-    cr_assert_null(result_ref);
+    cr_assert(zero(ptr, result_ref));
   else
-    cr_expect_str_eq(result_ref, expected, "strtok return value mismatch");
+    cr_expect(eq(str, result_ref, expected), "strtok return value mismatch");
 
   g_free(raw_string);
   g_free(result);

@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "signal-slot-connector/signal-slot-connector.h"
 
 #define signal_test1 SIGNAL(test, 1, TestData *)
@@ -86,15 +87,15 @@ Test(basic_signal_slots, when_the_signal_is_emitted_then_the_connected_slot_is_e
   CONNECT(ssc, signal_test2, test1_slot, &slot_obj2);
   EMIT(ssc, signal_test1, &test_data);
 
-  cr_expect_eq(test_data.slot_ctr, 1);
-  cr_expect_eq(slot_obj1.ctr, 1);
-  cr_expect_eq(slot_obj2.ctr, 0);
+  cr_expect(eq(int, test_data.slot_ctr, 1));
+  cr_expect(eq(int, slot_obj1.ctr, 1));
+  cr_expect(eq(int, slot_obj2.ctr, 0));
 
   EMIT(ssc, signal_test2, &test_data);
 
-  cr_expect_eq(test_data.slot_ctr, 2);
-  cr_expect_eq(slot_obj1.ctr, 1);
-  cr_expect_eq(slot_obj2.ctr, 1);
+  cr_expect(eq(int, test_data.slot_ctr, 2));
+  cr_expect(eq(int, slot_obj1.ctr, 1));
+  cr_expect(eq(int, slot_obj2.ctr, 1));
 
   signal_slot_connector_free(ssc);
 }
@@ -125,7 +126,7 @@ Test(basic_signal_slots, abort_when_trying_to_disconnect_multiple_times_the_same
 
   EMIT(ssc, signal_test1, &test_data);
 
-  cr_expect_eq(test_data.slot_ctr, 1);
+  cr_expect(eq(int, test_data.slot_ctr, 1));
 
   signal_slot_connector_free(ssc);
 }
@@ -145,19 +146,19 @@ Test(basic_signal_slots,
   DISCONNECT(ssc, signal_test1, test1_slot, &slot_obj);
   EMIT(ssc, signal_test1, &test_data);
 
-  cr_expect_eq(test_data.slot_ctr, 0);
-  cr_expect_eq(slot_obj.ctr, 0);
+  cr_expect(eq(int, test_data.slot_ctr, 0));
+  cr_expect(eq(int, slot_obj.ctr, 0));
 
   EMIT(ssc, signal_test2, &test_data);
 
-  cr_expect_eq(test_data.slot_ctr, 1);
-  cr_expect_eq(slot_obj.ctr, 1);
+  cr_expect(eq(int, test_data.slot_ctr, 1));
+  cr_expect(eq(int, slot_obj.ctr, 1));
 
   DISCONNECT(ssc, signal_test2, test1_slot, &slot_obj);
   EMIT(ssc, signal_test2, &test_data);
 
-  cr_expect_eq(test_data.slot_ctr, 1);
-  cr_expect_eq(slot_obj.ctr, 1);
+  cr_expect(eq(int, test_data.slot_ctr, 1));
+  cr_expect(eq(int, slot_obj.ctr, 1));
 
   signal_slot_connector_free(ssc);
 }
@@ -174,8 +175,8 @@ Test(basic_signal_slots, when_disconnect_the_connected_slot_from_a_signal_then_t
   DISCONNECT(ssc, signal_test1, test1_slot, &slot_obj);
   EMIT(ssc, signal_test1, &test_data);
 
-  cr_expect_eq(test_data.slot_ctr, 0);
-  cr_expect_eq(slot_obj.ctr, 0);
+  cr_expect(eq(int, test_data.slot_ctr, 0));
+  cr_expect(eq(int, slot_obj.ctr, 0));
 
   signal_slot_connector_free(ssc);
 }
@@ -258,10 +259,10 @@ Test(multiple_signals_slots,
   _connect_a_signal_with_all_test_slots(ssc, signals[0]);
 
   EMIT(ssc, signals[0], &test_data);
-  cr_expect_eq(test_data.slot_ctr, ARRAY_SIZE(slots));
+  cr_expect(eq(i64, test_data.slot_ctr, ARRAY_SIZE(slots)));
 
   for (gsize i = 0; i < ARRAY_SIZE(slot_objects); i++)
-    cr_expect_eq(slot_objects[i].ctr, 1);
+    cr_expect(eq(int, slot_objects[i].ctr, 1));
 
   _disconnect_all_test_slots_from_a_signal(ssc, signals[0]);
 
@@ -280,24 +281,24 @@ Test(multiple_signals_slots,
 
   DISCONNECT(ssc, signals[0], slots[0], &slot_objects[0]);
   EMIT(ssc, signals[0], &test_data);
-  cr_expect_eq(test_data.slot_ctr, 2);
-  cr_expect_eq(slot_objects[0].ctr, 0);
-  cr_expect_eq(slot_objects[1].ctr, 1);
-  cr_expect_eq(slot_objects[2].ctr, 1);
+  cr_expect(eq(int, test_data.slot_ctr, 2));
+  cr_expect(eq(int, slot_objects[0].ctr, 0));
+  cr_expect(eq(int, slot_objects[1].ctr, 1));
+  cr_expect(eq(int, slot_objects[2].ctr, 1));
 
   DISCONNECT(ssc, signals[0], slots[1], &slot_objects[1]);
   EMIT(ssc, signals[0], &test_data);
-  cr_expect_eq(test_data.slot_ctr, 3);
-  cr_expect_eq(slot_objects[0].ctr, 0);
-  cr_expect_eq(slot_objects[1].ctr, 1);
-  cr_expect_eq(slot_objects[2].ctr, 2);
+  cr_expect(eq(int, test_data.slot_ctr, 3));
+  cr_expect(eq(int, slot_objects[0].ctr, 0));
+  cr_expect(eq(int, slot_objects[1].ctr, 1));
+  cr_expect(eq(int, slot_objects[2].ctr, 2));
 
   DISCONNECT(ssc, signals[0], slots[2], &slot_objects[2]);
   EMIT(ssc, signals[0], &test_data);
-  cr_expect_eq(test_data.slot_ctr, 3);
-  cr_expect_eq(slot_objects[0].ctr, 0);
-  cr_expect_eq(slot_objects[1].ctr, 1);
-  cr_expect_eq(slot_objects[2].ctr, 2);
+  cr_expect(eq(int, test_data.slot_ctr, 3));
+  cr_expect(eq(int, slot_objects[0].ctr, 0));
+  cr_expect(eq(int, slot_objects[1].ctr, 1));
+  cr_expect(eq(int, slot_objects[2].ctr, 2));
 
   signal_slot_connector_free(ssc);
 }

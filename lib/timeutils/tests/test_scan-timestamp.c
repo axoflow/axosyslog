@@ -21,6 +21,7 @@
  *
  */
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/stopwatch.h"
 #include "libtest/fake-time.h"
 
@@ -45,8 +46,8 @@ _parse_rfc3164(const gchar *ts, gint len, gchar isotimestamp[CONVERTED_TS_SIZE])
   gint length = tsu_len;
   gboolean success = scan_rfc3164_timestamp(&data, &length, &wct);
 
-  cr_assert(length >= 0);
-  cr_assert(data == &tsu[tsu_len - length]);
+  cr_assert(ge(int, length, 0));
+  cr_assert(eq(ptr, data, &tsu[tsu_len - length]));
 
   unix_time_unset(&stamp);
   convert_wall_clock_time_to_unix_time(&wct, &stamp);
@@ -71,8 +72,8 @@ _parse_rfc5424(const gchar *ts, gint len, gchar isotimestamp[CONVERTED_TS_SIZE])
   gint length = tsu_len;
   gboolean success = scan_rfc5424_timestamp(&data, &length, &wct);
 
-  cr_assert(length >= 0);
-  cr_assert(data == &tsu[tsu_len - length]);
+  cr_assert(ge(int, length, 0));
+  cr_assert(eq(ptr, data, &tsu[tsu_len - length]));
 
   unix_time_unset(&stamp);
   convert_wall_clock_time_to_unix_time(&wct, &stamp);
@@ -123,7 +124,7 @@ _rfc5424_timestamp_eq(const gchar *ts, gint len, const gchar *expected, gchar co
     WallClockTime wct = WALL_CLOCK_TIME_INIT; \
     const guchar *data = (guchar *) ts; \
     gint length = len < 0 ? strlen(ts) : len; \
-    cr_assert_not(scan_rfc3164_timestamp(&data, &length, &wct)); \
+    cr_assert(not(scan_rfc3164_timestamp(&data, &length, &wct))); \
   })
 
 #define _expect_rfc5424_timestamp_eq(ts, expected) \
@@ -143,7 +144,7 @@ _rfc5424_timestamp_eq(const gchar *ts, gint len, const gchar *expected, gchar co
     WallClockTime wct = WALL_CLOCK_TIME_INIT; \
     const guchar *data = (guchar *) ts; \
     gint length = len < 0 ? strlen(ts) : len; \
-    cr_assert_not(scan_rfc5424_timestamp(&data, &length, &wct)); \
+    cr_assert(not(scan_rfc5424_timestamp(&data, &length, &wct))); \
   })
 
 
@@ -474,8 +475,8 @@ _parse_valid_month(const gchar *month, const gint expected_month)
 
   cr_assert(scan_month_abbrev(&month, &left, &mon));
 
-  cr_assert_eq(mon, expected_month);
-  cr_assert_eq(left, 0);
+  cr_assert(eq(int, mon, expected_month));
+  cr_assert(eq(int, left, 0));
 }
 
 Test(scan_month_abbrev, valid_months)
@@ -501,10 +502,10 @@ _parse_invalid_month(const gchar *month)
   gint original_left = left;
   gint mon = -1;
 
-  cr_assert_not(scan_month_abbrev(&month, &left, &mon));
+  cr_assert(not(scan_month_abbrev(&month, &left, &mon)));
 
-  cr_assert_eq(mon, -1);
-  cr_assert_eq(left, original_left);
+  cr_assert(eq(int, mon, -1));
+  cr_assert(eq(int, left, original_left));
 }
 
 Test(scan_month_abbrev, invalid_month_names)
@@ -536,8 +537,8 @@ _parse_valid_day(const gchar *day, const gint expected_day)
 
   cr_assert(scan_day_abbrev(&day, &left, &daynum));
 
-  cr_assert_eq(daynum, expected_day);
-  cr_assert_eq(left, 0);
+  cr_assert(eq(int, daynum, expected_day));
+  cr_assert(eq(int, left, 0));
 }
 
 Test(scan_day_abbrev, valid_days)
@@ -558,10 +559,10 @@ _parse_invalid_day(const gchar *day)
   gint original_left = left;
   gint daynum = -1;
 
-  cr_assert_not(scan_day_abbrev(&day, &left, &daynum));
+  cr_assert(not(scan_day_abbrev(&day, &left, &daynum)));
 
-  cr_assert_eq(daynum, -1);
-  cr_assert_eq(left, original_left);
+  cr_assert(eq(int, daynum, -1));
+  cr_assert(eq(int, left, original_left));
 }
 
 Test(scan_day_abbrev, invalid_day_names)
