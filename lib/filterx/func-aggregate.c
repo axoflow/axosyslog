@@ -34,6 +34,7 @@
 #include "scratch-buffers.h"
 #include "ml-batched-timer.h"
 #include "mainloop.h"
+#include "mainloop-call.h"
 #include "generic-number.h"
 #include "parse-number.h"
 #include "cfg.h"
@@ -856,6 +857,11 @@ _eval_fx_aggregate(FilterXExpr *s)
   filterx_eval_disable_allocator(&allocator_state);
 
   FilterXObject *tuple_key = _normalize_key_as_tuple(key);
+
+  /* the timer is armed under shared->lock and posting it waits for this
+   * thread's earlier post, while the main loop takes shared->lock on expiry
+   * and in any aggregate() a replay reaches: wait here, never under the lock */
+  main_loop_wait_for_pending_call_to_finish();
 
   g_mutex_lock(&self->shared->lock);
   result = _aggregate(self->shared, tuple_key, values, close, self->timeout_seconds, self->field_aggregators);
