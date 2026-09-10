@@ -246,25 +246,32 @@ _inherit_libfilterx_function_attributes(FilterXJIT *self, FilterXIRValue dest)
     _copy_attrs_at_index(tmpl, dest, paramidx);
 }
 
-static const guint8 _fx_jit_var_uninitialized;
-
 static inline LLVMTypeRef
 _variable_storage_type(FilterXJIT *self)
 {
   return LLVMArrayType(self->ffi.ptr_ty, self->current_block_variables_size);
 }
 
+/*
+ * The sentinel that marks a variable slot as not loaded yet.
+ *
+ * It must be a compile-time constant. _reset_variables() puts it into an
+ * LLVMConstArray initializer, so it cannot come from the per-instance
+ * ptr_table. The emitted code only stores it and compares it, never
+ * dereferences it, so any value that no FilterXObject can take will do. 1 is
+ * misaligned, so it never equals a real allocation, and it differs from NULL,
+ * which means loaded but unset.
+ *
+ * Use a literal, not the address of a process global. Both keep identical
+ * blocks dedup-equal, because every block bakes the same value. But ASLR moves
+ * a global, and the canonical block hash then differs from run to run.
+ */
+#define FILTERX_JIT_VAR_UNINITIALIZED 1
+
 static FilterXIRValue
 _variable_uninitialized_sentinel(FilterXJIT *self)
 {
-  /*
-   * A process-global constant.
-   *
-   * Keep it baked, not routed through the per-instance ptr_table.
-   * It must be a compile-time constant for the LLVMConstArray init,
-   * and the same baked address keeps identical blocks dedup-equal.
-   */
-  LLVMValueRef addr = LLVMConstInt(self->ffi.i64_ty, (guint64) (uintptr_t) &_fx_jit_var_uninitialized, FALSE);
+  LLVMValueRef addr = LLVMConstInt(self->ffi.i64_ty, FILTERX_JIT_VAR_UNINITIALIZED, FALSE);
   return LLVMConstIntToPtr(addr, self->ffi.ptr_ty);
 }
 
