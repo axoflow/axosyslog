@@ -227,6 +227,29 @@ def test_dict_child_of_child_of_child_writes_cause_clone(config, syslog_ng):
     assert file_true.read_log() == ("""barvalue--bar-changed""")
 
 
+def test_dict_literal_with_runtime_member_child_writes_land_in_the_dict(config, syslog_ng):
+    (file_true, file_false, _) = create_config(
+        config, [
+            """
+                v = 'barvalue';
+                d = {
+                    'child': {
+                        'child_bar': v,
+                    },
+                };
+                d.child.child_bar = 'bar-changed';
+                d.child['child_baz'] = 'baz-added';
+                $MSG = string(d);
+            """,
+        ],
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == """{"child":{"child_bar":"bar-changed","child_baz":"baz-added"}}"""
+
+
 def test_shared_child_dict_gets_unshared_at_the_first_setattr_on_original(config, syslog_ng):
     (file_true, file_false, _) = create_config(
         config, [
