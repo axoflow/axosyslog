@@ -93,18 +93,23 @@ _assert_verify_block(FilterXJIT *self, FilterXIRValue block)
 }
 
 static LLVMErrorRef
-_optimize_module(gpointer s, LLVMModuleRef mod)
+_run_passes(FilterXJIT *self, LLVMModuleRef mod, const gchar *passes)
 {
   LLVMPassBuilderOptionsRef options = LLVMCreatePassBuilderOptions();
+  LLVMErrorRef err = LLVMRunPasses(mod, passes, self->tm, options);
 
+  LLVMDisposePassBuilderOptions(options);
+  return err;
+}
+
+static LLVMErrorRef
+_optimize_module(gpointer s, LLVMModuleRef mod)
+{
   FilterXJIT *self = (FilterXJIT *) s;
   msg_trace("FilterXJIT optimize module", evt_tag_str("module_name", self->mod_name));
 
   const gchar *pass_override = g_getenv("SYSLOG_NG_FILTERX_JIT_PASSES");
-  LLVMErrorRef err = LLVMRunPasses(mod, pass_override ? : "default<O3>", self->tm, options);
-
-  LLVMDisposePassBuilderOptions(options);
-  return err;
+  return _run_passes(self, mod, pass_override ? : "default<O3>");
 }
 
 static LLVMErrorRef
@@ -113,13 +118,30 @@ _optimize_transform(gpointer s, LLVMOrcThreadSafeModuleRef *thr_mod, LLVMOrcMate
   return LLVMOrcThreadSafeModuleWithModuleDo(*thr_mod, _optimize_module, s);
 }
 
+/*
+ * Optimize libfilterx once, before _link_bucket_module() clones it into every bucket module.
+ *
+ * The pipeline must be a pre-link one. "default<O3>" ends with EliminateAvailableExternallyPass,
+ * which deletes the body of every symbol that bc-loader.c marked "available_externally". The
+ * buckets would then link against bare declarations and no runtime helper could be inlined into
+ * a block. The ThinLTO pre-link pipeline keeps those bodies for link-time inlining, which is
+ * exactly what the "default<O3>" run in _compile_module_to_object() then does.
+ *
+ * For the same reason the SYSLOG_NG_FILTERX_JIT_PASSES override must not reach this module.
+ */
+#define FILTERX_JIT_LIBFILTERX_PASSES "thinlto-pre-link<O3>"
+
 static gboolean
 _preoptimize_libfilterx(FilterXJIT *self, GError **error)
 {
   if (!self->libfilterx)
     return TRUE;
 
-  LLVMErrorRef err = _optimize_module(self, self->libfilterx);
+  msg_trace("FilterXJIT pre-optimize libfilterx",
+            evt_tag_str("module_name", self->mod_name),
+            evt_tag_str("passes", FILTERX_JIT_LIBFILTERX_PASSES));
+
+  LLVMErrorRef err = _run_passes(self, self->libfilterx, FILTERX_JIT_LIBFILTERX_PASSES);
   if (err)
     {
       _llvm_error_to_fxjit_error(err, error);
