@@ -117,6 +117,10 @@ _setup_jit_exec(LogPipe *s)
   LogFilterXPipe *self = (LogFilterXPipe *) s;
   GlobalConfig *cfg = log_pipe_get_config(s);
 
+  /* both point into the FilterXJIT of the previous config generation, drop them before anything can return */
+  self->jit_exec = NULL;
+  self->jit_ptr_table = NULL;
+
   FilterXJIT *jit = filterx_config_get(cfg)->jit;
   if (!jit)
     return TRUE;
@@ -147,6 +151,9 @@ log_filterx_pipe_deinit(LogPipe *s)
 
   filterx_scope_variable_layout_free(self->scope_var_layout);
   self->scope_var_layout = NULL;
+
+  self->jit_exec = NULL;
+  self->jit_ptr_table = NULL;
 
   filterx_expr_deinit(self->block, cfg);
   return TRUE;
