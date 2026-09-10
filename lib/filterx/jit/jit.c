@@ -778,13 +778,32 @@ _finalize_parallel(FilterXJIT *self, GError **error)
   LLVMMemoryBufferRef *block_objs = g_new0(LLVMMemoryBufferRef, n_buckets);
   gpointer worker_ctx[] = { self, block_objs, GUINT_TO_POINTER(n_buckets) };
 
-  GThreadPool *pool = g_thread_pool_new(_parallel_compile_worker, worker_ctx, threads, TRUE, NULL);
+  GError *pool_error = NULL;
+  GThreadPool *pool = g_thread_pool_new(_parallel_compile_worker, worker_ctx, threads, TRUE, &pool_error);
+  if (!pool)
+    msg_warning("FilterX JIT: failed to create the compile thread pool, compiling on the current thread",
+                evt_tag_str("error", pool_error ? pool_error->message : "unknown"));
+  g_clear_error(&pool_error);
+
   for (guint b = 0; b < n_buckets; b++)
     {
       /* +1: NULL task is rejected by the pool */
-      g_thread_pool_push(pool, GUINT_TO_POINTER(b + 1), NULL);
+      gpointer task = GUINT_TO_POINTER(b + 1);
+
+      if (pool && g_thread_pool_push(pool, task, &pool_error))
+        continue;
+
+      if (pool_error)
+        {
+          msg_warning("FilterX JIT: failed to queue a compile bucket, compiling it on the current thread",
+                      evt_tag_int("bucket", b), evt_tag_str("error", pool_error->message));
+          g_clear_error(&pool_error);
+        }
+      _parallel_compile_worker(task, worker_ctx);
     }
-  g_thread_pool_free(pool, FALSE, TRUE);
+
+  if (pool)
+    g_thread_pool_free(pool, FALSE, TRUE);
 
   LLVMOrcJITDylibRef dylib = LLVMOrcLLJITGetMainJITDylib(self->j);
   gboolean ok = TRUE;
