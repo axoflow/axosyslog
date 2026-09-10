@@ -687,6 +687,93 @@ Test(func_aggregate, test_expiring_an_already_closed_entry_is_a_no_op)
   log_pipe_unref(owner_pipe);
 }
 
+/* a pipe that aggregates one more message for the same key while a timed
+ * out window is being replayed through it, standing in for the worker
+ * thread that keeps processing messages while the main thread replays */
+typedef struct
+{
+  LogPipe super;
+  FilterXExpr *agg;
+  gboolean aggregated;
+} ReplayReentrantPipe;
+
+static void
+_replay_reentrant_pipe_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_options)
+{
+  ReplayReentrantPipe *self = (ReplayReentrantPipe *) s;
+
+  if (!self->aggregated)
+    {
+      self->aggregated = TRUE;
+
+      FilterXObject *result = filterx_expr_eval(self->agg);
+      cr_assert_not_null(result);
+      _assert_result_status(result, "absorbed");
+      filterx_object_unref(result);
+    }
+
+  log_pipe_forward_msg(s, msg, path_options);
+}
+
+static ReplayReentrantPipe *
+_replay_reentrant_pipe_new(FilterXExpr *agg)
+{
+  ReplayReentrantPipe *self = g_new0(ReplayReentrantPipe, 1);
+
+  log_pipe_init_instance(&self->super, configuration);
+  self->super.queue = _replay_reentrant_pipe_queue;
+  self->agg = agg;
+  return self;
+}
+
+Test(func_aggregate, test_message_arriving_during_replay_opens_a_new_window)
+{
+  FilterXExpr *agg = _new_aggregate("replaykey", 1, 60);
+
+  LogPipeMock *sink = log_pipe_mock_new(configuration);
+  cr_assert(log_pipe_init(&sink->super));
+  ReplayReentrantPipe *reentrant = _replay_reentrant_pipe_new(agg);
+  cr_assert(log_pipe_init(&reentrant->super));
+  LogPipe *owner_pipe = _new_owner_pipe();
+  log_pipe_append(owner_pipe, &reentrant->super);
+  log_pipe_append(&reentrant->super, &sink->super);
+
+  _init_aggregate_as_sole_statement(agg, owner_pipe);
+
+  FilterXObject *result = filterx_expr_eval(agg);
+  cr_assert_not_null(result);
+  filterx_object_unref(result);
+
+  FilterXEvalContext *standing_context = filterx_eval_get_context();
+  filterx_eval_set_context(NULL);
+
+  FILTERX_STRING_DECLARE_ON_STACK(fx_key, "replaykey", -1);
+  cr_assert(filterx_function_aggregate_test_expire(agg, fx_key));
+  FILTERX_STRING_CLEAR_FROM_STACK(fx_key);
+
+  filterx_eval_set_context(standing_context);
+
+  cr_assert(reentrant->aggregated);
+  cr_assert_eq(sink->captured_messages->len, 1);
+
+  /* 2, not 1: the mid-replay message opened its own window, not the expiring one */
+  result = filterx_expr_eval(agg);
+  cr_assert_not_null(result);
+  FilterXObject *values = _result_values(result);
+  cr_assert_eq(_extract_int_field(values, "count"), 2);
+  filterx_object_unref(values);
+  filterx_object_unref(result);
+
+  filterx_expr_deinit(agg, configuration);
+  filterx_expr_unref(agg);
+  log_pipe_deinit(owner_pipe);
+  log_pipe_deinit(&reentrant->super);
+  log_pipe_deinit(&sink->super);
+  log_pipe_unref(&sink->super);
+  log_pipe_unref(&reentrant->super);
+  log_pipe_unref(owner_pipe);
+}
+
 Test(func_aggregate, test_replay_does_not_reevaluate_arguments)
 {
   gint values_eval_count = 0;

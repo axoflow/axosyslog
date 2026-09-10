@@ -594,6 +594,13 @@ _expire_entry(AggregateSharedState *shared, AggregateEntry *entry)
   g_mutex_lock(&shared->lock);
   gboolean already_closed = entry->closed;
   entry->closed = TRUE;
+  if (!already_closed)
+    {
+      /* the replay runs unlocked, a message for this key arriving meanwhile
+       * must open a new window, not merge into the values under replay */
+      _aggregate_entry_ref(entry);
+      g_hash_table_remove(shared->entries, entry->tuple_key);
+    }
   g_mutex_unlock(&shared->lock);
 
   if (already_closed)
@@ -602,9 +609,7 @@ _expire_entry(AggregateSharedState *shared, AggregateEntry *entry)
   if (shared->continuation.statement_expr)
     _replay_and_forward(shared, entry);
 
-  g_mutex_lock(&shared->lock);
-  g_hash_table_remove(shared->entries, entry->tuple_key);
-  g_mutex_unlock(&shared->lock);
+  _aggregate_entry_unref(entry);
 }
 
 static void
