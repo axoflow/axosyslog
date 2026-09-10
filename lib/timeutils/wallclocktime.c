@@ -1164,8 +1164,9 @@ __strftime_fmt_1(WallClockTime *wct, char (*s)[100], size_t *l, int f, int pad)
       goto recu_strftime;
     case 's':
     {
-      WallClockTime wct_copy = *wct;
-      val = cached_mktime(&wct_copy.tm);
+      UnixTime ut = UNIX_TIME_INIT;
+      convert_wall_clock_time_to_unix_time(wct, &ut);
+      val = ut.ut_sec;
       width = 1;
       goto number;
     }
