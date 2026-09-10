@@ -44,6 +44,7 @@
 #include <llvm-c/BitWriter.h>
 #include <llvm-c/IRReader.h>
 
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -58,6 +59,19 @@ _fxjit_error(const gchar *error_msg, GError **error)
 {
   GQuark fx_jit_error = g_quark_from_static_string("filterx-jit");
   g_set_error(error, fx_jit_error, 0, "FilterX JIT error: %s", error_msg);
+}
+
+static void G_GNUC_PRINTF(2, 3)
+_fxjit_error_printf(GError **error, const gchar *format, ...)
+{
+  va_list ap;
+
+  va_start(ap, format);
+  gchar *error_msg = g_strdup_vprintf(format, ap);
+  va_end(ap);
+
+  _fxjit_error(error_msg, error);
+  g_free(error_msg);
 }
 
 static inline void
@@ -836,7 +850,7 @@ filterx_jit_lookup(FilterXJIT *self, const gchar *block_name, GError **error)
   const gchar *symbol = g_hash_table_lookup(self->dedup.block_symbol, block_name);
   if (!symbol)
     {
-      g_set_error(error, 0, 0, "no compiled symbol recorded for block '%s'", block_name);
+      _fxjit_error_printf(error, "no compiled symbol recorded for block '%s'", block_name);
       return 0;
     }
 
