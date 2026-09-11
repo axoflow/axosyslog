@@ -85,10 +85,34 @@ function install_criterion() {
 
 function install_criterion_latest() {
     CRITERION_VERSION=2.4.3
-    download_target "https://github.com/Snaipe/Criterion/releases/download/v${CRITERION_VERSION}/criterion-${CRITERION_VERSION}-linux-x86_64.tar.xz" /tmp/criterion.tar.xz
-
+    CRITERION_URL="https://github.com/Snaipe/Criterion/releases/download/v${CRITERION_VERSION}"
     LIBDIR=$([ -f /etc/debian_version ] && echo lib || echo lib64)
-    tar -C /usr --strip-components=1 --transform="s,/lib/,/${LIBDIR}/," -xvf /tmp/criterion.tar.xz
+
+    case "$(uname -m)" in
+        x86_64)
+            download_target "${CRITERION_URL}/criterion-${CRITERION_VERSION}-linux-x86_64.tar.xz" /tmp/criterion.tar.xz
+            tar -C /usr --strip-components=1 --transform="s,/lib/,/${LIBDIR}/," -xvf /tmp/criterion.tar.xz
+            ;;
+        *)
+            # upstream ships prebuilt binaries for x86_64 only; the source tarball
+            # bundles every subproject, so it builds offline against the system
+            # libgit2, libffi and nanopb (whose generator regenerates the protocol)
+            case "${OS_DISTRIBUTION}" in
+                debian|ubuntu)
+                    $APT_INSTALL meson ninja-build pkg-config libgit2-dev libffi-dev libnanopb-dev nanopb protobuf-compiler
+                    ;;
+                almalinux|fedora)
+                    $DNF_INSTALL meson ninja-build pkgconf-pkg-config libgit2-devel libffi-devel nanopb-devel protobuf-compiler
+                    ;;
+            esac
+            download_target "${CRITERION_URL}/criterion-${CRITERION_VERSION}.tar.xz" /tmp/criterion.tar.xz
+            tar -C /tmp -xf /tmp/criterion.tar.xz
+            meson setup /tmp/criterion-${CRITERION_VERSION}/build /tmp/criterion-${CRITERION_VERSION} \
+                --prefix=/usr --libdir=${LIBDIR} --buildtype=release -Dtests=false -Dsamples=false
+            meson install -C /tmp/criterion-${CRITERION_VERSION}/build
+            rm -rf /tmp/criterion-${CRITERION_VERSION}
+            ;;
+    esac
 
     ldconfig
     rm -rf /tmp/criterion.tar.xz
