@@ -44,11 +44,14 @@ class SyslogNgCtl(object):
             command=["reload"],
         )
 
-    def stop(self):
+    def stop(self, force=False):
+        command = ["stop"]
+        if force:
+            command.append("--force")
         return self.__syslog_ng_ctl_executor.run_command(
             self.__instance_name,
             command_short_name="stop",
-            command=["stop"],
+            command=command,
         )
 
     def stats(self, reset=False):
