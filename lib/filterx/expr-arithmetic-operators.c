@@ -20,6 +20,8 @@
  *
  */
 #include "expr-arithmetic-operators.h"
+#include "expr-arithmetic-operators-private.h"
+#include "expr-arithmetic-operators-devirt.h"
 #include "filterx/object-primitive.h"
 #include "filterx/expr-literal.h"
 #include "filterx/object-extractor.h"
@@ -30,14 +32,6 @@
 /* If you want to make the arithmetic operators support other types,
  * follow the pattern of filterx_operator_plus_new() which uses
  * filterx_object_add() for type-generic addition. */
-
-typedef struct FilterXArithmeticOperator_
-{
-  FilterXBinaryOp super;
-  FilterXObject *literal_lhs;
-  FilterXObject *literal_rhs;
-} FilterXArithmeticOperator;
-
 
 /* consumes operand objects */
 static gboolean
@@ -501,68 +495,32 @@ fx_jit_arithmetic_uminus(FilterXObject *operand, FilterXExpr *expr)
   return _do_uminus(operand, expr);
 }
 
-static FilterXIRValue
+FilterXIRValue
 _compile_binary_arithmetic(FilterXExpr *s, FilterXJIT *jit, const gchar *fn_name)
 {
   FilterXArithmeticOperator *self = (FilterXArithmeticOperator *) s;
   FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
-  FilterXIRBuilder ir = filterx_jit_get_ir_builder(jit);
-  FilterXIRValue block = filterx_jit_ir_get_current_block(jit);
 
-  FilterXIRValue result_slot = LLVMBuildAlloca(ir, ffi->ptr_ty, "result");
-  LLVMBuildStore(ir, LLVMConstNull(ffi->ptr_ty), result_slot);
-
-  FilterXIRSequence lhs_null = filterx_jit_ir_create_sequence(jit, "arith_lhs_null", block);
-  FilterXIRSequence eval_rhs = filterx_jit_ir_create_sequence(jit, "arith_eval_rhs", block);
-  FilterXIRSequence rhs_null = filterx_jit_ir_create_sequence(jit, "arith_rhs_null", block);
-  FilterXIRSequence do_op = filterx_jit_ir_create_sequence(jit, "arith_do_op", block);
-  FilterXIRSequence finish = filterx_jit_ir_create_sequence(jit, "arith_finish", block);
+  /* mirrors _eval_op(): the rhs is not evaluated when the lhs fails */
+  FilterXIRShortCircuit short_circuit;
+  fx_jit_emit_short_circuit_begin(jit, &short_circuit, "arith");
 
   FilterXIRValue lhs = self->literal_lhs
                        ? fx_jit_emit_object_ref(jit, fx_jit_emit_const_ptr(jit, self->literal_lhs))
                        : filterx_expr_compile_or_eval_typed(self->super.lhs, jit);
+  fx_jit_emit_bail_if_null(jit, &short_circuit, lhs, NULL);
 
-  /* if (!lhs) goto finish; */
-  FilterXIRValue lhs_is_null = LLVMBuildIsNull(ir, lhs, "lhs_is_null");
-  LLVMBuildCondBr(ir, lhs_is_null, lhs_null, eval_rhs);
-
-  filterx_jit_ir_add_sequence_to_block(jit, lhs_null, block);
-  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, lhs_null);
-  LLVMBuildBr(ir, finish);
-
-  /* eval_rhs */
-  filterx_jit_ir_add_sequence_to_block(jit, eval_rhs, block);
-  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, eval_rhs);
   FilterXIRValue rhs = self->literal_rhs
                        ? fx_jit_emit_object_ref(jit, fx_jit_emit_const_ptr(jit, self->literal_rhs))
                        : filterx_expr_compile_or_eval(self->super.rhs, jit);
+  fx_jit_emit_bail_if_null(jit, &short_circuit, rhs, lhs);
 
-  /* if (!rhs) { unref(lhs); goto finish; } */
-  FilterXIRValue rhs_is_null = LLVMBuildIsNull(ir, rhs, "rhs_is_null");
-  LLVMBuildCondBr(ir, rhs_is_null, rhs_null, do_op);
-
-  filterx_jit_ir_add_sequence_to_block(jit, rhs_null, block);
-  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, rhs_null);
-  fx_jit_emit_object_unref(jit, lhs);
-  LLVMBuildBr(ir, finish);
-
-  /* do_op: both operands are non-NULL; the called function consumes them */
-  filterx_jit_ir_add_sequence_to_block(jit, do_op, block);
-  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, do_op);
+  /* both operands are non-NULL, the called function consumes them */
   FilterXIRValue args[] = { lhs, rhs, fx_jit_emit_const_ptr(jit, self) };
   FilterXIRType param_tys[] = { ffi->ptr_ty, ffi->ptr_ty, ffi->ptr_ty };
-  LLVMBuildStore(ir, fx_jit_emit_extern_call(jit, fn_name, ffi->ptr_ty, param_tys, args, 3), result_slot);
-  LLVMBuildBr(ir, finish);
+  FilterXIRValue result = fx_jit_emit_extern_call(jit, fn_name, ffi->ptr_ty, param_tys, args, 3);
 
-  filterx_jit_ir_add_sequence_to_block(jit, finish, block);
-  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, finish);
-  return LLVMBuildLoad2(ir, ffi->ptr_ty, result_slot, "result");
-}
-
-static FilterXIRValue
-_compile_plus(FilterXExpr *s, FilterXJIT *jit)
-{
-  return _compile_binary_arithmetic(s, jit, "fx_jit_arithmetic_plus");
+  return fx_jit_emit_short_circuit_end(jit, &short_circuit, result);
 }
 
 static FilterXIRValue

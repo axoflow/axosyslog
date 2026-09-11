@@ -90,6 +90,7 @@ void filterx_jit_ir_set_insert_point_to_sequence_tail(FilterXJIT *self, FilterXI
 void filterx_jit_ir_add_sequence_to_block(FilterXJIT *self, FilterXIRSequence seq, FilterXIRValue block);
 FilterXIRSequence filterx_jit_ir_add_new_sequence_to_block(FilterXJIT *self, const gchar *seq_name,
                                                            FilterXIRValue block);
+FilterXIRValue filterx_jit_ir_add_stack_slot(FilterXJIT *self, FilterXIRType type, const gchar *name);
 
 FilterXIRValue filterx_jit_ir_get_eval_context(FilterXJIT *self);
 

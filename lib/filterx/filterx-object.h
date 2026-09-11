@@ -798,6 +798,18 @@ filterx_object_is_type_or_ref(FilterXObject *object, FilterXType *type)
   return _filterx_object_is_type(object, type);
 }
 
+/* NOTE: unlike filterx_object_is_type_or_ref(), this rejects a subtype of @type, so a
+ * positive answer does mean that the unwrapped object has the instance struct of @type.
+ * Use it where the caller reaches into that struct or calls the method implementation of
+ * @type directly: a subtype embeds @type as a prefix, but it may override the method, and
+ * an inheritance test would silently bypass the override. Unwrap with
+ * filterx_ref_unwrap_*() before the cast, the object itself is still a ref. */
+static inline gboolean
+filterx_object_is_exact_type_or_ref(FilterXObject *object, FilterXType *type)
+{
+  return filterx_ref_unwrap_ro(object)->type == type;
+}
+
 static inline const gchar *
 filterx_object_get_type_name(FilterXObject *self)
 {

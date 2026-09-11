@@ -44,6 +44,13 @@ FilterXObject *filterx_list_new(void);
 FilterXObject *filterx_list_new_from_syslog_ng_list(const gchar *repr, gssize repr_len);
 FilterXObject *filterx_list_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len);
 
+/* Unwraps a FilterXRef and calls the list's get_subscript directly, without the vtable. */
+FilterXObject *filterx_list_get_subscript(FilterXObject *s, FilterXObject *key);
+
+/* Calls the list's set_subscript directly, without the vtable, and keeps the FilterXRef
+ * cow and parent linkage. */
+gboolean filterx_list_set_subscript_by_key(FilterXObject *s, FilterXObject *key, FilterXObject **new_value);
+
 
 /* these are low-level, fast interfaces which bypass a lot of validations */
 

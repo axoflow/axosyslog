@@ -20,6 +20,8 @@
  *
  */
 #include "filterx/expr-set-subscript.h"
+#include "filterx/expr-set-subscript-private.h"
+#include "filterx/expr-set-subscript-devirt.h"
 #include "filterx/expr-literal.h"
 #include "filterx/object-primitive.h"
 #include "filterx/filterx-eval.h"
@@ -29,14 +31,6 @@
 #include "scratch-buffers.h"
 #include "stats/stats-registry.h"
 #include "stats/stats-cluster-single.h"
-
-typedef struct _FilterXSetSubscript
-{
-  FilterXExpr super;
-  FilterXExpr *object;
-  FilterXExpr *key;
-  FilterXExpr *new_value;
-} FilterXSetSubscript;
 
 static inline FilterXObject *
 _set_subscript(FilterXSetSubscript *self, FilterXObject *key, FilterXObject *new_value)
@@ -169,6 +163,7 @@ _set_subscript_get_path(FilterXExpr *s, FilterXAccessPath *path_out)
 }
 
 #if SYSLOG_NG_ENABLE_JIT
+
 static void
 _set_subscript_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
 {
@@ -217,6 +212,7 @@ filterx_set_subscript_new(FilterXExpr *object, FilterXExpr *key, FilterXExpr *ne
   self->super.get_path = _set_subscript_get_path;
 #if SYSLOG_NG_ENABLE_JIT
   self->super.infer_types = _set_subscript_infer_types;
+  self->super.compile = _set_subscript_compile;
 #endif
   self->object = object;
   self->key = key;
@@ -234,6 +230,7 @@ filterx_nullv_set_subscript_new(FilterXExpr *object, FilterXExpr *key, FilterXEx
   self->eval = _nullv_set_subscript_eval;
 #if SYSLOG_NG_ENABLE_JIT
   self->infer_types = _nullv_set_subscript_infer_types;
+  self->compile = _nullv_set_subscript_compile;
 #endif
   return self;
 }

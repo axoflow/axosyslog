@@ -3,6 +3,8 @@ add_subdirectory(jit)
 set(FILTERX_HEADERS
     ${FILTERX_JIT_HEADERS}
     filterx/expr-arithmetic-operators.h
+    filterx/expr-arithmetic-operators-private.h
+    filterx/expr-arithmetic-operators-devirt.h
     filterx/expr-assign.h
     filterx/expr-boolalg.h
     filterx/expr-break.h
@@ -13,7 +15,11 @@ set(FILTERX_HEADERS
     filterx/expr-drop.h
     filterx/expr-function.h
     filterx/expr-get-subscript.h
+    filterx/expr-get-subscript-private.h
+    filterx/expr-get-subscript-devirt.h
     filterx/expr-getattr.h
+    filterx/expr-getattr-private.h
+    filterx/expr-getattr-devirt.h
     filterx/expr-isset.h
     filterx/expr-literal-container.h
     filterx/expr-literal.h
@@ -26,7 +32,11 @@ set(FILTERX_HEADERS
     filterx/expr-regexp-subst.h
     filterx/expr-regexp.h
     filterx/expr-set-subscript.h
+    filterx/expr-set-subscript-private.h
+    filterx/expr-set-subscript-devirt.h
     filterx/expr-setattr.h
+    filterx/expr-setattr-private.h
+    filterx/expr-setattr-devirt.h
     filterx/expr-switch.h
     filterx/expr-template.h
     filterx/expr-unset.h
@@ -99,6 +109,7 @@ set(FILTERX_HEADERS
 set(FILTERX_SOURCES
     ${FILTERX_JIT_SOURCES}
     filterx/expr-arithmetic-operators.c
+    filterx/expr-arithmetic-operators-devirt.c
     filterx/expr-assign.c
     filterx/expr-boolalg.c
     filterx/expr-break.c
@@ -109,7 +120,9 @@ set(FILTERX_SOURCES
     filterx/expr-drop.c
     filterx/expr-function.c
     filterx/expr-get-subscript.c
+    filterx/expr-get-subscript-devirt.c
     filterx/expr-getattr.c
+    filterx/expr-getattr-devirt.c
     filterx/expr-isset.c
     filterx/expr-literal-container.c
     filterx/expr-literal.c
@@ -122,7 +135,9 @@ set(FILTERX_SOURCES
     filterx/expr-regexp-subst.c
     filterx/expr-regexp.c
     filterx/expr-set-subscript.c
+    filterx/expr-set-subscript-devirt.c
     filterx/expr-setattr.c
+    filterx/expr-setattr-devirt.c
     filterx/expr-switch.c
     filterx/expr-template.c
     filterx/expr-unset.c
@@ -191,6 +206,7 @@ set(FILTERX_SOURCES
 set(FILTERX_BITCODE_SOURCES
     ${FILTERX_JIT_BITCODE_SOURCES}
     expr-arithmetic-operators.c
+    expr-arithmetic-operators-devirt.c
     expr-assign.c
     expr-boolalg.c
     expr-break.c
@@ -201,7 +217,9 @@ set(FILTERX_BITCODE_SOURCES
     expr-drop.c
     expr-function.c
     expr-get-subscript.c
+    expr-get-subscript-devirt.c
     expr-getattr.c
+    expr-getattr-devirt.c
     expr-isset.c
     expr-literal-container.c
     expr-literal.c
@@ -214,7 +232,9 @@ set(FILTERX_BITCODE_SOURCES
     expr-regexp-subst.c
     expr-regexp.c
     expr-set-subscript.c
+    expr-set-subscript-devirt.c
     expr-setattr.c
+    expr-setattr-devirt.c
     expr-string-operators.c
     expr-switch.c
     expr-template.c

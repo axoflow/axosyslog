@@ -20,27 +20,22 @@
  *
  */
 #include "filterx/expr-getattr.h"
+#include "filterx/expr-getattr-private.h"
+#include "filterx/expr-getattr-devirt.h"
 #include "filterx/object-string.h"
 #include "filterx/filterx-eval.h"
 #include "stats/stats-registry.h"
 #include "stats/stats-cluster-single.h"
 
-typedef struct _FilterXGetAttr
-{
-  FilterXExpr super;
-  FilterXExpr *operand;
-  FilterXObject *attr;
-} FilterXGetAttr;
-
-static FilterXObject *
-_do_getattr(FilterXObject *variable, FilterXObject *attr, FilterXExpr *expr)
+FilterXObject *
+_do_getattr(FilterXGetAttr *self, FilterXObject *variable)
 {
   if (!variable)
     {
       return NULL;
     }
 
-  FilterXObject *result = filterx_object_getattr(variable, attr);
+  FilterXObject *result = filterx_object_getattr(variable, self->attr);
   if (!result)
     filterx_eval_push_error_static_info("Failed to get-attribute from object", "Failed to evaluate key");
 
@@ -52,7 +47,7 @@ static FilterXObject *
 _eval_getattr(FilterXExpr *s)
 {
   FilterXGetAttr *self = (FilterXGetAttr *) s;
-  return _do_getattr(filterx_expr_eval_typed(self->operand), self->attr, s);
+  return _do_getattr(self, filterx_expr_eval_typed(self->operand));
 }
 
 static gboolean
@@ -174,37 +169,6 @@ _getattr_get_path(FilterXExpr *s, FilterXAccessPath *path_out)
   filterx_access_path_append_step(path_out, filterx_access_path_intern_key(self->super.name));
   return TRUE;
 }
-
-#if SYSLOG_NG_ENABLE_JIT
-
-#include "filterx/jit/jit.h"
-#include "filterx/jit/ffi.h"
-
-__attribute__((used))
-FilterXObject *
-fx_jit_do_getattr(FilterXObject *variable, FilterXObject *attr, FilterXExpr *expr)
-{
-  return _do_getattr(variable, attr, expr);
-}
-
-static FilterXIRValue
-_getattr_compile(FilterXExpr *s, FilterXJIT *jit)
-{
-  FilterXGetAttr *self = (FilterXGetAttr *) s;
-  FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
-
-  FilterXIRValue variable = filterx_expr_compile_or_eval_typed(self->operand, jit);
-  FilterXIRValue args[] =
-  {
-    variable,
-    fx_jit_emit_const_ptr(jit, self->attr),
-    fx_jit_emit_const_ptr(jit, self),
-  };
-  FilterXIRType param_tys[] = { ffi->ptr_ty, ffi->ptr_ty, ffi->ptr_ty };
-  return fx_jit_emit_extern_call(jit, "fx_jit_do_getattr", ffi->ptr_ty, param_tys, args, 3);
-}
-
-#endif
 
 /* NOTE: takes the object reference */
 FilterXExpr *

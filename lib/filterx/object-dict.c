@@ -846,6 +846,29 @@ filterx_dict_set_subscript_by_anchor(FilterXObject *s, FilterXDictAnchor anchor,
 }
 
 FilterXObject *
+filterx_dict_get_subscript(FilterXObject *s, FilterXObject *key)
+{
+  return _filterx_dict_get_subscript(filterx_ref_unwrap_ro(s), key);
+}
+
+gboolean
+filterx_dict_set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject **new_value)
+{
+  /* Mirrors _filterx_ref_set_subscript() so the cow and parent linkage inline into the
+   * JIT call site. */
+  if (filterx_object_is_ref(s))
+    {
+      FilterXRef *ref = (FilterXRef *) s;
+      _filterx_ref_cow(ref);
+      gboolean result = _filterx_dict_set_subscript(ref->value, key, new_value);
+      if (result)
+        filterx_ref_set_parent_container(*new_value, s);
+      return result;
+    }
+  return _filterx_dict_set_subscript(s, key, new_value);
+}
+
+FilterXObject *
 filterx_dict_new(void)
 {
   return filterx_dict_new_with_table(NULL);

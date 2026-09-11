@@ -169,6 +169,12 @@ _string_add(FilterXObject *s, FilterXObject *object)
   return result;
 }
 
+FilterXObject *
+filterx_string_concat(FilterXObject *lhs, FilterXObject *rhs)
+{
+  return _string_add(lhs, rhs);
+}
+
 static inline FilterXString *
 _string_new(const gchar *str, gssize str_len, FilterXStringTranslateFunc translate)
 {

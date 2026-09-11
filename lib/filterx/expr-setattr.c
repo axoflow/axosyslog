@@ -20,6 +20,8 @@
  *
  */
 #include "filterx/expr-setattr.h"
+#include "filterx/expr-setattr-private.h"
+#include "filterx/expr-setattr-devirt.h"
 #include "filterx/object-primitive.h"
 #include "filterx/object-string.h"
 #include "filterx/filterx-eval.h"
@@ -30,18 +32,10 @@
 #include "stats/stats-registry.h"
 #include "stats/stats-cluster-single.h"
 
-typedef struct _FilterXSetAttr
-{
-  FilterXExpr super;
-  FilterXExpr *object;
-  FilterXObject *attr;
-  FilterXExpr *new_value;
-} FilterXSetAttr;
-
 /* cloned must be cow_fork2-ed by the caller *before* lhs is evaluated, so
  * that the lhs traversal sees the rhs as shared and clones along the path
  * accordingly (e.g. for `d.x.y = d`). Both lhs and cloned are owned by us. */
-static FilterXObject *
+FilterXObject *
 _do_setattr(FilterXSetAttr *self, FilterXObject *lhs, FilterXObject *cloned)
 {
   if (!cloned)
@@ -70,7 +64,7 @@ error:
   return NULL;
 }
 
-static inline FilterXObject *
+FilterXObject *
 _suppress_error(void)
 {
   filterx_eval_dump_errors("FilterX: null coalesce assignment suppressing error");
@@ -78,7 +72,7 @@ _suppress_error(void)
   return filterx_null_new();
 }
 
-static FilterXObject *
+FilterXObject *
 _do_nullv_setattr(FilterXSetAttr *self, FilterXObject *lhs, FilterXObject *cloned)
 {
   if (!cloned)
@@ -170,23 +164,6 @@ _setattr_get_path(FilterXExpr *s, FilterXAccessPath *path_out)
 
 #if SYSLOG_NG_ENABLE_JIT
 
-#include "filterx/jit/jit.h"
-#include "filterx/jit/ffi.h"
-
-__attribute__((used))
-FilterXObject *
-fx_jit_do_setattr(FilterXExpr *s, FilterXObject *lhs, FilterXObject *cloned)
-{
-  return _do_setattr((FilterXSetAttr *) s, lhs, cloned);
-}
-
-__attribute__((used))
-FilterXObject *
-fx_jit_do_nullv_setattr(FilterXExpr *s, FilterXObject *lhs, FilterXObject *cloned)
-{
-  return _do_nullv_setattr((FilterXSetAttr *) s, lhs, cloned);
-}
-
 static void
 _setattr_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
 {
@@ -203,37 +180,6 @@ _nullv_setattr_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
 
   filterx_expr_infer_types_default(s, env);
   filterx_type_env_update_on_optional_write(env, s, self->new_value);
-}
-
-static inline FilterXIRValue
-_emit_setattr_call(FilterXSetAttr *self, FilterXJIT *jit, const gchar *fn_name)
-{
-  FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
-
-  /* NOTE: we need to fork the rhs first, so that the lhs will notice it is
-   * shared and can clone accordingly.  This is needed to make sure
-   * something like `d.sub = d` works.
-   */
-
-  FilterXIRValue rhs = filterx_expr_compile_or_eval(self->new_value, jit);
-  FilterXIRValue cloned = fx_jit_emit_object_cow_fork2(jit, rhs);
-  FilterXIRValue lhs = filterx_expr_compile_or_eval_typed(self->object, jit);
-
-  FilterXIRValue args[] = { fx_jit_emit_const_ptr(jit, self), lhs, cloned };
-  FilterXIRType param_tys[] = { ffi->ptr_ty, ffi->ptr_ty, ffi->ptr_ty };
-  return fx_jit_emit_extern_call(jit, fn_name, ffi->ptr_ty, param_tys, args, 3);
-}
-
-static FilterXIRValue
-_setattr_compile(FilterXExpr *s, FilterXJIT *jit)
-{
-  return _emit_setattr_call((FilterXSetAttr *) s, jit, "fx_jit_do_setattr");
-}
-
-static FilterXIRValue
-_nullv_setattr_compile(FilterXExpr *s, FilterXJIT *jit)
-{
-  return _emit_setattr_call((FilterXSetAttr *) s, jit, "fx_jit_do_nullv_setattr");
 }
 
 #endif
