@@ -77,6 +77,7 @@ gint main_loop_worker_get_thread_index(void);
 
 void main_loop_worker_job_start(void);
 void main_loop_worker_job_complete(void);
+gint main_loop_worker_get_running_jobs(void);
 
 void main_loop_worker_thread_start(MainLoopWorkerType worker_type);
 void main_loop_worker_thread_stop(void);

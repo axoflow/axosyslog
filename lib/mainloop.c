@@ -52,6 +52,7 @@
 #include <sys/wait.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 #include <iv.h>
 #include <iv_signal.h>
 #include <iv_event.h>
@@ -150,6 +151,7 @@ struct _MainLoop
   struct iv_event exit_requested;
 
   struct iv_timer exit_timer;
+  struct iv_timer exit_force_timer;
 
   /* Currently running configuration, should not be used outside the mainloop
    * logic. If anything needs access to the GlobalConfig instance at runtime,
@@ -497,6 +499,33 @@ main_loop_exit_initiate(gpointer user_data)
   self->_is_terminating = TRUE;
 }
 
+static void
+main_loop_exit_force_timer_elapsed(gpointer user_data)
+{
+  _exit(1);
+}
+
+void
+main_loop_exit_force(MainLoop *self)
+{
+  main_loop_assert_main_thread();
+
+  if (iv_timer_registered(&self->exit_force_timer))
+    return;
+
+  msg_warning("Forced shutdown requested, terminating without waiting for the workers",
+              evt_tag_int("jobs_running", main_loop_worker_get_running_jobs()),
+              evt_tag_int("workers_running", main_loop_workers_running));
+
+  /* let the reply to the control command out before the process is gone */
+  iv_validate_now();
+  self->exit_force_timer.expires = iv_now;
+  self->exit_force_timer.handler = main_loop_exit_force_timer_elapsed;
+  self->exit_force_timer.cookie = self;
+  timespec_add_msec(&self->exit_force_timer.expires, 100);
+  iv_timer_register(&self->exit_force_timer);
+}
+
 
 /************************************************************************************
  * signal handlers
@@ -667,6 +696,7 @@ main_loop_init(MainLoop *self, MainLoopOptions *options)
   main_loop_call_init();
 
   main_loop_init_events(self);
+  IV_TIMER_INIT(&self->exit_force_timer);
   setup_signals(self);
 
   self->current_configuration = cfg_new(0);

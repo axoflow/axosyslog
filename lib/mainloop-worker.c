@@ -233,6 +233,12 @@ main_loop_worker_job_start(void)
   g_atomic_counter_inc(&main_loop_jobs_running);
 }
 
+gint
+main_loop_worker_get_running_jobs(void)
+{
+  return g_atomic_counter_get(&main_loop_jobs_running);
+}
+
 typedef struct
 {
   void (*func)(gpointer user_data);
