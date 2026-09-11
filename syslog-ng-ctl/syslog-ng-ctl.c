@@ -51,10 +51,21 @@
 static const gchar *control_name;
 static void print_usage(const gchar *bin_name, CommandDescriptor *descriptors);
 
+static gboolean stop_options_force = FALSE;
+
+static GOptionEntry stop_options[] =
+{
+  {
+    "force", 'f', 0, G_OPTION_ARG_NONE, &stop_options_force,
+    "terminate without waiting for the worker threads", NULL
+  },
+  { NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL }
+};
+
 static gint
 slng_stop(int argc, char *argv[], const gchar *mode, GOptionContext *ctx)
 {
-  return dispatch_command("STOP");
+  return dispatch_command(stop_options_force ? "STOP FORCE" : "STOP");
 }
 
 static gint
@@ -117,7 +128,7 @@ static CommandDescriptor modes[] =
   { "debug", verbose_options, "Enable/query debug messages", slng_verbose, NULL },
   { "trace", verbose_options, "Enable/query trace messages", slng_verbose, NULL },
   { "log-level", log_level_options, "Set syslog-ng loglevel (verbose, debug, trace)", slng_log_level, NULL },
-  { "stop", no_options, "Stop syslog-ng process", slng_stop, NULL },
+  { "stop", stop_options, "Stop syslog-ng process", slng_stop, NULL },
   { "reload", no_options, "Reload syslog-ng", slng_reload, NULL },
   { "reopen", no_options, "Re-open of log destination files", slng_reopen, NULL },
   { "query", query_options, "Query syslog-ng statistics. Possible commands: list, get, get --sum", slng_query, NULL },
