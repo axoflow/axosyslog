@@ -99,4 +99,5 @@ EXTRA_DIST += \
 	tests/light/functional_tests/template_functions/slog/test_secure_logging.py \
 	tests/light/functional_tests/templates/test_template_stmt.py \
 	tests/light/functional_tests/tools/loggen/test_loggen_with_reconnect.py \
+	tests/light/functional_tests/tools/syslog_ng_ctl/test_stop_force.py \
 	tests/light/functional_tests/value-pairs/test_value_pairs.py
