@@ -699,7 +699,10 @@ _link_bucket_module(FilterXJIT *self, LLVMContextRef ctx, guint bucket, guint nb
     }
 
   if (linked == 0)
-    goto error;
+    {
+      msg_error("FilterX JIT: bucket worker linked no block at all", evt_tag_int("bucket", bucket));
+      goto error;
+    }
 
   return mod;
 
@@ -711,17 +714,25 @@ error:
 static LLVMMemoryBufferRef
 _compile_module_to_object(FilterXJIT *self, LLVMModuleRef mod, guint bucket)
 {
-  LLVMTargetMachineRef tm = _create_target_machine(self, NULL);
+  GError *tm_error = NULL;
+  LLVMTargetMachineRef tm = _create_target_machine(self, &tm_error);
   if (!tm)
-    return NULL;
+    {
+      msg_error("FilterX JIT: bucket worker failed to create the target machine",
+                evt_tag_int("bucket", bucket), evt_tag_str("error", tm_error ? tm_error->message : "unknown"));
+      g_clear_error(&tm_error);
+      return NULL;
+    }
 
   LLVMPassBuilderOptionsRef opts = LLVMCreatePassBuilderOptions();
   LLVMErrorRef perr = LLVMRunPasses(mod, "default<O3>", tm, opts);
   LLVMDisposePassBuilderOptions(opts);
   if (perr)
     {
-      msg_error("FilterX JIT: bucket worker O3 failed", evt_tag_int("bucket", bucket));
-      LLVMConsumeError(perr);
+      gchar *perr_msg = LLVMGetErrorMessage(perr); /* consumes perr */
+      msg_error("FilterX JIT: bucket worker O3 failed",
+                evt_tag_int("bucket", bucket), evt_tag_str("error", perr_msg));
+      LLVMDisposeErrorMessage(perr_msg);
       LLVMDisposeTargetMachine(tm);
       return NULL;
     }
@@ -755,6 +766,27 @@ _parallel_compile_worker(gpointer data, gpointer user_data)
       LLVMDisposeModule(mod);
     }
   LLVMContextDispose(ctx);
+}
+
+/* the worker already logged the cause, this names the blocks that lose their compiled code */
+static void
+_warn_bucket_fallback(FilterXJIT *self, guint bucket, guint n_buckets)
+{
+  GString *blocks = g_string_new(NULL);
+
+  for (guint i = bucket; i < self->compile.pending_blocks->len; i += n_buckets)
+    {
+      FilterXJITPendingBlock *pb = g_ptr_array_index(self->compile.pending_blocks, i);
+
+      if (blocks->len > 0)
+        g_string_append(blocks, ", ");
+      g_string_append(blocks, pb->name);
+    }
+
+  msg_warning("FilterX JIT: block bucket compilation failed, falling back to interpreted evaluation",
+              evt_tag_int("bucket", bucket),
+              evt_tag_str("blocks", blocks->str));
+  g_string_free(blocks, TRUE);
 }
 
 static gboolean
@@ -807,11 +839,14 @@ _finalize_parallel(FilterXJIT *self, GError **error)
 
   LLVMOrcJITDylibRef dylib = LLVMOrcLLJITGetMainJITDylib(self->j);
   gboolean ok = TRUE;
+  guint failed_buckets = 0;
   for (guint b = 0; b < n_buckets; b++)
     {
       if (!block_objs[b])
         {
           /* worker failure: that bucket's blocks fall back to interpreter */
+          _warn_bucket_fallback(self, b, n_buckets);
+          failed_buckets++;
           continue;
         }
 
@@ -824,6 +859,13 @@ _finalize_parallel(FilterXJIT *self, GError **error)
           break;
         }
     }
+
+  /* on !ok the finalization fails and filterx-config.c reports the whole config as interpreted */
+  if (ok && failed_buckets > 0)
+    msg_warning("FilterX JIT: some block buckets failed to compile, their blocks stay interpreted",
+                evt_tag_int("failed_buckets", failed_buckets),
+                evt_tag_int("buckets", n_buckets),
+                evt_tag_int("blocks", nblocks));
 
   for (guint b = 0; b < n_buckets; b++)
     {
