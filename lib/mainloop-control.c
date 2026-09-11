@@ -217,10 +217,19 @@ exit:
 static void
 control_connection_stop_process(ControlConnection *cc, GString *command, gpointer user_data, gboolean *cancelled)
 {
-  GString *result = g_string_new("OK Shutdown initiated");
   MainLoop *main_loop = (MainLoop *) user_data;
+  GString *result;
 
-  main_loop_exit(main_loop);
+  if (g_str_equal(command->str, "STOP FORCE"))
+    {
+      main_loop_exit_force(main_loop);
+      result = g_string_new("OK Forced shutdown initiated");
+    }
+  else
+    {
+      main_loop_exit(main_loop);
+      result = g_string_new("OK Shutdown initiated");
+    }
 
   control_connection_send_reply(cc, result);
 }
