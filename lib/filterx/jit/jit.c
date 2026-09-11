@@ -116,20 +116,23 @@ _run_passes(FilterXJIT *self, LLVMModuleRef mod, const gchar *passes)
   return err;
 }
 
-static LLVMErrorRef
-_optimize_module(gpointer s, LLVMModuleRef mod)
+/*
+ * The pass pipeline of the block buckets, resolved once because the buckets run on a thread pool.
+ *
+ * debug-info(llvm-ir) renders each block instruction into a line of the IR dump and gives that
+ * line to the machine code. Optimization passes inline, fold and reorder those instructions, so
+ * the machine code no longer matches the dump. Such a run therefore compiles the blocks with no
+ * pass at all. The backend still places the cold blocks at the end of the function, so the line
+ * table of a block is dense but not strictly ascending.
+ */
+static gchar *
+_resolve_block_passes(FilterXJIT *self)
 {
-  FilterXJIT *self = (FilterXJIT *) s;
-  msg_trace("FilterXJIT optimize module", evt_tag_str("module_name", self->mod_name));
+  if (self->debug_info_mode == FILTERX_JIT_DEBUG_INFO_LLVM_IR)
+    return NULL;
 
   const gchar *pass_override = g_getenv("SYSLOG_NG_FILTERX_JIT_PASSES");
-  return _run_passes(self, mod, pass_override ? : "default<O3>");
-}
-
-static LLVMErrorRef
-_optimize_transform(gpointer s, LLVMOrcThreadSafeModuleRef *thr_mod, LLVMOrcMaterializationResponsibilityRef mr)
-{
-  return LLVMOrcThreadSafeModuleWithModuleDo(*thr_mod, _optimize_module, s);
+  return g_strdup(pass_override ? : "default<O3>");
 }
 
 /*
@@ -139,7 +142,7 @@ _optimize_transform(gpointer s, LLVMOrcThreadSafeModuleRef *thr_mod, LLVMOrcMate
  * which deletes the body of every symbol that bc-loader.c marked "available_externally". The
  * buckets would then link against bare declarations and no runtime helper could be inlined into
  * a block. The ThinLTO pre-link pipeline keeps those bodies for link-time inlining, which is
- * exactly what the "default<O3>" run in _compile_module_to_object() then does.
+ * exactly what the block pass run in _compile_module_to_object() then does.
  *
  * For the same reason the SYSLOG_NG_FILTERX_JIT_PASSES override must not reach this module.
  */
@@ -724,17 +727,21 @@ _compile_module_to_object(FilterXJIT *self, LLVMModuleRef mod, guint bucket)
       return NULL;
     }
 
-  LLVMPassBuilderOptionsRef opts = LLVMCreatePassBuilderOptions();
-  LLVMErrorRef perr = LLVMRunPasses(mod, "default<O3>", tm, opts);
-  LLVMDisposePassBuilderOptions(opts);
-  if (perr)
+  const gchar *passes = self->compile.block_passes;
+  if (passes)
     {
-      gchar *perr_msg = LLVMGetErrorMessage(perr); /* consumes perr */
-      msg_error("FilterX JIT: bucket worker O3 failed",
-                evt_tag_int("bucket", bucket), evt_tag_str("error", perr_msg));
-      LLVMDisposeErrorMessage(perr_msg);
-      LLVMDisposeTargetMachine(tm);
-      return NULL;
+      LLVMPassBuilderOptionsRef opts = LLVMCreatePassBuilderOptions();
+      LLVMErrorRef perr = LLVMRunPasses(mod, passes, tm, opts);
+      LLVMDisposePassBuilderOptions(opts);
+      if (perr)
+        {
+          gchar *perr_msg = LLVMGetErrorMessage(perr); /* consumes perr */
+          msg_error("FilterX JIT: bucket worker optimization failed",
+                    evt_tag_int("bucket", bucket), evt_tag_str("passes", passes), evt_tag_str("error", perr_msg));
+          LLVMDisposeErrorMessage(perr_msg);
+          LLVMDisposeTargetMachine(tm);
+          return NULL;
+        }
     }
 
   LLVMMemoryBufferRef obj = NULL;
@@ -958,17 +965,6 @@ _setup_c_symbol_generator(FilterXJIT *self, GError **error)
   return TRUE;
 }
 
-static inline void
-_setup_optimizations(FilterXJIT *self)
-{
-  /* Disable optimizations when debugging IR code */
-  if (self->debug_info_mode == FILTERX_JIT_DEBUG_INFO_LLVM_IR)
-    return;
-
-  LLVMOrcIRTransformLayerRef transform = LLVMOrcLLJITGetIRTransformLayer(self->j);
-  LLVMOrcIRTransformLayerSetTransform(transform, _optimize_transform, self);
-}
-
 static LLVMOrcObjectLayerRef
 _create_object_layer_with_gdb_listener(void *ctx, LLVMOrcExecutionSessionRef es, const char *triple)
 {
@@ -1073,7 +1069,7 @@ filterx_jit_new(const gchar *module_name, FilterXJITDebugInfo debug_info, GError
   if (!_setup_c_symbol_generator(self, error))
     goto error;
 
-  _setup_optimizations(self);
+  self->compile.block_passes = _resolve_block_passes(self);
 
   if (!_preoptimize_libfilterx(self, error))
     goto error;
@@ -1094,6 +1090,7 @@ error:
 static void
 _filterx_jit_compile_free(FilterXJIT *self)
 {
+  g_free(self->compile.block_passes);
   if (self->compile.libfilterx_bc)
     LLVMDisposeMemoryBuffer(self->compile.libfilterx_bc);
   if (self->compile.pending_blocks)

@@ -71,6 +71,8 @@ struct _FilterXJIT
   {
     LLVMMemoryBufferRef libfilterx_bc;
     GPtrArray *pending_blocks;
+    /* the pass pipeline each bucket runs, NULL means no optimization at all */
+    gchar *block_passes;
   } compile;
 
   GHashTable *block_tables;
