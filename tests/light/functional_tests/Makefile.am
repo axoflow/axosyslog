@@ -111,6 +111,7 @@ EXTRA_DIST += \
 	tests/light/functional_tests/source_drivers/network_source/proxyprotocol/test_pp_with_syslog_proto.py \
 	tests/light/functional_tests/source_drivers/network_source/test_altp_source.py \
 	tests/light/functional_tests/source_drivers/network_source/test_client_port.py \
+	tests/light/functional_tests/source_drivers/network_source/test_lumberjack_source.py \
 	tests/light/functional_tests/source_drivers/network_source/test_network_transports.py \
 	tests/light/functional_tests/source_drivers/network_source/test_static_and_dynamic_window.py \
 	tests/light/functional_tests/source_drivers/network_source/test_splunk_s2s_self_loop.py \
