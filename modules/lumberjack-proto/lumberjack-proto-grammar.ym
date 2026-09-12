@@ -1,0 +1,110 @@
+/*
+ * Copyright (c) 2026 Axoflow
+ * Copyright (c) 2026 Balazs Scheidler <balazs.scheidler@axoflow.com>
+ *
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *
+ * As an additional exemption you are allowed to compile & link against the
+ * OpenSSL libraries as published by the OpenSSL project. See the file
+ * COPYING for details.
+ *
+ */
+
+%code top {
+#include "lumberjack-proto-parser.h"
+
+}
+
+
+%code {
+
+#include "lumberjack-proto-options.h"
+#include "cfg-parser.h"
+#include "cfg-grammar-internal.h"
+#include "messages.h"
+
+/* the options of the transport(lumberjack(...)) being parsed */
+static LumberjackProtoServerOptions *last_lumberjack_options;
+
+}
+
+%define api.prefix {lumberjack_proto_}
+
+/* this parameter is needed in order to instruct bison to use a complete
+ * argument list for yylex/yyerror */
+
+%lex-param {CfgLexer *lexer}
+%parse-param {CfgLexer *lexer}
+%parse-param {LogProtoServerFactory **instance}
+%parse-param {gpointer arg}
+
+/* INCLUDE_DECLS */
+
+%token KW_LUMBERJACK
+%token KW_MAX_WINDOW_SIZE
+%token KW_KEEPALIVE_INTERVAL
+%token KW_WINDOW_TIMEOUT
+
+%%
+
+start
+        : LL_CONTEXT_SERVER_PROTO lumberjack_transport
+          {
+            if (yychar != LUMBERJACK_PROTO_EMPTY)
+              cfg_lexer_unput_token(lexer, &yylval);
+            YYACCEPT;
+          }
+        ;
+
+lumberjack_transport
+        : KW_LUMBERJACK
+          {
+            /* @arg is the last_proto_server_options of the driver, which is
+             * the LogProtoServerOptionsStorage union our options extend */
+            last_lumberjack_options = lumberjack_proto_server_options_defaults((LogProtoServerOptions *) arg);
+            *instance = lumberjack_proto_server_options_get_factory(last_lumberjack_options);
+          }
+          lumberjack_options_block
+        ;
+
+/* transport(lumberjack) with no option block means all defaults */
+lumberjack_options_block
+        : '(' lumberjack_options ')'
+        |
+        ;
+
+lumberjack_options
+        : lumberjack_option lumberjack_options
+        |
+        ;
+
+lumberjack_option
+        : KW_MAX_WINDOW_SIZE '(' nonnegative_integer ')'
+          {
+            /* max-window-size(0) is unlimited, as the canonical receiver has it */
+            last_lumberjack_options->lumberjack.max_window_size = $3;
+          }
+        | KW_KEEPALIVE_INTERVAL '(' nonnegative_integer ')'
+          {
+            last_lumberjack_options->lumberjack.keepalive_interval = $3;
+          }
+        | KW_WINDOW_TIMEOUT '(' nonnegative_integer ')'
+          {
+            last_lumberjack_options->lumberjack.window_timeout = $3;
+          }
+        ;
+
+/* INCLUDE_RULES */
+
+%%
