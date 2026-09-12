@@ -65,6 +65,10 @@
   M(last_config_file_modification_timestamp_seconds) \
   M(last_config_reload_timestamp_seconds) \
   M(last_successful_config_reload_timestamp_seconds) \
+  M(lumberjack_acknowledgements_total) \
+  M(lumberjack_frames_dropped_total) \
+  M(lumberjack_frames_total) \
+  M(lumberjack_protocol_errors_total) \
   M(mainloop_io_worker_roundtrip_latency_seconds) \
   M(memory_queue_capacity) \
   M(memory_queue_events) \
