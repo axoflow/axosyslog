@@ -239,6 +239,76 @@ def test_timeout_is_armed_only_once_per_entry(config, port_allocator, syslog_ng)
     assert file_destination.get_stats()["processed"] == 3
 
 
+def test_merge_failure_discards_the_whole_context(config, port_allocator, syslog_ng):
+    network_source, file_destination = create_config(
+        config, port_allocator,
+        'aggregate(key=(input["key"]), values={"a": input["a"], "b": input["b"]}, timeout=3600)',
+    )
+    syslog_ng.start(config)
+
+    # message #2: "a" merges fine (1 + 2), then sum(1, null) for "b" fails,
+    # so the group is half-updated at that point and the message is dropped
+    send_messages(
+        network_source, [
+            {"key": "host-a", "a": 1, "b": 1},
+            {"key": "host-a", "a": 2, "b": None},
+            {"key": "host-a", "a": 1, "b": 1},
+        ],
+    )
+
+    results = read_results(file_destination, 2)
+    assert results[0] == {"status": "absorbed", "values": {"a": 1, "b": 1}}
+    # the failed merge discarded the group: message #3 starts over rather
+    # than reading a=4 (1 + the half-merged 2 + 1), b=2
+    assert results[1] == {"status": "absorbed", "values": {"a": 1, "b": 1}}
+
+
+def test_merge_failure_still_honors_a_close_on_the_next_message(config, port_allocator, syslog_ng):
+    network_source, file_destination = create_config(
+        config, port_allocator,
+        'aggregate(key=(input["key"]), values={"cnt": input["cnt"]}, close=input["close"], timeout=3600)',
+    )
+    syslog_ng.start(config)
+
+    send_messages(
+        network_source, [
+            {"key": "host-a", "cnt": 1, "close": False},
+            {"key": "host-a", "cnt": None, "close": True},
+            {"key": "host-a", "cnt": 5, "close": True},
+        ],
+    )
+
+    results = read_results(file_destination, 2)
+    assert results[0] == {"status": "absorbed", "values": {"cnt": 1}}
+    # message #2 failed to merge (and was dropped, close= and all), which
+    # discarded the group; message #3 opens and closes a fresh one
+    assert results[1] == {"status": "closed", "values": {"cnt": 5}}
+
+
+@pytest.mark.timing
+def test_merge_failure_cancels_the_pending_timeout(config, port_allocator, syslog_ng):
+    network_source, file_destination = create_config(
+        config, port_allocator,
+        'aggregate(key=(input["key"]), values={"cnt": input["cnt"]}, timeout=1)',
+    )
+    syslog_ng.start(config)
+
+    send_messages(
+        network_source, [
+            {"key": "host-a", "cnt": 1},
+            {"key": "host-a", "cnt": None},
+        ],
+    )
+
+    results = read_results(file_destination, 1)
+    assert results[0] == {"status": "absorbed", "values": {"cnt": 1}}
+
+    # the failed merge discarded the group along with its timer: no
+    # ("timeout") replay of the discarded state may show up
+    time.sleep(1.5)
+    assert file_destination.get_stats()["processed"] == 1
+
+
 def test_aggregators_argument_selects_replace_for_named_field_and_sum_for_others(config, port_allocator, syslog_ng):
     network_source, file_destination = create_config(
         config, port_allocator,

@@ -31,6 +31,7 @@
 #include "filterx/expr-compound.h"
 #include "filterx/expr-function.h"
 #include "filterx/object-primitive.h"
+#include "filterx/object-null.h"
 #include "filterx/object-string.h"
 #include "filterx/object-dict.h"
 #include "filterx/object-extractor.h"
@@ -85,6 +86,90 @@ _counting_values_expr_new(gint *eval_count)
   self->super.walk_children = _counting_values_expr_walk;
   self->eval_count = eval_count;
   return &self->super;
+}
+
+/* a values_expr stand-in that hands back a scripted sequence of dicts, one
+ * per evaluation, so a test can drive what each successive message brings
+ * into the group (see test_merge_failure_discards_the_whole_context below). */
+typedef struct
+{
+  FilterXExpr super;
+  GPtrArray *scripted_values;
+  guint next;
+} ScriptedValuesExpr;
+
+static FilterXObject *
+_scripted_values_expr_eval(FilterXExpr *s)
+{
+  ScriptedValuesExpr *self = (ScriptedValuesExpr *) s;
+
+  cr_assert_lt(self->next, self->scripted_values->len, "scripted values exhausted");
+  return filterx_object_ref(g_ptr_array_index(self->scripted_values, self->next++));
+}
+
+static gboolean
+_scripted_values_expr_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
+{
+  return TRUE;
+}
+
+static void
+_scripted_values_expr_free(FilterXExpr *s)
+{
+  ScriptedValuesExpr *self = (ScriptedValuesExpr *) s;
+
+  g_ptr_array_free(self->scripted_values, TRUE);
+  filterx_expr_free_method(s);
+}
+
+/* takes ownership of each dict in @scripted_values (NULL terminated) */
+static FilterXExpr *
+_scripted_values_expr_new(FilterXObject *scripted_values, ...)
+{
+  ScriptedValuesExpr *self = g_new0(ScriptedValuesExpr, 1);
+
+  filterx_expr_init_instance(&self->super, "test-scripted-values", FXE_READ);
+  self->super.eval = _scripted_values_expr_eval;
+  self->super.walk_children = _scripted_values_expr_walk;
+  self->super.free_fn = _scripted_values_expr_free;
+  self->scripted_values = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
+
+  va_list va;
+  va_start(va, scripted_values);
+  for (FilterXObject *value = scripted_values; value; value = va_arg(va, FilterXObject *))
+    g_ptr_array_add(self->scripted_values, value);
+  va_end(va);
+
+  return &self->super;
+}
+
+static FilterXObject *
+_new_count_values_dict(FilterXObject *count_value)
+{
+  FilterXObject *values_dict = filterx_dict_new();
+  FILTERX_STRING_DECLARE_ON_STACK(count_key, "count", -1);
+  cr_assert(filterx_object_set_subscript(values_dict, count_key, &count_value));
+  filterx_object_unref(count_value);
+  FILTERX_STRING_CLEAR_FROM_STACK(count_key);
+  return values_dict;
+}
+
+static FilterXExpr *
+_new_aggregate_with_values_expr(const gchar *key, gint64 timeout, FilterXExpr *values_expr)
+{
+  GList *args = NULL;
+
+  args = g_list_append(args, filterx_function_arg_new("key", filterx_literal_new(filterx_string_new(key, -1))));
+  args = g_list_append(args, filterx_function_arg_new("values", values_expr));
+  args = g_list_append(args, filterx_function_arg_new("timeout", filterx_literal_new(filterx_integer_new(timeout))));
+
+  GError *args_err = NULL;
+  GError *err = NULL;
+  FilterXExpr *agg = filterx_function_aggregate_new(filterx_function_args_new(args, &args_err), &err);
+  cr_assert_null(args_err);
+  cr_assert_null(err);
+  cr_assert_not_null(agg);
+  return agg;
 }
 
 static FilterXExpr *
@@ -735,6 +820,73 @@ Test(func_aggregate, test_close_on_first_message_returns_value_without_arming_ti
   FILTERX_STRING_CLEAR_FROM_STACK(fx_key);
 
   filterx_eval_set_context(standing_context);
+
+  filterx_expr_deinit(agg, configuration);
+  filterx_expr_unref(agg);
+  log_pipe_deinit(owner_pipe);
+  log_pipe_deinit(&sink->super);
+  log_pipe_unref(&sink->super);
+  log_pipe_unref(owner_pipe);
+}
+
+/* a merge that fails partway leaves entry->values half-updated (fields
+ * before the failing one are already in, the rest aren't), and the message
+ * is dropped: the group must not live on in that state -- not to swallow a
+ * later close=, not to be replayed on timeout -- so a failed merge closes
+ * and discards it, and the next message for the key starts over. */
+Test(func_aggregate, test_merge_failure_discards_the_whole_context)
+{
+  /* message #2 brings a null "count": sum(1, null) has no meaning, so the
+   * merge fails */
+  FilterXExpr *values_expr = _scripted_values_expr_new(_new_count_values_dict(filterx_integer_new(1)),
+                                                       _new_count_values_dict(filterx_null_new()),
+                                                       _new_count_values_dict(filterx_integer_new(1)),
+                                                       NULL);
+  FilterXExpr *agg = _new_aggregate_with_values_expr("failkey", 60, values_expr);
+
+  LogPipeMock *sink = log_pipe_mock_new(configuration);
+  cr_assert(log_pipe_init(&sink->super));
+  LogPipe *owner_pipe = _new_owner_pipe();
+  log_pipe_append(owner_pipe, &sink->super);
+
+  _init_aggregate_as_sole_statement(agg, owner_pipe);
+
+  /* message #1: opens the group, arms its timer */
+  FilterXObject *result = filterx_expr_eval(agg);
+  cr_assert_not_null(result);
+  _assert_result_status(result, "absorbed");
+  FilterXObject *values = _result_values(result);
+  cr_assert_eq(_extract_int_field(values, "count"), 1);
+  filterx_object_unref(values);
+  filterx_object_unref(result);
+
+  /* message #2: the merge fails, aggregate() errors out */
+  result = filterx_expr_eval(agg);
+  cr_assert_null(result);
+  cr_assert_not_null(filterx_eval_get_last_error());
+  filterx_eval_clear_errors();
+
+  /* ... and the group is gone with it: nothing left to expire, so no
+   * timeout replay for the half-merged state either */
+  FilterXEvalContext *standing_context = filterx_eval_get_context();
+  filterx_eval_set_context(NULL);
+
+  FILTERX_STRING_DECLARE_ON_STACK(fx_key, "failkey", -1);
+  cr_assert_not(filterx_function_aggregate_test_expire(agg, fx_key));
+  FILTERX_STRING_CLEAR_FROM_STACK(fx_key);
+  cr_assert_eq(sink->captured_messages->len, 0);
+
+  filterx_eval_set_context(standing_context);
+
+  /* message #3: starts a fresh group, i.e. count is 1 again rather than
+   * 1 (message #1) + 1 (message #3) = 2 */
+  result = filterx_expr_eval(agg);
+  cr_assert_not_null(result);
+  _assert_result_status(result, "absorbed");
+  values = _result_values(result);
+  cr_assert_eq(_extract_int_field(values, "count"), 1);
+  filterx_object_unref(values);
+  filterx_object_unref(result);
 
   filterx_expr_deinit(agg, configuration);
   filterx_expr_unref(agg);

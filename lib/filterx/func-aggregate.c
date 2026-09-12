@@ -670,7 +670,18 @@ _aggregate(AggregateSharedState *shared, FilterXObject *tuple_key, FilterXObject
 
   if (!_aggregate_merge(entry->values, values, field_aggregators, entry->field_aux_state))
     {
-      filterx_eval_push_error("aggregate(): failed to merge values", values);
+      /* _aggregate_merge() folds values in field by field, straight into
+       * entry->values, so by the time one aggregator refuses its input the
+       * fields before it have already been merged, while the ones after it
+       * have not: the group no longer reflects any consistent set of
+       * messages. The message itself is about to be dropped (we return
+       * NULL), so don't leave that half-updated group behind to swallow a
+       * close= or to be replayed on timeout as if it were valid: close it
+       * and discard everything accumulated so far, exactly like an
+       * explicit close= would, minus the result. The next message for this
+       * key then starts a fresh group. */
+      _close_entry(shared, entry);
+      filterx_eval_push_error("aggregate(): failed to merge values, discarding the aggregation context", values);
       return NULL;
     }
 
