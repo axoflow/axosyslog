@@ -30,7 +30,6 @@ EXTRA_DIST += \
 	dbld/images/almalinux-10.dockerfile \
 	dbld/images/devshell.dockerfile \
 	dbld/images/fedora-44.dockerfile \
-	dbld/images/debian-bullseye.dockerfile \
 	dbld/images/debian-bookworm.dockerfile \
 	dbld/images/debian-sid.dockerfile \
 	dbld/images/debian-testing.dockerfile \

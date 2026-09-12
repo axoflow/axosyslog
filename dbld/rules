@@ -5,7 +5,6 @@ BUILDER_IMAGES=		\
 	almalinux-9	\
 	almalinux-10	\
 	fedora-44 \
-	debian-bullseye	\
 	debian-bookworm	\
 	debian-testing	\
 	debian-sid	\

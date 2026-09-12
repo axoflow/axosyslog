@@ -17,7 +17,6 @@ on:
           [
             "debian-testing",
             "debian-sid",
-            "debian-bullseye",
             "debian-bookworm",
             "debian-trixie",
             "ubuntu-focal",

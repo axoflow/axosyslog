@@ -14,7 +14,6 @@ on:
           [
             {"type": "deb", "name": "debian-testing"},
             {"type": "deb", "name": "debian-sid"},
-            {"type": "deb", "name": "debian-bullseye"},
             {"type": "deb", "name": "debian-bookworm"},
             {"type": "deb", "name": "debian-trixie"},
             {"type": "deb", "name": "ubuntu-focal"},

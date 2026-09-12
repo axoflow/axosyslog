@@ -25,7 +25,6 @@
 #   there.
 #
 
-debian-bullseye		python3,nojava,notzdatalegacy,nobpf,noarrow-flight
 debian-bookworm		python3,nojava,notzdatalegacy,noarrow-flight
 debian-trixie		python3,nojava,noarrow-flight
 debian-testing		python3,nojava,nocriterion

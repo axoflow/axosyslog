@@ -44,7 +44,6 @@ jobs:
           - almalinux-9
           - almalinux-10
           - fedora-44
-          - debian-bullseye
           - debian-bookworm
           - debian-sid
           - debian-testing
