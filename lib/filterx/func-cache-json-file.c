@@ -184,7 +184,16 @@ _load_json_file_version(FilterXFunctionCacheJsonFile *self, GError **error)
   filterx_eval_end_restricted_context(&json_reload_context);
 
   if (json)
-    result = filterx_stash_store(&self->stashed_object, json, &json_env);
+    {
+      msg_debug("FilterX: successfully reloaded cached JSON file, instating new version",
+                evt_tag_str("file_name", self->filepath));
+      result = filterx_stash_store(&self->stashed_object, json, &json_env);
+    }
+  else
+    {
+      msg_debug("FilterX: reloading the cached JSON file failed, keeping old version",
+                evt_tag_str("file_name", self->filepath));
+    }
 
   filterx_env_clear(&json_env);
   return result;
@@ -202,6 +211,9 @@ _file_monitor_callback(const FileMonitorEvent *event, gpointer user_data)
     }
 
   main_loop_assert_main_thread();
+
+  msg_debug("FilterX: attempting to reload cached JSON file",
+            evt_tag_str("file_name", self->filepath));
 
   GError *error = NULL;
   if (!_load_json_file_version(self, &error) && error)

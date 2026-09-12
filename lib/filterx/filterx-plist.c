@@ -41,6 +41,31 @@ filterx_pointer_list_add_list(FilterXPointerList *self, GList *elements)
   g_list_free(elements);
 }
 
+gsize
+filterx_pointer_list_index_of(FilterXPointerList *self, gpointer value)
+{
+  gpointer *pointers;
+  gsize pointers_len;
+
+  if (self->mode == FPL_MUTABLE)
+    {
+      pointers = self->mut.pointers->pdata;
+      pointers_len = self->mut.pointers->len;
+    }
+  else
+    {
+      pointers = self->sealed.pointers;
+      pointers_len = self->sealed.pointers_len;
+    }
+
+  for (gsize i = 0; i < pointers_len; i++)
+    {
+      if (pointers[i] == value)
+        return i;
+    }
+  g_assert_not_reached();
+}
+
 gboolean
 filterx_pointer_list_foreach_ref(FilterXPointerList *self, FilterXPointerListForeachRefFunc func, gpointer user_data)
 {
