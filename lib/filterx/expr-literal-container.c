@@ -400,9 +400,11 @@ _literal_dict_store_elem(FilterXLiteralContainer *self, FilterXObject *dict_ref,
       value = filterx_object_cow_fork2(value, NULL);
       if (!early_eval && elem->anchor >= 0)
         {
-          /* runtime with an anchor already present */
-          filterx_ref_set_parent_container(value, dict_ref);
+          /* runtime with an anchor already present, the parent link goes
+           * after the store: cow_store() grounds the xref, which clears
+           * parent_container */
           filterx_dict_set_subscript_by_anchor(dict, elem->anchor, &value);
+          filterx_ref_set_parent_container(value, dict_ref);
           success = TRUE;
         }
       else if (early_eval && filterx_object_is_key_set(dict_ref, key))
