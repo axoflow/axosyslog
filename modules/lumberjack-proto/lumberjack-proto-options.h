@@ -26,7 +26,7 @@
 
 #include "logproto/logproto-server.h"
 
-/* the port Beats and Logstash use by convention (specification 1.1) */
+/* the port Beats and Logstash use by convention (specification 3.1) */
 #define LUMBERJACK_DEFAULT_PORT 5044
 
 /* Defaults of the specification: the canonical receiver bounds the window
