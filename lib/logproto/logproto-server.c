@@ -179,6 +179,14 @@ log_proto_server_options_defaults(LogProtoServerOptions *options)
   options->ack_tracker_factory = instant_ack_tracker_bookmarkless_factory_new();
 }
 
+/* NOTE: initialize the entire struct to zero, so proto proto plugins will find this zero-initialized */
+void
+log_proto_server_options_storage_defaults(LogProtoServerOptionsStorage *options)
+{
+  memset(options, 0, sizeof(*options));
+  log_proto_server_options_defaults(&options->super);
+}
+
 void
 log_proto_server_options_init(LogProtoServerOptions *options, GlobalConfig *cfg)
 {

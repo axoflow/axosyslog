@@ -65,6 +65,7 @@ typedef union LogProtoServerOptionsStorage
 gboolean log_proto_server_options_set_encoding(LogProtoServerOptions *s, const gchar *encoding);
 void log_proto_server_options_set_ack_tracker_factory(LogProtoServerOptions *s, AckTrackerFactory *factory);
 void log_proto_server_options_defaults(LogProtoServerOptions *options);
+void log_proto_server_options_storage_defaults(LogProtoServerOptionsStorage *options);
 void log_proto_server_options_init(LogProtoServerOptions *options, GlobalConfig *cfg);
 void log_proto_server_options_destroy(LogProtoServerOptions *options);
 
