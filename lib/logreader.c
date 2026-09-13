@@ -828,7 +828,7 @@ void
 log_reader_options_defaults(LogReaderOptions *options)
 {
   log_source_options_defaults(&options->super);
-  log_proto_server_options_defaults(&options->proto_options.super);
+  log_proto_server_options_storage_defaults(&options->proto_options);
   msg_format_options_defaults(&options->parse_options);
   options->fetch_limit = 10;
 }
