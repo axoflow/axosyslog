@@ -242,6 +242,7 @@ static FilterXObject *
 _parse_message(FilterXFunctionEventFormatParser *self, const gchar *log, gsize len)
 {
   FilterXObject *result = filterx_dict_new();
+  filterx_object_cow_prepare(&result);
 
   CSVScanner csv_scanner;
   csv_scanner_init(&csv_scanner, &self->csv_opts, log);

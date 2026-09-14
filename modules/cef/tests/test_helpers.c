@@ -146,7 +146,7 @@ _assert_parser_result_inner(const gchar *expected_result, ...)
   cr_assert_null(err);
   cr_assert_not_null(obj);
 
-  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(mapping)));
+  cr_assert(filterx_object_is_type_or_ref(obj, &FILTERX_TYPE_NAME(mapping)));
 
   GString *repr = scratch_buffers_alloc();
 
