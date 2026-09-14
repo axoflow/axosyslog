@@ -30,6 +30,7 @@
 #include "filterx/object-string.h"
 #include "filterx/object-primitive.h"
 #include "filterx/object-datetime.h"
+#include "filterx/object-dict.h"
 #include "apphook.h"
 #include "cfg.h"
 #include "libtest/filterx-lib.h"
@@ -257,6 +258,21 @@ Test(otel_filterx, logrecord_len_and_unset_and_is_key_set)
   filterx_object_unref(time_unix_nano_val);
   filterx_object_unref(body);
   filterx_object_unref(body_val);
+  filterx_object_unref(logrecord);
+}
+
+Test(otel_filterx, logrecord_is_key_set_repeated_field)
+{
+  FilterXObject *logrecord = filterx_otel_logrecord_new();
+  FilterXObject *attributes = filterx_string_new("attributes", -1);
+  FilterXObject *empty = filterx_dict_new();
+
+  cr_assert(filterx_object_is_key_set(logrecord, attributes));
+  cr_assert(filterx_object_set_subscript(logrecord, attributes, &empty));
+  cr_assert(filterx_object_is_key_set(logrecord, attributes));
+
+  filterx_object_unref(empty);
+  filterx_object_unref(attributes);
   filterx_object_unref(logrecord);
 }
 
