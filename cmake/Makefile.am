@@ -20,12 +20,15 @@ EXTRA_DIST +=	\
 	cmake/Modules/FindInotify.cmake	\
 	cmake/Modules/FindIVYKIS.cmake	\
 	cmake/Modules/FindJSONC.cmake	\
+	cmake/Modules/FindLIBBPF.cmake	\
 	cmake/Modules/FindLIBCAP.cmake	\
 	cmake/Modules/FindLIBDBI.cmake	\
 	cmake/Modules/FindLIBMAXMINDDB.cmake	\
 	cmake/Modules/FindLIBNET.cmake	\
+	cmake/Modules/FindLIBUNWIND.cmake	\
 	cmake/Modules/FindNETSNMP.cmake	\
 	cmake/Modules/FindPackageMessage.cmake	\
+	cmake/Modules/FindPoetry.cmake	\
 	cmake/Modules/FindRabbitMQ.cmake	\
 	cmake/Modules/Findrdkafka.cmake	\
 	cmake/Modules/FindResolv.cmake	\
@@ -38,4 +41,5 @@ EXTRA_DIST +=	\
 	cmake/module_switch.cmake		\
 	cmake/openssl_functions.cmake \
 	cmake/print_config_summary.cmake \
-	cmake/python_build_venv.cmake
+	cmake/python_build_venv.cmake \
+	cmake/syslog_ng_core_java_native.cmake
