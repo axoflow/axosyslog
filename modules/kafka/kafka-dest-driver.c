@@ -382,16 +382,16 @@ _construct_client(KafkaDestDriver *self)
 
   conf = rd_kafka_conf_new();
   if (!_conf_set_prop(conf, "metadata.broker.list", self->bootstrap_servers))
-    return NULL;
+    goto err_exit;
   if (!_conf_set_prop(conf, "topic.partitioner", "murmur2_random"))
-    return NULL;
+    goto err_exit;
 
   if (self->transaction_commit)
     _conf_set_prop(conf, "transactional.id",
                    log_pipe_get_persist_name(&self->super.super.super.super));
 
   if (!_apply_config_props(conf, self->config))
-    return NULL;
+    goto err_exit;
   rd_kafka_conf_set_log_cb(conf, _kafka_log_callback);
   rd_kafka_conf_set_dr_cb(conf, _kafka_delivery_report_cb);
   rd_kafka_conf_set_opaque(conf, self);
@@ -403,8 +403,13 @@ _construct_client(KafkaDestDriver *self)
                 evt_tag_str("error", errbuf),
                 evt_tag_str("driver", self->super.super.super.id),
                 log_pipe_location_tag(&self->super.super.super.super));
+      goto err_exit;
     }
   return client;
+
+err_exit:
+  rd_kafka_conf_destroy(conf);
+  return NULL;
 }
 
 static LogThreadedDestWorker *
