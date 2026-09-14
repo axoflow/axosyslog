@@ -21,6 +21,7 @@
  *
  */
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/parameterized.h"
 #include "libtest/stopwatch.h"
 
@@ -47,17 +48,17 @@ assert_encode_equals(const gchar *input, const gchar *expected)
   GString *str = g_string_new("");
 
   str_repr_encode(str, input, -1, NULL);
-  cr_assert_str_eq(str->str, expected, "Encoded value does not match expected; actual: %s, expected: %s", str->str,
-                   expected);
+  cr_assert(eq(str, str->str, expected), "Encoded value does not match expected; actual: %s, expected: %s", str->str,
+            expected);
 
   str_repr_encode(str, input, strlen(input), NULL);
-  cr_assert_str_eq(str->str, expected, "Encoded value does not match expected; actual: %s, expected: %s", str->str,
-                   expected);
+  cr_assert(eq(str, str->str, expected), "Encoded value does not match expected; actual: %s, expected: %s", str->str,
+            expected);
 
   gchar *space_ended_input = g_strdup_printf("%s ", input);
   str_repr_encode(str, space_ended_input, strlen(input), ",");
-  cr_assert_str_eq(str->str, expected, "Encoded value does not match expected; actual: %s, expected: %s", str->str,
-                   expected);
+  cr_assert(eq(str, str->str, expected), "Encoded value does not match expected; actual: %s, expected: %s", str->str,
+            expected);
 
   g_free(space_ended_input);
 
@@ -70,8 +71,8 @@ assert_encode_with_forbidden_equals(const gchar *input, const gchar *forbidden_c
   GString *str = g_string_new("");
 
   str_repr_encode(str, input, -1, forbidden_chars);
-  cr_assert_str_eq(str->str, expected, "Encoded value does not match expected; actual: %s, expected: %s", str->str,
-                   expected);
+  cr_assert(eq(str, str->str, expected), "Encoded value does not match expected; actual: %s, expected: %s", str->str,
+            expected);
   g_string_free(str, TRUE);
 }
 

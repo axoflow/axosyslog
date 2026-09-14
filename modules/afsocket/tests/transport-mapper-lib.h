@@ -25,6 +25,7 @@
 #define AFSOCKET_OPTIONS_LIB_H_INCLUDED
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "socket/transport-mapper.h"
 
@@ -43,44 +44,44 @@ assert_transport_mapper_apply_fails(TransportMapper *self, const gchar *transpor
 {
   if (transport)
     transport_mapper_set_transport(self, transport);
-  cr_assert_not(transport_mapper_apply_transport(self, configuration),
-                "afsocket_apply_transport() succeeded while we expected failure");
+  cr_assert(not(transport_mapper_apply_transport(self, configuration)),
+            "afsocket_apply_transport() succeeded while we expected failure");
 }
 
 static inline void
 assert_transport_mapper_transport(TransportMapper *options, const gchar *expected_transport)
 {
-  cr_assert_str_eq(options->transport, expected_transport, "TransportMapper contains a mismatching transport name");
+  cr_assert(eq(str, options->transport, expected_transport), "TransportMapper contains a mismatching transport name");
 }
 
 static inline void
 assert_transport_mapper_logproto(TransportMapper *options, const gchar *expected_logproto)
 {
-  cr_assert_str_eq(options->logproto, expected_logproto, "TransportMapper contains a mismatching log_proto name");
+  cr_assert(eq(str, options->logproto, expected_logproto), "TransportMapper contains a mismatching log_proto name");
 }
 
 static inline void
 assert_transport_mapper_stats_source(TransportMapper *options, gint stats_source)
 {
-  cr_assert_eq(options->stats_source, stats_source, "TransportMapper contains a mismatching stats_source");
+  cr_assert(eq(int, options->stats_source, stats_source), "TransportMapper contains a mismatching stats_source");
 }
 
 static inline void
 assert_transport_mapper_address_family(TransportMapper *options, gint address_family)
 {
-  cr_assert_eq(options->address_family, address_family, "TransportMapper address family mismatch");
+  cr_assert(eq(int, options->address_family, address_family), "TransportMapper address family mismatch");
 }
 
 static inline void
 assert_transport_mapper_sock_type(TransportMapper *options, gint sock_type)
 {
-  cr_assert_eq(options->sock_type, sock_type, "TransportMapper sock_type mismatch");
+  cr_assert(eq(int, options->sock_type, sock_type), "TransportMapper sock_type mismatch");
 }
 
 static inline void
 assert_transport_mapper_sock_proto(TransportMapper *options, gint sock_proto)
 {
-  cr_assert_eq(options->sock_proto, sock_proto, "TransportMapper sock_proto mismatch");
+  cr_assert(eq(int, options->sock_proto, sock_proto), "TransportMapper sock_proto mismatch");
 }
 
 static inline void
@@ -90,9 +91,9 @@ assert_transport_mapper_transport_name(TransportMapper *options, const gchar *ex
   const gchar *transport_name;
 
   transport_name = transport_mapper_get_transport_name(options, &len);
-  cr_assert_str_eq(transport_name, expected_transport_name,
-                   "TransportMapper transport_name mismatch %s <> %s",
-                   transport_name, expected_transport_name);
+  cr_assert(eq(str, transport_name, expected_transport_name),
+            "TransportMapper transport_name mismatch %s <> %s",
+            transport_name, expected_transport_name);
 }
 
 #endif

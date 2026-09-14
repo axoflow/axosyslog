@@ -21,6 +21,7 @@
  *
  */
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/fake-time.h"
 
 #include "timeutils/unixtime.h"
@@ -37,26 +38,26 @@ _wct_initialize(WallClockTime *wct, const gchar *timestamp)
 {
   gchar *end = wall_clock_time_strptime(wct, "%b %d %Y %H:%M:%S", timestamp);
 
-  cr_assert(*end == 0, "error parsing WallClockTime initialization timestamp: %s, end: %s", timestamp, end);
+  cr_assert(eq(chr, *end, 0), "error parsing WallClockTime initialization timestamp: %s, end: %s", timestamp, end);
 }
 
 Test(unixtime, unix_time_initialization)
 {
   UnixTime ut = UNIX_TIME_INIT;
 
-  cr_assert(!unix_time_is_set(&ut));
+  cr_assert(not(unix_time_is_set(&ut)));
 
   /* Thu Dec 19 22:25:44 CET 2019 */
   fake_time(1576790744);
   unix_time_set_now(&ut);
 
   cr_assert(unix_time_is_set(&ut));
-  cr_expect(ut.ut_sec == 1576790744);
-  cr_expect(ut.ut_usec == 123000);
-  cr_expect(ut.ut_gmtoff == 3600);
+  cr_expect(eq(i64, ut.ut_sec, 1576790744));
+  cr_expect(eq(u32, ut.ut_usec, 123000));
+  cr_expect(eq(i32, ut.ut_gmtoff, 3600));
 
   unix_time_unset(&ut);
-  cr_assert(!unix_time_is_set(&ut));
+  cr_assert(not(unix_time_is_set(&ut)));
 }
 
 Test(unixtime, unix_time_fix_timezone_adjusts_timestamp_as_if_was_parsed_assuming_the_incorrect_timezone)
@@ -67,14 +68,14 @@ Test(unixtime, unix_time_fix_timezone_adjusts_timestamp_as_if_was_parsed_assumin
   _wct_initialize(&wct, "Jan 19 2019 18:58:48");
   wct.wct_gmtoff = 3600;
   convert_wall_clock_time_to_unix_time(&wct, &ut);
-  cr_expect(ut.ut_gmtoff == 3600);
+  cr_expect(eq(i32, ut.ut_gmtoff, 3600));
 
   unix_time_fix_timezone(&ut, -5*3600);
-  cr_expect(ut.ut_gmtoff == -5*3600);
+  cr_expect(eq(i32, ut.ut_gmtoff, -5*3600));
   convert_unix_time_to_wall_clock_time(&ut, &wct);
-  cr_expect(wct.wct_hour == 18);
-  cr_expect(wct.wct_min == 58);
-  cr_expect(wct.wct_sec == 48);
+  cr_expect(eq(int, wct.wct_hour, 18));
+  cr_expect(eq(int, wct.wct_min, 58));
+  cr_expect(eq(int, wct.wct_sec, 48));
 }
 
 static void
@@ -115,9 +116,9 @@ Test(unixtime, unix_time_fix_timezone_with_tzinfo_to_a_zone_backwards_during_spr
 
 
   /* still has not reached the DST start time */
-  cr_assert(ut.ut_sec == 1552201200 - 1);
+  cr_assert(eq(i64, ut.ut_sec, 1552201200 - 1));
   /* thus the resulting timezone is still EST and not the daylight saving variant */
-  cr_assert(ut.ut_gmtoff == -5*3600);
+  cr_assert(eq(i32, ut.ut_gmtoff, -5*3600));
 
   /* TESTCASE: 1 second later, e.g.  Mar 10 2019 02:00:00 CET, which is
    * exactly the daylight saving start second.  It should be converted to
@@ -126,33 +127,33 @@ Test(unixtime, unix_time_fix_timezone_with_tzinfo_to_a_zone_backwards_during_spr
   _fix_timezone_with_tzinfo(&base_ut, &ut, 0, "EST5EDT");
 
   /* we are at exactly the DST start time */
-  cr_assert(ut.ut_sec == 1552201200);
+  cr_assert(eq(i64, ut.ut_sec, 1552201200));
   /* thus the resulting timezone is EDT and not EST */
-  cr_assert(ut.ut_gmtoff == -4*3600);
+  cr_assert(eq(i32, ut.ut_gmtoff, -4*3600));
 
   /* TESTCASE: 30 minutes later, e.g. 02:30:00, that is converted to 03:30:00 */
   _fix_timezone_with_tzinfo(&base_ut, &ut, 1800, "EST5EDT");
 
   /* we lose the hour, so the DST start time */
-  cr_assert(ut.ut_sec == 1552201200 + 1800);
+  cr_assert(eq(i64, ut.ut_sec, 1552201200 + 1800));
   /* thus the resulting timezone is EDT */
-  cr_assert(ut.ut_gmtoff == -4*3600);
+  cr_assert(eq(i32, ut.ut_gmtoff, -4*3600));
 
   /* TESTCASE: 1 hour second later, e.g. 03:00:00 */
   _fix_timezone_with_tzinfo(&base_ut, &ut, 3600, "EST5EDT");
 
   /* we lose the hour, so the DST start time */
-  cr_assert(ut.ut_sec == 1552201200);
+  cr_assert(eq(i64, ut.ut_sec, 1552201200));
   /* thus the resulting timezone is still EST and not the daylight saving variant */
-  cr_assert(ut.ut_gmtoff == -4*3600);
+  cr_assert(eq(i32, ut.ut_gmtoff, -4*3600));
 
   /* TESTCASE: 2 hours second later, e.g. 04:00:00 */
   _fix_timezone_with_tzinfo(&base_ut, &ut, 7200, "EST5EDT");
 
   /* we lose the hour, so the DST start time */
-  cr_assert(ut.ut_sec == 1552201200 + 3600);
+  cr_assert(eq(i64, ut.ut_sec, 1552201200 + 3600));
   /* thus the resulting timezone is still EST and not the daylight saving variant */
-  cr_assert(ut.ut_gmtoff == -4*3600);
+  cr_assert(eq(i32, ut.ut_gmtoff, -4*3600));
 }
 
 Test(unixtime, unix_time_fix_timezone_with_tzinfo_to_a_zone_forwards_during_sprint_daylight_saving_hour)
@@ -176,9 +177,9 @@ Test(unixtime, unix_time_fix_timezone_with_tzinfo_to_a_zone_forwards_during_spri
   _fix_timezone_with_tzinfo(&base_ut, &ut, -1, "CET");
 
   /* still has not reached the DST start time */
-  cr_assert(ut.ut_sec == 1553994000 - 1);
+  cr_assert(eq(i64, ut.ut_sec, 1553994000 - 1));
   /* thus the resulting timezone is still EST and not the daylight saving variant */
-  cr_assert(ut.ut_gmtoff == 3600);
+  cr_assert(eq(i32, ut.ut_gmtoff, 3600));
 
   /* TESTCASE: 1 second later, e.g.  Mar 31 2019 02:00:00 CET, which is
    * exactly the daylight saving start second.  It should be converted to
@@ -186,33 +187,33 @@ Test(unixtime, unix_time_fix_timezone_with_tzinfo_to_a_zone_forwards_during_spri
   _fix_timezone_with_tzinfo(&base_ut, &ut, 0, "CET");
 
   /* we are at exactly the DST start time */
-  cr_assert(ut.ut_sec == 1553994000);
+  cr_assert(eq(i64, ut.ut_sec, 1553994000));
   /* thus the resulting timezone is EDT and not EST */
-  cr_assert(ut.ut_gmtoff == 2*3600);
+  cr_assert(eq(i32, ut.ut_gmtoff, 2*3600));
 
   /* TESTCASE: 30 minutes later, e.g. 02:30:00, that is converted to 03:30:00 */
   _fix_timezone_with_tzinfo(&base_ut, &ut, 1800, "CET");
 
   /* we lose the hour, so the DST start time */
-  cr_assert(ut.ut_sec == 1553994000 + 1800);
+  cr_assert(eq(i64, ut.ut_sec, 1553994000 + 1800));
   /* thus the resulting timezone is EDT */
-  cr_assert(ut.ut_gmtoff == 2*3600);
+  cr_assert(eq(i32, ut.ut_gmtoff, 2*3600));
 
   /* TESTCASE: 1 hour second later, e.g. 03:00:00 */
   _fix_timezone_with_tzinfo(&base_ut, &ut, 3600, "CET");
 
   /* we lose the hour, so the DST start time */
-  cr_assert(ut.ut_sec == 1553994000);
+  cr_assert(eq(i64, ut.ut_sec, 1553994000));
   /* thus the resulting timezone is still EST and not the daylight saving variant */
-  cr_assert(ut.ut_gmtoff == 2*3600);
+  cr_assert(eq(i32, ut.ut_gmtoff, 2*3600));
 
   /* TESTCASE: 2 hours second later, e.g. 04:00:00 */
   _fix_timezone_with_tzinfo(&base_ut, &ut, 7200, "CET");
 
   /* we lose the hour, so the DST start time */
-  cr_assert(ut.ut_sec == 1553994000 + 3600);
+  cr_assert(eq(i64, ut.ut_sec, 1553994000 + 3600));
   /* thus the resulting timezone is still EST and not the daylight saving variant */
-  cr_assert(ut.ut_gmtoff == 2*3600);
+  cr_assert(eq(i32, ut.ut_gmtoff, 2*3600));
 }
 
 Test(unixtime, unix_time_fix_timezone_with_tzinfo_to_a_zone_backwards_during_autumn_daylight_saving_hour)
@@ -238,9 +239,9 @@ Test(unixtime, unix_time_fix_timezone_with_tzinfo_to_a_zone_backwards_during_aut
 
 
   /* still has not reached the DST start time */
-  cr_assert(ut.ut_sec == 1572760800 - 1);
+  cr_assert(eq(i64, ut.ut_sec, 1572760800 - 1));
   /* thus the resulting timezone is still EDT */
-  cr_assert(ut.ut_gmtoff == -4*3600);
+  cr_assert(eq(i32, ut.ut_gmtoff, -4*3600));
 
   /* TESTCASE: 1 second later, e.g.  Mar 10 2019 02:00:00 CET, which is
    * exactly the daylight saving start second.  It should be converted to
@@ -255,33 +256,33 @@ Test(unixtime, unix_time_fix_timezone_with_tzinfo_to_a_zone_backwards_during_aut
    * between 02:00:00 to 02:59:59 in the daylight saving period, unless the
    * timezone is explicitly available in the timestamp.  */
 
-  cr_assert(ut.ut_sec == 1572760800 + 3600);
+  cr_assert(eq(i64, ut.ut_sec, 1572760800 + 3600));
   /* thus the resulting timezone is EST and not EDT */
-  cr_assert(ut.ut_gmtoff == -5*3600);
+  cr_assert(eq(i32, ut.ut_gmtoff, -5*3600));
 
   /* TESTCASE: 30 minutes later, e.g. 02:30:00, that is converted to 03:30:00 */
   _fix_timezone_with_tzinfo(&base_ut, &ut, 1800, "EST5EDT");
 
   /* we lose the hour in ut_sec */
-  cr_assert(ut.ut_sec == 1572760800 + 3600 + 1800);
+  cr_assert(eq(i64, ut.ut_sec, 1572760800 + 3600 + 1800));
   /* thus the resulting timezone is EST and not EDT */
-  cr_assert(ut.ut_gmtoff == -5*3600);
+  cr_assert(eq(i32, ut.ut_gmtoff, -5*3600));
 
   /* TESTCASE: 1 hour second later, e.g. 03:00:00 */
   _fix_timezone_with_tzinfo(&base_ut, &ut, 3600, "EST5EDT");
 
   /* we lose the hour in ut_sec */
-  cr_assert(ut.ut_sec == 1572760800 + 3600 + 3600);
+  cr_assert(eq(i64, ut.ut_sec, 1572760800 + 3600 + 3600));
   /* thus the resulting timezone is EST and not EDT */
-  cr_assert(ut.ut_gmtoff == -5*3600);
+  cr_assert(eq(i32, ut.ut_gmtoff, -5*3600));
 
   /* TESTCASE: 2 hours second later, e.g. 04:00:00 */
   _fix_timezone_with_tzinfo(&base_ut, &ut, 7200, "EST5EDT");
 
   /* we lose the hour in ut_sec */
-  cr_assert(ut.ut_sec == 1572760800 + 3600 + 7200);
+  cr_assert(eq(i64, ut.ut_sec, 1572760800 + 3600 + 7200));
   /* thus the resulting timezone is EST and not EDT */
-  cr_assert(ut.ut_gmtoff == -5*3600);
+  cr_assert(eq(i32, ut.ut_gmtoff, -5*3600));
 }
 
 Test(unixtime, unix_time_fix_timezone_with_tzinfo_to_a_zone_forwards_during_autumn_daylight_saving_hour)
@@ -307,9 +308,9 @@ Test(unixtime, unix_time_fix_timezone_with_tzinfo_to_a_zone_forwards_during_autu
   _fix_timezone_with_tzinfo(&base_ut, &ut, -1, "CET");
 
   /* still has not reached the DST start time */
-  cr_assert(ut.ut_sec == 1572134400 - 1);
+  cr_assert(eq(i64, ut.ut_sec, 1572134400 - 1));
   /* thus the resulting timezone is still CEST */
-  cr_assert(ut.ut_gmtoff == 2*3600);
+  cr_assert(eq(i32, ut.ut_gmtoff, 2*3600));
 
   /* TESTCASE: 1 second later, e.g.  Oct 27 2019 02:00:00 EDT, which is
    * exactly the daylight saving start second if interpreted in CET.  It
@@ -324,34 +325,34 @@ Test(unixtime, unix_time_fix_timezone_with_tzinfo_to_a_zone_forwards_during_autu
    * between 02:00:00 to 02:59:59 in the daylight saving period, unless the
    * timezone is explicitly available in the timestamp.  */
 
-  cr_assert(ut.ut_sec == 1572134400 + 3600);
+  cr_assert(eq(i64, ut.ut_sec, 1572134400 + 3600));
   /* thus the resulting timezone is EST and not EDT */
-  cr_assert(ut.ut_gmtoff == 3600);
+  cr_assert(eq(i32, ut.ut_gmtoff, 3600));
 
 
   /* TESTCASE: 30 minutes later, e.g. 02:30:00, that is converted to 03:30:00 */
   _fix_timezone_with_tzinfo(&base_ut, &ut, 1800, "CET");
 
   /* we lose the hour in ut_sec */
-  cr_assert(ut.ut_sec == 1572134400 + 3600 + 1800);
+  cr_assert(eq(i64, ut.ut_sec, 1572134400 + 3600 + 1800));
   /* thus the resulting timezone is EST and not EDT */
-  cr_assert(ut.ut_gmtoff == 3600);
+  cr_assert(eq(i32, ut.ut_gmtoff, 3600));
 
   /* TESTCASE: 1 hour second later, e.g. 03:00:00 */
   _fix_timezone_with_tzinfo(&base_ut, &ut, 3600, "CET");
 
   /* we lose the hour in ut_sec */
-  cr_assert(ut.ut_sec == 1572134400 + 3600 + 3600);
+  cr_assert(eq(i64, ut.ut_sec, 1572134400 + 3600 + 3600));
   /* thus the resulting timezone is EST and not EDT */
-  cr_assert(ut.ut_gmtoff == 3600);
+  cr_assert(eq(i32, ut.ut_gmtoff, 3600));
 
   /* TESTCASE: 2 hours second later, e.g. 04:00:00 */
   _fix_timezone_with_tzinfo(&base_ut, &ut, 7200, "CET");
 
   /* we lose the hour in ut_sec */
-  cr_assert(ut.ut_sec == 1572134400 + 3600 + 7200);
+  cr_assert(eq(i64, ut.ut_sec, 1572134400 + 3600 + 7200));
   /* thus the resulting timezone is EST and not EDT */
-  cr_assert(ut.ut_gmtoff == 3600);
+  cr_assert(eq(i32, ut.ut_gmtoff, 3600));
 }
 
 Test(unixtime, unix_time_set_timezone_converts_the_timestamp_to_a_target_timezone_assuming_the_source_was_correct)
@@ -362,14 +363,14 @@ Test(unixtime, unix_time_set_timezone_converts_the_timestamp_to_a_target_timezon
   _wct_initialize(&wct, "Jan 19 2019 18:58:48");
   wct.wct_gmtoff = 3600;
   convert_wall_clock_time_to_unix_time(&wct, &ut);
-  cr_expect(ut.ut_gmtoff == 3600);
+  cr_expect(eq(i32, ut.ut_gmtoff, 3600));
 
   unix_time_set_timezone(&ut, -5*3600);
-  cr_expect(ut.ut_gmtoff == -5*3600);
+  cr_expect(eq(i32, ut.ut_gmtoff, -5*3600));
   convert_unix_time_to_wall_clock_time(&ut, &wct);
-  cr_expect(wct.wct_hour == 12);
-  cr_expect(wct.wct_min == 58);
-  cr_expect(wct.wct_sec == 48);
+  cr_expect(eq(int, wct.wct_hour, 12));
+  cr_expect(eq(int, wct.wct_min, 58));
+  cr_expect(eq(int, wct.wct_sec, 48));
 }
 
 Test(unixtime, unix_time_set_timezone_with_tzinfo_calculates_dst_automatically)
@@ -380,25 +381,25 @@ Test(unixtime, unix_time_set_timezone_with_tzinfo_calculates_dst_automatically)
   _wct_initialize(&wct, "Mar 10 2019 01:59:59");
   wct.wct_gmtoff = -5*3600;
   convert_wall_clock_time_to_unix_time(&wct, &ut);
-  cr_expect(ut.ut_gmtoff == -5*3600);
+  cr_expect(eq(i32, ut.ut_gmtoff, -5*3600));
 
   unix_time_set_timezone_with_tzinfo(&ut, cached_get_time_zone_info("EST5EDT"));
-  cr_expect(ut.ut_gmtoff == -5*3600);
+  cr_expect(eq(i32, ut.ut_gmtoff, -5*3600));
   ut.ut_sec += 1;
   unix_time_set_timezone_with_tzinfo(&ut, cached_get_time_zone_info("EST5EDT"));
-  cr_expect(ut.ut_gmtoff == -4*3600);
+  cr_expect(eq(i32, ut.ut_gmtoff, -4*3600));
 
   _wct_initialize(&wct, "Nov 3 2019 01:59:59");
   wct.wct_gmtoff = -4*3600;
   convert_wall_clock_time_to_unix_time(&wct, &ut);
-  cr_expect(ut.ut_gmtoff == -4*3600);
+  cr_expect(eq(i32, ut.ut_gmtoff, -4*3600));
 
   unix_time_set_timezone_with_tzinfo(&ut, cached_get_time_zone_info("EST5EDT"));
-  cr_expect(ut.ut_gmtoff == -4*3600);
+  cr_expect(eq(i32, ut.ut_gmtoff, -4*3600));
 
   ut.ut_sec += 1;
   unix_time_set_timezone_with_tzinfo(&ut, cached_get_time_zone_info("EST5EDT"));
-  cr_expect(ut.ut_gmtoff == -5*3600);
+  cr_expect(eq(i32, ut.ut_gmtoff, -5*3600));
 }
 
 Test(unixtime, unix_time_guess_timezone_for_even_hour_differences)
@@ -413,33 +414,33 @@ Test(unixtime, unix_time_guess_timezone_for_even_hour_differences)
   /* this is one hour earlier than current time */
   _wct_initialize(&wct, "Dec 19 2019 21:25:44");
   convert_wall_clock_time_to_unix_time(&wct, &ut);
-  cr_expect(ut.ut_sec == 1576790744 - 3600);
-  cr_expect(ut.ut_gmtoff == 3600);
+  cr_expect(eq(i64, ut.ut_sec, 1576790744 - 3600));
+  cr_expect(eq(i32, ut.ut_gmtoff, 3600));
 
   unix_time_fix_timezone_assuming_the_time_matches_real_time(&ut);
-  cr_expect(ut.ut_sec == 1576790744);
-  cr_expect(ut.ut_gmtoff == 0);
+  cr_expect(eq(i64, ut.ut_sec, 1576790744));
+  cr_expect(eq(i32, ut.ut_gmtoff, 0));
 
   /* 13 hours earlier to test one extreme of the timezones, that is -12:00 */
   _wct_initialize(&wct, "Dec 19 2019 09:25:44");
   convert_wall_clock_time_to_unix_time(&wct, &ut);
-  cr_expect(ut.ut_sec == 1576790744 - 13*3600);
-  cr_expect(ut.ut_gmtoff == 3600);
+  cr_expect(eq(i64, ut.ut_sec, 1576790744 - 13*3600));
+  cr_expect(eq(i32, ut.ut_gmtoff, 3600));
 
   unix_time_fix_timezone_assuming_the_time_matches_real_time(&ut);
-  cr_expect(ut.ut_sec == 1576790744);
-  cr_expect(ut.ut_gmtoff == -12*3600);
+  cr_expect(eq(i64, ut.ut_sec, 1576790744));
+  cr_expect(eq(i32, ut.ut_gmtoff, -12*3600));
 
 
   /* 13 hours later to test the other extreme, that is +14:00 */
   _wct_initialize(&wct, "Dec 20 2019 11:25:44");
   convert_wall_clock_time_to_unix_time(&wct, &ut);
-  cr_expect(ut.ut_sec == 1576790744 + 13*3600);
-  cr_expect(ut.ut_gmtoff == 3600);
+  cr_expect(eq(i64, ut.ut_sec, 1576790744 + 13*3600));
+  cr_expect(eq(i32, ut.ut_gmtoff, 3600));
 
   unix_time_fix_timezone_assuming_the_time_matches_real_time(&ut);
-  cr_expect(ut.ut_sec == 1576790744);
-  cr_expect(ut.ut_gmtoff == +14*3600, "%d", ut.ut_gmtoff);
+  cr_expect(eq(i64, ut.ut_sec, 1576790744));
+  cr_expect(eq(i32, ut.ut_gmtoff, +14*3600), "%d", ut.ut_gmtoff);
 }
 
 
@@ -460,8 +461,8 @@ Test(unixtime, unix_time_guess_timezone_for_quarter_hour_differences)
       ut.ut_gmtoff = 3600;
       if (unix_time_fix_timezone_assuming_the_time_matches_real_time(&ut))
         {
-          cr_expect(ut.ut_sec == 1576790744);
-          cr_expect(ut.ut_gmtoff == diff + 3600);
+          cr_expect(eq(i64, ut.ut_sec, 1576790744));
+          cr_expect(eq(i32, ut.ut_gmtoff, diff + 3600));
 
           if ((diff % 3600) != 0)
             number_of_noneven_timezones++;
@@ -469,12 +470,12 @@ Test(unixtime, unix_time_guess_timezone_for_quarter_hour_differences)
             number_of_even_timezones++;
         }
     }
-  cr_assert(number_of_noneven_timezones == 17,
+  cr_assert(eq(int, number_of_noneven_timezones, 17),
             "The expected number of timezones that are not at an even hour boundary does not match expectations: %d",
             number_of_noneven_timezones);
 
   /* -12:00 .. 00:00 .. +14:00 */
-  cr_assert(number_of_even_timezones == 12 + 1 + 14,
+  cr_assert(eq(int, number_of_even_timezones, 12 + 1 + 14),
             "The expected number of timezones that are at an even hour boundary does not match expectations: %d",
             number_of_even_timezones);
 }
@@ -484,26 +485,26 @@ Test(unixtime, test_unix_time_diff_in_seconds)
   UnixTime ut1 = { 1, 123000 };
   UnixTime ut2 = { 2, 123000 };
 
-  cr_assert(unix_time_diff_in_seconds(&ut1, &ut2) == -1);
-  cr_assert(unix_time_diff_in_seconds(&ut2, &ut1) == 1);
+  cr_assert(eq(i64, unix_time_diff_in_seconds(&ut1, &ut2), -1));
+  cr_assert(eq(i64, unix_time_diff_in_seconds(&ut2, &ut1), 1));
 
   ut2.ut_sec = 1;
   ut2.ut_usec = 623000;
 
-  cr_assert(unix_time_diff_in_seconds(&ut1, &ut2) == -1);
-  cr_assert(unix_time_diff_in_seconds(&ut2, &ut1) == 1);
+  cr_assert(eq(i64, unix_time_diff_in_seconds(&ut1, &ut2), -1));
+  cr_assert(eq(i64, unix_time_diff_in_seconds(&ut2, &ut1), 1));
 
   ut2.ut_sec = 1;
   ut2.ut_usec = 622000;
 
-  cr_assert(unix_time_diff_in_seconds(&ut1, &ut2) == 0);
-  cr_assert(unix_time_diff_in_seconds(&ut2, &ut1) == 0);
+  cr_assert(eq(i64, unix_time_diff_in_seconds(&ut1, &ut2), 0));
+  cr_assert(eq(i64, unix_time_diff_in_seconds(&ut2, &ut1), 0));
 
   ut2.ut_sec = 1;
   ut2.ut_usec = 624000;
 
-  cr_assert(unix_time_diff_in_seconds(&ut1, &ut2) == -1);
-  cr_assert(unix_time_diff_in_seconds(&ut2, &ut1) == 1);
+  cr_assert(eq(i64, unix_time_diff_in_seconds(&ut1, &ut2), -1));
+  cr_assert(eq(i64, unix_time_diff_in_seconds(&ut2, &ut1), 1));
 
 
 
@@ -512,16 +513,16 @@ Test(unixtime, test_unix_time_diff_in_seconds)
   ut1.ut_usec = 0;
   ut2.ut_sec = 1;
   ut2.ut_usec = 500001;
-  cr_assert_eq(unix_time_diff_in_seconds(&ut1, &ut2), -2);
-  cr_assert_eq(unix_time_diff_in_seconds(&ut2, &ut1), 2);
+  cr_assert(eq(i64, unix_time_diff_in_seconds(&ut1, &ut2), -2));
+  cr_assert(eq(i64, unix_time_diff_in_seconds(&ut2, &ut1), 2));
 
   /* < 0.5 seconds rounded down */
   ut1.ut_sec = 0;
   ut1.ut_usec = 980000;
   ut2.ut_sec = 1;
   ut2.ut_usec =  20000;
-  cr_assert_eq(unix_time_diff_in_seconds(&ut2, &ut1), 0);
-  cr_assert_eq(unix_time_diff_in_seconds(&ut1, &ut2), 0);
+  cr_assert(eq(i64, unix_time_diff_in_seconds(&ut2, &ut1), 0));
+  cr_assert(eq(i64, unix_time_diff_in_seconds(&ut1, &ut2), 0));
 
 }
 
@@ -530,44 +531,44 @@ Test(unixtime, test_unix_time_diff_in_msec)
   UnixTime ut1 = { 1, 123000 };
   UnixTime ut2 = { 2, 123000 };
 
-  cr_assert(unix_time_diff_in_msec(&ut1, &ut2) == -1000);
-  cr_assert(unix_time_diff_in_msec(&ut2, &ut1) == 1000);
+  cr_assert(eq(i64, unix_time_diff_in_msec(&ut1, &ut2), -1000));
+  cr_assert(eq(i64, unix_time_diff_in_msec(&ut2, &ut1), 1000));
 
   ut2.ut_sec = 1;
   ut2.ut_usec = 623000;
 
-  cr_assert(unix_time_diff_in_msec(&ut1, &ut2) == -500);
-  cr_assert(unix_time_diff_in_msec(&ut2, &ut1) == 500);
+  cr_assert(eq(i64, unix_time_diff_in_msec(&ut1, &ut2), -500));
+  cr_assert(eq(i64, unix_time_diff_in_msec(&ut2, &ut1), 500));
 
   ut2.ut_sec = 1;
   ut2.ut_usec = 622000;
 
-  cr_assert(unix_time_diff_in_msec(&ut1, &ut2) == -499);
-  cr_assert(unix_time_diff_in_msec(&ut2, &ut1) == 499);
+  cr_assert(eq(i64, unix_time_diff_in_msec(&ut1, &ut2), -499));
+  cr_assert(eq(i64, unix_time_diff_in_msec(&ut2, &ut1), 499));
 
   ut2.ut_sec = 1;
   ut2.ut_usec = 622499;
 
-  cr_assert(unix_time_diff_in_msec(&ut1, &ut2) == -499);
-  cr_assert(unix_time_diff_in_msec(&ut2, &ut1) == 499);
+  cr_assert(eq(i64, unix_time_diff_in_msec(&ut1, &ut2), -499));
+  cr_assert(eq(i64, unix_time_diff_in_msec(&ut2, &ut1), 499));
 
   ut2.ut_sec = 1;
   ut2.ut_usec = 622500;
 
-  cr_assert(unix_time_diff_in_msec(&ut1, &ut2) == -500);
-  cr_assert(unix_time_diff_in_msec(&ut2, &ut1) == 500);
+  cr_assert(eq(i64, unix_time_diff_in_msec(&ut1, &ut2), -500));
+  cr_assert(eq(i64, unix_time_diff_in_msec(&ut2, &ut1), 500));
 
   ut2.ut_sec = 1;
   ut2.ut_usec = 623499;
 
-  cr_assert(unix_time_diff_in_msec(&ut1, &ut2) == -500);
-  cr_assert(unix_time_diff_in_msec(&ut2, &ut1) == 500);
+  cr_assert(eq(i64, unix_time_diff_in_msec(&ut1, &ut2), -500));
+  cr_assert(eq(i64, unix_time_diff_in_msec(&ut2, &ut1), 500));
 
   ut2.ut_sec = 1;
   ut2.ut_usec = 623501;
 
-  cr_assert(unix_time_diff_in_msec(&ut1, &ut2) == -501);
-  cr_assert(unix_time_diff_in_msec(&ut2, &ut1) == 501);
+  cr_assert(eq(i64, unix_time_diff_in_msec(&ut1, &ut2), -501));
+  cr_assert(eq(i64, unix_time_diff_in_msec(&ut2, &ut1), 501));
 }
 
 static void

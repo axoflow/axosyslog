@@ -670,8 +670,12 @@ dnl reported at all, causing it to be unusable for detection purposes.
 AX_CHECK_COMPILE_FLAG(-Winitializer-overrides, CFLAGS_W_NO_INITIALIZER_OVERRIDES="-Wno-initializer-overrides",,"-Werror")
 AX_CHECK_COMPILE_FLAG(-Wold-style-declaration, CFLAGS_W_OLD_STYLE_DECLARATION="-Wold-style-declaration",,"-Werror")
 
+AX_CHECK_COMPILE_FLAG(-Wdiscarded-qualifiers, CFLAGS_W_NO_DISCARDED_QUALIFIERS="-Wno-discarded-qualifiers",,"-Werror")
+AX_CHECK_COMPILE_FLAG(-Wincompatible-pointer-types-discards-qualifiers, CFLAGS_W_NO_DISCARDED_QUALIFIERS="-Wno-incompatible-pointer-types-discards-qualifiers",,"-Werror")
+
 AC_SUBST(CFLAGS_W_NO_INITIALIZER_OVERRIDES)
 AC_SUBST(CFLAGS_W_OLD_STYLE_DECLARATION)
+AC_SUBST(CFLAGS_W_NO_DISCARDED_QUALIFIERS)
 
 dnl User supplied CFLAGS come last
 CFLAGS="${CFLAGS_ADD} ${ac_cv_env_CFLAGS_value}"

@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/parameterized.h"
 #include <string.h>
 
@@ -85,13 +86,13 @@ StaticParameterizedTest(ParserTestParam *param, test_string_parser_params, parse
   if (param->expected_result == TRUE)
     {
       cr_assert(result, "Mismatching parser result (true expected)");
-      cr_assert_str_eq(result_string, param->expected_string, "Mismatching parser result (exp:%s, res:%s)",
-                       param->expected_string, result_string);
+      cr_assert(eq(str, result_string, param->expected_string), "Mismatching parser result (exp:%s, res:%s)",
+                param->expected_string, result_string);
       g_free(result_string);
     }
   else
     {
-      cr_assert_not(result, "Mismatching parser result (false expected)");
+      cr_assert(not(result), "Mismatching parser result (false expected)");
     }
 }
 
@@ -131,7 +132,7 @@ StaticParameterizedTest(ParserQStringTestParam *param, test_qstring_parser_param
   result = _invoke_parser(r_parser_qstring, param->str, param->quotes, _compile_qstring_state(param->quotes),
                           &result_string);
   cr_assert(result, "Mismatching parser result");
-  cr_assert_str_eq(result_string, param->expected_string, "Mismatching parser result (exp:%s, res:%s)",
-                   param->expected_string, result_string);
+  cr_assert(eq(str, result_string, param->expected_string), "Mismatching parser result (exp:%s, res:%s)",
+            param->expected_string, result_string);
   g_free(result_string);
 }

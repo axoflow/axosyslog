@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/parameterized.h"
 #include "libtest/queue_utils_lib.h"
 #include "libtest/mock-function.h"
@@ -75,9 +76,9 @@ Test(diskq, testcase_zero_diskbuf_and_normal_acks)
     feed_some_messages(q, 10);
 
   send_some_messages(q, fed_messages, TRUE);
-  cr_assert_eq(fed_messages, acked_messages,
-               "%s: did not receive enough acknowledgements: fed_messages=%d, acked_messages=%d\n", __FUNCTION__, fed_messages,
-               acked_messages);
+  cr_assert(eq(int, fed_messages, acked_messages),
+            "%s: did not receive enough acknowledgements: fed_messages=%d, acked_messages=%d\n", __FUNCTION__, fed_messages,
+            acked_messages);
 
   gboolean persistent;
   log_queue_disk_stop(q, &persistent);
@@ -110,9 +111,9 @@ Test(diskq, testcase_zero_diskbuf_alternating_send_acks)
       send_some_messages(q, 10, TRUE);
     }
 
-  cr_assert_eq(fed_messages, acked_messages,
-               "%s: did not receive enough acknowledgements: fed_messages=%d, acked_messages=%d\n", __FUNCTION__, fed_messages,
-               acked_messages);
+  cr_assert(eq(int, fed_messages, acked_messages),
+            "%s: did not receive enough acknowledgements: fed_messages=%d, acked_messages=%d\n", __FUNCTION__, fed_messages,
+            acked_messages);
 
   gboolean persistent;
   log_queue_disk_stop(q, &persistent);
@@ -140,29 +141,31 @@ Test(diskq, testcase_ack_and_rewind_messages)
   stats_cluster_key_builder_free(driver_sck_builder);
   stats_cluster_key_builder_free(queue_sck_builder);
 
-  cr_assert_eq(stats_counter_get(q->metrics.shared.queued_messages), 0, "queued messages: %d", __LINE__);
+  cr_assert(eq(sz, stats_counter_get(q->metrics.shared.queued_messages), 0), "queued messages: %d", __LINE__);
 
   log_queue_disk_start(q);
 
   fed_messages = 0;
   acked_messages = 0;
   feed_some_messages(q, 1000);
-  cr_assert_eq(stats_counter_get(q->metrics.shared.queued_messages), 1000, "queued messages: %d", __LINE__);
+  cr_assert(eq(sz, stats_counter_get(q->metrics.shared.queued_messages), 1000), "queued messages: %d", __LINE__);
 
   for (i = 0; i < 10; i++)
     {
       send_some_messages(q, 1, FALSE);
-      cr_assert_eq(stats_counter_get(q->metrics.shared.queued_messages), 999, "queued messages wrong number %d", __LINE__);
+      cr_assert(eq(sz, stats_counter_get(q->metrics.shared.queued_messages), 999),
+                "queued messages wrong number %d", __LINE__);
       log_queue_rewind_backlog(q, 1);
-      cr_assert_eq(stats_counter_get(q->metrics.shared.queued_messages), 1000, "queued messages wrong number: %d", __LINE__);
+      cr_assert(eq(sz, stats_counter_get(q->metrics.shared.queued_messages), 1000),
+                "queued messages wrong number: %d", __LINE__);
     }
   send_some_messages(q, 1000, FALSE);
-  cr_assert_eq(stats_counter_get(q->metrics.shared.queued_messages), 0, "queued messages: %d", __LINE__);
+  cr_assert(eq(sz, stats_counter_get(q->metrics.shared.queued_messages), 0), "queued messages: %d", __LINE__);
   log_queue_ack_backlog(q, 500);
   log_queue_rewind_backlog(q, 500);
-  cr_assert_eq(stats_counter_get(q->metrics.shared.queued_messages), 500, "queued messages: %d", __LINE__);
+  cr_assert(eq(sz, stats_counter_get(q->metrics.shared.queued_messages), 500), "queued messages: %d", __LINE__);
   send_some_messages(q, 500, FALSE);
-  cr_assert_eq(stats_counter_get(q->metrics.shared.queued_messages), 0, "queued messages: %d", __LINE__);
+  cr_assert(eq(sz, stats_counter_get(q->metrics.shared.queued_messages), 0), "queued messages: %d", __LINE__);
   log_queue_ack_backlog(q, 500);
 
   gboolean persistent;
@@ -355,30 +358,30 @@ StaticParameterizedTest(restart_test_parameters *test_case, testcase_diskbuffer_
   log_queue_disk_start(q);
   fed_messages = 0;
   feed_some_messages(q, 100);
-  cr_assert_eq(fed_messages, 100, "Failed to push all messages to the disk-queue!\n");
+  cr_assert(eq(int, fed_messages, 100), "Failed to push all messages to the disk-queue!\n");
 
   LogQueueDisk *disk_queue = (LogQueueDisk *)q;
   log_queue_disk_restart_corrupted(disk_queue);
 
   struct stat file_stat;
-  cr_assert_eq(stat(filename, &file_stat), 0,
-               "New disk-queue file does not exists!!");
-  cr_assert_eq(S_ISREG(file_stat.st_mode), TRUE,
-               "New disk-queue file expected to be a regular file!! st_mode value=%04o",
-               (file_stat.st_mode & S_IFMT));
+  cr_assert(eq(int, stat(filename, &file_stat), 0),
+            "New disk-queue file does not exists!!");
+  cr_assert(ne(int, S_ISREG(file_stat.st_mode), 0),
+            "New disk-queue file expected to be a regular file!! st_mode value=%04o",
+            (file_stat.st_mode & S_IFMT));
   stat(filename_corrupted_dq, &file_stat);
-  cr_assert_eq(S_ISREG(file_stat.st_mode), TRUE,
-               "Corrupted disk-queue file does not exists!!");
-  cr_assert_str_eq(qdisk_get_filename(disk_queue->qdisk), filename,
-                   "New disk-queue file's name should be the same\n");
-  cr_assert_eq(qdisk_get_maximum_size(disk_queue->qdisk), original_dcapacity,
-               "Disk-queue option does not match the original configured value!\n");
-  cr_assert_eq(qdisk_get_length(disk_queue->qdisk), 0,
-               "New disk-queue file should be empty!\n");
-  cr_assert_eq(qdisk_get_writer_head(disk_queue->qdisk), QDISK_RESERVED_SPACE,
-               "Invalid write pointer!\n");
-  cr_assert_eq(qdisk_get_reader_head(disk_queue->qdisk), QDISK_RESERVED_SPACE,
-               "Invalid read pointer!\n");
+  cr_assert(ne(int, S_ISREG(file_stat.st_mode), 0),
+            "Corrupted disk-queue file does not exists!!");
+  cr_assert(eq(str, qdisk_get_filename(disk_queue->qdisk), filename),
+            "New disk-queue file's name should be the same\n");
+  cr_assert(eq(i64, qdisk_get_maximum_size(disk_queue->qdisk), original_dcapacity),
+            "Disk-queue option does not match the original configured value!\n");
+  cr_assert(eq(i64, qdisk_get_length(disk_queue->qdisk), 0),
+            "New disk-queue file should be empty!\n");
+  cr_assert(eq(i64, qdisk_get_writer_head(disk_queue->qdisk), QDISK_RESERVED_SPACE),
+            "Invalid write pointer!\n");
+  cr_assert(eq(i64, qdisk_get_reader_head(disk_queue->qdisk), QDISK_RESERVED_SPACE),
+            "Invalid read pointer!\n");
 
   gboolean persistent;
   log_queue_disk_stop(q, &persistent);
@@ -416,20 +419,23 @@ static void
 assert_general_message_flow(LogQueue *q, gssize one_msg_size)
 {
   send_some_messages(q, 1, TRUE);
-  cr_assert_eq(stats_counter_get(q->metrics.shared.queued_messages), 1, "queued messages: line: %d", __LINE__);
-  cr_assert_eq(stats_counter_get(q->metrics.shared.memory_usage), one_msg_size, "memory_usage: line: %d", __LINE__);
+  cr_assert(eq(sz, stats_counter_get(q->metrics.shared.queued_messages), 1), "queued messages: line: %d", __LINE__);
+  cr_assert(eq(i64, stats_counter_get(q->metrics.shared.memory_usage), one_msg_size),
+            "memory_usage: line: %d", __LINE__);
 
   send_some_messages(q, 1, TRUE);
-  cr_assert_eq(stats_counter_get(q->metrics.shared.queued_messages), 0, "queued messages: line: %d", __LINE__);
-  cr_assert_eq(stats_counter_get(q->metrics.shared.memory_usage), 0, "memory_usage: line: %d", __LINE__);
+  cr_assert(eq(sz, stats_counter_get(q->metrics.shared.queued_messages), 0), "queued messages: line: %d", __LINE__);
+  cr_assert(eq(sz, stats_counter_get(q->metrics.shared.memory_usage), 0), "memory_usage: line: %d", __LINE__);
 
   feed_some_messages(q, 10);
-  cr_assert_eq(stats_counter_get(q->metrics.shared.queued_messages), 10, "queued messages: line: %d", __LINE__);
-  cr_assert_eq(stats_counter_get(q->metrics.shared.memory_usage), one_msg_size*10, "memory_usage: line: %d", __LINE__);
+  cr_assert(eq(sz, stats_counter_get(q->metrics.shared.queued_messages), 10), "queued messages: line: %d", __LINE__);
+  cr_assert(eq(i64, stats_counter_get(q->metrics.shared.memory_usage), one_msg_size*10),
+            "memory_usage: line: %d", __LINE__);
 
   send_some_messages(q, 5, TRUE);
-  cr_assert_eq(stats_counter_get(q->metrics.shared.queued_messages), 5, "queued messages: line: %d", __LINE__);
-  cr_assert_eq(stats_counter_get(q->metrics.shared.memory_usage), one_msg_size*5, "memory_usage: line: %d", __LINE__);
+  cr_assert(eq(sz, stats_counter_get(q->metrics.shared.queued_messages), 5), "queued messages: line: %d", __LINE__);
+  cr_assert(eq(i64, stats_counter_get(q->metrics.shared.memory_usage), one_msg_size*5),
+            "memory_usage: line: %d", __LINE__);
 }
 
 static LogQueue *
@@ -451,8 +457,8 @@ testcase_diskq_prepare(DiskQueueOptions *options, diskq_tester_parameters_t *par
   stats_cluster_key_builder_free(driver_sck_builder);
   stats_cluster_key_builder_free(queue_sck_builder);
 
-  cr_assert_eq(stats_counter_get(q->metrics.shared.queued_messages), 0, "queued messages: line: %d", __LINE__);
-  cr_assert_eq(stats_counter_get(q->metrics.shared.memory_usage), 0, "memory_usage: line: %d", __LINE__);
+  cr_assert(eq(sz, stats_counter_get(q->metrics.shared.queued_messages), 0), "queued messages: line: %d", __LINE__);
+  cr_assert(eq(sz, stats_counter_get(q->metrics.shared.memory_usage), 0), "memory_usage: line: %d", __LINE__);
 
   unlink(parameters->filename);
   log_queue_disk_start(q);
@@ -479,13 +485,13 @@ assert_flow_control_window_length(diskq_tester_parameters_t *parameters, LogQueu
 
   if (parameters->reliable)
     {
-      cr_assert_eq(((LogQueueDiskReliable *)q)->flow_control_window->length, 3 * expected_length,
-                   "%"G_GSIZE_FORMAT" message in flow control window: line: %d", expected_length, __LINE__);
+      cr_assert(eq(uint, ((LogQueueDiskReliable *)q)->flow_control_window->length, 3 * expected_length),
+                "%"G_GSIZE_FORMAT" message in flow control window: line: %d", expected_length, __LINE__);
       return;
     }
 
-  cr_assert_eq(((LogQueueDiskNonReliable *)q)->flow_control_window.len, expected_length,
-               "%"G_GSIZE_FORMAT" message in flow control window: line: %d", expected_length, __LINE__);
+  cr_assert(eq(i64, ((LogQueueDiskNonReliable *)q)->flow_control_window.len, expected_length),
+            "%"G_GSIZE_FORMAT" message in flow control window: line: %d", expected_length, __LINE__);
 }
 
 StaticParameterizedTest(diskq_tester_parameters_t *parameters, test_diskq_statistics_params, diskq,
@@ -497,7 +503,7 @@ StaticParameterizedTest(diskq_tester_parameters_t *parameters, test_diskq_statis
   q = testcase_diskq_prepare(&options, parameters);
 
   feed_some_messages(q, 1);
-  cr_assert_eq(stats_counter_get(q->metrics.shared.queued_messages), 1, "queued messages: line: %d", __LINE__);
+  cr_assert(eq(sz, stats_counter_get(q->metrics.shared.queued_messages), 1), "queued messages: line: %d", __LINE__);
 
   if (parameters->overflow_expected)
     assert_flow_control_window_length(parameters, q, 1);
@@ -508,11 +514,12 @@ StaticParameterizedTest(diskq_tester_parameters_t *parameters, test_diskq_statis
        msg is put to the output queue so statistics is not increased: one_msg_size == 0 */
     cr_assert(is_valid_msg_size(one_msg_size), "one_msg_size %d: line: %d", one_msg_size, __LINE__);
   else
-    cr_assert_eq(stats_counter_get(q->metrics.shared.memory_usage), 0, "queued messages: line: %d", __LINE__);
+    cr_assert(eq(sz, stats_counter_get(q->metrics.shared.memory_usage), 0), "queued messages: line: %d", __LINE__);
 
   feed_some_messages(q, 1);
-  cr_assert_eq(stats_counter_get(q->metrics.shared.queued_messages), 2, "queued messages: line: %d", __LINE__);
-  cr_assert_eq(stats_counter_get(q->metrics.shared.memory_usage), one_msg_size*2, "memory_usage: line: %d", __LINE__);
+  cr_assert(eq(sz, stats_counter_get(q->metrics.shared.queued_messages), 2), "queued messages: line: %d", __LINE__);
+  cr_assert(eq(sz, stats_counter_get(q->metrics.shared.memory_usage), one_msg_size*2),
+            "memory_usage: line: %d", __LINE__);
 
   if (parameters->overflow_expected)
     assert_flow_control_window_length(parameters, q, 2);
@@ -547,7 +554,7 @@ Test(diskq, test_no_next_filename_in_acquire)
   cr_assert(log_driver_add_plugin(&driver->super, (LogDriverPlugin *) plugin));
   cr_assert(log_pipe_init(&driver->super.super));
 
-  cr_assert_eq(log_dest_driver_acquire_queue(driver, queue_persist_name, STATS_LEVEL0, NULL, NULL), NULL);
+  cr_assert(zero(ptr, log_dest_driver_acquire_queue(driver, queue_persist_name, STATS_LEVEL0, NULL, NULL)));
 
   cr_assert(log_pipe_deinit(&driver->super.super));
   cr_assert(log_pipe_unref(&driver->super.super));

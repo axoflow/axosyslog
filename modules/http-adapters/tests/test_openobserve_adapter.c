@@ -24,6 +24,7 @@
 #include "apphook.h"
 #include "modules/http/http-signals.h"
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 static inline gchar *
 _extract_offending_request(HttpResponseSignalData *data)
@@ -50,11 +51,11 @@ Test(openobserve_adapter, test_partial_failure_sets_offending_message)
 
   http_adapter_adapt_response(oa, &data);
 
-  cr_assert_eq(data.result, HTTP_SLOT_CRITICAL_ERROR);
-  cr_assert_eq(data.offending_message, 2);
+  cr_assert(eq(int, data.result, HTTP_SLOT_CRITICAL_ERROR));
+  cr_assert(eq(uint, data.offending_message, 2));
 
   gchar *offending_request = _extract_offending_request(&data);
-  cr_assert_str_eq(offending_request, "msg3");
+  cr_assert(eq(str, offending_request, "msg3"));
   g_free(offending_request);
 
   g_string_free(data.request_body, TRUE);
@@ -78,11 +79,11 @@ Test(openobserve_adapter, test_all_failed_points_to_first_message)
 
   http_adapter_adapt_response(oa, &data);
 
-  cr_assert_eq(data.result, HTTP_SLOT_CRITICAL_ERROR);
-  cr_assert_eq(data.offending_message, 0);
+  cr_assert(eq(int, data.result, HTTP_SLOT_CRITICAL_ERROR));
+  cr_assert(eq(uint, data.offending_message, 0));
 
   gchar *offending_request = _extract_offending_request(&data);
-  cr_assert_str_eq(offending_request, "msg1");
+  cr_assert(eq(str, offending_request, "msg1"));
   g_free(offending_request);
 
   g_string_free(data.request_body, TRUE);
@@ -108,10 +109,10 @@ Test(openobserve_adapter, test_all_successful_no_change)
 
   http_adapter_adapt_response(oa, &data);
 
-  cr_assert_eq(data.http_code, 200);
-  cr_assert_eq(data.offending_message, 0);
-  cr_assert_eq(data.offending_request_start, 0);
-  cr_assert_eq(data.offending_request_len, 0);
+  cr_assert(eq(uint, data.http_code, 200));
+  cr_assert(eq(uint, data.offending_message, 0));
+  cr_assert(eq(sz, data.offending_request_start, 0));
+  cr_assert(eq(sz, data.offending_request_len, 0));
 
   g_string_free(data.request_body, TRUE);
   g_string_free(data.response_body, TRUE);
@@ -138,12 +139,12 @@ Test(openobserve_adapter, test_multiple_status_entries_sum_successful)
 
   http_adapter_adapt_response(oa, &data);
 
-  cr_assert_eq(data.result, HTTP_SLOT_CRITICAL_ERROR);
+  cr_assert(eq(int, data.result, HTTP_SLOT_CRITICAL_ERROR));
   /* First failed message is at index 2+1=3 (0-based) */
-  cr_assert_eq(data.offending_message, 3);
+  cr_assert(eq(uint, data.offending_message, 3));
 
   gchar *offending_request = _extract_offending_request(&data);
-  cr_assert_str_eq(offending_request, "msg4");
+  cr_assert(eq(str, offending_request, "msg4"));
   g_free(offending_request);
 
   g_string_free(data.request_body, TRUE);
@@ -168,10 +169,10 @@ Test(openobserve_adapter, test_successful_count_exceeds_batch_size_resets_to_zer
 
   http_adapter_adapt_response(oa, &data);
 
-  cr_assert_eq(data.result, HTTP_SLOT_CRITICAL_ERROR);
-  cr_assert_eq(data.offending_message, 0);
-  cr_assert_eq(data.offending_request_start, 0);
-  cr_assert_eq(data.offending_request_len, 0);
+  cr_assert(eq(int, data.result, HTTP_SLOT_CRITICAL_ERROR));
+  cr_assert(eq(uint, data.offending_message, 0));
+  cr_assert(eq(sz, data.offending_request_start, 0));
+  cr_assert(eq(sz, data.offending_request_len, 0));
 
   g_string_free(data.request_body, TRUE);
   g_string_free(data.response_body, TRUE);
@@ -195,10 +196,10 @@ Test(openobserve_adapter, test_successful_request_action)
 
   http_adapter_adapt_response(oa, &data);
 
-  cr_assert_eq(data.http_code, 200);
-  cr_assert_eq(data.offending_message, 0);
-  cr_assert_eq(data.offending_request_start, 0);
-  cr_assert_eq(data.offending_request_len, 0);
+  cr_assert(eq(uint, data.http_code, 200));
+  cr_assert(eq(uint, data.offending_message, 0));
+  cr_assert(eq(sz, data.offending_request_start, 0));
+  cr_assert(eq(sz, data.offending_request_len, 0));
 
   g_string_free(data.request_body, TRUE);
   g_string_free(data.response_body, TRUE);
@@ -223,11 +224,11 @@ Test(openobserve_adapter, test_non_200_response_ignored)
 
   http_adapter_adapt_response(oa, &data);
 
-  cr_assert_eq(data.result, HTTP_SLOT_SUCCESS);
+  cr_assert(eq(int, data.result, HTTP_SLOT_SUCCESS));
   /* Non-200 responses are not processed by this adapter */
-  cr_assert_eq(data.offending_message, 0);
-  cr_assert_eq(data.offending_request_start, 0);
-  cr_assert_eq(data.offending_request_len, 0);
+  cr_assert(eq(uint, data.offending_message, 0));
+  cr_assert(eq(sz, data.offending_request_start, 0));
+  cr_assert(eq(sz, data.offending_request_len, 0));
 
   g_string_free(data.request_body, TRUE);
   g_string_free(data.response_body, TRUE);
@@ -250,10 +251,10 @@ Test(openobserve_adapter, test_invalid_json_handled_gracefully)
 
   http_adapter_adapt_response(oa, &data);
 
-  cr_assert_eq(data.result, HTTP_SLOT_CRITICAL_ERROR);
-  cr_assert_eq(data.offending_message, 0);
-  cr_assert_eq(data.offending_request_start, 0);
-  cr_assert_eq(data.offending_request_len, 0);
+  cr_assert(eq(int, data.result, HTTP_SLOT_CRITICAL_ERROR));
+  cr_assert(eq(uint, data.offending_message, 0));
+  cr_assert(eq(sz, data.offending_request_start, 0));
+  cr_assert(eq(sz, data.offending_request_len, 0));
 
   g_string_free(data.request_body, TRUE);
   g_string_free(data.response_body, TRUE);

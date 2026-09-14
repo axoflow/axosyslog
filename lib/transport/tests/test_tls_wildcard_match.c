@@ -23,6 +23,7 @@
 
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "transport/tls-verifier.h"
 
@@ -30,74 +31,71 @@ TestSuite(tls_wildcard, .init = NULL, .fini = NULL);
 
 Test(tls_wildcard, test_wildcard_match_pattern_acceptance)
 {
-  cr_assert_eq(tls_wildcard_match("test", "test"), TRUE);
-  cr_assert_eq(tls_wildcard_match("test", "*"), TRUE);
-  cr_assert_eq(tls_wildcard_match("test", "t*t"), TRUE);
-  cr_assert_eq(tls_wildcard_match("test", "t*"), TRUE);
-  cr_assert_eq(tls_wildcard_match("", ""), TRUE);
-  cr_assert_eq(tls_wildcard_match("test.one", "test.one"), TRUE);
-  cr_assert_eq(tls_wildcard_match("test.one.two", "test.one.two"), TRUE);
-  cr_assert_eq(tls_wildcard_match("192.0.2.0", "192.0.2.0"), TRUE);
-  cr_assert_eq(tls_wildcard_match("2001:0000:130F:0000:0000:09C0:876A:130B", "2001:0000:130F:0000:0000:09C0:876A:130B"),
-               TRUE);
-  cr_assert_eq(tls_wildcard_match("2001:0000:130F:0000:0000:09C0:876A:130B", "2001:0:130F:0:0:9C0:876A:130B"), TRUE);
-  cr_assert_eq(tls_wildcard_match("2001:0:130F:0:0:9C0:876A:130B", "2001:0000:130F:0000:0000:09C0:876A:130B"), TRUE);
-  cr_assert_eq(tls_wildcard_match("2001:0000:130F::09C0:876A:130B", "2001:0000:130F:0000:0000:09C0:876A:130B"), TRUE);
-  cr_assert_eq(tls_wildcard_match("2001:0000:130F:0000:0000:09C0:876A:130B", "2001:0000:130F::09C0:876A:130B"), TRUE);
-  cr_assert_eq(tls_wildcard_match("2001:0000:130F:0000:0000:09C0:876A:130B", "2001:0:130F::9C0:876A:130B"), TRUE);
-  cr_assert_eq(tls_wildcard_match("2001:0:130F::9C0:876A:130B", "2001:0000:130F:0000:0000:09C0:876A:130B"), TRUE);
+  cr_assert(tls_wildcard_match("test", "test"));
+  cr_assert(tls_wildcard_match("test", "*"));
+  cr_assert(tls_wildcard_match("test", "t*t"));
+  cr_assert(tls_wildcard_match("test", "t*"));
+  cr_assert(tls_wildcard_match("", ""));
+  cr_assert(tls_wildcard_match("test.one", "test.one"));
+  cr_assert(tls_wildcard_match("test.one.two", "test.one.two"));
+  cr_assert(tls_wildcard_match("192.0.2.0", "192.0.2.0"));
+  cr_assert(tls_wildcard_match("2001:0000:130F:0000:0000:09C0:876A:130B", "2001:0000:130F:0000:0000:09C0:876A:130B"));
+  cr_assert(tls_wildcard_match("2001:0000:130F:0000:0000:09C0:876A:130B", "2001:0:130F:0:0:9C0:876A:130B"));
+  cr_assert(tls_wildcard_match("2001:0:130F:0:0:9C0:876A:130B", "2001:0000:130F:0000:0000:09C0:876A:130B"));
+  cr_assert(tls_wildcard_match("2001:0000:130F::09C0:876A:130B", "2001:0000:130F:0000:0000:09C0:876A:130B"));
+  cr_assert(tls_wildcard_match("2001:0000:130F:0000:0000:09C0:876A:130B", "2001:0000:130F::09C0:876A:130B"));
+  cr_assert(tls_wildcard_match("2001:0000:130F:0000:0000:09C0:876A:130B", "2001:0:130F::9C0:876A:130B"));
+  cr_assert(tls_wildcard_match("2001:0:130F::9C0:876A:130B", "2001:0000:130F:0000:0000:09C0:876A:130B"));
 }
 
 Test(tls_wildcard, test_wildcard_match_wildcard_rejection)
 {
-  cr_assert_eq(tls_wildcard_match("test", "**"), FALSE);
-  cr_assert_eq(tls_wildcard_match("test", "*es*"), FALSE);
-  cr_assert_eq(tls_wildcard_match("test", "t*?"), FALSE);
+  cr_assert(not(tls_wildcard_match("test", "**")));
+  cr_assert(not(tls_wildcard_match("test", "*es*")));
+  cr_assert(not(tls_wildcard_match("test", "t*?")));
 }
 
 Test(tls_wildcard, test_wildcard_match_pattern_rejection)
 {
-  cr_assert_eq(tls_wildcard_match("test", "tset"), FALSE);
-  cr_assert_eq(tls_wildcard_match("test", "set"), FALSE);
-  cr_assert_eq(tls_wildcard_match("", "*"), FALSE);
-  cr_assert_eq(tls_wildcard_match("test", ""), FALSE);
-  cr_assert_eq(tls_wildcard_match("test.two", "test.one"), FALSE);
+  cr_assert(not(tls_wildcard_match("test", "tset")));
+  cr_assert(not(tls_wildcard_match("test", "set")));
+  cr_assert(not(tls_wildcard_match("", "*")));
+  cr_assert(not(tls_wildcard_match("test", "")));
+  cr_assert(not(tls_wildcard_match("test.two", "test.one")));
 }
 
 Test(tls_wildcard, test_wildcard_match_format_rejection)
 {
-  cr_assert_eq(tls_wildcard_match("test.two", "test.*"), FALSE);
-  cr_assert_eq(tls_wildcard_match("test.two", "test.t*o"), FALSE);
-  cr_assert_eq(tls_wildcard_match("test", "test.two"), FALSE);
-  cr_assert_eq(tls_wildcard_match("test.two", "test"), FALSE);
-  cr_assert_eq(tls_wildcard_match("test.one.two", "test.one"), FALSE);
-  cr_assert_eq(tls_wildcard_match("test.one", "test.one.two"), FALSE);
-  cr_assert_eq(tls_wildcard_match("test.three", "three.test"), FALSE);
-  cr_assert_eq(tls_wildcard_match("test.one.two", "test.one.*"), FALSE);
+  cr_assert(not(tls_wildcard_match("test.two", "test.*")));
+  cr_assert(not(tls_wildcard_match("test.two", "test.t*o")));
+  cr_assert(not(tls_wildcard_match("test", "test.two")));
+  cr_assert(not(tls_wildcard_match("test.two", "test")));
+  cr_assert(not(tls_wildcard_match("test.one.two", "test.one")));
+  cr_assert(not(tls_wildcard_match("test.one", "test.one.two")));
+  cr_assert(not(tls_wildcard_match("test.three", "three.test")));
+  cr_assert(not(tls_wildcard_match("test.one.two", "test.one.*")));
 }
 
 Test(tls_wildcard, test_wildcard_match_complex_rejection)
 {
-  cr_assert_eq(tls_wildcard_match("test.two", "test.???"), FALSE);
-  cr_assert_eq(tls_wildcard_match("test.one.two", "test.one.?wo"), FALSE);
+  cr_assert(not(tls_wildcard_match("test.two", "test.???")));
+  cr_assert(not(tls_wildcard_match("test.one.two", "test.one.?wo")));
 }
 
 Test(tls_wildcard, test_ip_wildcard_rejection)
 {
-  cr_assert_eq(tls_wildcard_match("192.0.2.0", "*.0.2.0"), FALSE);
-  cr_assert_eq(tls_wildcard_match("2001:0000:130F:0000:0000:09C0:876A:130B", "*:0000:130F:0000:0000:09C0:876A:130B"),
-               FALSE);
-  cr_assert_eq(tls_wildcard_match("2001:0:130F::9C0:876A:130B", "*:0000:130F:0000:0000:09C0:876A:130B"), FALSE);
+  cr_assert(not(tls_wildcard_match("192.0.2.0", "*.0.2.0")));
+  cr_assert(not(tls_wildcard_match("2001:0000:130F:0000:0000:09C0:876A:130B", "*:0000:130F:0000:0000:09C0:876A:130B")));
+  cr_assert(not(tls_wildcard_match("2001:0:130F::9C0:876A:130B", "*:0000:130F:0000:0000:09C0:876A:130B")));
 }
 
 Test(tls_wildcard, test_case_insensivity)
 {
-  cr_assert_eq(tls_wildcard_match("test", "TEST"), TRUE);
-  cr_assert_eq(tls_wildcard_match("TEST", "test"), TRUE);
-  cr_assert_eq(tls_wildcard_match("TeST", "TEst"), TRUE);
-  cr_assert_eq(tls_wildcard_match("test.one", "test.ONE"), TRUE);
-  cr_assert_eq(tls_wildcard_match("test.TWO", "test.two"), TRUE);
-  cr_assert_eq(tls_wildcard_match("test.three", "*T.three"), TRUE);
-  cr_assert_eq(tls_wildcard_match("2001:0000:130F:0000:0000:09C0:876A:130B", "2001:0000:130f:0000:0000:09c0:876a:130b"),
-               TRUE);
+  cr_assert(tls_wildcard_match("test", "TEST"));
+  cr_assert(tls_wildcard_match("TEST", "test"));
+  cr_assert(tls_wildcard_match("TeST", "TEst"));
+  cr_assert(tls_wildcard_match("test.one", "test.ONE"));
+  cr_assert(tls_wildcard_match("test.TWO", "test.two"));
+  cr_assert(tls_wildcard_match("test.three", "*T.three"));
+  cr_assert(tls_wildcard_match("2001:0000:130F:0000:0000:09C0:876A:130B", "2001:0000:130f:0000:0000:09c0:876a:130b"));
 }

@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/cr_template.h"
 #include "libtest/grab-logging.h"
 
@@ -50,7 +51,7 @@ Test(mongodb_config, test_persist_name)
                        SAFEOPTS "&replicaSet=x");
 
   cr_assert(afmongodb_dd_private_uri_init(mongodb));
-  cr_assert_str_eq(log_pipe_get_persist_name(&mongodb->super), "afmongodb(127.0.0.2:27018,syslog,x,messages)");
+  cr_assert(eq(str, log_pipe_get_persist_name(&mongodb->super), "afmongodb(127.0.0.2:27018,syslog,x,messages)"));
   afmongodb_dd_private_uri_deinit(mongodb);
 }
 
@@ -63,7 +64,7 @@ Test(mongodb_config, test_stats_name)
 
   LogThreadedDestDriver *self = (LogThreadedDestDriver *)mongodb;
   const gchar *name = self->format_stats_key(self, NULL);
-  cr_assert(name, "mongodb,127.0.0.2:27018,syslog,x,messages");
+  cr_assert(not(zero(ptr, name)), "mongodb,127.0.0.2:27018,syslog,x,messages");
 
   afmongodb_dd_private_uri_deinit(mongodb);
 }
@@ -100,13 +101,13 @@ Test(mongodb_config, test_collection_option_is_consumed_and_reported_correctly)
 Test(mongodb_config, test_invalid_uris_are_reported_as_errors)
 {
   afmongodb_dd_set_uri(mongodb, "INVALID-URI");
-  cr_assert_not(afmongodb_dd_private_uri_init(mongodb));
+  cr_assert(not(afmongodb_dd_private_uri_init(mongodb)));
   assert_grabbed_log_contains("Error parsing MongoDB URI; uri='INVALID-URI'");
   reset_grabbed_messages();
   afmongodb_dd_private_uri_deinit(mongodb);
 
   afmongodb_dd_set_uri(mongodb, "mongodb://127.0.0.1:27017/");
-  cr_assert_not(afmongodb_dd_private_uri_init(mongodb));
+  cr_assert(not(afmongodb_dd_private_uri_init(mongodb)));
   assert_grabbed_log_contains("Missing DB name from MongoDB URI; uri='mongodb://127.0.0.1:27017/'");
   afmongodb_dd_private_uri_deinit(mongodb);
 }

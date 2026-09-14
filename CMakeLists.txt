@@ -447,6 +447,15 @@ set_target_properties(check-copyright PROPERTIES
 option(BUILD_TESTING "Enable unit tests" ON)
 if (BUILD_TESTING)
   find_package (criterion)
+
+  include(CheckCCompilerFlag)
+  check_c_compiler_flag(-Wdiscarded-qualifiers HAVE_W_DISCARDED_QUALIFIERS)
+  check_c_compiler_flag(-Wincompatible-pointer-types-discards-qualifiers HAVE_W_INCOMPATIBLE_POINTER_TYPES_DISCARDS_QUALIFIERS)
+  if (HAVE_W_DISCARDED_QUALIFIERS)
+    set(TEST_C_FLAGS_NO_DISCARDED_QUALIFIERS -Wno-discarded-qualifiers)
+  elseif (HAVE_W_INCOMPATIBLE_POINTER_TYPES_DISCARDS_QUALIFIERS)
+    set(TEST_C_FLAGS_NO_DISCARDED_QUALIFIERS -Wno-incompatible-pointer-types-discards-qualifiers)
+  endif()
 endif()
 
 include(add_tests)

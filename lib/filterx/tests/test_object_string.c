@@ -20,6 +20,7 @@
  *
  */
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/filterx-lib.h"
 
 #include "filterx/object-string.h"
@@ -51,8 +52,8 @@ Test(filterx_string, test_frozen_string_deduplication)
   FilterXObject *str2 = filterx_string_new_frozen("abcd");
   FilterXObject *str3 = filterx_string_new_frozen("abcde");
 
-  cr_assert_eq(str, str2);
-  cr_assert_neq(str, str3);
+  cr_assert(eq(ptr, str, str2));
+  cr_assert(ne(ptr, str, str3));
 }
 
 Test(filterx_string, test_string_taking_allocated_storage)
@@ -77,7 +78,7 @@ Test(filterx_string, test_string_taking_a_short_slice_of_another_string)
   FilterXObject *str2 = filterx_string_new_slice(str, 1, 3);
 
   assert_object_json_equals(str2, "\"bc\"");
-  cr_assert((str2->flags & FILTERX_STRING_FLAG_STR_INDIRECT) == 0);
+  cr_assert(zero(uint, str2->flags & FILTERX_STRING_FLAG_STR_INDIRECT));
   filterx_object_unref(str2);
   filterx_object_unref(str);
 }
@@ -88,7 +89,7 @@ Test(filterx_string, test_string_taking_a_long_slice_of_another_string)
   FilterXObject *str2 = filterx_string_new_slice(str, 1, 15);
 
   assert_object_json_equals(str2, "\"123456789abcde\"");
-  cr_assert((str2->flags & FILTERX_STRING_FLAG_STR_INDIRECT) != 0);
+  cr_assert(ne(uint, str2->flags & FILTERX_STRING_FLAG_STR_INDIRECT, 0));
   filterx_object_unref(str2);
   filterx_object_unref(str);
 }
@@ -119,8 +120,8 @@ Test(filterx_string, test_string_slice_propagates_nvtable_backed_marking)
    * borrows the payload */
   FilterXObject *owned = filterx_string_new_take(g_strdup("0123456789abcdef"), 16);
   FilterXObject *owned_slice = filterx_string_new_slice(owned, 1, 15);
-  cr_assert(!filterx_object_is_nvtable_backed(owned_slice));
-  cr_assert((owned_slice->flags & FILTERX_STRING_FLAG_STR_INDIRECT) != 0);
+  cr_assert(not(filterx_object_is_nvtable_backed(owned_slice)));
+  cr_assert(ne(uint, owned_slice->flags & FILTERX_STRING_FLAG_STR_INDIRECT, 0));
 
   filterx_object_unref(slice);
   filterx_object_unref(nvtable_backed);
@@ -209,9 +210,9 @@ Test(filterx_string, test_filterx_string_cache_json_escaping_need)
   FilterXObject *fobj = filterx_string_new("literal-string", -1);
   cr_assert(filterx_string_is_json_escaping_needed(fobj));
   assert_object_json_equals(fobj, "\"literal-string\"");
-  cr_assert_not(filterx_string_is_json_escaping_needed(fobj));
+  cr_assert(not(filterx_string_is_json_escaping_needed(fobj)));
   assert_object_json_equals(fobj, "\"literal-string\"");
-  cr_assert_not(filterx_string_is_json_escaping_needed(fobj));
+  cr_assert(not(filterx_string_is_json_escaping_needed(fobj)));
   filterx_object_unref(fobj);
 
 
@@ -235,7 +236,7 @@ Test(filterx_string, test_filterx_string_frozen_json_escaping_need)
 Test(filterx_string, test_filterx_string_typecast_null_args)
 {
   FilterXObject *obj = filterx_typecast_string(NULL, NULL, 0);
-  cr_assert_null(obj);
+  cr_assert(zero(ptr, obj));
 }
 
 Test(filterx_string, test_filterx_string_typecast_empty_args)
@@ -243,7 +244,7 @@ Test(filterx_string, test_filterx_string_typecast_empty_args)
   FilterXObject *args[] = { NULL };
 
   FilterXObject *obj = filterx_typecast_string(NULL, args, 0);
-  cr_assert_null(obj);
+  cr_assert(zero(ptr, obj));
 }
 
 Test(filterx_string, test_filterx_string_typecast_null_arg)
@@ -251,7 +252,7 @@ Test(filterx_string, test_filterx_string_typecast_null_arg)
   FilterXObject *args[] = { NULL };
 
   FilterXObject *obj = filterx_typecast_string(NULL, args, G_N_ELEMENTS(args));
-  cr_assert_null(obj);
+  cr_assert(zero(ptr, obj));
 }
 
 Test(filterx_string, test_filterx_string_typecast_null_object_arg)
@@ -259,12 +260,12 @@ Test(filterx_string, test_filterx_string_typecast_null_object_arg)
   FilterXObject *args[] = { filterx_null_new() };
 
   FilterXObject *obj = filterx_typecast_string(NULL, args, G_N_ELEMENTS(args));
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(string)));
 
   const gchar *str = filterx_string_get_value_as_cstr(obj);
 
-  cr_assert(strcmp("null", str) == 0);
+  cr_assert(eq(str, "null", str));
 
   filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
   filterx_object_unref(obj);
@@ -276,7 +277,7 @@ Test(filterx_string, test_filterx_string_typecast_from_string)
 
   FilterXObject *obj = filterx_typecast_string(NULL, args, G_N_ELEMENTS(args));
 
-  cr_assert_eq(args[0], obj);
+  cr_assert(eq(ptr, args[0], obj));
 
   filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
   filterx_object_unref(obj);
@@ -287,13 +288,14 @@ Test(filterx_string, test_filterx_string_typecast_from_bytes)
   FilterXObject *args[] = { filterx_bytes_new("\x00\x1f byte \\sequence \x7f \xff", 21) };
 
   FilterXObject *obj = filterx_typecast_string(NULL, args, G_N_ELEMENTS(args));
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(string)));
 
   gsize size = 0;
   const gchar *str = filterx_string_get_value_ref(obj, &size);
-  cr_assert(size == 21, "size: %d", (gint) size);
-  cr_assert(memcmp("\x00\x1f byte \\sequence \x7f \xff", str, size) == 0);
+  cr_assert(eq(sz, size, 21), "size: %d", (gint) size);
+  cr_assert(eq(mem, ((struct cr_mem){ .data = "\x00\x1f byte \\sequence \x7f \xff", .size = size }),
+               ((struct cr_mem){ .data = str, .size = size })));
 
   filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
   filterx_object_unref(obj);
@@ -304,13 +306,14 @@ Test(filterx_string, test_filterx_string_typecast_from_protobuf)
   FilterXObject *args[] = { filterx_protobuf_new("\xffnot a valid protobuf! \xd9", 23) };
 
   FilterXObject *obj = filterx_typecast_string(NULL, args, G_N_ELEMENTS(args));
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(string)));
 
   gsize size = 0;
   const gchar *str = filterx_string_get_value_ref(obj, &size);
-  cr_assert(size == 23, "size: %d", (gint) size);
-  cr_assert(memcmp("\xffnot a valid protobuf! \xd9", str, size) == 0);
+  cr_assert(eq(sz, size, 23), "size: %d", (gint) size);
+  cr_assert(eq(mem, ((struct cr_mem){ .data = "\xffnot a valid protobuf! \xd9", .size = size }),
+               ((struct cr_mem){ .data = str, .size = size })));
 
   filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
   filterx_object_unref(obj);

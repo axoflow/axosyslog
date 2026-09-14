@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/filterx-lib.h"
 
 #include "filterx/func-flatten.h"
@@ -43,10 +44,10 @@ Test(filterx_func_keys, empty_args)
 
   GError *error = NULL;
   FilterXExpr *fn = filterx_function_keys_new(filterx_function_args_new(args, NULL), &error);
-  cr_assert_null(fn);
-  cr_assert_not_null(error);
+  cr_assert(zero(ptr, fn));
+  cr_assert(not(zero(ptr, error)));
 
-  cr_assert_str_eq(error->message, FILTERX_FUNC_KEYS_ERR_NUM_ARGS FILTERX_FUNC_KEYS_USAGE);
+  cr_assert(eq(str, error->message, FILTERX_FUNC_KEYS_ERR_NUM_ARGS FILTERX_FUNC_KEYS_USAGE));
   g_clear_error(&error);
 }
 
@@ -60,10 +61,10 @@ Test(filterx_func_keys, invalid_args_number)
 
   GError *error = NULL;
   FilterXExpr *fn = filterx_function_keys_new(filterx_function_args_new(args, NULL), &error);
-  cr_assert_null(fn);
-  cr_assert_not_null(error);
+  cr_assert(zero(ptr, fn));
+  cr_assert(not(zero(ptr, error)));
 
-  cr_assert_str_eq(error->message, FILTERX_FUNC_KEYS_ERR_NUM_ARGS FILTERX_FUNC_KEYS_USAGE);
+  cr_assert(eq(str, error->message, FILTERX_FUNC_KEYS_ERR_NUM_ARGS FILTERX_FUNC_KEYS_USAGE));
   g_clear_error(&error);
 }
 
@@ -75,14 +76,14 @@ Test(filterx_func_keys, invalid_arg_type)
 
   GError *error = NULL;
   FilterXExpr *fn = filterx_function_keys_new(filterx_function_args_new(args, NULL), &error);
-  cr_assert_not_null(fn);
-  cr_assert_null(error);
+  cr_assert(not(zero(ptr, fn)));
+  cr_assert(zero(ptr, error));
   FilterXObject *res = init_and_eval_expr(fn);
-  cr_assert_null(res);
+  cr_assert(zero(ptr, res));
 
   const gchar *last_error = filterx_eval_get_last_error();
 
-  cr_assert_str_eq(last_error, FILTERX_FUNC_KEYS_ERR_NONDICT FILTERX_FUNC_KEYS_USAGE);
+  cr_assert(eq(str, last_error, FILTERX_FUNC_KEYS_ERR_NONDICT FILTERX_FUNC_KEYS_USAGE));
 
   filterx_expr_unref(fn);
   g_clear_error(&error);
@@ -96,10 +97,10 @@ Test(filterx_func_keys, valid_input)
 
   GError *error = NULL;
   FilterXExpr *fn = filterx_function_keys_new(filterx_function_args_new(args, NULL), &error);
-  cr_assert_not_null(fn);
-  cr_assert_null(error);
+  cr_assert(not(zero(ptr, fn)));
+  cr_assert(zero(ptr, error));
   FilterXObject *res = init_and_eval_expr(fn);
-  cr_assert_not_null(res);
+  cr_assert(not(zero(ptr, res)));
   cr_assert(filterx_object_is_type(res, &FILTERX_TYPE_NAME(sequence)));
 
   assert_object_repr_equals(res, "[\"foo\",\"bar\",\"baz\"]");

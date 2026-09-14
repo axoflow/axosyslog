@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/cr_template.h"
 #include "libtest/msg_parse_lib.h"
 #include "libtest/config_parse_lib.h"
@@ -38,7 +39,7 @@ static LogParser *
 _compile_grouping_by(gchar *expr)
 {
   LogParser *gby;
-  cr_assert(parse_config(expr, LL_CONTEXT_PARSER, NULL, (gpointer *) &gby) == TRUE);
+  cr_assert(parse_config(expr, LL_CONTEXT_PARSER, NULL, (gpointer *) &gby));
   return gby;
 }
 
@@ -76,14 +77,14 @@ Test(grouping_by, grouping_by_produces_aggregate_as_the_trigger_is_received)
                         ");");
 
   log_pipe_append(&parser->super, &capture->super);
-  cr_assert(log_pipe_init(&capture->super) == TRUE);
-  cr_assert(log_pipe_init(&parser->super) == TRUE);
+  cr_assert(log_pipe_init(&capture->super));
+  cr_assert(log_pipe_init(&parser->super));
 
   _process_msg(parser, "first");
   _process_msg(parser, "second");
   _process_msg(parser, "third");
 
-  cr_assert(capture->captured_messages->len == 4);
+  cr_assert(eq(uint, capture->captured_messages->len, 4));
   assert_log_message_value_by_name(log_pipe_mock_get_message(capture, 0), "PROGRAM", "first");
   assert_log_message_value_by_name(log_pipe_mock_get_message(capture, 1), "PROGRAM", "second");
   /* the aggregate comes before the triggering message */
@@ -109,14 +110,14 @@ Test(grouping_by, grouping_by_adds_prefix_to_name_value_pairs_if_specified)
                         ");");
 
   log_pipe_append(&parser->super, &capture->super);
-  cr_assert(log_pipe_init(&capture->super) == TRUE);
-  cr_assert(log_pipe_init(&parser->super) == TRUE);
+  cr_assert(log_pipe_init(&capture->super));
+  cr_assert(log_pipe_init(&parser->super));
 
   _process_msg(parser, "first");
   _process_msg(parser, "second");
   _process_msg(parser, "third");
 
-  cr_assert(capture->captured_messages->len == 1);
+  cr_assert(eq(uint, capture->captured_messages->len, 1));
   /* the aggregate comes before the triggering message */
   assert_log_message_value_by_name(log_pipe_mock_get_message(capture, 0), "prefix.aggr", "first,second,third");
 
@@ -138,14 +139,14 @@ Test(grouping_by, grouping_by_drops_original_messages_if_inject_mode_is_aggregat
                         ");");
 
   log_pipe_append(&parser->super, &capture->super);
-  cr_assert(log_pipe_init(&capture->super) == TRUE);
-  cr_assert(log_pipe_init(&parser->super) == TRUE);
+  cr_assert(log_pipe_init(&capture->super));
+  cr_assert(log_pipe_init(&parser->super));
 
   _process_msg(parser, "first");
   _process_msg(parser, "second");
   _process_msg(parser, "third");
 
-  cr_assert(capture->captured_messages->len == 1);
+  cr_assert(eq(uint, capture->captured_messages->len, 1));
   assert_log_message_value_by_name(log_pipe_mock_get_message(capture, 0), "aggr", "first,second,third");
 
   log_pipe_unref(&parser->super);
@@ -163,7 +164,7 @@ Test(grouping_by, cfg_persist_name_not_equal)
   gchar *persist_name2 = g_strdup(log_pipe_get_persist_name(&parser->super));
   log_pipe_unref(&parser->super);
 
-  cr_assert_str_neq(persist_name1, persist_name2);
+  cr_assert(ne(str, persist_name1, persist_name2));
 
   g_free(persist_name1);
   g_free(persist_name2);
@@ -179,7 +180,7 @@ Test(grouping_by, cfg_persist_name_equal)
   gchar *persist_name2 = g_strdup(log_pipe_get_persist_name(&parser->super));
   log_pipe_unref(&parser->super);
 
-  cr_assert_str_eq(persist_name1, persist_name2);
+  cr_assert(eq(str, persist_name1, persist_name2));
 
   g_free(persist_name1);
   g_free(persist_name2);

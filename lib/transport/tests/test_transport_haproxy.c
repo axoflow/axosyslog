@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/parameterized.h"
 #include "libtest/mock-transport.h"
 
@@ -166,16 +167,16 @@ StaticParameterizedTest(ProtocolHeaderTestParams *params, test_params, log_trans
     }
   while (rc == -1 && errno == EAGAIN);
 
-  cr_assert_eq(rc == 0, params->valid,
-               "This should be %s: \n>>%.*s<<\n (rc=%d, errno=%d)", params->valid ? "valid" : "invalid", proxy_header_len,
-               params->proxy_header, (gint) rc, errno);
+  cr_assert(eq(int, rc == 0, params->valid),
+            "This should be %s: \n>>%.*s<<\n (rc=%d, errno=%d)", params->valid ? "valid" : "invalid", proxy_header_len,
+            params->proxy_header, (gint) rc, errno);
 
   if (rc == 0 && params->addresses)
     {
       GString *addresses = g_string_new(NULL);
 
       _format_addresses(addresses, &aux);
-      cr_assert_str_eq(addresses->str, params->addresses);
+      cr_assert(eq(str, addresses->str, params->addresses));
       g_string_free(addresses, TRUE);
     }
 

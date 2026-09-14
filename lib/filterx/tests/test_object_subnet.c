@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/filterx-lib.h"
 
 #include "filterx/object-subnet.h"
@@ -38,7 +39,7 @@
 Test(filterx_object_subnet, ipv4_prefix_notation)
 {
   FilterXObject *obj = filterx_subnet_new_from_cidr("192.168.0.0/24");
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(subnet)));
   filterx_object_unref(obj);
 }
@@ -46,7 +47,7 @@ Test(filterx_object_subnet, ipv4_prefix_notation)
 Test(filterx_object_subnet, ipv4_netmask_notation)
 {
   FilterXObject *obj = filterx_subnet_new_from_cidr("192.168.0.0/255.255.255.0");
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(subnet)));
   filterx_object_unref(obj);
 }
@@ -54,7 +55,7 @@ Test(filterx_object_subnet, ipv4_netmask_notation)
 Test(filterx_object_subnet, ipv4_host_without_prefix)
 {
   FilterXObject *obj = filterx_subnet_new_from_cidr("192.168.1.1");
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(subnet)));
   filterx_object_unref(obj);
 }
@@ -62,7 +63,7 @@ Test(filterx_object_subnet, ipv4_host_without_prefix)
 Test(filterx_object_subnet, ipv6_prefix_notation)
 {
   FilterXObject *obj = filterx_subnet_new_from_cidr("2001:db8::/32");
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(subnet)));
   filterx_object_unref(obj);
 }
@@ -70,7 +71,7 @@ Test(filterx_object_subnet, ipv6_prefix_notation)
 Test(filterx_object_subnet, ipv6_host_without_prefix)
 {
   FilterXObject *obj = filterx_subnet_new_from_cidr("::1");
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(subnet)));
   filterx_object_unref(obj);
 }
@@ -78,31 +79,31 @@ Test(filterx_object_subnet, ipv6_host_without_prefix)
 Test(filterx_object_subnet, rejects_invalid_cidr)
 {
   FilterXObject *obj = filterx_subnet_new_from_cidr("not-a-subnet");
-  cr_assert_null(obj);
+  cr_assert(zero(ptr, obj));
 }
 
 Test(filterx_object_subnet, rejects_ipv4_prefix_too_large)
 {
   FilterXObject *obj = filterx_subnet_new_from_cidr("192.168.0.0/33");
-  cr_assert_null(obj);
+  cr_assert(zero(ptr, obj));
 }
 
 Test(filterx_object_subnet, rejects_ipv6_prefix_too_large)
 {
   FilterXObject *obj = filterx_subnet_new_from_cidr("2001:db8::/129");
-  cr_assert_null(obj);
+  cr_assert(zero(ptr, obj));
 }
 
 Test(filterx_object_subnet, rejects_ipv6_negative_prefix)
 {
   FilterXObject *obj = filterx_subnet_new_from_cidr("::/-100");
-  cr_assert_null(obj);
+  cr_assert(zero(ptr, obj));
 }
 
 Test(filterx_object_subnet, rejects_ipv4_negative_prefix)
 {
   FilterXObject *obj = filterx_subnet_new_from_cidr("192.168.0.0/-1");
-  cr_assert_null(obj);
+  cr_assert(zero(ptr, obj));
 }
 
 Test(filterx_object_subnet, rejects_ipv6_negative_prefix_via_typecast)
@@ -110,7 +111,7 @@ Test(filterx_object_subnet, rejects_ipv6_negative_prefix_via_typecast)
   FilterXObject *arg = filterx_string_new("::/-100", -1);
   FilterXObject *args[] = { arg };
   FilterXObject *obj = filterx_typecast_subnet(NULL, args, G_N_ELEMENTS(args));
-  cr_assert_null(obj);
+  cr_assert(zero(ptr, obj));
   filterx_object_unref(arg);
 }
 
@@ -118,7 +119,7 @@ Test(filterx_object_subnet, ipv4_host_bits_are_masked)
 {
   /* 192.168.0.5/24 should store 192.168.0.0/255.255.255.0 */
   FilterXObject *obj = filterx_subnet_new_from_cidr("192.168.0.5/24");
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   assert_marshaled_object(obj, "192.168.0.0/255.255.255.0", LM_VT_STRING);
   filterx_object_unref(obj);
 }
@@ -127,12 +128,12 @@ Test(filterx_object_subnet, ipv4_prefix_zero)
 {
   /* /0 yields a 0.0.0.0 netmask and every address is a member */
   FilterXObject *obj = filterx_subnet_new_from_cidr("10.20.30.40/0");
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   assert_marshaled_object(obj, "0.0.0.0/0.0.0.0", LM_VT_STRING);
 
   FilterXObject *ip = filterx_string_new("203.0.113.7", -1);
   FilterXObject *result = filterx_object_is_member_of(obj, ip);
-  cr_assert_not_null(result);
+  cr_assert(not(zero(ptr, result)));
 
   gboolean b;
   cr_assert(filterx_boolean_unwrap(result, &b));
@@ -148,7 +149,7 @@ Test(filterx_object_subnet, ipv4_prefix_zero)
 Test(filterx_object_subnet, ipv4_marshal)
 {
   FilterXObject *obj = filterx_subnet_new_from_cidr("192.168.0.0/24");
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   assert_marshaled_object(obj, "192.168.0.0/255.255.255.0", LM_VT_STRING);
   filterx_object_unref(obj);
 }
@@ -156,7 +157,7 @@ Test(filterx_object_subnet, ipv4_marshal)
 Test(filterx_object_subnet, ipv4_host_marshal)
 {
   FilterXObject *obj = filterx_subnet_new_from_cidr("10.0.0.1");
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   assert_marshaled_object(obj, "10.0.0.1/255.255.255.255", LM_VT_STRING);
   filterx_object_unref(obj);
 }
@@ -164,7 +165,7 @@ Test(filterx_object_subnet, ipv4_host_marshal)
 Test(filterx_object_subnet, ipv4_repr)
 {
   FilterXObject *obj = filterx_subnet_new_from_cidr("10.0.0.0/8");
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   assert_object_repr_equals(obj, "subnet('10.0.0.0/255.0.0.0')");
   filterx_object_unref(obj);
 }
@@ -172,7 +173,7 @@ Test(filterx_object_subnet, ipv4_repr)
 Test(filterx_object_subnet, ipv6_marshal)
 {
   FilterXObject *obj = filterx_subnet_new_from_cidr("2001:db8::/32");
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   assert_marshaled_object(obj, "2001:db8::/ffff:ffff::", LM_VT_STRING);
   filterx_object_unref(obj);
 }
@@ -180,7 +181,7 @@ Test(filterx_object_subnet, ipv6_marshal)
 Test(filterx_object_subnet, ipv4_format_json)
 {
   FilterXObject *obj = filterx_subnet_new_from_cidr("172.16.0.0/12");
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   assert_object_json_equals(obj, "\"172.16.0.0/255.240.0.0\"");
   filterx_object_unref(obj);
 }
@@ -193,7 +194,7 @@ Test(filterx_object_subnet, ipv4_member_returns_true)
   FilterXObject *ip = filterx_string_new("192.168.0.100", -1);
 
   FilterXObject *result = filterx_object_is_member_of(subnet, ip);
-  cr_assert_not_null(result);
+  cr_assert(not(zero(ptr, result)));
 
   gboolean b;
   cr_assert(filterx_boolean_unwrap(result, &b));
@@ -210,11 +211,11 @@ Test(filterx_object_subnet, ipv4_non_member_returns_false)
   FilterXObject *ip = filterx_string_new("192.168.1.1", -1);
 
   FilterXObject *result = filterx_object_is_member_of(subnet, ip);
-  cr_assert_not_null(result);
+  cr_assert(not(zero(ptr, result)));
 
   gboolean b;
   cr_assert(filterx_boolean_unwrap(result, &b));
-  cr_assert_not(b);
+  cr_assert(not(b));
 
   filterx_object_unref(result);
   filterx_object_unref(ip);
@@ -252,7 +253,7 @@ Test(filterx_object_subnet, ipv6_member_returns_true)
   FilterXObject *ip = filterx_string_new("2001:db8::1", -1);
 
   FilterXObject *result = filterx_object_is_member_of(subnet, ip);
-  cr_assert_not_null(result);
+  cr_assert(not(zero(ptr, result)));
 
   gboolean b;
   cr_assert(filterx_boolean_unwrap(result, &b));
@@ -269,11 +270,11 @@ Test(filterx_object_subnet, ipv6_non_member_returns_false)
   FilterXObject *ip = filterx_string_new("2001:db9::1", -1);
 
   FilterXObject *result = filterx_object_is_member_of(subnet, ip);
-  cr_assert_not_null(result);
+  cr_assert(not(zero(ptr, result)));
 
   gboolean b;
   cr_assert(filterx_boolean_unwrap(result, &b));
-  cr_assert_not(b);
+  cr_assert(not(b));
 
   filterx_object_unref(result);
   filterx_object_unref(ip);
@@ -286,7 +287,7 @@ Test(filterx_object_subnet, member_of_rejects_non_string)
   FilterXObject *not_a_string = filterx_integer_new(42);
 
   FilterXObject *result = filterx_object_is_member_of(subnet, not_a_string);
-  cr_assert_null(result);
+  cr_assert(zero(ptr, result));
 
   filterx_object_unref(not_a_string);
   filterx_object_unref(subnet);
@@ -298,7 +299,7 @@ Test(filterx_object_subnet, member_of_rejects_invalid_ip)
   FilterXObject *bad_ip = filterx_string_new("not-an-ip", -1);
 
   FilterXObject *result = filterx_object_is_member_of(subnet, bad_ip);
-  cr_assert_null(result);
+  cr_assert(zero(ptr, result));
 
   filterx_object_unref(bad_ip);
   filterx_object_unref(subnet);
@@ -310,7 +311,7 @@ Test(filterx_object_subnet, ipv4_subnet_rejects_ipv6_address)
   FilterXObject *ipv6 = filterx_string_new("2001:db8::1", -1);
 
   FilterXObject *result = filterx_object_is_member_of(subnet, ipv6);
-  cr_assert_null(result);
+  cr_assert(zero(ptr, result));
 
   filterx_object_unref(ipv6);
   filterx_object_unref(subnet);
@@ -322,7 +323,7 @@ Test(filterx_object_subnet, ipv6_subnet_rejects_ipv4_address)
   FilterXObject *ipv4 = filterx_string_new("192.168.0.1", -1);
 
   FilterXObject *result = filterx_object_is_member_of(subnet, ipv4);
-  cr_assert_null(result);
+  cr_assert(zero(ptr, result));
 
   filterx_object_unref(ipv4);
   filterx_object_unref(subnet);
@@ -335,7 +336,7 @@ Test(filterx_object_subnet, typecast_from_string)
   FilterXObject *args[] = { filterx_string_new("192.168.0.0/24", -1) };
 
   FilterXObject *obj = filterx_typecast_subnet(NULL, args, G_N_ELEMENTS(args));
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(subnet)));
   assert_marshaled_object(obj, "192.168.0.0/255.255.255.0", LM_VT_STRING);
 
@@ -349,8 +350,8 @@ Test(filterx_object_subnet, typecast_identity)
   FilterXObject *args[] = { filterx_object_ref(subnet) };
 
   FilterXObject *obj = filterx_typecast_subnet(NULL, args, G_N_ELEMENTS(args));
-  cr_assert_not_null(obj);
-  cr_assert(obj == subnet);
+  cr_assert(not(zero(ptr, obj)));
+  cr_assert(eq(ptr, obj, subnet));
 
   filterx_object_unref(obj);
   filterx_object_unref(subnet);
@@ -362,7 +363,7 @@ Test(filterx_object_subnet, typecast_rejects_integer)
   FilterXObject *args[] = { filterx_integer_new(42) };
 
   FilterXObject *obj = filterx_typecast_subnet(NULL, args, G_N_ELEMENTS(args));
-  cr_assert_null(obj);
+  cr_assert(zero(ptr, obj));
 
   filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
 }
@@ -372,7 +373,7 @@ Test(filterx_object_subnet, typecast_rejects_invalid_cidr_string)
   FilterXObject *args[] = { filterx_string_new("not-a-cidr", -1) };
 
   FilterXObject *obj = filterx_typecast_subnet(NULL, args, G_N_ELEMENTS(args));
-  cr_assert_null(obj);
+  cr_assert(zero(ptr, obj));
 
   filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
 }
@@ -380,7 +381,7 @@ Test(filterx_object_subnet, typecast_rejects_invalid_cidr_string)
 Test(filterx_object_subnet, typecast_rejects_empty_args)
 {
   FilterXObject *obj = filterx_typecast_subnet(NULL, NULL, 0);
-  cr_assert_null(obj);
+  cr_assert(zero(ptr, obj));
 }
 
 static void

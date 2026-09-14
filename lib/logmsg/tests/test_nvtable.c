@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "logmsg/nvtable.h"
 #include "apphook.h"
@@ -45,13 +46,14 @@ assert_nvtable(NVTable *tab, NVHandle handle, gchar *expected_value, gssize expe
 
   value = nv_table_get_value(tab, handle, &length, NULL);
 
-  cr_assert_eq(length, expected_length,
-               "NVTable value mismatch, value=%.*s, expected=%.*s\n",
-               (gint) length, value, (gint) expected_length, expected_value);
+  cr_assert(eq(i64, length, expected_length),
+            "NVTable value mismatch, value=%.*s, expected=%.*s\n",
+            (gint) length, value, (gint) expected_length, expected_value);
 
-  cr_assert_arr_eq(value, expected_value, expected_length,
-                   "NVTable value mismatch, value=%.*s, expected=%.*s\n",
-                   (gint) length, value, (gint) expected_length, expected_value);
+  cr_assert(eq(mem, ((struct cr_mem){ .data = value, .size = expected_length }),
+               ((struct cr_mem){ .data = expected_value, .size = expected_length })),
+            "NVTable value mismatch, value=%.*s, expected=%.*s\n",
+            (gint) length, value, (gint) expected_length, expected_value);
 }
 
 
@@ -84,10 +86,10 @@ Test(nvtable, test_nv_registry)
   for (i = 0; builtins[i]; i++)
     {
       handle = nv_registry_alloc_handle(reg, builtins[i]);
-      cr_assert_eq(handle, (i+1));
+      cr_assert(eq(i64, handle, (i+1)));
       name = nv_registry_get_handle_name(reg, handle, &len);
-      cr_assert_str_eq(name, builtins[i]);
-      cr_assert_eq(strlen(name), len);
+      cr_assert(eq(str, name, builtins[i]));
+      cr_assert(eq(i64, strlen(name), len));
     }
 
   for (i = 4; i < TEST_NVHANDLE_MAX_VALUE + 1; i++)
@@ -134,7 +136,7 @@ Test(nvtable, test_nv_registry)
     }
 
   handle = nv_registry_alloc_handle(reg, "too-many-values");
-  cr_assert_eq(handle, 0);
+  cr_assert(eq(u32, handle, 0));
 
   nv_registry_free(reg);
 }
@@ -198,8 +200,8 @@ Test(nvtable, test_nvtable_direct)
       memory_needed = 0;
       tab = nv_table_new(STATIC_VALUES, STATIC_VALUES, 256);
       success = nv_table_add_value(tab, handle, name, strlen(name), value, 512, 0, NULL, &memory_needed);
-      cr_assert_not(success);
-      cr_assert_gt(memory_needed, 512);
+      cr_assert(not(success));
+      cr_assert(gt(u32, memory_needed, 512));
       nv_table_unref(tab);
 
       /*************************************************************/
@@ -214,7 +216,7 @@ Test(nvtable, test_nvtable_direct)
 
       success = nv_table_add_value(tab, handle, name, strlen(name), value, 64, 0, NULL, &memory_needed);
       cr_assert(success);
-      cr_assert_eq(tab->used, used);
+      cr_assert(eq(u32, tab->used, used));
       assert_nvtable(tab, handle, value, 64);
       nv_table_unref(tab);
 
@@ -226,7 +228,7 @@ Test(nvtable, test_nvtable_direct)
 
       success = nv_table_add_value(tab, handle, name, strlen(name), value, 128, 0, NULL, &memory_needed);
       cr_assert(success);
-      cr_assert_gt(tab->used, used);
+      cr_assert(gt(u32, tab->used, used));
       assert_nvtable(tab, handle, value, 128);
       nv_table_unref(tab);
 
@@ -237,8 +239,8 @@ Test(nvtable, test_nvtable_direct)
 
       memory_needed = 0;
       success = nv_table_add_value(tab, handle, name, strlen(name), value, 512, 0, NULL, &memory_needed);
-      cr_assert_not(success);
-      cr_assert_gt(memory_needed, 512);
+      cr_assert(not(success));
+      cr_assert(gt(u32, memory_needed, 512));
       assert_nvtable(tab, handle, value, 64);
       nv_table_unref(tab);
 
@@ -265,7 +267,7 @@ Test(nvtable, test_nvtable_direct)
           /* store a direct entry over the indirect one */
           success = nv_table_add_value(tab, handle, name, strlen(name), value, 1, 0, NULL, &memory_needed);
           cr_assert(success);
-          cr_assert_eq(tab->used, used);
+          cr_assert(eq(u32, tab->used, used));
           assert_nvtable(tab, STATIC_HANDLE, value, 128);
           assert_nvtable(tab, handle, value, 1);
 
@@ -287,7 +289,7 @@ Test(nvtable, test_nvtable_direct)
           /* store a direct entry over the indirect one, we don't fit in the allocated space */
           success = nv_table_add_value(tab, handle, name, strlen(name), value, 128, 0, NULL, &memory_needed);
           cr_assert(success);
-          cr_assert_gt(tab->used, used);
+          cr_assert(gt(u32, tab->used, used));
           assert_nvtable(tab, STATIC_HANDLE, value, 64);
           assert_nvtable(tab, handle, value, 128);
 
@@ -307,7 +309,7 @@ Test(nvtable, test_nvtable_direct)
 
           /* store a direct entry over the indirect one, we don't fit in the allocated space */
           success = nv_table_add_value(tab, handle, name, strlen(name), value, 256, 0, NULL, &memory_needed);
-          cr_assert_not(success);
+          cr_assert(not(success));
           assert_nvtable(tab, STATIC_HANDLE, value, 64);
           assert_nvtable(tab, handle, value + 1, 62);
 
@@ -404,7 +406,7 @@ Test(nvtable, test_nvtable_indirect)
   {
     STATIC_HANDLE, 1, 126
   }, 0, NULL, &memory_needed);
-  cr_assert_not(success);
+  cr_assert(not(success));
 
   nv_table_unref(tab);
 
@@ -430,7 +432,7 @@ Test(nvtable, test_nvtable_indirect)
   }, 0, NULL, &memory_needed);
 
   cr_assert(success);
-  cr_assert_eq(used, tab->used);
+  cr_assert(eq(u32, used, tab->used));
   assert_nvtable(tab, STATIC_HANDLE, value, 128);
   assert_nvtable(tab, handle, value + 1, 62);
   nv_table_unref(tab);
@@ -456,7 +458,7 @@ Test(nvtable, test_nvtable_indirect)
     STATIC_HANDLE, 1, 126
   }, 0, NULL, &memory_needed);
   cr_assert(success);
-  cr_assert_eq(tab->used, used);
+  cr_assert(eq(u32, tab->used, used));
   assert_nvtable(tab, STATIC_HANDLE, value, 128);
   assert_nvtable(tab, handle, value + 1, 126);
 
@@ -478,7 +480,7 @@ Test(nvtable, test_nvtable_indirect)
     STATIC_HANDLE, 1, 126
   }, 0, NULL, &memory_needed);
   cr_assert(success);
-  cr_assert_gt(tab->used, used);
+  cr_assert(gt(u32, tab->used, used));
   assert_nvtable(tab, STATIC_HANDLE, value, 128);
   assert_nvtable(tab, handle, value + 1, 126);
 
@@ -498,7 +500,7 @@ Test(nvtable, test_nvtable_indirect)
   {
     STATIC_HANDLE, 1, 126
   }, 0, NULL, &memory_needed);
-  cr_assert_not(success);
+  cr_assert(not(success));
   assert_nvtable(tab, STATIC_HANDLE, value, 128);
   assert_nvtable(tab, handle, value, 1);
 
@@ -553,7 +555,7 @@ Test(nvtable, test_nvtable_indirect)
   {
     DYN_HANDLE, 1, 122
   }, 0, NULL, &memory_needed);
-  cr_assert_not(success);
+  cr_assert(not(success));
   assert_nvtable(tab, STATIC_HANDLE, value, 128);
   assert_nvtable(tab, DYN_HANDLE, value + 1, 126);
   assert_nvtable(tab, handle, "", 0);
@@ -589,7 +591,7 @@ Test(nvtable, test_nvtable_indirect)
   }, 0, NULL, &memory_needed);
   cr_assert(success);
 
-  cr_assert_eq(tab->used, used);
+  cr_assert(eq(u32, tab->used, used));
   assert_nvtable(tab, STATIC_HANDLE, value, 128);
   assert_nvtable(tab, DYN_HANDLE, value + 1, 126);
   assert_nvtable(tab, handle, value + 2, 1);
@@ -621,7 +623,7 @@ Test(nvtable, test_nvtable_indirect)
   }, 0, NULL, &memory_needed);
   cr_assert(success);
 
-  cr_assert_gt(tab->used, used);
+  cr_assert(gt(u32, tab->used, used));
   assert_nvtable(tab, STATIC_HANDLE, value, 128);
   assert_nvtable(tab, DYN_HANDLE, value + 1, 126);
   assert_nvtable(tab, handle, value + 2, 16);
@@ -651,9 +653,9 @@ Test(nvtable, test_nvtable_indirect)
   {
     DYN_HANDLE, 1, 124
   }, 0, NULL, &memory_needed);
-  cr_assert_not(success);
+  cr_assert(not(success));
 
-  cr_assert_eq(tab->used, used);
+  cr_assert(eq(u32, tab->used, used));
   assert_nvtable(tab, STATIC_HANDLE, value, 128);
   assert_nvtable(tab, DYN_HANDLE, value + 1, 126);
   assert_nvtable(tab, handle, value + 1, 126);
@@ -685,7 +687,7 @@ Test(nvtable, test_nvtable_indirect)
   }, 0, NULL, &memory_needed);
   cr_assert(success);
 
-  cr_assert_eq(tab->used, used);
+  cr_assert(eq(u32, tab->used, used));
   assert_nvtable(tab, STATIC_HANDLE, value, 128);
   assert_nvtable(tab, DYN_HANDLE, value + 1, 126);
   assert_nvtable(tab, handle, value + 2, 16);
@@ -714,7 +716,7 @@ Test(nvtable, test_nvtable_indirect)
   }, 0, NULL, &memory_needed);
   cr_assert(success);
 
-  cr_assert_gt(tab->used, used);
+  cr_assert(gt(u32, tab->used, used));
   assert_nvtable(tab, STATIC_HANDLE, value, 128);
   assert_nvtable(tab, DYN_HANDLE, value + 1, 126);
   assert_nvtable(tab, handle, value + 2, 32);
@@ -740,9 +742,9 @@ Test(nvtable, test_nvtable_indirect)
   {
     DYN_HANDLE, 1, 124
   }, 0, NULL, &memory_needed);
-  cr_assert_not(success);
+  cr_assert(not(success));
 
-  cr_assert_eq(tab->used, used);
+  cr_assert(eq(u32, tab->used, used));
   assert_nvtable(tab, STATIC_HANDLE, value, 128);
   assert_nvtable(tab, DYN_HANDLE, value + 1, 126);
   assert_nvtable(tab, handle, value, 16);
@@ -761,7 +763,7 @@ Test(nvtable, test_nvtable_indirect)
     STATIC_HANDLE, 1, 126
   }, 0, NULL, &memory_needed);
   cr_assert(success);
-  cr_assert_eq(used, tab->used);
+  cr_assert(eq(u32, used, tab->used));
   assert_nvtable(tab, STATIC_HANDLE, "", 0);
   assert_nvtable(tab, handle, "", 0);
   nv_table_unref(tab);
@@ -824,7 +826,7 @@ Test(nvtable, test_nvtable_others)
   }, 0, NULL, &memory_needed);
   cr_assert(success);
   success = nv_table_add_value(tab, STATIC_HANDLE, STATIC_NAME, 4, value + 32, 32, 0, NULL, &memory_needed);
-  cr_assert_not(success);
+  cr_assert(not(success));
 
   assert_nvtable(tab, STATIC_HANDLE, value, 128);
   assert_nvtable(tab, handle, value + 1, 126);
@@ -869,7 +871,7 @@ Test(nvtable, test_nvtable_lookup)
           g_assert(nv_table_is_value_set(tab, handles[i]));
 
         }
-      cr_assert_not(nv_table_is_value_set(tab, 0xFE00));
+      cr_assert(not(nv_table_is_value_set(tab, 0xFE00)));
       nv_table_unref(tab);
     }
 }
@@ -887,7 +889,7 @@ Test(nvtable, test_nvtable_clone_grows_the_cloned_structure)
 
   tab_clone = nv_table_clone(tab, 256);
   assert_nvtable(tab_clone, STATIC_HANDLE, "value", 5);
-  cr_assert_lt(tab->size, tab_clone->size);
+  cr_assert(lt(u32, tab->size, tab_clone->size));
   nv_table_unref(tab_clone);
   nv_table_unref(tab);
 }
@@ -905,8 +907,8 @@ Test(nvtable, test_nvtable_clone_cannot_grow_nvtable_larger_than_nvtable_max_byt
 
   tab_clone = nv_table_clone(tab, NV_TABLE_MAX_BYTES);
   assert_nvtable(tab_clone, STATIC_HANDLE, "value", 5);
-  cr_assert_lt(tab->size, tab_clone->size);
-  cr_assert_leq(tab_clone->size, NV_TABLE_MAX_BYTES);
+  cr_assert(lt(u32, tab->size, tab_clone->size));
+  cr_assert(le(u32, tab_clone->size, NV_TABLE_MAX_BYTES));
   nv_table_unref(tab_clone);
   nv_table_unref(tab);
 }
@@ -923,7 +925,7 @@ Test(nvtable, test_nvtable_realloc_extends_nvtable_size)
   assert_nvtable(tab, STATIC_HANDLE, "value", 5);
 
   cr_assert(nv_table_realloc(&tab, 2048));
-  cr_assert_geq(nv_table_get_available(tab), 2048);
+  cr_assert(ge(sz, nv_table_get_available(tab), 2048));
   assert_nvtable(tab, STATIC_HANDLE, "value", 5);
 
   nv_table_unref(tab);
@@ -942,8 +944,8 @@ Test(nvtable, test_nvtable_realloc_sets_size_to_nv_table_max_bytes_at_most)
 
   gsize old_size = tab->size;
   cr_assert(nv_table_realloc(&tab, NV_TABLE_MAX_BYTES));
-  cr_assert_gt(tab->size, old_size);
-  cr_assert_leq(tab->size, NV_TABLE_MAX_BYTES);
+  cr_assert(gt(sz, tab->size, old_size));
+  cr_assert(le(u32, tab->size, NV_TABLE_MAX_BYTES));
 
   assert_nvtable(tab, STATIC_HANDLE, "value", 5);
 
@@ -961,8 +963,8 @@ Test(nvtable, test_nvtable_realloc_fails_if_new_allocation_fits)
   cr_assert(success);
   assert_nvtable(tab, STATIC_HANDLE, "value", 5);
 
-  cr_assert_not(nv_table_realloc(&tab, 1024));
-  cr_assert_eq(tab->size, NV_TABLE_MAX_BYTES);
+  cr_assert(not(nv_table_realloc(&tab, 1024)));
+  cr_assert(eq(u32, tab->size, NV_TABLE_MAX_BYTES));
   assert_nvtable(tab, STATIC_HANDLE, "value", 5);
 
   nv_table_unref(tab);
@@ -987,8 +989,8 @@ Test(nvtable, test_nvtable_realloc_leaves_original_intact_if_there_are_multiple_
   old_size = tab_ref1->size;
 
   cr_assert(nv_table_realloc(&tab_ref2, 2048));
-  cr_assert_eq(tab_ref1->size, old_size);
-  cr_assert_geq(tab_ref2->size, old_size);
+  cr_assert(eq(sz, tab_ref1->size, old_size));
+  cr_assert(ge(sz, tab_ref2->size, old_size));
   assert_nvtable(tab_ref1, STATIC_HANDLE, "value", 5);
   assert_nvtable(tab_ref2, STATIC_HANDLE, "value", 5);
 
@@ -1006,27 +1008,27 @@ Test(nvtable, test_nvtable_unset_values)
 
   tab = nv_table_new(STATIC_VALUES, STATIC_VALUES, 1024);
   value = nv_table_get_value(tab, DYN_HANDLE, &size, NULL);
-  cr_assert_null(value);
-  cr_assert_eq(size, 0);
+  cr_assert(zero(ptr, value));
+  cr_assert(eq(i64, size, 0));
 
   size = 1;
   value = nv_table_get_value(tab, DYN_HANDLE, &size, NULL);
-  cr_assert_null(value);
-  cr_assert_eq(size, 0);
+  cr_assert(zero(ptr, value));
+  cr_assert(eq(i64, size, 0));
 
   success = nv_table_add_value(tab, DYN_HANDLE, DYN_NAME, strlen(DYN_NAME), "foo", 3, 0, NULL, &memory_needed);
   cr_assert(success);
   size = 1;
   value = nv_table_get_value(tab, DYN_HANDLE, &size, NULL);
-  cr_assert_not_null(value);
-  cr_assert_arr_eq(value, "foo", 3);
-  cr_assert_eq(size, 3);
+  cr_assert(not(zero(ptr, value)));
+  cr_assert(eq(mem, ((struct cr_mem){ .data = value, .size = 3 }), ((struct cr_mem){ .data = "foo", .size = 3 })));
+  cr_assert(eq(i64, size, 3));
 
   nv_table_unset_value(tab, DYN_HANDLE, &memory_needed);
   size = 1;
   value = nv_table_get_value(tab, DYN_HANDLE, &size, NULL);
-  cr_assert_null(value);
-  cr_assert_eq(size, 0);
+  cr_assert(zero(ptr, value));
+  cr_assert(eq(i64, size, 0));
 
   nv_table_unref(tab);
 }
@@ -1048,16 +1050,16 @@ Test(nvtable, test_nvtable_unset_copies_indirect_references)
   }, 0, NULL, &memory_needed);
 
   value = nv_table_get_value(tab, DYN_HANDLE, &size, NULL);
-  cr_assert_not_null(value);
-  cr_assert(strncmp(value, "tatic", 5) == 0);
-  cr_assert_eq(size, 5);
+  cr_assert(not(zero(ptr, value)));
+  cr_assert(eq(int, strncmp(value, "tatic", 5), 0));
+  cr_assert(eq(i64, size, 5));
 
   nv_table_unset_value(tab, STATIC_HANDLE, &memory_needed);
 
   value = nv_table_get_value(tab, DYN_HANDLE, &size, NULL);
-  cr_assert_not_null(value);
-  cr_assert(strncmp(value, "tatic", 5) == 0);
-  cr_assert_eq(size, 5);
+  cr_assert(not(zero(ptr, value)));
+  cr_assert(eq(int, strncmp(value, "tatic", 5), 0));
+  cr_assert(eq(i64, size, 5));
 
   nv_table_unref(tab);
 }
@@ -1079,14 +1081,14 @@ Test(nvtable, test_nvtable_indirect_references_unset_and_then_set_again_are_pres
   }, 0, NULL, &memory_needed);
 
   value = nv_table_get_value(tab, DYN_HANDLE, &size, NULL);
-  cr_assert_not_null(value);
-  cr_assert(strncmp(value, "tatic", 5) == 0);
-  cr_assert_eq(size, 5);
+  cr_assert(not(zero(ptr, value)));
+  cr_assert(eq(int, strncmp(value, "tatic", 5), 0));
+  cr_assert(eq(i64, size, 5));
 
   nv_table_unset_value(tab, DYN_HANDLE, &memory_needed);
 
   value = nv_table_get_value(tab, DYN_HANDLE, &size, NULL);
-  cr_assert_null(value);
+  cr_assert(zero(ptr, value));
 
   nv_table_add_value_indirect(tab, DYN_HANDLE, indirect_nv_name, strlen(indirect_nv_name),
                               &(NVReferencedSlice)
@@ -1095,9 +1097,9 @@ Test(nvtable, test_nvtable_indirect_references_unset_and_then_set_again_are_pres
   }, 0, NULL, &memory_needed);
 
   value = nv_table_get_value(tab, DYN_HANDLE, &size, NULL);
-  cr_assert_not_null(value);
-  cr_assert(strncmp(value, "atic", 4) == 0);
-  cr_assert_eq(size, 4);
+  cr_assert(not(zero(ptr, value)));
+  cr_assert(eq(int, strncmp(value, "atic", 4), 0));
+  cr_assert(eq(i64, size, 4));
 
   nv_table_unref(tab);
 }
@@ -1123,19 +1125,19 @@ Test(nvtable, test_nvtable_compact_copies_name_value_pairs)
   nv_table_unref(tab1);
 
   value = nv_table_get_value(tab2, DYN_HANDLE, &size, NULL);
-  cr_assert_not_null(value);
-  cr_assert_str_eq(value, "dyn-foo");
-  cr_assert_eq(size, 7);
+  cr_assert(not(zero(ptr, value)));
+  cr_assert(eq(str, value, "dyn-foo"));
+  cr_assert(eq(i64, size, 7));
 
   value = nv_table_get_value(tab2, STATIC_HANDLE, &size, NULL);
-  cr_assert_not_null(value);
-  cr_assert_str_eq(value, "static-foo");
-  cr_assert_eq(size, 10);
+  cr_assert(not(zero(ptr, value)));
+  cr_assert(eq(str, value, "static-foo"));
+  cr_assert(eq(i64, size, 10));
 
   value = nv_table_get_value(tab2, DYN_HANDLE+1, &size, NULL);
-  cr_assert_not_null(value);
-  cr_assert(strncmp(value, "tatic", size) == 0);
-  cr_assert_eq(size, 5);
+  cr_assert(not(zero(ptr, value)));
+  cr_assert(eq(int, strncmp(value, "tatic", size), 0));
+  cr_assert(eq(i64, size, 5));
 
   nv_table_unref(tab2);
 }
@@ -1160,23 +1162,23 @@ Test(nvtable, test_nvtable_compact_skips_unset_values)
 
   /* this should get rid off the unset value, thus used should be smaller */
   tab2 = nv_table_compact(tab1);
-  cr_assert(tab2->used < tab1->used);
+  cr_assert(lt(u32, tab2->used, tab1->used));
 
   nv_table_unref(tab1);
 
   value = nv_table_get_value(tab2, DYN_HANDLE, &size, NULL);
-  cr_assert_null(value);
-  cr_assert_eq(size, 0);
+  cr_assert(zero(ptr, value));
+  cr_assert(eq(i64, size, 0));
 
   value = nv_table_get_value(tab2, STATIC_HANDLE, &size, NULL);
-  cr_assert_not_null(value);
-  cr_assert_str_eq(value, "static-foo");
-  cr_assert_eq(size, 10);
+  cr_assert(not(zero(ptr, value)));
+  cr_assert(eq(str, value, "static-foo"));
+  cr_assert(eq(i64, size, 10));
 
   value = nv_table_get_value(tab2, DYN_HANDLE+1, &size, NULL);
-  cr_assert_not_null(value);
-  cr_assert(strncmp(value, "tatic", size) == 0);
-  cr_assert_eq(size, 5);
+  cr_assert(not(zero(ptr, value)));
+  cr_assert(eq(int, strncmp(value, "tatic", size), 0));
+  cr_assert(eq(i64, size, 5));
 
   nv_table_unref(tab2);
 }

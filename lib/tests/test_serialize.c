@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "serialize.h"
 #include "apphook.h"
 
@@ -45,16 +46,16 @@ Test(serialize, test_serialize)
   a = serialize_string_archive_new(stream);
 
   serialize_read_blob(a, buf, 5);
-  cr_assert_arr_eq(buf, "MAGIC", 5);
+  cr_assert(eq(mem, ((struct cr_mem){ .data = buf, .size = 5 }), ((struct cr_mem){ .data = "MAGIC", .size = 5 })));
 
   serialize_read_uint32(a, &num);
-  cr_assert_eq(num, 0xdeadbeaf);
+  cr_assert(eq(u32, num, 0xdeadbeaf));
 
   serialize_read_string(a, value);
-  cr_assert_str_eq(value->str, "kismacska");
+  cr_assert(eq(str, value->str, "kismacska"));
 
   serialize_read_string(a, value);
-  cr_assert_str_eq(value->str, "tarkabarka");
+  cr_assert(eq(str, value->str, "tarkabarka"));
 
   g_string_free(value, TRUE);
   g_string_free(stream, TRUE);

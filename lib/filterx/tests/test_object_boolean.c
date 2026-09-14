@@ -20,6 +20,7 @@
  *
  */
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/filterx-lib.h"
 
 #include "filterx/object-string.h"
@@ -52,11 +53,11 @@ Test(filterx_boolean, test_filterx_primitive_bool_is_truthy_if_true)
 {
   FilterXObject *fobj = filterx_boolean_new(TRUE);
   cr_assert(filterx_object_truthy(fobj));
-  cr_assert_not(filterx_object_falsy(fobj));
+  cr_assert(not(filterx_object_falsy(fobj)));
   filterx_object_unref(fobj);
 
   fobj = filterx_boolean_new(0.0);
-  cr_assert_not(filterx_object_truthy(fobj));
+  cr_assert(not(filterx_object_truthy(fobj)));
   cr_assert(filterx_object_falsy(fobj));
   filterx_object_unref(fobj);
 }
@@ -64,7 +65,7 @@ Test(filterx_boolean, test_filterx_primitive_bool_is_truthy_if_true)
 Test(filterx_boolean, test_filterx_boolean_typecast_null_args)
 {
   FilterXObject *obj = filterx_typecast_boolean(NULL, NULL, 0);
-  cr_assert_null(obj);
+  cr_assert(zero(ptr, obj));
 }
 
 Test(filterx_boolean, test_filterx_boolean_typecast_empty_args)
@@ -72,7 +73,7 @@ Test(filterx_boolean, test_filterx_boolean_typecast_empty_args)
   FilterXObject *args[] = { NULL };
 
   FilterXObject *obj = filterx_typecast_boolean(NULL, args, 0);
-  cr_assert_null(obj);
+  cr_assert(zero(ptr, obj));
 }
 
 Test(filterx_boolean, test_filterx_boolean_typecast_null_arg)
@@ -80,7 +81,7 @@ Test(filterx_boolean, test_filterx_boolean_typecast_null_arg)
   FilterXObject *args[] = { NULL };
 
   FilterXObject *obj = filterx_typecast_boolean(NULL, args, G_N_ELEMENTS(args));
-  cr_assert_null(obj);
+  cr_assert(zero(ptr, obj));
 
   filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
 }
@@ -90,10 +91,10 @@ Test(filterx_boolean, test_filterx_boolean_typecast_null_object_arg)
   FilterXObject *args[] = { filterx_null_new() };
 
   FilterXObject *obj = filterx_typecast_boolean(NULL, args, G_N_ELEMENTS(args));
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(boolean)));
 
-  cr_assert(!filterx_object_truthy(obj));
+  cr_assert(not(filterx_object_truthy(obj)));
 
   filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
   filterx_object_unref(obj);
@@ -104,7 +105,7 @@ Test(filterx_boolean, test_filterx_boolean_typecast_from_boolean)
   FilterXObject *args[] = { filterx_boolean_new(TRUE) };
 
   FilterXObject *obj = filterx_typecast_boolean(NULL, args, G_N_ELEMENTS(args));
-  cr_assert_eq(args[0], obj);
+  cr_assert(eq(ptr, args[0], obj));
 
   filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
   filterx_object_unref(obj);

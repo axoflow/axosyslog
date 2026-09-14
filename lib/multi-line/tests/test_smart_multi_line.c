@@ -19,6 +19,7 @@
  * COPYING for details.
  */
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "multi-line/smart-multi-line.h"
 #include "scratch-buffers.h"
@@ -36,28 +37,28 @@ Test(smart_multi_line, three_unrelated_lines_that_are_not_backtraces)
 
   gint verdict = multi_line_logic_accumulate_line(mll, NULL, 0, (const guchar *) first_line, strlen(first_line));
 
-  cr_assert(verdict & MLL_CONSUME_SEGMENT);
-  cr_assert(verdict & MLL_EXTRACTED);
+  cr_assert(eq(int, verdict & MLL_CONSUME_SEGMENT, MLL_CONSUME_SEGMENT));
+  cr_assert(eq(int, verdict & MLL_EXTRACTED, MLL_EXTRACTED));
 
   verdict = multi_line_logic_accumulate_line(mll, NULL, 0, (const guchar *) second_line, strlen(second_line));
 
-  cr_assert(verdict & MLL_CONSUME_SEGMENT);
-  cr_assert(verdict & MLL_EXTRACTED);
+  cr_assert(eq(int, verdict & MLL_CONSUME_SEGMENT, MLL_CONSUME_SEGMENT));
+  cr_assert(eq(int, verdict & MLL_EXTRACTED, MLL_EXTRACTED));
 
   verdict = multi_line_logic_accumulate_line(mll, NULL, 0, (const guchar *) second_line, strlen(second_line));
 
-  cr_assert(verdict & MLL_CONSUME_SEGMENT);
-  cr_assert(verdict & MLL_EXTRACTED);
+  cr_assert(eq(int, verdict & MLL_CONSUME_SEGMENT, MLL_CONSUME_SEGMENT));
+  cr_assert(eq(int, verdict & MLL_EXTRACTED, MLL_EXTRACTED));
 
   verdict = multi_line_logic_accumulate_line(mll, NULL, 0, (const guchar *) third_line, strlen(third_line));
 
-  cr_assert(verdict & MLL_CONSUME_SEGMENT);
-  cr_assert(verdict & MLL_EXTRACTED);
+  cr_assert(eq(int, verdict & MLL_CONSUME_SEGMENT, MLL_CONSUME_SEGMENT));
+  cr_assert(eq(int, verdict & MLL_EXTRACTED, MLL_EXTRACTED));
 
   verdict = multi_line_logic_accumulate_line(mll, NULL, 0, (const guchar *) fourth_line, strlen(fourth_line));
 
-  cr_assert(verdict & MLL_CONSUME_SEGMENT);
-  cr_assert(verdict & MLL_EXTRACTED);
+  cr_assert(eq(int, verdict & MLL_CONSUME_SEGMENT, MLL_CONSUME_SEGMENT));
+  cr_assert(eq(int, verdict & MLL_EXTRACTED, MLL_EXTRACTED));
 
   multi_line_logic_free(mll);
 }
@@ -83,7 +84,7 @@ _feed_line(MultiLineLogic *mll, const gchar *input, gssize input_len)
       if (verdict & MLL_CONSUME_SEGMENT)
         {
           gint drop_length = (verdict & MLL_CONSUME_PARTIAL_AMOUNT_MASK) >> MLL_CONSUME_PARTIAL_AMOUNT_SHIFT;
-          cr_assert(drop_length == 0);
+          cr_assert(eq(int, drop_length, 0));
 
           if (buffer->len > 0)
             g_string_append_c(buffer, '\n');

@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/cr_template.h"
 
 #include "logthrsource/logthrsourcedrv.h"
@@ -244,7 +245,7 @@ Test(logthrsourcedrv, test_threaded_source_blocking_post)
   request_exit_and_wait_for_stop(s);
 
   StatsCounterItem *recvd_messages = _get_source(s)->metrics.recvd_messages;
-  cr_assert(stats_counter_get(recvd_messages) == 10);
+  cr_assert(eq(sz, stats_counter_get(recvd_messages), 10));
   cr_assert(s->exit_requested);
 
   destroy_test_threaded_source(s);
@@ -262,7 +263,7 @@ Test(logthrsourcedrv, test_threaded_source_suspend)
   request_exit_and_wait_for_stop(s);
 
   StatsCounterItem *recvd_messages = _get_source(s)->metrics.recvd_messages;
-  cr_assert(stats_counter_get(recvd_messages) == 5);
+  cr_assert(eq(sz, stats_counter_get(recvd_messages), 5));
   cr_assert(s->suspended);
   cr_assert(s->exit_requested);
 

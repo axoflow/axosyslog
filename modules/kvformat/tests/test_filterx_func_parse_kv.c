@@ -20,6 +20,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/msg_parse_lib.h"
 #include "libtest/filterx-lib.h"
 
@@ -40,10 +41,10 @@ Test(filterx_func_parse_kv, test_empty_args_error)
   GError *args_err = NULL;
   FilterXExpr *func = filterx_function_parse_kv_new(filterx_function_args_new(NULL, &args_err), &err);
 
-  cr_assert_null(func);
-  cr_assert_null(args_err);
-  cr_assert_not_null(err);
-  cr_assert(strstr(err->message, FILTERX_FUNC_PARSE_KV_USAGE) != NULL);
+  cr_assert(zero(ptr, func));
+  cr_assert(zero(ptr, args_err));
+  cr_assert(not(zero(ptr, err)));
+  cr_assert(not(zero(ptr, strstr(err->message, FILTERX_FUNC_PARSE_KV_USAGE))));
   g_error_free(err);
 }
 
@@ -58,12 +59,12 @@ Test(filterx_func_parse_kv, test_skipped_opts_causes_default_behaviour)
   GError *args_err = NULL;
   FilterXExpr *func = filterx_function_parse_kv_new(filterx_function_args_new(args, &args_err), &err);
 
-  cr_assert_null(args_err);
-  cr_assert_null(err);
+  cr_assert(zero(ptr, args_err));
+  cr_assert(zero(ptr, err));
 
   FilterXObject *obj = init_and_eval_expr(func);
 
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(mapping)));
 
   GString *repr = scratch_buffers_alloc();
@@ -73,7 +74,7 @@ Test(filterx_func_parse_kv, test_skipped_opts_causes_default_behaviour)
 
   cr_assert(ok);
 
-  cr_assert_str_eq(repr->str, "{\"foo\":\"bar\",\"bar\":\"baz\"}");
+  cr_assert(eq(str, repr->str, "{\"foo\":\"bar\",\"bar\":\"baz\"}"));
   filterx_expr_unref(func);
   filterx_object_unref(obj);
   g_error_free(err);
@@ -91,12 +92,12 @@ Test(filterx_func_parse_kv, test_optional_value_separator_option_first_character
   GError *args_err = NULL;
   FilterXExpr *func = filterx_function_parse_kv_new(filterx_function_args_new(args, &args_err), &err);
 
-  cr_assert_null(args_err);
-  cr_assert_null(err);
+  cr_assert(zero(ptr, args_err));
+  cr_assert(zero(ptr, err));
 
   FilterXObject *obj = init_and_eval_expr(func);
 
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(mapping)));
 
   GString *repr = scratch_buffers_alloc();
@@ -106,7 +107,7 @@ Test(filterx_func_parse_kv, test_optional_value_separator_option_first_character
 
   cr_assert(ok);
 
-  cr_assert_str_eq(repr->str, "{\"foo\":\"bar\",\"bar\":\"baz\"}");
+  cr_assert(eq(str, repr->str, "{\"foo\":\"bar\",\"bar\":\"baz\"}"));
   filterx_expr_unref(func);
   filterx_object_unref(obj);
   g_error_free(err);
@@ -124,11 +125,11 @@ Test(filterx_func_parse_kv, test_optional_empty_value_separator_option)
   GError *args_err = NULL;
   FilterXExpr *func = filterx_function_parse_kv_new(filterx_function_args_new(args, &args_err), &err);
 
-  cr_assert_null(func);
-  cr_assert_null(args_err);
-  cr_assert_not_null(err);
+  cr_assert(zero(ptr, func));
+  cr_assert(zero(ptr, args_err));
+  cr_assert(not(zero(ptr, err)));
 
-  cr_assert(strstr(err->message, FILTERX_FUNC_PARSE_KV_USAGE) != NULL);
+  cr_assert(not(zero(ptr, strstr(err->message, FILTERX_FUNC_PARSE_KV_USAGE))));
 
   g_error_free(err);
 }
@@ -145,12 +146,12 @@ Test(filterx_func_parse_kv, test_optional_pair_separator_option)
   GError *args_err = NULL;
   FilterXExpr *func = filterx_function_parse_kv_new(filterx_function_args_new(args, &args_err), &err);
 
-  cr_assert_null(args_err);
-  cr_assert_null(err);
+  cr_assert(zero(ptr, args_err));
+  cr_assert(zero(ptr, err));
 
   FilterXObject *obj = init_and_eval_expr(func);
 
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(mapping)));
 
   GString *repr = scratch_buffers_alloc();
@@ -160,7 +161,7 @@ Test(filterx_func_parse_kv, test_optional_pair_separator_option)
 
   cr_assert(ok);
 
-  cr_assert_str_eq(repr->str, "{\"foo\":\"bar\",\"bar\":\"baz\"}");
+  cr_assert(eq(str, repr->str, "{\"foo\":\"bar\",\"bar\":\"baz\"}"));
   filterx_expr_unref(func);
   filterx_object_unref(obj);
   g_error_free(err);
@@ -179,12 +180,12 @@ Test(filterx_func_parse_kv, test_optional_stray_words_key_option)
   GError *args_err = NULL;
   FilterXExpr *func = filterx_function_parse_kv_new(filterx_function_args_new(args, &args_err), &err);
 
-  cr_assert_null(args_err);
-  cr_assert_null(err);
+  cr_assert(zero(ptr, args_err));
+  cr_assert(zero(ptr, err));
 
   FilterXObject *obj = init_and_eval_expr(func);
 
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(mapping)));
 
   GString *repr = scratch_buffers_alloc();
@@ -194,7 +195,7 @@ Test(filterx_func_parse_kv, test_optional_stray_words_key_option)
 
   cr_assert(ok);
 
-  cr_assert_str_eq(repr->str, "{\"foo\":\"bar\",\"bar\":\"baz\",\"straywords\":\"lookslikenonKV\"}");
+  cr_assert(eq(str, repr->str, "{\"foo\":\"bar\",\"bar\":\"baz\",\"straywords\":\"lookslikenonKV\"}"));
   filterx_expr_unref(func);
   filterx_object_unref(obj);
   g_error_free(err);

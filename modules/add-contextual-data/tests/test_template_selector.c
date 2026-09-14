@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "add-contextual-data-template-selector.h"
 #include "logmsg/logmsg.h"
@@ -47,8 +48,8 @@ Test(add_contextual_data_template_selector, test_given_empty_selector_when_resol
   AddContextualDataSelector *selector = NULL;
   LogMessage *msg = _create_log_msg("testmsg", "localhost");
 
-  cr_assert_null(add_contextual_data_selector_resolve(selector, msg),
-                 "When selector is NULL the resolve should return NULL.");
+  cr_assert(zero(ptr, add_contextual_data_selector_resolve(selector, msg)),
+            "When selector is NULL the resolve should return NULL.");
   log_msg_unref(msg);
 }
 
@@ -72,7 +73,7 @@ Test(add_contextual_data_template_selector,
   LogMessage *msg = _create_log_msg("testmsg", "localhost");
   gchar *resolved_selector = add_contextual_data_selector_resolve(selector, msg);
 
-  cr_assert_str_eq(resolved_selector, "localhost", "");
+  cr_assert(eq(str, resolved_selector, "localhost"), "");
   g_free(resolved_selector);
   log_msg_unref(msg);
   add_contextual_data_selector_free(selector);
@@ -86,7 +87,7 @@ Test(add_contextual_data_template_selector, test_template_selector_cannot_be_res
   LogMessage *msg = _create_log_msg("testmsg", "localhost");
   gchar *resolved_selector = add_contextual_data_selector_resolve(selector, msg);
 
-  cr_assert_str_eq(resolved_selector, "", "No template should be resolved.");
+  cr_assert(eq(str, resolved_selector, ""), "No template should be resolved.");
   g_free(resolved_selector);
   log_msg_unref(msg);
   add_contextual_data_selector_free(selector);

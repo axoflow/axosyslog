@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/filterx-lib.h"
 
 #include "filterx/func-encode.h"
@@ -46,7 +47,7 @@ _create_base64_encode_expr(FilterXObject *arg)
   GError *error = NULL;
   FilterXExpr *fn = filterx_simple_function_new("base64_encode", filterx_function_args_new(args, NULL),
                                                 filterx_simple_function_base64_encode, &error);
-  cr_assert_null(error);
+  cr_assert(zero(ptr, error));
   return fn;
 }
 
@@ -59,7 +60,7 @@ _create_base64_decode_expr(FilterXObject *arg)
   GError *error = NULL;
   FilterXExpr *fn = filterx_simple_function_new("base64_decode", filterx_function_args_new(args, NULL),
                                                 filterx_simple_function_base64_decode, &error);
-  cr_assert_null(error);
+  cr_assert(zero(ptr, error));
   return fn;
 }
 
@@ -68,7 +69,7 @@ Test(filterx_func_base64, encode_string)
   FilterXExpr *fn = _create_base64_encode_expr(filterx_string_new("foobar", -1));
   FilterXObject *res = init_and_eval_expr(fn);
 
-  cr_assert_not_null(res);
+  cr_assert(not(zero(ptr, res)));
   assert_object_str_equals(res, "Zm9vYmFy");
 
   filterx_object_unref(res);
@@ -80,7 +81,7 @@ Test(filterx_func_base64, encode_bytes)
   FilterXExpr *fn = _create_base64_encode_expr(filterx_bytes_new("\x00\x01\x02\x03", 4));
   FilterXObject *res = init_and_eval_expr(fn);
 
-  cr_assert_not_null(res);
+  cr_assert(not(zero(ptr, res)));
   assert_object_str_equals(res, "AAECAw==");
 
   filterx_object_unref(res);
@@ -92,7 +93,7 @@ Test(filterx_func_base64, encode_wrong_arg_type)
   FilterXExpr *fn = _create_base64_encode_expr(filterx_integer_new(42));
   FilterXObject *res = init_and_eval_expr(fn);
 
-  cr_assert_null(res);
+  cr_assert(zero(ptr, res));
 
   filterx_expr_unref(fn);
 }
@@ -102,14 +103,14 @@ Test(filterx_func_base64, decode_string)
   FilterXExpr *fn = _create_base64_decode_expr(filterx_string_new("Zm9vYmFy", -1));
   FilterXObject *res = init_and_eval_expr(fn);
 
-  cr_assert_not_null(res);
+  cr_assert(not(zero(ptr, res)));
   cr_assert(filterx_object_is_type(res, &FILTERX_TYPE_NAME(bytes)));
 
   gsize len;
   const gchar *value = filterx_bytes_get_value_ref(res, &len);
-  cr_assert_not_null(value);
-  cr_assert_eq(len, 6);
-  cr_assert(memcmp(value, "foobar", 6) == 0);
+  cr_assert(not(zero(ptr, value)));
+  cr_assert(eq(sz, len, 6));
+  cr_assert(eq(mem, ((struct cr_mem){ .data = value, .size = 6 }), ((struct cr_mem){ .data = "foobar", .size = 6 })));
 
   filterx_object_unref(res);
   filterx_expr_unref(fn);
@@ -120,7 +121,7 @@ Test(filterx_func_base64, decode_wrong_arg_type)
   FilterXExpr *fn = _create_base64_decode_expr(filterx_integer_new(42));
   FilterXObject *res = init_and_eval_expr(fn);
 
-  cr_assert_null(res);
+  cr_assert(zero(ptr, res));
 
   filterx_expr_unref(fn);
 }
@@ -130,17 +131,18 @@ Test(filterx_func_base64, encode_decode_roundtrip)
   const gchar *original = "szilvafa";
   FilterXExpr *encode_fn = _create_base64_encode_expr(filterx_string_new(original, -1));
   FilterXObject *encoded = init_and_eval_expr(encode_fn);
-  cr_assert_not_null(encoded);
+  cr_assert(not(zero(ptr, encoded)));
 
   FilterXExpr *decode_fn = _create_base64_decode_expr(filterx_object_ref(encoded));
   FilterXObject *decoded = init_and_eval_expr(decode_fn);
-  cr_assert_not_null(decoded);
+  cr_assert(not(zero(ptr, decoded)));
 
   gsize len;
   const gchar *value = filterx_bytes_get_value_ref(decoded, &len);
-  cr_assert_not_null(value);
-  cr_assert_eq(len, strlen(original));
-  cr_assert(memcmp(value, original, len) == 0);
+  cr_assert(not(zero(ptr, value)));
+  cr_assert(eq(sz, len, strlen(original)));
+  cr_assert(eq(mem, ((struct cr_mem){ .data = value, .size = len }),
+               ((struct cr_mem){ .data = original, .size = len })));
 
   filterx_object_unref(decoded);
   filterx_expr_unref(decode_fn);
@@ -159,7 +161,7 @@ _create_urlencode_expr(FilterXObject *arg)
   GError *error = NULL;
   FilterXExpr *fn = filterx_simple_function_new("urlencode", filterx_function_args_new(args, NULL),
                                                 filterx_simple_function_urlencode, &error);
-  cr_assert_null(error);
+  cr_assert(zero(ptr, error));
   return fn;
 }
 
@@ -172,7 +174,7 @@ _create_urldecode_expr(FilterXObject *arg)
   GError *error = NULL;
   FilterXExpr *fn = filterx_simple_function_new("urldecode", filterx_function_args_new(args, NULL),
                                                 filterx_simple_function_urldecode, &error);
-  cr_assert_null(error);
+  cr_assert(zero(ptr, error));
   return fn;
 }
 
@@ -181,7 +183,7 @@ Test(filterx_func_url, encode_plain_string)
   FilterXExpr *fn = _create_urlencode_expr(filterx_string_new("foobar", -1));
   FilterXObject *res = init_and_eval_expr(fn);
 
-  cr_assert_not_null(res);
+  cr_assert(not(zero(ptr, res)));
   assert_object_str_equals(res, "foobar");
 
   filterx_object_unref(res);
@@ -193,7 +195,7 @@ Test(filterx_func_url, encode_special_chars)
   FilterXExpr *fn = _create_urlencode_expr(filterx_string_new("korte fa/szilva?alma=1&korte=2", -1));
   FilterXObject *res = init_and_eval_expr(fn);
 
-  cr_assert_not_null(res);
+  cr_assert(not(zero(ptr, res)));
   assert_object_str_equals(res, "korte%20fa%2Fszilva%3Falma%3D1%26korte%3D2");
 
   filterx_object_unref(res);
@@ -205,7 +207,7 @@ Test(filterx_func_url, encode_wrong_arg_type)
   FilterXExpr *fn = _create_urlencode_expr(filterx_integer_new(42));
   FilterXObject *res = init_and_eval_expr(fn);
 
-  cr_assert_null(res);
+  cr_assert(zero(ptr, res));
 
   filterx_expr_unref(fn);
 }
@@ -215,7 +217,7 @@ Test(filterx_func_url, decode_plain_string)
   FilterXExpr *fn = _create_urldecode_expr(filterx_string_new("foobar", -1));
   FilterXObject *res = init_and_eval_expr(fn);
 
-  cr_assert_not_null(res);
+  cr_assert(not(zero(ptr, res)));
   assert_object_str_equals(res, "foobar");
 
   filterx_object_unref(res);
@@ -227,7 +229,7 @@ Test(filterx_func_url, decode_percent_encoded)
   FilterXExpr *fn = _create_urldecode_expr(filterx_string_new("korte%20fa%2Fszilva%3Falma%3D1%26korte%3D2", -1));
   FilterXObject *res = init_and_eval_expr(fn);
 
-  cr_assert_not_null(res);
+  cr_assert(not(zero(ptr, res)));
   assert_object_str_equals(res, "korte fa/szilva?alma=1&korte=2");
 
   filterx_object_unref(res);
@@ -239,7 +241,7 @@ Test(filterx_func_url, decode_wrong_arg_type)
   FilterXExpr *fn = _create_urldecode_expr(filterx_integer_new(42));
   FilterXObject *res = init_and_eval_expr(fn);
 
-  cr_assert_null(res);
+  cr_assert(zero(ptr, res));
 
   filterx_expr_unref(fn);
 }
@@ -249,11 +251,11 @@ Test(filterx_func_url, encode_decode_roundtrip)
   const gchar *original = "kortefa/szilvafa?alma=1&dio=2";
   FilterXExpr *encode_fn = _create_urlencode_expr(filterx_string_new(original, -1));
   FilterXObject *encoded = init_and_eval_expr(encode_fn);
-  cr_assert_not_null(encoded);
+  cr_assert(not(zero(ptr, encoded)));
 
   FilterXExpr *decode_fn = _create_urldecode_expr(filterx_object_ref(encoded));
   FilterXObject *decoded = init_and_eval_expr(decode_fn);
-  cr_assert_not_null(decoded);
+  cr_assert(not(zero(ptr, decoded)));
 
   assert_object_str_equals(decoded, original);
 
@@ -289,7 +291,7 @@ _create_hex_encode_expr(FilterXObject *arg)
   GError *error = NULL;
   FilterXExpr *fn = filterx_simple_function_new("hex_encode", filterx_function_args_new(args, NULL),
                                                 filterx_simple_function_hex_encode, &error);
-  cr_assert_null(error);
+  cr_assert(zero(ptr, error));
   return fn;
 }
 
@@ -302,7 +304,7 @@ _create_hex_decode_expr(FilterXObject *arg)
   GError *error = NULL;
   FilterXExpr *fn = filterx_simple_function_new("hex_decode", filterx_function_args_new(args, NULL),
                                                 filterx_simple_function_hex_decode, &error);
-  cr_assert_null(error);
+  cr_assert(zero(ptr, error));
   return fn;
 }
 
@@ -311,7 +313,7 @@ Test(filterx_func_hex, encode_string)
   FilterXExpr *fn = _create_hex_encode_expr(filterx_string_new("foo", -1));
   FilterXObject *res = init_and_eval_expr(fn);
 
-  cr_assert_not_null(res);
+  cr_assert(not(zero(ptr, res)));
   assert_object_str_equals(res, "666f6f");
 
   filterx_object_unref(res);
@@ -323,7 +325,7 @@ Test(filterx_func_hex, encode_bytes)
   FilterXExpr *fn = _create_hex_encode_expr(filterx_bytes_new("\x00\x01\x0f\xff", 4));
   FilterXObject *res = init_and_eval_expr(fn);
 
-  cr_assert_not_null(res);
+  cr_assert(not(zero(ptr, res)));
   assert_object_str_equals(res, "00010fff");
 
   filterx_object_unref(res);
@@ -335,7 +337,7 @@ Test(filterx_func_hex, encode_wrong_arg_type)
   FilterXExpr *fn = _create_hex_encode_expr(filterx_integer_new(42));
   FilterXObject *res = init_and_eval_expr(fn);
 
-  cr_assert_null(res);
+  cr_assert(zero(ptr, res));
 
   filterx_expr_unref(fn);
 }
@@ -345,14 +347,14 @@ Test(filterx_func_hex, decode_lowercase)
   FilterXExpr *fn = _create_hex_decode_expr(filterx_string_new("666f6f", -1));
   FilterXObject *res = init_and_eval_expr(fn);
 
-  cr_assert_not_null(res);
+  cr_assert(not(zero(ptr, res)));
   cr_assert(filterx_object_is_type(res, &FILTERX_TYPE_NAME(bytes)));
 
   gsize len;
   const gchar *value = filterx_bytes_get_value_ref(res, &len);
-  cr_assert_not_null(value);
-  cr_assert_eq(len, 3);
-  cr_assert(memcmp(value, "foo", 3) == 0);
+  cr_assert(not(zero(ptr, value)));
+  cr_assert(eq(sz, len, 3));
+  cr_assert(eq(mem, ((struct cr_mem){ .data = value, .size = 3 }), ((struct cr_mem){ .data = "foo", .size = 3 })));
 
   filterx_object_unref(res);
   filterx_expr_unref(fn);
@@ -363,14 +365,14 @@ Test(filterx_func_hex, decode_uppercase)
   FilterXExpr *fn = _create_hex_decode_expr(filterx_string_new("666F6F", -1));
   FilterXObject *res = init_and_eval_expr(fn);
 
-  cr_assert_not_null(res);
+  cr_assert(not(zero(ptr, res)));
   cr_assert(filterx_object_is_type(res, &FILTERX_TYPE_NAME(bytes)));
 
   gsize len;
   const gchar *value = filterx_bytes_get_value_ref(res, &len);
-  cr_assert_not_null(value);
-  cr_assert_eq(len, 3);
-  cr_assert(memcmp(value, "foo", 3) == 0);
+  cr_assert(not(zero(ptr, value)));
+  cr_assert(eq(sz, len, 3));
+  cr_assert(eq(mem, ((struct cr_mem){ .data = value, .size = 3 }), ((struct cr_mem){ .data = "foo", .size = 3 })));
 
   filterx_object_unref(res);
   filterx_expr_unref(fn);
@@ -381,7 +383,7 @@ Test(filterx_func_hex, decode_odd_length)
   FilterXExpr *fn = _create_hex_decode_expr(filterx_string_new("666f6", -1));
   FilterXObject *res = init_and_eval_expr(fn);
 
-  cr_assert_null(res);
+  cr_assert(zero(ptr, res));
 
   filterx_expr_unref(fn);
 }
@@ -391,7 +393,7 @@ Test(filterx_func_hex, decode_invalid_char)
   FilterXExpr *fn = _create_hex_decode_expr(filterx_string_new("66zz6f", -1));
   FilterXObject *res = init_and_eval_expr(fn);
 
-  cr_assert_null(res);
+  cr_assert(zero(ptr, res));
 
   filterx_expr_unref(fn);
 }
@@ -401,7 +403,7 @@ Test(filterx_func_hex, decode_wrong_arg_type)
   FilterXExpr *fn = _create_hex_decode_expr(filterx_integer_new(42));
   FilterXObject *res = init_and_eval_expr(fn);
 
-  cr_assert_null(res);
+  cr_assert(zero(ptr, res));
 
   filterx_expr_unref(fn);
 }
@@ -410,17 +412,18 @@ Test(filterx_func_hex, encode_decode_roundtrip)
 {
   FilterXExpr *encode_fn = _create_hex_encode_expr(filterx_bytes_new("\xde\xad\xbe\xef", 4));
   FilterXObject *encoded = init_and_eval_expr(encode_fn);
-  cr_assert_not_null(encoded);
+  cr_assert(not(zero(ptr, encoded)));
 
   FilterXExpr *decode_fn = _create_hex_decode_expr(filterx_object_ref(encoded));
   FilterXObject *decoded = init_and_eval_expr(decode_fn);
-  cr_assert_not_null(decoded);
+  cr_assert(not(zero(ptr, decoded)));
 
   gsize len;
   const gchar *value = filterx_bytes_get_value_ref(decoded, &len);
-  cr_assert_not_null(value);
-  cr_assert_eq(len, 4);
-  cr_assert(memcmp(value, "\xde\xad\xbe\xef", 4) == 0);
+  cr_assert(not(zero(ptr, value)));
+  cr_assert(eq(sz, len, 4));
+  cr_assert(eq(mem, ((struct cr_mem){ .data = value, .size = 4 }),
+               ((struct cr_mem){ .data = "\xde\xad\xbe\xef", .size = 4 })));
 
   filterx_object_unref(decoded);
   filterx_expr_unref(decode_fn);

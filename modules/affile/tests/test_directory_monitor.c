@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "directory-monitor.h"
 #include "directory-monitor-factory.h"
@@ -50,7 +51,7 @@ Test(directory_monitor, read_content_of_directory)
 {
   gchar *dir_pattern = g_strdup("read_content_of_directoryXXXXXX");
   gchar *tmpdir = g_mkdtemp(dir_pattern);
-  cr_assert(tmpdir);
+  cr_assert(not(zero(ptr, tmpdir)));
   gchar *file_list[10] = {0};
   gchar *file_list_full_path[10] = {0};
   for (gint i = 0; i < 10; i++)
@@ -59,7 +60,7 @@ Test(directory_monitor, read_content_of_directory)
       file_list[i] = g_strdup_printf("file_%d.txt", i);
       file_list_full_path[i] = g_build_filename(tmpdir, file_list[i], NULL);;
       gboolean res = g_file_set_contents(file_list_full_path[i], file_list[i], strlen(file_list[i]), &error);
-      cr_assert(res != FALSE, "Error: %s", error ? error->message : "OK");
+      cr_assert(res, "Error: %s", error ? error->message : "OK");
     }
   DirectoryMonitor *monitor = directory_monitor_new(tmpdir, 1);
   GList *found_files = NULL;
@@ -68,7 +69,8 @@ Test(directory_monitor, read_content_of_directory)
 
   for (gint i = 0; i < 10; i++)
     {
-      cr_assert(g_list_find_custom(found_files, file_list[i], (GCompareFunc)strcmp), "Can not find: %s", file_list[i]);
+      cr_assert(not(zero(ptr, g_list_find_custom(found_files, file_list[i], (GCompareFunc)strcmp))), "Can not find: %s",
+                file_list[i]);
       unlink(file_list_full_path[i]);
       g_free(file_list_full_path[i]);
       g_free(file_list[i]);
@@ -85,7 +87,7 @@ Test(directory_monitor, non_existing_directory)
   GList *found_files = NULL;
   directory_monitor_set_callback(monitor, _callback, &found_files);
   directory_monitor_start(monitor);
-  cr_assert_null(found_files);
+  cr_assert(zero(ptr, found_files));
   directory_monitor_free(monitor);
 }
 
@@ -94,15 +96,15 @@ TestSuite(directory_monitor_tools, .init = app_startup, .fini = app_shutdown);
 Test(directory_monitor_tools, build_filename)
 {
   gchar *built_path = build_filename(NULL, "tmp");
-  cr_assert_str_eq("tmp", built_path);
+  cr_assert(eq(str, "tmp", built_path));
   g_free(built_path);
 
   built_path = build_filename("tmp", "test_dir");
-  cr_assert_str_eq("tmp/test_dir", built_path);
+  cr_assert(eq(str, "tmp/test_dir", built_path));
   g_free(built_path);
 
   built_path = build_filename("tmp", NULL);
-  cr_assert_eq(NULL, built_path);
+  cr_assert(zero(ptr, built_path));
 }
 
 TestSuite(directory_monitor_factory, .init = app_startup, .fini = app_shutdown);
@@ -110,25 +112,25 @@ TestSuite(directory_monitor_factory, .init = app_startup, .fini = app_shutdown);
 Test(directory_monitor_factory, check_monitor_method)
 {
 #if SYSLOG_NG_HAVE_INOTIFY
-  cr_assert_eq(MM_INOTIFY, directory_monitor_factory_get_monitor_method("inotify"));
+  cr_assert(eq(int, MM_INOTIFY, directory_monitor_factory_get_monitor_method("inotify")));
 #endif
-  cr_assert_eq(MM_AUTO, directory_monitor_factory_get_monitor_method("auto"));
-  cr_assert_eq(MM_POLL, directory_monitor_factory_get_monitor_method("poll"));
-  cr_assert_eq(MM_UNKNOWN, directory_monitor_factory_get_monitor_method("something else"));
+  cr_assert(eq(int, MM_AUTO, directory_monitor_factory_get_monitor_method("auto")));
+  cr_assert(eq(int, MM_POLL, directory_monitor_factory_get_monitor_method("poll")));
+  cr_assert(eq(int, MM_UNKNOWN, directory_monitor_factory_get_monitor_method("something else")));
 }
 
 Test(directory_monitor_factory, check_constructor)
 {
   DirectoryMonitorOptions options = {.dir = "/tmp", .follow_freq = 1, .method = MM_AUTO};
 #if SYSLOG_NG_HAVE_INOTIFY
-  cr_assert_eq(directory_monitor_factory_get_constructor(&options), directory_monitor_inotify_new);
+  cr_assert(eq(ptr, directory_monitor_factory_get_constructor(&options), directory_monitor_inotify_new));
   options.method = MM_INOTIFY;
-  cr_assert_eq(directory_monitor_factory_get_constructor(&options), directory_monitor_inotify_new);
+  cr_assert(eq(ptr, directory_monitor_factory_get_constructor(&options), directory_monitor_inotify_new));
 #else
-  cr_assert_eq(directory_monitor_factory_get_constructor(&options), directory_monitor_poll_new);
+  cr_assert(eq(ptr, directory_monitor_factory_get_constructor(&options), directory_monitor_poll_new));
 #endif
   options.method = MM_POLL;
-  cr_assert_eq(directory_monitor_factory_get_constructor(&options), directory_monitor_poll_new);
+  cr_assert(eq(ptr, directory_monitor_factory_get_constructor(&options), directory_monitor_poll_new));
   options.method = MM_UNKNOWN;
-  cr_assert_eq(directory_monitor_factory_get_constructor(&options), NULL);
+  cr_assert(zero(ptr, directory_monitor_factory_get_constructor(&options)));
 }

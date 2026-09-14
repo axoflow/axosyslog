@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/cr_template.h"
 #include "libtest/filterx-lib.h"
 
@@ -44,12 +45,12 @@ _assert_comparison(FilterXObject *lhs, FilterXObject *rhs, gint operator, gboole
   FilterXExpr *rhse = filterx_literal_new(rhs);
 
   FilterXExpr *cmp = filterx_comparison_new(lhse, rhse, operator);
-  cr_assert_not_null(cmp);
+  cr_assert(not(zero(ptr, cmp)));
 
   FilterXObject *result = init_and_eval_expr(cmp);
-  cr_assert_not_null(result);
+  cr_assert(not(zero(ptr, result)));
 
-  cr_assert(filterx_object_truthy(result) == expected);
+  cr_assert(eq(int, filterx_object_truthy(result), expected));
   filterx_expr_unref(cmp);
   // note that comparison expression unref operands
 }

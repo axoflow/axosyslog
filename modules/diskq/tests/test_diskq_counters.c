@@ -23,6 +23,7 @@
 #include <unistd.h>
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/queue_utils_lib.h"
 #include "test_diskq_tools.h"
 
@@ -107,7 +108,7 @@ _push_one_message(LogQueue *q, gssize *memory_size, gssize *serialized_size)
       g_string_free(buf, TRUE);
       g_error_free(error);
       /* Some counters have KiB precision, make it larger, so it does not diminish. */
-      cr_assert(*serialized_size > 1024);
+      cr_assert(gt(i64, *serialized_size, 1024));
     }
 }
 
@@ -121,23 +122,23 @@ _assert_counters(LogQueue *queue, gsize queued, gsize memory_usage, gsize capaci
   gsize disk_usage_kib = disk_usage / 1024;
   gsize disk_allocated_kib = disk_allocated / 1024;
 
-  cr_assert(queue->metrics.owned.queued_messages);
-  cr_assert(queue->metrics.owned.memory_usage);
-  cr_assert(queue_disk->metrics.capacity);
-  cr_assert(queue_disk->metrics.disk_usage);
-  cr_assert(stats_counter_get(queue->metrics.owned.queued_messages) == queued,
+  cr_assert(not(zero(ptr, queue->metrics.owned.queued_messages)));
+  cr_assert(not(zero(ptr, queue->metrics.owned.memory_usage)));
+  cr_assert(not(zero(ptr, queue_disk->metrics.capacity)));
+  cr_assert(not(zero(ptr, queue_disk->metrics.disk_usage)));
+  cr_assert(eq(sz, stats_counter_get(queue->metrics.owned.queued_messages), queued),
             "line %d: Queued message counter mismatch. Expected: %lu Actual: %lu",
             line, queued, stats_counter_get(queue->metrics.owned.queued_messages));
-  cr_assert(stats_counter_get(queue->metrics.owned.memory_usage) == memory_usage,
+  cr_assert(eq(sz, stats_counter_get(queue->metrics.owned.memory_usage), memory_usage),
             "line %d: Memory usage counter mismatch. Expected: %lu Actual: %lu",
             line, memory_usage, stats_counter_get(queue->metrics.owned.memory_usage));
-  cr_assert(stats_counter_get(queue_disk->metrics.capacity) == capacity_kib,
+  cr_assert(eq(sz, stats_counter_get(queue_disk->metrics.capacity), capacity_kib),
             "line %d: Capacity counter mismatch. Expected: %lu Actual: %lu",
             line, capacity_kib, stats_counter_get(queue_disk->metrics.capacity));
-  cr_assert(stats_counter_get(queue_disk->metrics.disk_usage) == disk_usage_kib,
+  cr_assert(eq(sz, stats_counter_get(queue_disk->metrics.disk_usage), disk_usage_kib),
             "line %d: Disk usage counter mismatch. Expected: %lu Actual: %lu",
             line, disk_usage_kib, stats_counter_get(queue_disk->metrics.disk_usage));
-  cr_assert(stats_counter_get(queue_disk->metrics.disk_allocated) == disk_allocated_kib,
+  cr_assert(eq(sz, stats_counter_get(queue_disk->metrics.disk_allocated), disk_allocated_kib),
             "line %d: Disk allocated counter mismatch. Expected: %lu Actual: %lu",
             line, disk_allocated_kib, stats_counter_get(queue_disk->metrics.disk_allocated));
 }
@@ -170,7 +171,7 @@ Test(diskq_counters, test_non_reliable,
   /* Init empty disk-queue */
   LogQueue *queue = log_queue_ref(log_dest_driver_acquire_queue(driver, queue_persist_name, STATS_LEVEL0, NULL,
                                   queue_sck_builder));
-  cr_assert(queue);
+  cr_assert(not(zero(ptr, queue)));
   _assert_counters(queue, 0, 0, expected_capacity, 0, QDISK_RESERVED_SPACE, __LINE__);
 
   /* First message goes to front cache */
@@ -191,7 +192,7 @@ Test(diskq_counters, test_non_reliable,
   queue_sck_builder = stats_cluster_key_builder_new();
   queue = log_queue_ref(log_dest_driver_acquire_queue(driver, queue_persist_name, STATS_LEVEL0, NULL,
                                                       queue_sck_builder));
-  cr_assert(queue);
+  cr_assert(not(zero(ptr, queue)));
   _assert_counters(queue, 2, one_message_memory_size, expected_capacity, one_message_serialized_size,
                    QDISK_RESERVED_SPACE + one_message_serialized_size, __LINE__);
 
@@ -242,7 +243,7 @@ Test(diskq_counters, test_reliable,
   /* Init empty disk-queue */
   LogQueue *queue = log_queue_ref(log_dest_driver_acquire_queue(driver, queue_persist_name, STATS_LEVEL0, NULL,
                                   queue_sck_builder));
-  cr_assert(queue);
+  cr_assert(not(zero(ptr, queue)));
   _assert_counters(queue, 0, 0, expected_capacity, 0, QDISK_RESERVED_SPACE, __LINE__);
 
   /* The message goes to both front cache and qdisk */
@@ -259,7 +260,7 @@ Test(diskq_counters, test_reliable,
   queue_sck_builder = stats_cluster_key_builder_new();
   queue = log_queue_ref(log_dest_driver_acquire_queue(driver, queue_persist_name, STATS_LEVEL0, NULL,
                                                       queue_sck_builder));
-  cr_assert(queue);
+  cr_assert(not(zero(ptr, queue)));
   _assert_counters(queue, 1, 0, expected_capacity, one_message_serialized_size,
                    QDISK_RESERVED_SPACE + one_message_serialized_size, __LINE__);
 

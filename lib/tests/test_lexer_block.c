@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "cfg-lexer.h"
 #include "cfg-args.h"
@@ -66,11 +67,11 @@ Test(test_block, mandatory_arguments)
                                                arg_defs, &yyloc);
 
   CfgArgs *args = cfg_args_new();
-  cr_assert_not(generator->generate(generator, configuration, args, result, ""), "mandatory parameter missing");
+  cr_assert(not(generator->generate(generator, configuration, args, result, "")), "mandatory parameter missing");
 
   cfg_args_set(args, "mandatory-param", "value");
   cr_assert(generator->generate(generator, configuration, args, result, ""));
-  cr_assert_str_eq(result->str, "value");
+  cr_assert(eq(str, result->str, "value"));
 
   cfg_args_unref(args);
   cfg_block_generator_unref(generator);
@@ -86,11 +87,11 @@ Test(test_block, varargs)
 
   CfgArgs *args = cfg_args_new();
   cfg_args_set(args, "varargs_param", "value");
-  cr_assert_not(generator->generate(generator, configuration, args, result, ""), "varargs not set yet");
+  cr_assert(not(generator->generate(generator, configuration, args, result, "")), "varargs not set yet");
 
   cfg_args_accept_varargs(arg_defs);
   cr_assert(generator->generate(generator, configuration, args, result, ""));
-  cr_assert_str_eq(result->str, "value");
+  cr_assert(eq(str, result->str, "value"));
 
   cfg_args_unref(args);
   cfg_block_generator_unref(generator);

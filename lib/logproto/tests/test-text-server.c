@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/mock-transport.h"
 #include "libtest/proto_lib.h"
 #include "libtest/msg_parse_lib.h"
@@ -360,7 +361,7 @@ Test(log_proto, test_log_proto_text_server_invalid_encoding)
   start_grabbing_messages();
   success = log_proto_server_validate_options(proto);
   assert_grabbed_log_contains("Unknown character set name specified; encoding='never-ever-is-going-to-be-such-an-encoding'");
-  cr_assert_not(success, "validate_options() returned success but it should have failed");
+  cr_assert(not(success), "validate_options() returned success but it should have failed");
   log_proto_server_free(proto);
 }
 
@@ -442,10 +443,10 @@ accumulator_assert_that_lines_are_starting_with_sequence_number(MultiLineLogic *
     const guchar *msg, gsize msg_len,
     const guchar *segment, gsize segment_len)
 {
-  cr_assert_eq((msg[0] - '0'), accumulate_seq,
-               "accumulate_line: Message doesn't start with sequence number, msg=%.*s, seq=%d",
-               (int)msg_len, msg, accumulate_seq);
-  cr_assert_eq(msg_len, 0, "Initial invocation of the accumulator expects 0 as msg_len");
+  cr_assert(eq(int, (msg[0] - '0'), accumulate_seq),
+            "accumulate_line: Message doesn't start with sequence number, msg=%.*s, seq=%d",
+            (int)msg_len, msg, accumulate_seq);
+  cr_assert(eq(sz, msg_len, 0), "Initial invocation of the accumulator expects 0 as msg_len");
   accumulate_seq++;
   return MLL_CONSUME_SEGMENT | MLL_EXTRACTED;
 }
@@ -679,11 +680,11 @@ Test(log_proto, test_log_proto_text_server_io_eagain)
   gsize msg_len;
 
   log_transport_aux_data_init(&aux);
-  cr_assert_eq(log_proto_server_fetch(proto, &msg, &msg_len, &may_read, &aux, &bookmark), LPS_SUCCESS);
+  cr_assert(eq(int, log_proto_server_fetch(proto, &msg, &msg_len, &may_read, &aux, &bookmark), LPS_SUCCESS));
   log_transport_aux_data_reinit(&aux);
-  cr_assert_eq(log_proto_server_fetch(proto, &msg, &msg_len, &may_read, &aux, &bookmark), LPS_AGAIN);
+  cr_assert(eq(int, log_proto_server_fetch(proto, &msg, &msg_len, &may_read, &aux, &bookmark), LPS_AGAIN));
   log_transport_aux_data_reinit(&aux);
-  cr_assert_eq(log_proto_server_fetch(proto, &msg, &msg_len, &may_read, &aux, &bookmark), LPS_EOF);
+  cr_assert(eq(int, log_proto_server_fetch(proto, &msg, &msg_len, &may_read, &aux, &bookmark), LPS_EOF));
   log_transport_aux_data_destroy(&aux);
 
   log_proto_server_free(proto);
@@ -709,7 +710,7 @@ Test(log_proto, buffer_split_with_encoding_and_position_tracking)
   assert_proto_server_fetch(proto, data_smaller->str, data_smaller->len - 1);
   assert_proto_server_fetch(proto, data->str, data->len - 1);
   stop_grabbing_messages();
-  cr_assert_not(find_grabbed_message("Internal error"));
+  cr_assert(not(find_grabbed_message("Internal error")));
 
   assert_proto_server_fetch_failure(proto, LPS_EOF, NULL);
 

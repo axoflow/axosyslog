@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/grab-logging.h"
 #include "libtest/msg_parse_lib.h"
 #include "libtest/cr_template.h"
@@ -73,7 +74,7 @@ Test(set_matches, numeric)
 
 Test(set_matches, too_many_items)
 {
-  cr_assert(LOGMSG_MAX_MATCHES == 256);
+  cr_assert(eq(int, LOGMSG_MAX_MATCHES, 256));
 
   log_msg_set_match(msg, 0, "whatever", -1);
   _perform_set_matches(

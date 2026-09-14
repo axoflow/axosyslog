@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "apphook.h"
 #include "logmsg/gsockaddr-serialize.h"
@@ -38,7 +39,7 @@ Test(gsockaddr_serialize, test_empty)
 
   cr_assert(g_sockaddr_serialize(sa, NULL), "failed to serialize empty GSockAddr");
   cr_assert(g_sockaddr_deserialize(sa, &read_addr), "failed to read back empty GSockAddr");
-  cr_assert_null(read_addr, "deserialized GSockAddr should be empty (NULL)");
+  cr_assert(zero(ptr, read_addr), "deserialized GSockAddr should be empty (NULL)");
 
   serialize_archive_free(sa);
   g_string_free(stream, TRUE);
@@ -54,7 +55,8 @@ Test(gsockaddr_serialize, test_inet)
   cr_assert(g_sockaddr_serialize(sa, addr), "failed to serialize inet GSockAddr");
   cr_assert(g_sockaddr_deserialize(sa, &read_addr), "failed to read back inet GSockAddr");
 
-  cr_assert_arr_eq(g_sockaddr_inet_get_sa(addr), g_sockaddr_inet_get_sa(read_addr), addr->super.salen);
+  cr_assert(eq(mem, ((struct cr_mem){ .data = g_sockaddr_inet_get_sa(addr), .size = addr->super.salen }),
+               ((struct cr_mem){ .data = g_sockaddr_inet_get_sa(read_addr), .size = addr->super.salen })));
 
   serialize_archive_free(sa);
   g_string_free(stream, TRUE);
@@ -73,7 +75,8 @@ Test(gsockaddr_serialize, test_inet6)
   cr_assert(g_sockaddr_serialize(sa, addr), "failed to serialize inet6 GSockAddr");
   cr_assert(g_sockaddr_deserialize(sa, &read_addr), "failed to read back inet6 GSockAddr");
 
-  cr_assert_arr_eq(g_sockaddr_inet6_get_sa(addr), g_sockaddr_inet6_get_sa(read_addr), addr->super.salen);
+  cr_assert(eq(mem, ((struct cr_mem){ .data = g_sockaddr_inet6_get_sa(addr), .size = addr->super.salen }),
+               ((struct cr_mem){ .data = g_sockaddr_inet6_get_sa(read_addr), .size = addr->super.salen })));
 
   serialize_archive_free(sa);
   g_string_free(stream, TRUE);
@@ -108,13 +111,13 @@ Test(gsockaddr_serialize, test_inet_false)
   cr_assert(g_sockaddr_serialize(sa, addr), "failed to serialize inet GSockAddr");
 
   g_string_truncate(stream, 0);
-  cr_assert_not(g_sockaddr_deserialize(sa, &read_addr), "SHOULD HAVE FAILED HERE");
+  cr_assert(not(g_sockaddr_deserialize(sa, &read_addr)), "SHOULD HAVE FAILED HERE");
   serialize_archive_free(sa);
 
   sa = serialize_string_archive_new(stream);
   cr_assert(g_sockaddr_serialize(sa, addr), "failed to serialize inet GSockAddr");
   g_string_truncate(stream, 2);
-  cr_assert_not(g_sockaddr_deserialize(sa, &read_addr), "SHOULD BE FAILED_HERE");
+  cr_assert(not(g_sockaddr_deserialize(sa, &read_addr)), "SHOULD BE FAILED_HERE");
 
   serialize_archive_free(sa);
   g_string_free(stream, TRUE);
@@ -133,13 +136,13 @@ Test(gsockaddr_serialize, test_inet6_false)
   cr_assert(g_sockaddr_serialize(sa, addr), "failed to serialize inet6 GSockAddr");
 
   g_string_truncate(stream, 0);
-  cr_assert_not(g_sockaddr_deserialize(sa, &read_addr), "SHOULD HAVE FAILED HERE");
+  cr_assert(not(g_sockaddr_deserialize(sa, &read_addr)), "SHOULD HAVE FAILED HERE");
   serialize_archive_free(sa);
 
   sa = serialize_string_archive_new(stream);
   cr_assert(g_sockaddr_serialize(sa, addr), "failed to serialize inet6 GSockAddr");
   g_string_truncate(stream, 2);
-  cr_assert_not(g_sockaddr_deserialize(sa, &read_addr), "SHOULD BE FAILED_HERE");
+  cr_assert(not(g_sockaddr_deserialize(sa, &read_addr)), "SHOULD BE FAILED_HERE");
 
   serialize_archive_free(sa);
   g_string_free(stream, TRUE);
@@ -159,7 +162,7 @@ Test(gsockaddr_serialize, test_bad_family)
   cr_assert(g_sockaddr_serialize(sa, addr), "failed to serialize GSockAddr");
 
   g_string_overwrite_len(stream, 0, (const gchar *)&bad_family, sizeof(bad_family)/sizeof(gchar));
-  cr_assert_not(g_sockaddr_deserialize(sa, &read_addr), "SHOULD HAVE FAILED HERE");
+  cr_assert(not(g_sockaddr_deserialize(sa, &read_addr)), "SHOULD HAVE FAILED HERE");
 
   serialize_archive_free(sa);
   g_string_free(stream, TRUE);

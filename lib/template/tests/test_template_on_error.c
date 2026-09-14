@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/parameterized.h"
 
 #include "template/templates.h"
@@ -49,7 +50,7 @@ StaticParameterizedTest(TemplateTestCase *test_cases, test_success_params, templ
   gint r;
 
   cr_assert(log_template_on_error_parse(test_cases->actual, &r), "Parsing '%s' works", test_cases->actual);
-  cr_assert_eq(r, test_cases->expected, "'%s' parses down to '%d'", test_cases->actual, test_cases->expected);
+  cr_assert(eq(int, r, test_cases->expected), "'%s' parses down to '%d'", test_cases->actual, test_cases->expected);
 }
 
 Test(template_on_error, test_fail)
@@ -57,7 +58,7 @@ Test(template_on_error, test_fail)
   gint r;
   gchar *pattern = "do-what-i-mean";
 
-  cr_assert_not(log_template_on_error_parse(pattern, &r), "Parsing '%s' works", pattern);
+  cr_assert(not(log_template_on_error_parse(pattern, &r)), "Parsing '%s' works", pattern);
 }
 
 TestSuite(template_on_error, .init = app_startup, .fini = app_shutdown);

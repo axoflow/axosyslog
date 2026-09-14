@@ -20,6 +20,7 @@
  *
  */
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/filterx-lib.h"
 
 #include "filterx/filterx-object.h"
@@ -32,7 +33,7 @@ _assert_repr_equals(FilterXObject *fobj, const gchar *expected)
 {
   GString *repr = g_string_sized_new(0);
   filterx_object_repr(fobj, repr);
-  cr_assert_str_eq(repr->str, expected);
+  cr_assert(eq(str, repr->str, expected));
   g_string_free(repr, TRUE);
 }
 

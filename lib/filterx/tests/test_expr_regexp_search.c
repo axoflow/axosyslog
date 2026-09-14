@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/filterx-lib.h"
 
 #include "filterx/expr-regexp-search.h"
@@ -62,7 +63,7 @@ _search(const gchar *lhs, const gchar *pattern, FLAGSET flags)
   cr_assert(filterx_expr_init(expr, configuration));
 
   FilterXObject *result_obj = filterx_expr_eval(expr);
-  cr_assert(result_obj);
+  cr_assert(not(zero(ptr, result_obj)));
   cr_assert(filterx_object_truthy(result_obj));
 
   filterx_expr_deinit(expr, configuration);
@@ -81,10 +82,10 @@ _assert_search_init_error(const gchar *lhs, const gchar *pattern)
   GError *arg_err = NULL;
   GError *func_err = NULL;
   FilterXExpr *expr = filterx_function_regexp_search_new(filterx_function_args_new(args, &arg_err), &func_err);
-  cr_assert(!arg_err && !func_err);
+  cr_assert(all(zero(ptr, arg_err), zero(ptr, func_err)));
 
   expr = filterx_expr_optimize(expr);
-  cr_assert_not(filterx_expr_init(expr, configuration));
+  cr_assert(not(filterx_expr_init(expr, configuration)));
 
   filterx_expr_unref(expr);
 }
@@ -94,7 +95,7 @@ _assert_len(FilterXObject *obj, guint64 expected_len)
 {
   guint64 len;
   cr_assert(filterx_object_len(obj, &len));
-  cr_assert_eq(len, expected_len, "len mismatch. expected: %" G_GUINT64_FORMAT " actual: %" G_GUINT64_FORMAT,
+  cr_assert(eq(u64, len, expected_len), "len mismatch. expected: %" G_GUINT64_FORMAT " actual: %" G_GUINT64_FORMAT,
                expected_len, len);
 }
 
@@ -102,10 +103,10 @@ static void
 _assert_list_elem(FilterXObject *list, gint64 index, const gchar *expected_value)
 {
   FilterXObject *elem = filterx_sequence_get_subscript(list, index);
-  cr_assert(elem);
+  cr_assert(not(zero(ptr, elem)));
 
   const gchar *value = filterx_string_get_value_as_cstr(elem);
-  cr_assert_str_eq(value, expected_value);
+  cr_assert(eq(str, value, expected_value));
 
   filterx_object_unref(elem);
 }
@@ -115,10 +116,10 @@ _assert_dict_elem(FilterXObject *list, const gchar *key, const gchar *expected_v
 {
   FilterXObject *key_obj = filterx_string_new(key, -1);
   FilterXObject *elem = filterx_object_get_subscript(list, key_obj);
-  cr_assert(elem);
+  cr_assert(not(zero(ptr, elem)));
 
   const gchar *value = filterx_string_get_value_as_cstr(elem);
-  cr_assert_str_eq(value, expected_value);
+  cr_assert(eq(str, value, expected_value));
 
   filterx_object_unref(key_obj);
   filterx_object_unref(elem);
@@ -204,7 +205,7 @@ Test(filterx_expr_regexp_search, optional_group_list_mode)
   cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(sequence)));
   _assert_len(result, 2);
 
-  cr_assert_eq(filterx_sequence_get_subscript(result, 0), filterx_null_new());
+  cr_assert(eq(ptr, filterx_sequence_get_subscript(result, 0), filterx_null_new()));
   _assert_list_elem(result, 1, "bar");
 
   filterx_object_unref(result);
@@ -217,7 +218,7 @@ Test(filterx_expr_regexp_search, optional_group_dict_mode)
   _assert_dict_elem(result, "b", "bar");
 
   FilterXObject *key = filterx_string_new("f", -1);
-  cr_assert_not(filterx_object_is_key_set(result, key));
+  cr_assert(not(filterx_object_is_key_set(result, key)));
   filterx_object_unref(key);
 
   filterx_object_unref(result);

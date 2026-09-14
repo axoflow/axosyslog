@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/mock-cfg-parser.h"
 #include "libtest/grab-logging.h"
 
@@ -60,12 +61,13 @@ _current_lloc(void)
 }
 
 #define assert_token_type(expected)                                     \
-  cr_assert_eq(_current_token()->type, expected, "Unexpected token type %d != %d", _current_token()->type, expected);
+  cr_assert(eq(int, _current_token()->type, expected), "Unexpected token type %d != %d", \
+            _current_token()->type, expected);
 
 #define assert_parser_string(expected)                          \
   _next_token();                                                        \
   assert_token_type(LL_STRING);                                        \
-  cr_assert_str_eq(_current_token()->cptr, expected, "Unexpected string value parsed >>>%s<<< != >>>%s<<<", _current_token()->cptr, expected);
+  cr_assert(eq(str, _current_token()->cptr, expected), "Unexpected string value parsed >>>%s<<< != >>>%s<<<", _current_token()->cptr, expected);
 
 #define assert_parser_token(expected)                          \
   _next_token();                                                        \
@@ -74,7 +76,7 @@ _current_lloc(void)
 #define assert_parser_block(expected) \
   _next_token();                                                        \
   assert_token_type(LL_BLOCK);                                         \
-  cr_assert_str_eq(_current_token()->cptr, expected, "Unexpected block value parsed >>>%s<<< != >>>%s<<<", _current_token()->cptr, expected);
+  cr_assert(eq(str, _current_token()->cptr, expected), "Unexpected block value parsed >>>%s<<< != >>>%s<<<", _current_token()->cptr, expected);
 
 #define assert_parser_error() \
   _next_token();                                                        \
@@ -87,38 +89,38 @@ _current_lloc(void)
 #define assert_parser_number(expected) \
   _next_token();                                                        \
   assert_token_type(LL_NUMBER);                                        \
-  cr_assert_eq(_current_token()->num, expected, "Unexpected number parsed %" G_GINT64_FORMAT " != %" G_GINT64_FORMAT, (gint64) _current_token()->num, (gint64) expected);
+  cr_assert(eq(i64, _current_token()->num, expected), "Unexpected number parsed %" G_GINT64_FORMAT " != %" G_GINT64_FORMAT, (gint64) _current_token()->num, (gint64) expected);
 
 #define assert_parser_float(expected)                           \
   _next_token();                                                        \
   assert_token_type(LL_FLOAT);                                         \
-  cr_assert_float_eq(_current_token()->fnum, expected, 1e-7, "Unexpected float parsed %lf != %lf", _current_token()->fnum, expected);
+  cr_assert(epsilon_eq(dbl, _current_token()->fnum, expected, 1e-7), "Unexpected float parsed %lf != %lf", _current_token()->fnum, expected);
 
 #define assert_parser_identifier(expected) \
   _next_token();                                                        \
   assert_token_type(LL_IDENTIFIER);                                         \
-  cr_assert_str_eq(_current_token()->cptr, expected, "Unexpected identifier parsed >>>%s<<< != >>>%s<<<", _current_token()->cptr, expected);
+  cr_assert(eq(str, _current_token()->cptr, expected), "Unexpected identifier parsed >>>%s<<< != >>>%s<<<", _current_token()->cptr, expected);
 
 #define assert_parser_char(expected) \
   _next_token();                                                        \
-  cr_assert_eq(_current_token()->type, expected, "Unexpected character parsed %c != %c", _current_token()->type, expected);
+  cr_assert(eq(int, _current_token()->type, expected), "Unexpected character parsed %c != %c", _current_token()->type, expected);
 
 #define assert_location(line, column) \
-  cr_assert_eq(_current_lloc()->first_line, line,          \
-              "The line number in the location information "        \
-              "does not match the expected value, %d != %d", _current_lloc()->first_line, line);  \
-  cr_assert_eq(_current_lloc()->first_column, column,          \
-              "The column number in the location information "        \
-              "does not match the expected value, %d != %d", _current_lloc()->first_column, column);
+  cr_assert(eq(int, _current_lloc()->first_line, line),          \
+            "The line number in the location information "        \
+            "does not match the expected value, %d != %d", _current_lloc()->first_line, line);  \
+  cr_assert(eq(int, _current_lloc()->first_column, column),          \
+            "The column number in the location information "        \
+            "does not match the expected value, %d != %d", _current_lloc()->first_column, column);
 
 #define assert_location_range(_first_line, _first_column, _last_line, _last_column) \
   assert_location(_first_line, _first_column); \
-  cr_assert_eq(_current_lloc()->last_line, _last_line,          \
-              "The last_line number in the location information "        \
-              "does not match the expected value, %d != %d", _current_lloc()->last_line, _last_line);  \
-  cr_assert_eq(_current_lloc()->last_column, _last_column,          \
-              "The last_column number in the location information "        \
-              "does not match the expected value, %d != %d", _current_lloc()->last_column, _last_column);
+  cr_assert(eq(int, _current_lloc()->last_line, _last_line),          \
+            "The last_line number in the location information "        \
+            "does not match the expected value, %d != %d", _current_lloc()->last_line, _last_line);  \
+  cr_assert(eq(int, _current_lloc()->last_column, _last_column),          \
+            "The last_column number in the location information "        \
+            "does not match the expected value, %d != %d", _current_lloc()->last_column, _last_column);
 
 
 static gchar *
@@ -144,7 +146,7 @@ _format_location_tag_message(void)
     const gchar *tag_repr;        \
     tag_repr = strstr(msg, "; ");                 \
     tag_repr = tag_repr ? tag_repr + 2 : NULL;    \
-    cr_assert_str_eq(tag_repr, expected, "Formatted location tag does not match %s <> %s", tag_repr, expected);  \
+    cr_assert(eq(str, tag_repr, expected), "Formatted location tag does not match %s <> %s", tag_repr, expected);  \
     free(msg);                    \
                                                                                         \
   })
@@ -299,7 +301,7 @@ Test(lexer, block_empty_input_in_parens_is_processed_as_a_NULL_pointer)
   cfg_lexer_start_block_state(parser->lexer, "()");
   _next_token();
   assert_token_type(LL_BLOCK);
-  cr_assert(_current_token()->cptr == NULL, "%p", _current_token()->cptr);
+  cr_assert(zero(ptr, _current_token()->cptr), "%p", _current_token()->cptr);
 }
 
 Test(lexer, block_empty_string_in_parens_input_is_processed_as_an_empty_string)
@@ -322,8 +324,8 @@ Test(lexer, at_version_stores_config_version_in_parsed_version_in_hex_form)
   _input("@version: 3.1\n\
 bar\n");
   assert_parser_identifier("bar");
-  cr_assert_eq(configuration->user_version, 0x0301,
-               "@version parsing mismatch, value %04x expected %04x", configuration->user_version, 0x0301);
+  cr_assert(eq(int, configuration->user_version, 0x0301),
+            "@version parsing mismatch, value %04x expected %04x", configuration->user_version, 0x0301);
 
   assert_grabbed_log_contains("Configuration file format is too old");
 
@@ -332,8 +334,8 @@ bar\n");
   _input("@version: 3.5\n\
 baz\n");
   assert_parser_identifier("baz");
-  cr_assert_eq(configuration->user_version, 0x0305,
-               "@version parsing mismatch, value %04x expected %04x", configuration->user_version, 0x0305);
+  cr_assert(eq(int, configuration->user_version, 0x0305),
+            "@version parsing mismatch, value %04x expected %04x", configuration->user_version, 0x0305);
 
   assert_grabbed_log_contains("Configuration file format is too old");
 }
@@ -346,8 +348,8 @@ Test(lexer, current_version)
   _input("@version: current\n\
 foo\n");
   assert_parser_identifier("foo");
-  cr_assert_eq(configuration->user_version, VERSION_VALUE_CURRENT,
-               "@version parsing mismatch, value %04x expected %04x", configuration->user_version, VERSION_VALUE_CURRENT);
+  cr_assert(eq(int, configuration->user_version, VERSION_VALUE_CURRENT),
+            "@version parsing mismatch, value %04x expected %04x", configuration->user_version, VERSION_VALUE_CURRENT);
 }
 
 Test(lexer, test_lexer_others)
@@ -520,7 +522,7 @@ Test(lexer, context_name_lookup)
 {
   for (int i=LL_CONTEXT_MAX-1; i >= 1; --i)
     {
-      cr_assert_eq(i, cfg_lexer_lookup_context_type_by_name(cfg_lexer_lookup_context_name_by_type(i)));
+      cr_assert(eq(int, i, cfg_lexer_lookup_context_type_by_name(cfg_lexer_lookup_context_name_by_type(i))));
     }
 }
 

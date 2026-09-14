@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "file-opener.h"
 #include "named-pipe.h"
 #include "file-specializations.h"
@@ -94,12 +95,12 @@ Test(file_opener, test_open_regular_file)
   gchar fname[] = "test.log";
 
   cr_assert(open_regular_source_file(fname, DST_FILE, &fd), "file_opener_open_fd failed: %s", fname);
-  cr_assert(S_ISREG(get_fd_file_mode(fd)) != 0, "%s is not regular file", fname);
+  cr_assert(ne(int, S_ISREG(get_fd_file_mode(fd)), 0), "%s is not regular file", fname);
 
   close(fd);
 
   cr_assert(open_regular_source_file(fname, SRC_FILE, &fd), "file_opener_open_fd failed: %s", fname);
-  cr_assert(S_ISREG(get_fd_file_mode(fd)) != 0, "%s is not regular file", fname);
+  cr_assert(ne(int, S_ISREG(get_fd_file_mode(fd)), 0), "%s is not regular file", fname);
 
   close(fd);
 
@@ -112,7 +113,7 @@ Test(file_opener, test_open_named_pipe)
   gchar fname[] = "test.pipe";
 
   cr_assert(open_named_pipe(fname, SRC_FILE, &fd), "failed to open %s", fname);
-  cr_assert(S_ISFIFO(get_fd_file_mode(fd)) != 0, "%s is not pipe", fname);
+  cr_assert(ne(int, S_ISFIFO(get_fd_file_mode(fd)), 0), "%s is not pipe", fname);
 
   close(fd);
   remove(fname);
@@ -123,8 +124,8 @@ Test(file_opener, test_spurious_path)
   gint fd;
   gchar fname[] = "./../test.fname";
 
-  cr_assert_not(open_regular_source_file(fname, DST_FILE, &fd), "file_opener_open_fd should not be able to open: %s",
-                fname);
+  cr_assert(not(open_regular_source_file(fname, DST_FILE, &fd)), "file_opener_open_fd should not be able to open: %s",
+            fname);
 }
 
 Test(file_opener, test_create_file_in_nonexistent_dir)
@@ -133,7 +134,7 @@ Test(file_opener, test_create_file_in_nonexistent_dir)
   gchar fname[] = "nonexistent/test.txt";
   gint fd;
 
-  cr_assert_not(open_regular_source_file(fname, DST_FILE, &fd), "file_opener_open_fd failed: %s", fname);
+  cr_assert(not(open_regular_source_file(fname, DST_FILE, &fd)), "file_opener_open_fd failed: %s", fname);
   cr_assert(open_regular_source_file(fname, CREATE_DIRS | DST_FILE, &fd), "file_opener_open_fd failed: %s", fname);
 
   close(fd);
@@ -147,11 +148,11 @@ Test(file_opener, test_file_flags)
   gchar fname[] = "test_flags.log";
 
   cr_assert(open_regular_source_file(fname, DST_FILE, &fd), "file_opener_open_fd failed: %s", fname);
-  cr_assert((fcntl(fd, F_GETFL) & O_APPEND) == O_APPEND, "invalid open flags");
+  cr_assert(eq(int, fcntl(fd, F_GETFL) & O_APPEND, O_APPEND), "invalid open flags");
   close(fd);
 
   cr_assert(open_regular_source_file(fname, SRC_FILE, &fd), "file_opener_open_fd failed: %s", fname);
-  cr_assert((fcntl(fd, F_GETFL) & O_APPEND) != O_APPEND, "invalid open flags");
+  cr_assert(ne(int, fcntl(fd, F_GETFL) & O_APPEND, O_APPEND), "invalid open flags");
 
   close(fd);
   remove(fname);

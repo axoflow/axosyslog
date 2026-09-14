@@ -20,6 +20,7 @@
  *
  */
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "filterx/object-string.h"
 #include "filterx/object-null.h"
 #include "filterx/expr-function.h"
@@ -32,14 +33,14 @@
 Test(filterx_bytes, test_filterx_bytes_typecast_null_args)
 {
   FilterXObject *obj = filterx_typecast_bytes(NULL, NULL, 0);
-  cr_assert_null(obj);
+  cr_assert(zero(ptr, obj));
 }
 
 Test(filterx_bytes, test_filterx_bytes_typecast_empty_args)
 {
   FilterXObject *args[] = { NULL };
   FilterXObject *obj = filterx_typecast_bytes(NULL, args, 0);
-  cr_assert_null(obj);
+  cr_assert(zero(ptr, obj));
 }
 
 Test(filterx_bytes, test_filterx_bytes_typecast_null_arg)
@@ -47,7 +48,7 @@ Test(filterx_bytes, test_filterx_bytes_typecast_null_arg)
   FilterXObject *args[] = { NULL };
 
   FilterXObject *obj = filterx_typecast_bytes(NULL, args, G_N_ELEMENTS(args));
-  cr_assert_null(obj);
+  cr_assert(zero(ptr, obj));
 }
 
 Test(filterx_bytes, test_filterx_bytes_typecast_null_object_arg)
@@ -55,7 +56,7 @@ Test(filterx_bytes, test_filterx_bytes_typecast_null_object_arg)
   FilterXObject *args[] = { filterx_null_new() };
 
   FilterXObject *obj = filterx_typecast_bytes(NULL, args, G_N_ELEMENTS(args));
-  cr_assert_null(obj);
+  cr_assert(zero(ptr, obj));
 
   filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
   filterx_object_unref(obj);
@@ -66,7 +67,7 @@ Test(filterx_bytes, test_filterx_bytes_typecast_from_bytes)
   FilterXObject *args[] = { filterx_bytes_new("byte \0sequence", 14) };
   FilterXObject *obj = filterx_typecast_bytes(NULL, args, G_N_ELEMENTS(args));
 
-  cr_assert_eq(args[0], obj);
+  cr_assert(eq(ptr, args[0], obj));
 
   filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
   filterx_object_unref(obj);
@@ -77,13 +78,14 @@ Test(filterx_bytes, test_filterx_bytes_typecast_from_string)
   FilterXObject *args[] = { filterx_string_new("string whatever", -1) };
 
   FilterXObject *obj = filterx_typecast_bytes(NULL, args, G_N_ELEMENTS(args));
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(bytes)));
 
   gsize size;
   const gchar *bytes = filterx_bytes_get_value_ref(obj, &size);
 
-  cr_assert(memcmp("string whatever", bytes, size) == 0);
+  cr_assert(eq(mem, ((struct cr_mem){ .data = "string whatever", .size = size }),
+               ((struct cr_mem){ .data = bytes, .size = size })));
 
   filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
   filterx_object_unref(obj);
@@ -93,13 +95,14 @@ Test(filterx_bytes, test_filterx_bytes_typecast_from_protobuf)
 {
   FilterXObject *args[] = { filterx_protobuf_new("not a valid \0protobuf!", 22) };
   FilterXObject *obj = filterx_typecast_bytes(NULL, args, G_N_ELEMENTS(args));
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(bytes)));
 
   gsize size;
   const gchar *bytes = filterx_bytes_get_value_ref(obj, &size);
 
-  cr_assert(memcmp("not a valid \0protobuf!", bytes, size) == 0);
+  cr_assert(eq(mem, ((struct cr_mem){ .data = "not a valid \0protobuf!", .size = size }),
+               ((struct cr_mem){ .data = bytes, .size = size })));
 
   filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
   filterx_object_unref(obj);

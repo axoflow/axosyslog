@@ -23,6 +23,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/parameterized.h"
 
 #include "apphook.h"
@@ -84,13 +85,13 @@ test_search_value(RNode *root, const gchar *key, const gchar *expected_value)
 
   if (expected_value)
     {
-      cr_assert(ret, "node not found. key=%s\n", key);
-      cr_expect_str_eq(ret->value, expected_value, "FAIL: returned value does not match expected: '%s' <> '%s'\n",
-                       (gchar *) ret->value, expected_value);
+      cr_assert(not(zero(ptr, ret)), "node not found. key=%s\n", key);
+      cr_expect(eq(str, ret->value, expected_value), "FAIL: returned value does not match expected: '%s' <> '%s'\n",
+                (gchar *) ret->value, expected_value);
     }
   else
     {
-      cr_assert_not(ret, "found unexpected: '%s' => '%s'\n", key, (gchar *) ret->value);
+      cr_assert(zero(ptr, ret), "found unexpected: '%s' => '%s'\n", key, (gchar *) ret->value);
     }
 }
 
@@ -113,15 +114,15 @@ test_search_matches(RNode *root, const gchar *key, const gchar *search_pattern[]
 
   if (!search_pattern[0])
     {
-      cr_expect_not(ret, "found unexpected: '%s' => '%s' matches: ", key, (gchar *) ret->value);
+      cr_expect(zero(ptr, ret), "found unexpected: '%s' => '%s' matches: ", key, (gchar *) ret->value);
     }
   else
     {
-      cr_assert(ret, "not found while expected: '%s' => none %s\n", key, search_pattern[0]);
+      cr_assert(not(zero(ptr, ret)), "not found while expected: '%s' => none %s\n", key, search_pattern[0]);
 
       for (int i=0; search_pattern[i]; i+=2)
         {
-          cr_assert_lt(i/2, matches->len, "not enough matches: %d => expecting %d", i, matches->len);
+          cr_assert(lt(i64, i/2, matches->len), "not enough matches: %d => expecting %d", i, matches->len);
 
           const gchar *expected_name = search_pattern[i];
           const gchar *expected_value = search_pattern[i+1];
@@ -129,24 +130,24 @@ test_search_matches(RNode *root, const gchar *key, const gchar *search_pattern[]
           match = &g_array_index(matches, RParserMatch, (i/2)+1);
           match_name = log_msg_get_value_name(match->handle, NULL);
 
-          cr_expect_str_eq(match_name, expected_name,
-                           "name does not match (key=%s): '%s' => expecting '%s'\n",
-                           key, match_name, expected_name);
+          cr_expect(eq(str, match_name, expected_name),
+                    "name does not match (key=%s): '%s' => expecting '%s'\n",
+                    key, match_name, expected_name);
 
           if (!match->match)
             {
-              cr_expect_eq(match->len, strlen(expected_value),
-                           "value length does not match (key=%s): %d => expecting %zu\n",
-                           key, match->len, strlen(expected_value));
-              cr_expect_eq(strncmp(&key[match->ofs], expected_value, match->len), 0,
-                           "value does not match (key=%s): %*s => expecting %s\n",
-                           key, match->len, &key[match->ofs], expected_value);
+              cr_expect(eq(sz, match->len, strlen(expected_value)),
+                        "value length does not match (key=%s): %d => expecting %zu\n",
+                        key, match->len, strlen(expected_value));
+              cr_expect(eq(int, strncmp(&key[match->ofs], expected_value, match->len), 0),
+                        "value does not match (key=%s): %*s => expecting %s\n",
+                        key, match->len, &key[match->ofs], expected_value);
             }
           else
             {
-              cr_expect_str_eq(match->match, expected_value,
-                               "value does not match (key=%s): '%s' => expecting '%s'\n",
-                               key, match->match, expected_value);
+              cr_expect(eq(str, match->match, expected_value),
+                        "value does not match (key=%s): '%s' => expecting '%s'\n",
+                        key, match->match, expected_value);
             }
         }
     }

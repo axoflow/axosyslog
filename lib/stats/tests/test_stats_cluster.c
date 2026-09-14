@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "stats/stats-registry.h"
 #include "stats/stats-cluster.h"
@@ -66,8 +67,8 @@ Test(stats_cluster, test_stats_cluster_single)
   stats_cluster_single_key_legacy_set(&sc_key, SCS_GLOBAL, "logmsg_allocated_bytes", NULL);
 
   sc = stats_cluster_new(&sc_key);
-  cr_assert_str_eq(sc->query_key, "global.logmsg_allocated_bytes", "Unexpected query key");
-  cr_assert_eq(sc->counter_group.capacity, 1, "Invalid group capacity");
+  cr_assert(eq(str, sc->query_key, "global.logmsg_allocated_bytes"), "Unexpected query key");
+  cr_assert(eq(u16, sc->counter_group.capacity, 1), "Invalid group capacity");
   stats_cluster_free(sc);
 }
 
@@ -84,8 +85,8 @@ Test(stats_cluster, test_stats_cluster_single_with_name_with_heap_allocated_stri
 
   g_string_truncate(heap_allocated_name, 0);
   g_string_free(heap_allocated_name, TRUE);
-  cr_assert_str_eq(sc->counter_group.counter_names[0], string_literal_name,
-                   "Unexpected counter name: %s", sc->counter_group.counter_names[0]);
+  cr_assert(eq(str, sc->counter_group.counter_names[0], string_literal_name),
+            "Unexpected counter name: %s", sc->counter_group.counter_names[0]);
 
   stats_cluster_free(sc);
 }
@@ -97,8 +98,9 @@ Test(stats_cluster, test_stats_cluster_new_replaces_NULL_with_an_empty_string)
   stats_cluster_logpipe_key_legacy_set(&sc_key, SCS_SOURCE | SCS_FILE, NULL, NULL );
 
   sc = stats_cluster_new(&sc_key);
-  cr_assert_str_eq(sc->key.legacy.id, "", "StatsCluster->id is not properly defaulted to an empty string");
-  cr_assert_str_eq(sc->key.legacy.instance, "", "StatsCluster->instance is not properly defaulted to an empty string");
+  cr_assert(eq(str, sc->key.legacy.id, ""), "StatsCluster->id is not properly defaulted to an empty string");
+  cr_assert(eq(str, sc->key.legacy.instance, ""),
+            "StatsCluster->instance is not properly defaulted to an empty string");
   stats_cluster_free(sc);
 }
 
@@ -111,7 +113,7 @@ assert_stats_cluster_equals(StatsCluster *sc1, StatsCluster *sc2)
 static void
 assert_stats_cluster_mismatches(StatsCluster *sc1, StatsCluster *sc2)
 {
-  cr_assert_not(stats_cluster_key_equal(&sc1->key, &sc2->key), "unexpected equal StatsClusters");
+  cr_assert(not(stats_cluster_key_equal(&sc1->key, &sc2->key)), "unexpected equal StatsClusters");
 }
 
 static void
@@ -163,7 +165,7 @@ Test(stats_cluster, test_stats_cluster_key_not_equal_when_custom_tags_are_differ
   StatsCluster *sc1 = stats_cluster_new(&sc_key1);
   StatsCluster *sc2 = stats_cluster_new(&sc_key2);
 
-  cr_assert_not(stats_cluster_key_equal(&sc_key1, &sc_key2), "%s", __FUNCTION__);
+  cr_assert(not(stats_cluster_key_equal(&sc_key1, &sc_key2)), "%s", __FUNCTION__);
 
   stats_cluster_free(sc1);
   stats_cluster_free(sc2);
@@ -191,8 +193,8 @@ assert_key_equal(StatsClusterKey k1, StatsClusterKey k2, gboolean equal)
   StatsClusterKey key1, key2;
   stats_cluster_logpipe_key_set(&key1, k1.name, k1.labels, k1.labels_len);
   stats_cluster_logpipe_key_set(&key2, k2.name, k2.labels, k2.labels_len);
-  cr_assert_eq(stats_cluster_key_equal(&key1, &key2), equal);
-  cr_assert_eq(stats_cluster_key_hash(&key1) == stats_cluster_key_hash(&key2), equal);
+  cr_assert(eq(int, stats_cluster_key_equal(&key1, &key2), equal));
+  cr_assert(eq(int, stats_cluster_key_hash(&key1) == stats_cluster_key_hash(&key2), equal));
 }
 
 static inline StatsClusterKey
@@ -247,13 +249,13 @@ Test(stats_cluster, test_stats_cluster_key_legacy_alias)
   stats_cluster_logpipe_key_set(&key3, "name", NULL, 0);
 
   cr_assert(stats_cluster_key_equal(&key1, &key1));
-  cr_assert_eq(stats_cluster_key_hash(&key1), stats_cluster_key_hash(&key1));
+  cr_assert(eq(uint, stats_cluster_key_hash(&key1), stats_cluster_key_hash(&key1)));
 
-  cr_assert_not(stats_cluster_key_equal(&key1, &key2));
-  cr_assert_neq(stats_cluster_key_hash(&key1), stats_cluster_key_hash(&key2));
+  cr_assert(not(stats_cluster_key_equal(&key1, &key2)));
+  cr_assert(ne(uint, stats_cluster_key_hash(&key1), stats_cluster_key_hash(&key2)));
 
-  cr_assert_not(stats_cluster_key_equal(&key1, &key3));
-  cr_assert_neq(stats_cluster_key_hash(&key1), stats_cluster_key_hash(&key3));
+  cr_assert(not(stats_cluster_key_equal(&key1, &key3)));
+  cr_assert(ne(uint, stats_cluster_key_hash(&key1), stats_cluster_key_hash(&key3)));
 }
 
 typedef struct _ValidateCountersState
@@ -270,8 +272,8 @@ _validate_yielded_counters(StatsCluster *sc, gint type, StatsCounterItem *counte
   gint t;
 
   t = va_arg(st->types, gint);
-  cr_assert_geq(t, 0, "foreach counter returned a new counter, but we expected the end already");
-  cr_assert_eq(type, t, "Counter type mismatch");
+  cr_assert(ge(int, t, 0), "foreach counter returned a new counter, but we expected the end already");
+  cr_assert(eq(int, type, t), "Counter type mismatch");
   st->validate_count++;
 }
 
@@ -297,7 +299,7 @@ assert_stats_foreach_yielded_counters_matches(StatsCluster *sc, ...)
   stats_cluster_foreach_counter(sc, _validate_yielded_counters, &st);
   va_end(va);
 
-  cr_assert_eq(type_count, st.validate_count, "the number of validated counters mismatch the expected size");
+  cr_assert(eq(int, type_count, st.validate_count), "the number of validated counters mismatch the expected size");
 }
 
 Test(stats_cluster, test_stats_foreach_counter_yields_tracked_counters)
@@ -344,7 +346,7 @@ assert_stats_component_name(gint component, const gchar *expected)
   StatsCluster *sc = stats_cluster_new(&sc_key);
 
   name = stats_cluster_get_component_name(sc, buf, sizeof(buf));
-  cr_assert_str_eq(name, expected, "component name mismatch");
+  cr_assert(eq(str, name, expected), "component name mismatch");
   stats_cluster_free(sc);
 }
 
@@ -364,14 +366,15 @@ Test(stats_cluster, test_get_counter)
   StatsCluster *sc = stats_cluster_new(&sc_key);
   StatsCounterItem *processed;
 
-  cr_assert_null(stats_cluster_get_counter(sc, SC_TYPE_PROCESSED), "get counter before tracked");
+  cr_assert(zero(ptr, stats_cluster_get_counter(sc, SC_TYPE_PROCESSED)), "get counter before tracked");
   processed = _track_counter_locked(sc, SC_TYPE_PROCESSED);
-  cr_assert_eq(stats_cluster_get_counter(sc, SC_TYPE_PROCESSED), processed, "get counter after tracked");
+  cr_assert(eq(ptr, stats_cluster_get_counter(sc, SC_TYPE_PROCESSED), processed), "get counter after tracked");
 
   StatsCounterItem *saved_processed = processed;
   _untrack_counter_locked(sc, SC_TYPE_PROCESSED, &processed);
-  cr_assert_null(processed, "untrack counter");
-  cr_assert_eq(stats_cluster_get_counter(sc, SC_TYPE_PROCESSED), saved_processed, "get counter after untracked");
+  cr_assert(zero(ptr, processed), "untrack counter");
+  cr_assert(eq(ptr, stats_cluster_get_counter(sc, SC_TYPE_PROCESSED), saved_processed),
+            "get counter after untracked");
   stats_cluster_free(sc);
 }
 
@@ -379,10 +382,10 @@ Test(stats_cluster, test_register_type)
 {
   guint first = stats_register_type("HAL");
   guint second = stats_register_type("Just what do you think you are doing, Dave?");
-  cr_assert_eq(first + 1, second);
+  cr_assert(eq(uint, first + 1, second));
 
   guint same = stats_register_type("HAL");
-  cr_assert_eq(first, same);
+  cr_assert(eq(uint, first, same));
 }
 
 TestSuite(stats_cluster, .init=setup, .fini = app_shutdown);

@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/filterx-lib.h"
 
 #include "filterx/filterx-metrics-labels.h"
@@ -36,7 +37,7 @@
 Test(filterx_metrics_labels, null_labels)
 {
   FilterXMetricsLabels *metrics_labels = filterx_metrics_labels_new(NULL);
-  cr_assert(metrics_labels);
+  cr_assert(not(zero(ptr, metrics_labels)));
 
   filterx_metrics_labels_optimize(metrics_labels);
   cr_assert(filterx_metrics_labels_init(metrics_labels, configuration));
@@ -48,7 +49,7 @@ Test(filterx_metrics_labels, null_labels)
   StatsClusterLabel *sc_labels;
   gsize len;
   cr_assert(filterx_metrics_labels_format(metrics_labels, store, &sc_labels, &len));
-  cr_assert_eq(len, 0);
+  cr_assert(eq(sz, len, 0));
 
   filterx_metrics_labels_deinit(metrics_labels, configuration);
   filterx_metrics_labels_free(metrics_labels);
@@ -59,7 +60,7 @@ Test(filterx_metrics_labels, const_literal_generator_empty_labels)
   FilterXExpr *labels_expr = filterx_literal_dict_new(NULL);
   FilterXMetricsLabels *metrics_labels = filterx_metrics_labels_new(labels_expr);
   filterx_expr_unref(labels_expr);
-  cr_assert(metrics_labels);
+  cr_assert(not(zero(ptr, metrics_labels)));
 
   filterx_metrics_labels_optimize(metrics_labels);
   cr_assert(filterx_metrics_labels_init(metrics_labels, configuration));
@@ -71,7 +72,7 @@ Test(filterx_metrics_labels, const_literal_generator_empty_labels)
   StatsClusterLabel *sc_labels;
   gsize len;
   cr_assert(filterx_metrics_labels_format(metrics_labels, store, &sc_labels, &len));
-  cr_assert_eq(len, 0);
+  cr_assert(eq(sz, len, 0));
 
   filterx_metrics_labels_deinit(metrics_labels, configuration);
   filterx_metrics_labels_free(metrics_labels);
@@ -82,19 +83,19 @@ Test(filterx_metrics_labels, non_literal_empty_labels)
   FilterXExpr *labels_expr = filterx_object_expr_new(filterx_test_dict_new());
   FilterXMetricsLabels *metrics_labels = filterx_metrics_labels_new(labels_expr);
   filterx_expr_unref(labels_expr);
-  cr_assert(metrics_labels);
+  cr_assert(not(zero(ptr, metrics_labels)));
 
   filterx_metrics_labels_optimize(metrics_labels);
   cr_assert(filterx_metrics_labels_init(metrics_labels, configuration));
 
-  cr_assert_not(filterx_metrics_labels_is_const(metrics_labels));
+  cr_assert(not(filterx_metrics_labels_is_const(metrics_labels)));
 
   DynMetricsStore *store = dyn_metrics_cache();
 
   StatsClusterLabel *sc_labels;
   gsize len;
   cr_assert(filterx_metrics_labels_format(metrics_labels, store, &sc_labels, &len));
-  cr_assert_eq(len, 0);
+  cr_assert(eq(sz, len, 0));
 
   filterx_metrics_labels_deinit(metrics_labels, configuration);
   filterx_metrics_labels_free(metrics_labels);
@@ -109,7 +110,7 @@ Test(filterx_metrics_labels, const_literal_generator_labels)
 
   FilterXMetricsLabels *metrics_labels = filterx_metrics_labels_new(labels_expr);
   filterx_expr_unref(labels_expr);
-  cr_assert(metrics_labels);
+  cr_assert(not(zero(ptr, metrics_labels)));
 
   filterx_metrics_labels_optimize(metrics_labels);
   cr_assert(filterx_metrics_labels_init(metrics_labels, configuration));
@@ -121,12 +122,12 @@ Test(filterx_metrics_labels, const_literal_generator_labels)
   StatsClusterLabel *sc_labels;
   gsize len;
   cr_assert(filterx_metrics_labels_format(metrics_labels, store, &sc_labels, &len));
-  cr_assert_eq(len, 2);
+  cr_assert(eq(sz, len, 2));
 
-  cr_assert_str_eq(sc_labels[0].name, "bar");
-  cr_assert_str_eq(sc_labels[0].value, "barvalue");
-  cr_assert_str_eq(sc_labels[1].name, "foo");
-  cr_assert_str_eq(sc_labels[1].value, "foovalue");
+  cr_assert(eq(str, sc_labels[0].name, "bar"));
+  cr_assert(eq(str, sc_labels[0].value, "barvalue"));
+  cr_assert(eq(str, sc_labels[1].name, "foo"));
+  cr_assert(eq(str, sc_labels[1].value, "foovalue"));
 
   filterx_metrics_labels_deinit(metrics_labels, configuration);
   filterx_metrics_labels_free(metrics_labels);
@@ -141,24 +142,24 @@ Test(filterx_metrics_labels, non_const_literal_generator_labels)
 
   FilterXMetricsLabels *metrics_labels = filterx_metrics_labels_new(labels_expr);
   filterx_expr_unref(labels_expr);
-  cr_assert(metrics_labels);
+  cr_assert(not(zero(ptr, metrics_labels)));
 
   filterx_metrics_labels_optimize(metrics_labels);
   cr_assert(filterx_metrics_labels_init(metrics_labels, configuration));
 
-  cr_assert_not(filterx_metrics_labels_is_const(metrics_labels));
+  cr_assert(not(filterx_metrics_labels_is_const(metrics_labels)));
 
   DynMetricsStore *store = dyn_metrics_cache();
 
   StatsClusterLabel *sc_labels;
   gsize len;
   cr_assert(filterx_metrics_labels_format(metrics_labels, store, &sc_labels, &len));
-  cr_assert_eq(len, 2);
+  cr_assert(eq(sz, len, 2));
 
-  cr_assert_str_eq(sc_labels[0].name, "bar");
-  cr_assert_str_eq(sc_labels[0].value, "barvalue");
-  cr_assert_str_eq(sc_labels[1].name, "foo");
-  cr_assert_str_eq(sc_labels[1].value, "foovalue");
+  cr_assert(eq(str, sc_labels[0].name, "bar"));
+  cr_assert(eq(str, sc_labels[0].value, "barvalue"));
+  cr_assert(eq(str, sc_labels[1].name, "foo"));
+  cr_assert(eq(str, sc_labels[1].value, "foovalue"));
 
   filterx_metrics_labels_deinit(metrics_labels, configuration);
   filterx_metrics_labels_free(metrics_labels);
@@ -172,7 +173,7 @@ Test(filterx_metrics_labels, non_literal_key_in_literal_generator_labels)
 
   FilterXMetricsLabels *metrics_labels = filterx_metrics_labels_new(labels_expr);
   filterx_expr_unref(labels_expr);
-  cr_assert_not(metrics_labels);
+  cr_assert(zero(ptr, metrics_labels));
 }
 
 static void

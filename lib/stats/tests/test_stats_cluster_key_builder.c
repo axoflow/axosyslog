@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "stats/stats-cluster-key-builder.h"
 #include "stats/stats-cluster-single.h"
@@ -51,11 +52,12 @@ _assert_built_sc_key_equals(const StatsClusterKeyBuilder *builder, KeyType type,
     }
   else
     {
-      cr_assert_fail();
+      cr_fatal();
     }
 
   cr_assert(stats_cluster_key_equal(&expected_sc_key, built_key));
-  cr_assert_eq(memcmp(&expected_sc_key.formatting, &built_key->formatting, sizeof(built_key->formatting)), 0);
+  cr_assert(eq(mem, ((struct cr_mem){ .data = &expected_sc_key.formatting, .size = sizeof(built_key->formatting) }),
+               ((struct cr_mem){ .data = &built_key->formatting, .size = sizeof(built_key->formatting) })));
 
   stats_cluster_key_free(built_key);
 }
@@ -66,7 +68,7 @@ _assert_built_sc_key_has_unit(const StatsClusterKeyBuilder *builder, KeyType typ
   StatsClusterKey *built_key = stats_cluster_key_builder_build_single(builder);
 
   if (type == TEST_SINGLE)
-    cr_assert(built_key->formatting.stored_unit == unit);
+    cr_assert(eq(int, built_key->formatting.stored_unit, unit));
 
   stats_cluster_key_free(built_key);
 }
@@ -102,7 +104,7 @@ _assert_built_sc_key_equals_with_legacy(const StatsClusterKeyBuilder *builder, K
     }
   else
     {
-      cr_assert_fail();
+      cr_fatal();
     }
 
   cr_assert(stats_cluster_key_equal(&expected_sc_key, built_key));
@@ -129,10 +131,10 @@ _assert_built_sc_key_equals_with_legacy_only(const StatsClusterKeyBuilder *build
     }
   else
     {
-      cr_assert_fail();
+      cr_fatal();
     }
 
-  cr_assert(!built_key->name);
+  cr_assert(zero(ptr, built_key->name));
   cr_assert(stats_cluster_key_equal(&expected_sc_key, built_key));
 
   stats_cluster_key_free(built_key);

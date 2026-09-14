@@ -55,6 +55,7 @@ function (add_unit_test)
   if (${ADD_UNIT_TEST_CRITERION})
     target_link_libraries(${ADD_UNIT_TEST_TARGET} ${CRITERION_LIBRARIES})
     target_include_directories(${ADD_UNIT_TEST_TARGET} PUBLIC ${CRITERION_INCLUDE_DIRS})
+    target_compile_options(${ADD_UNIT_TEST_TARGET} PRIVATE $<$<COMPILE_LANGUAGE:C>:${TEST_C_FLAGS_NO_DISCARDED_QUALIFIERS}>)
   endif()
 
   if (${ADD_UNIT_TEST_LIBTEST})

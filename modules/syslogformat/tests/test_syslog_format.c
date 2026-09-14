@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/msg_parse_lib.h"
 
 #include "apphook.h"
@@ -81,7 +82,7 @@ Test(syslog_format, cisco_sequence_id_non_zero_termination)
 
   gsize problem_position;
   cr_assert(syslog_format_handler(&parse_options, msg, (const guchar *) data, data_length, &problem_position));
-  cr_assert_str_eq(log_msg_get_value_by_name(msg, ".SDATA.meta.sequenceId", NULL), "65536");
+  cr_assert(eq(str, log_msg_get_value_by_name(msg, ".SDATA.meta.sequenceId", NULL), "65536"));
 
   log_msg_unref(msg);
 }
@@ -120,7 +121,7 @@ Test(syslog_format, rfc3164_check_program_valid_name)
   assert_log_message_value_by_name(msg, "PID", "pid");
   assert_log_message_value_by_name(msg, "MSG", "message");
   assert_log_message_value_by_name(msg, "MSGFORMAT", "syslog:rfc3164");
-  cr_assert(!log_msg_is_tag_by_name(msg, "syslog.rfc3164_invalid_program"));
+  cr_assert(not(log_msg_is_tag_by_name(msg, "syslog.rfc3164_invalid_program")));
 
   log_msg_unref(msg);
 }
@@ -219,7 +220,7 @@ Test(syslog_format, rfc5424_error_invalid_timestamp)
   LogMessage *msg = log_msg_new_empty();
 
   gsize problem_position;
-  cr_assert_not(syslog_format_handler(&parse_options, msg, (const guchar *) data, data_length, &problem_position));
+  cr_assert(not(syslog_format_handler(&parse_options, msg, (const guchar *) data, data_length, &problem_position)));
   assert_log_message_value_by_name(msg, "MSGFORMAT", "");
   assert_log_message_has_tag(msg, "syslog.missing_timestamp");
 
@@ -235,7 +236,7 @@ Test(syslog_format, rfc5424_error_invalid_sdata)
   LogMessage *msg = log_msg_new_empty();
 
   gsize problem_position;
-  cr_assert_not(syslog_format_handler(&parse_options, msg, (const guchar *) data, data_length, &problem_position));
+  cr_assert(not(syslog_format_handler(&parse_options, msg, (const guchar *) data, data_length, &problem_position)));
   assert_log_message_value_by_name(msg, "MSGFORMAT", "");
   assert_log_message_has_tag(msg, "syslog.rfc5424_invalid_sdata");
 
@@ -290,7 +291,7 @@ Test(syslog_format, minimal_non_zero_terminated_numeric_message_is_parsed_as_pro
 
   gsize problem_position;
   cr_assert(syslog_format_handler(&parse_options, msg, (const guchar *) data, data_length, &problem_position));
-  cr_assert_str_eq(log_msg_get_value_by_name(msg, "PROGRAM", NULL), "65536");
+  cr_assert(eq(str, log_msg_get_value_by_name(msg, "PROGRAM", NULL), "65536"));
 
   log_msg_unref(msg);
 }
@@ -334,11 +335,11 @@ Test(syslog_format, test_sdata_dash_means_there_are_no_sdata_elements)
 
 Test(syslog_format, test_sdata_parsing_invalid_brackets_are_returned_as_failures)
 {
-  cr_assert_not(_extract_sdata_into_message("<", NULL));
-  cr_assert_not(_extract_sdata_into_message("[", NULL));
-  cr_assert_not(_extract_sdata_into_message("[]", NULL));
-  cr_assert_not(_extract_sdata_into_message("]", NULL));
-  cr_assert_not(_extract_sdata_into_message("[foobar", NULL));
+  cr_assert(not(_extract_sdata_into_message("<", NULL)));
+  cr_assert(not(_extract_sdata_into_message("[", NULL)));
+  cr_assert(not(_extract_sdata_into_message("[]", NULL)));
+  cr_assert(not(_extract_sdata_into_message("]", NULL)));
+  cr_assert(not(_extract_sdata_into_message("[foobar", NULL)));
 }
 
 Test(syslog_format, test_sdata_id_without_param_is_accepted_and_represented_in_sdata)
@@ -361,20 +362,20 @@ Test(syslog_format, test_sdata_simple_id_and_param)
 
 Test(syslog_format, test_sdata_invalid_sd_id_and_param)
 {
-  cr_assert_not(_extract_sdata_into_message("[foo= bar=\"baz\"]", NULL));
-  cr_assert_not(_extract_sdata_into_message("[foo\" bar=\"baz\"]", NULL));
+  cr_assert(not(_extract_sdata_into_message("[foo= bar=\"baz\"]", NULL)));
+  cr_assert(not(_extract_sdata_into_message("[foo\" bar=\"baz\"]", NULL)));
 }
 
 Test(syslog_format, test_sdata_invalid_param)
 {
-  cr_assert_not(_extract_sdata_into_message("[foo bar\"=\"baz\"]", NULL));
-  cr_assert_not(_extract_sdata_into_message("[foo bar]", NULL));
-  cr_assert_not(_extract_sdata_into_message("[foo bar baz]", NULL));
+  cr_assert(not(_extract_sdata_into_message("[foo bar\"=\"baz\"]", NULL)));
+  cr_assert(not(_extract_sdata_into_message("[foo bar]", NULL)));
+  cr_assert(not(_extract_sdata_into_message("[foo bar baz]", NULL)));
 }
 
 Test(syslog_format, test_sdata_invalid_value)
 {
-  cr_assert_not(_extract_sdata_into_message("[foo bar=\"]", NULL));
+  cr_assert(not(_extract_sdata_into_message("[foo bar=\"]", NULL)));
 }
 
 Test(syslog_format, test_sdata_unquoted_value)
@@ -482,7 +483,7 @@ Test(syslog_format, test_sdata_whitespace_around_brackets)
 
 Test(syslog_format, test_sdata_missing_closing_bracket)
 {
-  cr_assert_not(_extract_sdata_into_message("[foo bar=\"baz\"", NULL));
+  cr_assert(not(_extract_sdata_into_message("[foo bar=\"baz\"", NULL)));
 }
 
 Test(syslog_format, test_long_sdata)
@@ -493,12 +494,12 @@ Test(syslog_format, test_long_sdata)
   gsize long_sdata_id = 255 - strlen(sdata_prefix);
   memset(long_sdata + 1, 'a', long_sdata_id);
   strcpy(long_sdata + 1 + long_sdata_id, " a=b]");
-  cr_expect_not(_extract_sdata_into_message_with_prefix(long_sdata, NULL, sdata_prefix));
+  cr_expect(not(_extract_sdata_into_message_with_prefix(long_sdata, NULL, sdata_prefix)));
 
   long_sdata_id -= 1;
   memset(long_sdata + 1, 'a', long_sdata_id);
   strcpy(long_sdata + 1 + long_sdata_id, " a=b]");
-  cr_expect_not(_extract_sdata_into_message_with_prefix(long_sdata, NULL, sdata_prefix));
+  cr_expect(not(_extract_sdata_into_message_with_prefix(long_sdata, NULL, sdata_prefix)));
 }
 
 Test(syslog_format, test_frame_checking)
@@ -526,7 +527,7 @@ Test(syslog_format, test_framing_not_detected_when_frame_length_is_too_long)
   gsize problem_position;
   cr_assert(syslog_format_handler(&parse_options, msg, (const guchar *) data, data_length, &problem_position));
 
-  cr_assert_not(log_msg_is_tag_by_id(msg, LM_T_SYSLOG_UNEXPECTED_FRAMING));
+  cr_assert(not(log_msg_is_tag_by_id(msg, LM_T_SYSLOG_UNEXPECTED_FRAMING)));
 
   log_msg_unref(msg);
 }
@@ -541,7 +542,7 @@ Test(syslog_format, test_framing_not_detected_on_input_starting_with_whitespace)
   gsize problem_position;
   cr_assert(syslog_format_handler(&parse_options, msg, (const guchar *) data, data_length, &problem_position));
 
-  cr_assert_not(log_msg_is_tag_by_id(msg, LM_T_SYSLOG_UNEXPECTED_FRAMING));
+  cr_assert(not(log_msg_is_tag_by_id(msg, LM_T_SYSLOG_UNEXPECTED_FRAMING)));
 
   log_msg_unref(msg);
 }

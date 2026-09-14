@@ -21,6 +21,7 @@
  *
  */
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "journald-subsystem.h"
 #include "journald-mock.h"
@@ -35,9 +36,9 @@ void
 __test_seeks(sd_journal *journald)
 {
   gint result = sd_journal_seek_head(journald);
-  cr_assert_eq(result, 0, "%s", "Can't seek in empty journald mock");
+  cr_assert(eq(int, result, 0), "%s", "Can't seek in empty journald mock");
   result = sd_journal_next(journald);
-  cr_assert_eq(result, 0, "%s", "Bad next step result");
+  cr_assert(eq(int, result, 0), "%s", "Bad next step result");
 
   MockEntry *entry = mock_entry_new("test_data1");
   mock_entry_add_data(entry, "MESSAGE=test message");
@@ -54,16 +55,16 @@ __test_seeks(sd_journal *journald)
   mock_journal_add_entry(entry);
 
   result = sd_journal_seek_head(journald);
-  cr_assert_eq(result, 0, "%s", "Can't seek in journald mock");
+  cr_assert(eq(int, result, 0), "%s", "Can't seek in journald mock");
   result = sd_journal_next(journald);
-  cr_assert_eq(result, 1, "%s", "Bad next step result");
+  cr_assert(eq(int, result, 1), "%s", "Bad next step result");
 
   result = sd_journal_seek_tail(journald);
-  cr_assert_eq(result, 0, "%s", "Can't seek in journald mock");
+  cr_assert(eq(int, result, 0), "%s", "Can't seek in journald mock");
   result = sd_journal_next(journald);
-  cr_assert_eq(result, 1, "%s", "Bad next step result");
+  cr_assert(eq(int, result, 1), "%s", "Bad next step result");
   result = sd_journal_next(journald);
-  cr_assert_eq(result, 0, "%s", "Bad next step result");
+  cr_assert(eq(int, result, 0), "%s", "Bad next step result");
 }
 
 void
@@ -73,33 +74,33 @@ __test_cursors(sd_journal *journald)
   sd_journal_seek_head(journald);
   sd_journal_next(journald);
   gint result = sd_journal_get_cursor(journald, &cursor);
-  cr_assert_str_eq(cursor, "test_data1", "%s", "Bad cursor fetched");
+  cr_assert(eq(str, cursor, "test_data1"), "%s", "Bad cursor fetched");
   \
   g_free(cursor);
 
   result = sd_journal_next(journald);
-  cr_assert_eq(result, 1, "%s", "Bad next step result");
+  cr_assert(eq(int, result, 1), "%s", "Bad next step result");
   result = sd_journal_get_cursor(journald, &cursor);
-  cr_assert_str_eq(cursor, "test_data2", "%s", "Bad cursor fetched");
+  cr_assert(eq(str, cursor, "test_data2"), "%s", "Bad cursor fetched");
   g_free(cursor);
 
   result = sd_journal_next(journald);
-  cr_assert_eq(result, 0, "%s", "Should not contain more elements");
+  cr_assert(eq(int, result, 0), "%s", "Should not contain more elements");
 
   result = sd_journal_seek_cursor(journald, "test_data1");
-  cr_assert_eq(result, 0, "%s", "Should find cursor");
+  cr_assert(eq(int, result, 0), "%s", "Should find cursor");
   result = sd_journal_next(journald);
-  cr_assert_eq(result, 1, "%s", "Bad next step result");
+  cr_assert(eq(int, result, 1), "%s", "Bad next step result");
   result = sd_journal_get_cursor(journald, &cursor);
-  cr_assert_str_eq(cursor, "test_data1", "%s", "Bad cursor fetched");
+  cr_assert(eq(str, cursor, "test_data1"), "%s", "Bad cursor fetched");
   g_free(cursor);
 
   result = sd_journal_seek_cursor(journald, "test_data2");
-  cr_assert_eq(result, 0, "%s", "Should find cursor");
+  cr_assert(eq(int, result, 0), "%s", "Should find cursor");
   result = sd_journal_next(journald);
-  cr_assert_eq(result, 1, "%s", "Bad next step result");
+  cr_assert(eq(int, result, 1), "%s", "Bad next step result");
   result = sd_journal_get_cursor(journald, &cursor);
-  cr_assert_str_eq(cursor, "test_data2", "%s", "Bad cursor fetched");
+  cr_assert(eq(str, cursor, "test_data2"), "%s", "Bad cursor fetched");
   g_free(cursor);
 }
 
@@ -127,7 +128,7 @@ handle_new_entry(gpointer user_data)
 {
   sd_journal *journald = user_data;
   sd_journal_process(journald);
-  cr_assert_not(poll_triggered, "%s", "Should called only once");
+  cr_assert(not(poll_triggered), "%s", "Should called only once");
   poll_triggered = TRUE;
 }
 
@@ -179,7 +180,7 @@ Test(journald_mock, test_journald_mock)
   sd_journal *journald;
   gint result = sd_journal_open(&journald, 0);
 
-  cr_assert_eq(result, 0, "%s", "Can't open journald mock");
+  cr_assert(eq(int, result, 0), "%s", "Can't open journald mock");
 
   __test_seeks(journald);
 

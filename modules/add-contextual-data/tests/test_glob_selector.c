@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "add-contextual-data-glob-selector.h"
 #include "scratch-buffers.h"
@@ -54,14 +55,15 @@ _create_glob_selector(const gchar *template_string, const gchar *glob1, ...)
 #define _assert_resolved_value(selector, msg, expected_value) \
   do {                    \
     gchar *resolved = add_contextual_data_selector_resolve(selector, msg);  \
-    cr_assert_str_eq(resolved, expected_value, "resolved value mismatch: %s != %s", resolved, expected_value);        \
+    cr_assert(eq(str, resolved, expected_value),                              \
+              "resolved value mismatch: %s != %s", resolved, expected_value); \
     g_free(resolved);               \
   } while (0)
 
 #define _assert_resolved_value_is_null(selector, msg) \
   do {                    \
     gchar *resolved = add_contextual_data_selector_resolve(selector, msg);  \
-    cr_assert_null(resolved, "unexpected non-NULL value: %s", resolved);        \
+    cr_assert(zero(ptr, resolved), "unexpected non-NULL value: %s", resolved);        \
   } while (0)
 
 Test(add_contextual_data_glob_selector,

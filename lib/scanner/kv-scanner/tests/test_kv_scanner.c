@@ -22,6 +22,7 @@
  *
  */
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/stopwatch.h"
 
 #include "scratch-buffers.h"
@@ -204,7 +205,7 @@ _expect_kvq_triplets(KVScanner *scanner, KVQContainer args, gchar **error)
     kv_scanner_input(scanner, TEST_KV_SCAN_input);            \
     if (!_expect_kvq_triplets(scanner, INIT_KVQCONTAINER(__VA_ARGS__), &error)) \
       { \
-        cr_expect(FALSE, "%s", error); \
+        cr_fail("%s", error); \
         g_free(error);\
       } \
     kv_scanner_free(scanner); \
@@ -225,11 +226,11 @@ _expect_kvq_triplets(KVScanner *scanner, KVQContainer args, gchar **error)
     kv_scanner_input(scanner, TEST_KV_SCAN_input);            \
     if (!_expect_kv_pairs(scanner, INIT_KVCONTAINER(__VA_ARGS__), &error))  \
       { \
-        cr_expect(FALSE, "%s", error); \
+        cr_fail("%s", error); \
         g_free(error);\
       } \
-    cr_expect_eq(kv_scanner_get_stray_words(scanner), NULL, \
-                     "stray words are not expected but still returned");   \
+    cr_expect(zero(ptr, kv_scanner_get_stray_words(scanner)), \
+              "stray words are not expected but still returned");   \
     kv_scanner_free(scanner); \
   } while (0)
 
@@ -253,12 +254,12 @@ _expect_kvq_triplets(KVScanner *scanner, KVQContainer args, gchar **error)
     kv_scanner_input(scanner, INPUT);            \
     if (!_expect_kv_pairs(scanner, INIT_KVCONTAINER(__VA_ARGS__), &error))  \
       { \
-        cr_expect(FALSE, "%s", error); \
+        cr_fail("%s", error); \
         g_free(error);\
       } \
-    cr_expect_str_eq(kv_scanner_get_stray_words(scanner), STRAY, \
-                     "Stray words mismatch, value=%s, expected=%s", \
-                     kv_scanner_get_stray_words(scanner), STRAY); \
+    cr_expect(eq(str, kv_scanner_get_stray_words(scanner), STRAY), \
+              "Stray words mismatch, value=%s, expected=%s", \
+              kv_scanner_get_stray_words(scanner), STRAY); \
     kv_scanner_free(scanner); \
   } while (0)
 
@@ -1030,7 +1031,7 @@ _test_performance(Testcase *tcs, gchar *title)
           kv_scanner_input(&scanner, tc->input);
           if (!_expect_kv_pairs(&scanner, tc->expected, &error))
             {
-              cr_expect(FALSE, "%s", error);
+              cr_fail("%s", error);
               g_free(error);
             }
           kv_scanner_deinit(&scanner);

@@ -23,6 +23,7 @@
 #include "python-module.h"
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/parameterized.h"
 
 #include "python-helpers.h"
@@ -164,7 +165,8 @@ StaticParameterizedTest(PyTfTestParams *params, test_data_list, python_tf, test_
   PyGILState_STATE gstate;
   gstate = PyGILState_Ensure();
   {
-    cr_assert(PyRun_String(python_tf_implementation, Py_file_input, _python_main_dict, _python_main_dict));
+    cr_assert(not(zero(ptr, PyRun_String(python_tf_implementation, Py_file_input,
+                                         _python_main_dict, _python_main_dict))));
 
     const gchar *expected_value = params->v3_x_expected_value ? params->v3_x_expected_value : params->value;
     cfg_set_version_without_validation(configuration, VERSION_VALUE_3_38);

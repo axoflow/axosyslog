@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/filterx-lib.h"
 
 #include "apphook.h"
@@ -92,7 +93,7 @@ _assert_create_args_inner(va_list vargs)
 
   GError *args_err = NULL;
   FilterXFunctionArgs *result = filterx_function_args_new(args, &args_err);
-  cr_assert_null(args_err);
+  cr_assert(zero(ptr, args_err));
   g_error_free(args_err);
   return result;
 }
@@ -119,7 +120,7 @@ FilterXObject *
 _eval_input_inner(GError **error, va_list vargs)
 {
   FilterXExpr *func = _new_parser(_assert_create_args_inner(vargs), error);
-  cr_assert_not_null(func);
+  cr_assert(not(zero(ptr, func)));
   FilterXObject *obj = init_and_eval_expr(func);
   filterx_expr_unref(func);
   return obj;
@@ -143,8 +144,8 @@ _assert_parser_result_inner(const gchar *expected_result, ...)
 
   GError *err = NULL;
   FilterXObject *obj = _eval_input_inner(&err, vargs);
-  cr_assert_null(err);
-  cr_assert_not_null(obj);
+  cr_assert(zero(ptr, err));
+  cr_assert(not(zero(ptr, obj)));
 
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(mapping)));
 
@@ -153,7 +154,7 @@ _assert_parser_result_inner(const gchar *expected_result, ...)
   LogMessageValueType lmvt;
   cr_assert(filterx_object_marshal(obj, repr, &lmvt));
 
-  cr_assert_str_eq(repr->str, expected_result);
+  cr_assert(eq(str, repr->str, expected_result));
 
   filterx_object_unref(obj);
   g_error_free(err);

@@ -34,6 +34,7 @@
 #include "cfg.h"
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/filterx-lib.h"
 
 static FilterXObject *
@@ -71,7 +72,7 @@ Test(filterx_tuple, test_tuple_function)
   /* no need to handle MessageValue arguments, those will be unmarshalled at
    * evaluation before passing them to the list() function */
   fobj = _exec_tuple_func(filterx_message_value_new("[1, 2]", -1, LM_VT_JSON));
-  cr_assert(fobj == NULL);
+  cr_assert(zero(ptr, fobj));
 
   fobj = _exec_tuple_func(filterx_object_from_json("[1, 2]", -1, NULL));
   cr_assert(filterx_object_is_type_or_ref(fobj, &FILTERX_TYPE_NAME(tuple)));
@@ -79,10 +80,10 @@ Test(filterx_tuple, test_tuple_function)
   filterx_object_unref(fobj);
 
   fobj = _exec_tuple_func(filterx_object_from_json("{\"foo\":\"bar\"}", -1, NULL));
-  cr_assert(fobj == NULL);
+  cr_assert(zero(ptr, fobj));
 
   fobj = _exec_tuple_func(filterx_string_new("{\"foo\":\"bar\"}", -1));
-  cr_assert(fobj == NULL);
+  cr_assert(zero(ptr, fobj));
 }
 
 Test(filterx_tuple, test_tuple_dedup)
@@ -92,14 +93,14 @@ Test(filterx_tuple, test_tuple_dedup)
 
   filterx_config_dedup_object(configuration, &tuple);
 
-  cr_assert_eq(tuple, orig_tuple);
+  cr_assert(eq(ptr, tuple, orig_tuple));
 
   FilterXObject *val_0 = filterx_sequence_get_subscript(tuple, 0);
   FilterXObject *val_1 = filterx_sequence_get_subscript(tuple, 1);
   FilterXObject *val_2 = filterx_sequence_get_subscript(tuple, 2);
 
-  cr_assert_eq(val_0, val_2);
-  cr_assert_neq(val_0, val_1);
+  cr_assert(eq(ptr, val_0, val_2));
+  cr_assert(ne(ptr, val_0, val_1));
 
   filterx_object_unref(val_2);
   filterx_object_unref(val_1);
@@ -113,7 +114,7 @@ Test(filterx_tuple, filterx_tuple_array_repr_one_element)
   GString *repr = scratch_buffers_alloc();
   g_string_assign(repr, "foo");
   cr_assert(filterx_object_repr(obj, repr));
-  cr_assert_str_eq(repr->str, "(\"foo\",)");
+  cr_assert(eq(str, repr->str, "(\"foo\",)"));
   filterx_object_unref(obj);
 }
 
@@ -123,19 +124,19 @@ Test(filterx_tuple, filterx_tuple_array_repr_append)
   GString *repr = scratch_buffers_alloc();
   g_string_assign(repr, "foo");
   cr_assert(filterx_object_repr(obj, repr));
-  cr_assert_str_eq(repr->str, "(\"foo\",\"bar\")");
+  cr_assert(eq(str, repr->str, "(\"foo\",\"bar\")"));
   cr_assert(filterx_object_repr_append(obj, repr));
-  cr_assert_str_eq(repr->str, "(\"foo\",\"bar\")(\"foo\",\"bar\")");
+  cr_assert(eq(str, repr->str, "(\"foo\",\"bar\")(\"foo\",\"bar\")"));
   filterx_object_unref(obj);
 }
 
 Test(filterx_tuple, test_tuple_function_from_tuple)
 {
   FilterXObject *t1 = _exec_tuple_func(filterx_string_new("[1, 2]", -1));
-  cr_assert_not_null(t1);
+  cr_assert(not(zero(ptr, t1)));
 
   FilterXObject *t2 = _exec_tuple_func(filterx_object_ref(t1));
-  cr_assert_eq(t1, t2);
+  cr_assert(eq(ptr, t1, t2));
 
   filterx_object_unref(t2);
   filterx_object_unref(t1);
@@ -146,7 +147,7 @@ Test(filterx_tuple, test_tuple_repr_empty)
   FilterXObject *obj = filterx_tuple_new(0);
   GString *repr = scratch_buffers_alloc();
   cr_assert(filterx_object_repr(obj, repr));
-  cr_assert_str_eq(repr->str, "()");
+  cr_assert(eq(str, repr->str, "()"));
   filterx_object_unref(obj);
 }
 
@@ -163,12 +164,12 @@ Test(filterx_tuple, test_tuple_len)
 
   FilterXObject *obj = filterx_tuple_new(0);
   cr_assert(filterx_object_len(obj, &len));
-  cr_assert_eq(len, 0);
+  cr_assert(eq(u64, len, 0));
   filterx_object_unref(obj);
 
   obj = _exec_tuple_func(filterx_string_new("[1, 2, 3]", -1));
   cr_assert(filterx_object_len(obj, &len));
-  cr_assert_eq(len, 3);
+  cr_assert(eq(u64, len, 3));
   filterx_object_unref(obj);
 }
 
@@ -178,35 +179,35 @@ Test(filterx_tuple, test_tuple_subscript)
 
   FilterXObject *key = filterx_integer_new(0);
   FilterXObject *val = filterx_object_get_subscript(obj, key);
-  cr_assert_not_null(val);
+  cr_assert(not(zero(ptr, val)));
   assert_object_json_equals(val, "1");
   filterx_object_unref(val);
   filterx_object_unref(key);
 
   key = filterx_integer_new(2);
   val = filterx_object_get_subscript(obj, key);
-  cr_assert_not_null(val);
+  cr_assert(not(zero(ptr, val)));
   assert_object_json_equals(val, "3");
   filterx_object_unref(val);
   filterx_object_unref(key);
 
   key = filterx_integer_new(-1);
   val = filterx_object_get_subscript(obj, key);
-  cr_assert_not_null(val);
+  cr_assert(not(zero(ptr, val)));
   assert_object_json_equals(val, "3");
   filterx_object_unref(val);
   filterx_object_unref(key);
 
   key = filterx_integer_new(-3);
   val = filterx_object_get_subscript(obj, key);
-  cr_assert_not_null(val);
+  cr_assert(not(zero(ptr, val)));
   assert_object_json_equals(val, "1");
   filterx_object_unref(val);
   filterx_object_unref(key);
 
   key = filterx_integer_new(10);
   val = filterx_object_get_subscript(obj, key);
-  cr_assert_null(val);
+  cr_assert(zero(ptr, val));
   filterx_object_unref(key);
 
   filterx_object_unref(obj);
@@ -225,7 +226,7 @@ Test(filterx_tuple, test_tuple_is_key_set)
   filterx_object_unref(key);
 
   key = filterx_integer_new(10);
-  cr_assert_not(filterx_object_is_key_set(obj, key));
+  cr_assert(not(filterx_object_is_key_set(obj, key)));
   filterx_object_unref(key);
 
   filterx_object_unref(obj);
@@ -239,8 +240,8 @@ Test(filterx_tuple, test_tuple_equal)
   FilterXObject *t4 = _exec_tuple_func(filterx_string_new("[1, 2, 4]", -1));
 
   cr_assert(filterx_object_equal(t1, t2));
-  cr_assert_not(filterx_object_equal(t1, t3));
-  cr_assert_not(filterx_object_equal(t1, t4));
+  cr_assert(not(filterx_object_equal(t1, t3)));
+  cr_assert(not(filterx_object_equal(t1, t4)));
 
   filterx_object_unref(t4);
   filterx_object_unref(t3);
@@ -254,8 +255,8 @@ Test(filterx_tuple, test_tuple_hash)
   FilterXObject *t2 = _exec_tuple_func(filterx_string_new("[1, 2, 3]", -1));
   FilterXObject *t3 = _exec_tuple_func(filterx_string_new("[1, 2]", -1));
 
-  cr_assert_eq(filterx_object_hash(t1), filterx_object_hash(t2));
-  cr_assert_neq(filterx_object_hash(t1), filterx_object_hash(t3));
+  cr_assert(eq(uint, filterx_object_hash(t1), filterx_object_hash(t2)));
+  cr_assert(ne(uint, filterx_object_hash(t1), filterx_object_hash(t3)));
 
   filterx_object_unref(t3);
   filterx_object_unref(t2);
@@ -279,7 +280,7 @@ Test(filterx_tuple, test_tuple_unhashable)
 {
   FilterXObject *t = _exec_tuple_func(filterx_string_new("[1, 2, []]", -1));
 
-  cr_assert(!filterx_object_hashable(t));
+  cr_assert(not(filterx_object_hashable(t)));
   filterx_object_unref(t);
 }
 
@@ -288,13 +289,13 @@ Test(filterx_tuple, test_tuple_clone)
   FilterXObject *orig = _exec_tuple_func(filterx_string_new("[1, 2, 3]", -1));
   FilterXObject *clone = filterx_object_copy(orig);
 
-  cr_assert_not_null(clone);
-  cr_assert_eq(orig, clone);
+  cr_assert(not(zero(ptr, clone)));
+  cr_assert(eq(ptr, orig, clone));
   assert_object_json_equals(clone, "[1,2,3]");
 
   guint64 len;
   cr_assert(filterx_object_len(clone, &len));
-  cr_assert_eq(len, 3);
+  cr_assert(eq(u64, len, 3));
 
   filterx_object_unref(clone);
   filterx_object_unref(orig);
@@ -323,7 +324,7 @@ Test(filterx_tuple, test_tuple_iter)
   TupleIterCtx ctx = {0};
 
   cr_assert(filterx_object_iter(obj, _collect_iter, &ctx));
-  cr_assert_eq(ctx.count, 3);
+  cr_assert(eq(int, ctx.count, 3));
 
   assert_object_json_equals(ctx.values[0], "\"a\"");
   assert_object_json_equals(ctx.values[1], "\"b\"");

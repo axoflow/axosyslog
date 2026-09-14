@@ -22,6 +22,7 @@
 
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "filterx-parse-windows-eventlog-xml.h"
 #include "filterx/object-string.h"
@@ -98,8 +99,8 @@ _assert_parse_event_data(const gchar *event_data_xml, const gchar *expected_even
   FilterXExpr *func = _create_expr(_create_input_from_event_data(event_data_xml));
 
   FilterXObject *result = init_and_eval_expr(func);
-  cr_assert(result);
-  cr_assert(filterx_eval_get_error_count() == 0);
+  cr_assert(not(zero(ptr, result)));
+  cr_assert(eq(int, filterx_eval_get_error_count(), 0));
 
   cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(mapping)));
 
@@ -117,15 +118,19 @@ _assert_parse_event_data(const gchar *event_data_xml, const gchar *expected_even
                         "rovider\":\"\",\"Keywords\":{\"Keyword\":\"Classic\"}},\"EventData\":";
   const gchar *suffix = "}}";
 
-  cr_assert_eq(memcmp(formatted_result->str, prefix, strlen(prefix)), 0);
+  struct cr_mem actual_prefix = { .data = formatted_result->str, .size = strlen(prefix) };
+  struct cr_mem expected_prefix = { .data = prefix, .size = strlen(prefix) };
+  cr_assert(eq(mem, actual_prefix, expected_prefix));
 
   /* Needed for sensible assertion error reporting. */
   GString *formatted_eventdata = g_string_new(formatted_result->str + strlen(prefix));
   g_string_truncate(formatted_eventdata, formatted_eventdata->len - strlen(suffix));
-  cr_assert_str_eq(formatted_eventdata->str, expected_eventdata_json);
+  cr_assert(eq(str, formatted_eventdata->str, expected_eventdata_json));
 
-  cr_assert_eq(memcmp(formatted_result->str + strlen(prefix) + strlen(expected_eventdata_json),
-                      suffix, strlen(suffix)), 0);
+  struct cr_mem actual_suffix = { .data = formatted_result->str + strlen(prefix) + strlen(expected_eventdata_json),
+                                  .size = strlen(suffix) };
+  struct cr_mem expected_suffix = { .data = suffix, .size = strlen(suffix) };
+  cr_assert(eq(mem, actual_suffix, expected_suffix));
 
   g_string_free(formatted_eventdata, TRUE);
   g_string_free(formatted_result, TRUE);
@@ -139,8 +144,8 @@ _assert_parse_fail(const gchar *xml)
   FilterXExpr *func = _create_expr(xml);
 
   FilterXObject *result = init_and_eval_expr(func);
-  cr_assert(!result);
-  cr_assert(filterx_eval_get_last_error());
+  cr_assert(zero(ptr, result));
+  cr_assert(not(zero(ptr, filterx_eval_get_last_error())));
 
   filterx_eval_clear_errors();
   filterx_expr_unref(func);

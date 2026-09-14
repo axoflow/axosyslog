@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/parameterized.h"
 
 #include "collection-comparator.h"
@@ -108,15 +109,15 @@ StaticParameterizedTest(struct TestFileList *tup, params, params, multiple)
 
   for (i = 0; tup->expected_deleted_files[i] != NULL; i++)
     {
-      cr_assert_str_eq(g_hash_table_lookup(data->deleted_entries, tup->expected_deleted_files[i]), TEST);
+      cr_assert(eq(str, g_hash_table_lookup(data->deleted_entries, tup->expected_deleted_files[i]), TEST));
     }
-  cr_assert_eq(g_hash_table_size(data->deleted_entries), i);
+  cr_assert(eq(i64, g_hash_table_size(data->deleted_entries), i));
 
   for (i = 0; tup->expected_new_files[i] != NULL; i++)
     {
-      cr_assert_str_eq(g_hash_table_lookup(data->new_entries, tup->expected_new_files[i]), TEST);
+      cr_assert(eq(str, g_hash_table_lookup(data->new_entries, tup->expected_new_files[i]), TEST));
     }
-  cr_assert_eq(g_hash_table_size(data->new_entries), i);
+  cr_assert(eq(i64, g_hash_table_size(data->new_entries), i));
 
   collection_comparator_free(comporator);
   test_data_free(data);

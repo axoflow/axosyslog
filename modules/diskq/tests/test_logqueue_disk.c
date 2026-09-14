@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/queue_utils_lib.h"
 #include "libtest/grab-logging.h"
 #include "test_diskq_tools.h"
@@ -39,7 +40,7 @@ static void
 _assert_file_exists(const gchar *filename)
 {
   struct stat st;
-  cr_assert_neq(stat(filename, &st), -1, "File does not exist: %s", filename);
+  cr_assert(ne(int, stat(filename, &st), -1), "File does not exist: %s", filename);
 }
 
 static void
@@ -48,9 +49,9 @@ _push_corrupted_msg(LogQueue *queue)
   feed_some_messages(queue, 1);
 
   gint fd = open(log_queue_disk_get_filename(queue), O_RDWR, 0600);
-  cr_assert_gt(fd, -1, "Failed to open disk queue file: %s", log_queue_disk_get_filename(queue));
-  cr_assert_eq(ftruncate(fd, QDISK_RESERVED_SPACE), 0,
-               "Failed to make disk queue file corrupted: %s", log_queue_disk_get_filename(queue));
+  cr_assert(gt(int, fd, -1), "Failed to open disk queue file: %s", log_queue_disk_get_filename(queue));
+  cr_assert(eq(int, ftruncate(fd, QDISK_RESERVED_SPACE), 0),
+            "Failed to make disk queue file corrupted: %s", log_queue_disk_get_filename(queue));
   close(fd);
 }
 
@@ -70,18 +71,18 @@ _assert_log_queue_disk_reliable_is_empty(LogQueue *q)
 {
   LogQueueDiskReliable *queue = (LogQueueDiskReliable *) q;
 
-  cr_assert_eq(g_queue_get_length(queue->front_cache), 0);
-  cr_assert_eq(g_queue_get_length(queue->flow_control_window), 0);
-  cr_assert_eq(g_queue_get_length(queue->backlog), 0);
-  cr_assert_eq(qdisk_get_length(queue->super.qdisk), 0);
+  cr_assert(eq(uint, g_queue_get_length(queue->front_cache), 0));
+  cr_assert(eq(uint, g_queue_get_length(queue->flow_control_window), 0));
+  cr_assert(eq(uint, g_queue_get_length(queue->backlog), 0));
+  cr_assert(eq(i64, qdisk_get_length(queue->super.qdisk), 0));
 
-  cr_assert(q->metrics.shared.memory_usage);
-  cr_assert(q->metrics.shared.queued_messages);
+  cr_assert(not(zero(ptr, q->metrics.shared.memory_usage)));
+  cr_assert(not(zero(ptr, q->metrics.shared.queued_messages)));
 
-  cr_assert_eq(stats_counter_get(q->metrics.shared.memory_usage), 0);
-  cr_assert_eq(stats_counter_get(q->metrics.shared.queued_messages), 0);
-  cr_assert_eq(stats_counter_get(q->metrics.owned.memory_usage), 0);
-  cr_assert_eq(stats_counter_get(q->metrics.owned.queued_messages), 0);
+  cr_assert(eq(sz, stats_counter_get(q->metrics.shared.memory_usage), 0));
+  cr_assert(eq(sz, stats_counter_get(q->metrics.shared.queued_messages), 0));
+  cr_assert(eq(sz, stats_counter_get(q->metrics.owned.memory_usage), 0));
+  cr_assert(eq(sz, stats_counter_get(q->metrics.owned.queued_messages), 0));
 }
 
 Test(logqueue_disk, restart_corrupted_reliable)
@@ -108,7 +109,7 @@ Test(logqueue_disk, restart_corrupted_reliable)
   stats_cluster_key_builder_free(queue_sck_builder);
 
   cr_assert(log_queue_disk_start(queue));
-  cr_assert_str_eq(log_queue_disk_get_filename(queue), filename);
+  cr_assert(eq(str, log_queue_disk_get_filename(queue), filename));
   _assert_file_exists(filename);
   _assert_log_queue_disk_reliable_is_empty(queue);
 
@@ -116,7 +117,7 @@ Test(logqueue_disk, restart_corrupted_reliable)
   _push_corrupted_msg(queue);
   _pop_msg(queue);
 
-  cr_assert_str_eq(log_queue_disk_get_filename(queue), filename);
+  cr_assert(eq(str, log_queue_disk_get_filename(queue), filename));
   _assert_file_exists(corrupted_filename);
   _assert_file_exists(filename);
   _assert_log_queue_disk_reliable_is_empty(queue);
@@ -125,7 +126,7 @@ Test(logqueue_disk, restart_corrupted_reliable)
   _push_corrupted_msg(queue);
   _pop_msg(queue);
 
-  cr_assert_str_eq(log_queue_disk_get_filename(queue), filename);
+  cr_assert(eq(str, log_queue_disk_get_filename(queue), filename));
   _assert_file_exists(corrupted_filename);
   _assert_file_exists(corrupted2_filename);
   _assert_file_exists(filename);
@@ -135,7 +136,7 @@ Test(logqueue_disk, restart_corrupted_reliable)
   _push_corrupted_msg(queue);
   _pop_msg(queue);
 
-  cr_assert_str_eq(log_queue_disk_get_filename(queue), filename);
+  cr_assert(eq(str, log_queue_disk_get_filename(queue), filename));
   _assert_file_exists(corrupted_filename);
   _assert_file_exists(corrupted2_filename);
   _assert_file_exists(corrupted3_filename);
@@ -159,19 +160,19 @@ _assert_log_queue_disk_non_reliable_is_empty(LogQueue *q)
 {
   LogQueueDiskNonReliable *queue = (LogQueueDiskNonReliable *) q;
 
-  cr_assert_eq(queue->front_cache.len, 0);
-  cr_assert_eq(queue->front_cache_output.len, 0);
-  cr_assert_eq(queue->flow_control_window.len, 0);
-  cr_assert_eq(queue->backlog.len, 0);
-  cr_assert_eq(qdisk_get_length(queue->super.qdisk), 0);
+  cr_assert(eq(int, queue->front_cache.len, 0));
+  cr_assert(eq(int, queue->front_cache_output.len, 0));
+  cr_assert(eq(int, queue->flow_control_window.len, 0));
+  cr_assert(eq(int, queue->backlog.len, 0));
+  cr_assert(eq(i64, qdisk_get_length(queue->super.qdisk), 0));
 
-  cr_assert(q->metrics.shared.memory_usage);
-  cr_assert(q->metrics.shared.queued_messages);
+  cr_assert(not(zero(ptr, q->metrics.shared.memory_usage)));
+  cr_assert(not(zero(ptr, q->metrics.shared.queued_messages)));
 
-  cr_assert_eq(stats_counter_get(q->metrics.shared.memory_usage), 0);
-  cr_assert_eq(stats_counter_get(q->metrics.shared.queued_messages), 0);
-  cr_assert_eq(stats_counter_get(q->metrics.owned.memory_usage), 0);
-  cr_assert_eq(stats_counter_get(q->metrics.owned.queued_messages), 0);
+  cr_assert(eq(sz, stats_counter_get(q->metrics.shared.memory_usage), 0));
+  cr_assert(eq(sz, stats_counter_get(q->metrics.shared.queued_messages), 0));
+  cr_assert(eq(sz, stats_counter_get(q->metrics.owned.memory_usage), 0));
+  cr_assert(eq(sz, stats_counter_get(q->metrics.owned.queued_messages), 0));
 }
 
 Test(logqueue_disk, restart_corrupted_non_reliable)
@@ -198,7 +199,7 @@ Test(logqueue_disk, restart_corrupted_non_reliable)
   stats_cluster_key_builder_free(queue_sck_builder);
 
   cr_assert(log_queue_disk_start(queue));
-  cr_assert_str_eq(log_queue_disk_get_filename(queue), filename);
+  cr_assert(eq(str, log_queue_disk_get_filename(queue), filename));
   _assert_file_exists(filename);
   _assert_log_queue_disk_non_reliable_is_empty(queue);
 
@@ -206,7 +207,7 @@ Test(logqueue_disk, restart_corrupted_non_reliable)
   _push_corrupted_msg(queue);
   _pop_msg(queue);
 
-  cr_assert_str_eq(log_queue_disk_get_filename(queue), filename);
+  cr_assert(eq(str, log_queue_disk_get_filename(queue), filename));
   _assert_file_exists(corrupted_filename);
   _assert_file_exists(filename);
   _assert_log_queue_disk_non_reliable_is_empty(queue);
@@ -215,7 +216,7 @@ Test(logqueue_disk, restart_corrupted_non_reliable)
   _push_corrupted_msg(queue);
   _pop_msg(queue);
 
-  cr_assert_str_eq(log_queue_disk_get_filename(queue), filename);
+  cr_assert(eq(str, log_queue_disk_get_filename(queue), filename));
   _assert_file_exists(corrupted_filename);
   _assert_file_exists(corrupted2_filename);
   _assert_file_exists(filename);
@@ -225,7 +226,7 @@ Test(logqueue_disk, restart_corrupted_non_reliable)
   _push_corrupted_msg(queue);
   _pop_msg(queue);
 
-  cr_assert_str_eq(log_queue_disk_get_filename(queue), filename);
+  cr_assert(eq(str, log_queue_disk_get_filename(queue), filename));
   _assert_file_exists(corrupted_filename);
   _assert_file_exists(corrupted2_filename);
   _assert_file_exists(corrupted3_filename);
@@ -254,19 +255,19 @@ _assert_log_queue_disk_non_reliable_has_messages_in_front_cache(LogQueue *q, Log
   const gssize log_msg_size = log_msg_get_size(msg);
   log_msg_unref(msg);
 
-  cr_assert_not_null(expected_queue);
-  cr_assert_eq(expected_queue->len, num_of_messages);
-  cr_assert_eq(queue->flow_control_window.len, 0);
-  cr_assert_eq(queue->backlog.len, 0);
-  cr_assert_eq(qdisk_get_length(queue->super.qdisk), 0);
+  cr_assert(not(zero(ptr, expected_queue)));
+  cr_assert(eq(i64, expected_queue->len, num_of_messages));
+  cr_assert(eq(int, queue->flow_control_window.len, 0));
+  cr_assert(eq(int, queue->backlog.len, 0));
+  cr_assert(eq(i64, qdisk_get_length(queue->super.qdisk), 0));
 
-  cr_assert(q->metrics.shared.memory_usage);
-  cr_assert(q->metrics.shared.queued_messages);
+  cr_assert(not(zero(ptr, q->metrics.shared.memory_usage)));
+  cr_assert(not(zero(ptr, q->metrics.shared.queued_messages)));
 
-  cr_assert_eq(stats_counter_get(q->metrics.shared.memory_usage), num_of_messages * log_msg_size);
-  cr_assert_eq(stats_counter_get(q->metrics.shared.queued_messages), num_of_messages);
-  cr_assert_eq(stats_counter_get(q->metrics.owned.memory_usage), num_of_messages * log_msg_size);
-  cr_assert_eq(stats_counter_get(q->metrics.owned.queued_messages), num_of_messages);
+  cr_assert(eq(i64, stats_counter_get(q->metrics.shared.memory_usage), num_of_messages * log_msg_size));
+  cr_assert(eq(sz, stats_counter_get(q->metrics.shared.queued_messages), num_of_messages));
+  cr_assert(eq(i64, stats_counter_get(q->metrics.owned.memory_usage), num_of_messages * log_msg_size));
+  cr_assert(eq(sz, stats_counter_get(q->metrics.owned.queued_messages), num_of_messages));
 }
 
 Test(logqueue_disk, restart_corrupted_non_reliable_with_front_cache)
@@ -290,7 +291,7 @@ Test(logqueue_disk, restart_corrupted_non_reliable_with_front_cache)
   LogQueueDiskNonReliable *queue_disk_non_reliable = (LogQueueDiskNonReliable *) queue;
 
   cr_assert(log_queue_disk_start(queue));
-  cr_assert_str_eq(log_queue_disk_get_filename(queue), filename);
+  cr_assert(eq(str, log_queue_disk_get_filename(queue), filename));
   _assert_file_exists(filename);
   _assert_log_queue_disk_non_reliable_is_empty(queue);
 
@@ -302,7 +303,7 @@ Test(logqueue_disk, restart_corrupted_non_reliable_with_front_cache)
 
   log_queue_disk_restart_corrupted(&queue_disk_non_reliable->super);
 
-  cr_assert_str_eq(log_queue_disk_get_filename(queue), filename);
+  cr_assert(eq(str, log_queue_disk_get_filename(queue), filename));
   _assert_file_exists(corrupted_filename);
   _assert_file_exists(filename);
 
@@ -363,23 +364,23 @@ Test(logqueue_disk, restart_corrupted_with_multiple_queues)
   LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
 
   log_queue_push_tail(queue_1, log_msg_new_empty(), &path_options);
-  cr_assert_eq(stats_counter_get(queue_1->metrics.shared.queued_messages), 1);
-  cr_assert_eq(stats_counter_get(queue_1->metrics.owned.queued_messages), 1);
-  cr_assert_eq(stats_counter_get(queue_2->metrics.shared.queued_messages), 1);
-  cr_assert_eq(stats_counter_get(queue_2->metrics.owned.queued_messages), 0);
+  cr_assert(eq(sz, stats_counter_get(queue_1->metrics.shared.queued_messages), 1));
+  cr_assert(eq(sz, stats_counter_get(queue_1->metrics.owned.queued_messages), 1));
+  cr_assert(eq(sz, stats_counter_get(queue_2->metrics.shared.queued_messages), 1));
+  cr_assert(eq(sz, stats_counter_get(queue_2->metrics.owned.queued_messages), 0));
 
   log_queue_push_tail(queue_2, log_msg_new_empty(), &path_options);
-  cr_assert_eq(stats_counter_get(queue_1->metrics.shared.queued_messages), 2);
-  cr_assert_eq(stats_counter_get(queue_1->metrics.owned.queued_messages), 1);
-  cr_assert_eq(stats_counter_get(queue_2->metrics.shared.queued_messages), 2);
-  cr_assert_eq(stats_counter_get(queue_2->metrics.owned.queued_messages), 1);
+  cr_assert(eq(sz, stats_counter_get(queue_1->metrics.shared.queued_messages), 2));
+  cr_assert(eq(sz, stats_counter_get(queue_1->metrics.owned.queued_messages), 1));
+  cr_assert(eq(sz, stats_counter_get(queue_2->metrics.shared.queued_messages), 2));
+  cr_assert(eq(sz, stats_counter_get(queue_2->metrics.owned.queued_messages), 1));
 
   gboolean persistent;
   log_queue_disk_stop(queue_1, &persistent);
   log_queue_unref(queue_1);
 
-  cr_assert_eq(stats_counter_get(queue_2->metrics.shared.queued_messages), 1);
-  cr_assert_eq(stats_counter_get(queue_2->metrics.owned.queued_messages), 1);
+  cr_assert(eq(sz, stats_counter_get(queue_2->metrics.shared.queued_messages), 1));
+  cr_assert(eq(sz, stats_counter_get(queue_2->metrics.owned.queued_messages), 1));
 
   stats_cluster_key_builder_free(queue_sck_builder);
   queue_sck_builder = stats_cluster_key_builder_new();
@@ -387,23 +388,23 @@ Test(logqueue_disk, restart_corrupted_with_multiple_queues)
                                         STATS_LEVEL0, driver_sck_builder, queue_sck_builder);
   cr_assert(log_queue_disk_start(queue_1));
 
-  cr_assert_eq(stats_counter_get(queue_1->metrics.shared.queued_messages), 2);
-  cr_assert_eq(stats_counter_get(queue_1->metrics.owned.queued_messages), 1);
-  cr_assert_eq(stats_counter_get(queue_2->metrics.shared.queued_messages), 2);
-  cr_assert_eq(stats_counter_get(queue_2->metrics.owned.queued_messages), 1);
+  cr_assert(eq(sz, stats_counter_get(queue_1->metrics.shared.queued_messages), 2));
+  cr_assert(eq(sz, stats_counter_get(queue_1->metrics.owned.queued_messages), 1));
+  cr_assert(eq(sz, stats_counter_get(queue_2->metrics.shared.queued_messages), 2));
+  cr_assert(eq(sz, stats_counter_get(queue_2->metrics.owned.queued_messages), 1));
 
   log_queue_disk_restart_corrupted((LogQueueDisk *) queue_1);
 
-  cr_assert_eq(stats_counter_get(queue_1->metrics.shared.queued_messages), 1);
-  cr_assert_eq(stats_counter_get(queue_1->metrics.owned.queued_messages), 0);
-  cr_assert_eq(stats_counter_get(queue_2->metrics.shared.queued_messages), 1);
-  cr_assert_eq(stats_counter_get(queue_2->metrics.owned.queued_messages), 1);
+  cr_assert(eq(sz, stats_counter_get(queue_1->metrics.shared.queued_messages), 1));
+  cr_assert(eq(sz, stats_counter_get(queue_1->metrics.owned.queued_messages), 0));
+  cr_assert(eq(sz, stats_counter_get(queue_2->metrics.shared.queued_messages), 1));
+  cr_assert(eq(sz, stats_counter_get(queue_2->metrics.owned.queued_messages), 1));
 
   log_queue_disk_restart_corrupted((LogQueueDisk *) queue_2);
-  cr_assert_eq(stats_counter_get(queue_1->metrics.shared.queued_messages), 0);
-  cr_assert_eq(stats_counter_get(queue_1->metrics.owned.queued_messages), 0);
-  cr_assert_eq(stats_counter_get(queue_2->metrics.shared.queued_messages), 0);
-  cr_assert_eq(stats_counter_get(queue_2->metrics.owned.queued_messages), 0);
+  cr_assert(eq(sz, stats_counter_get(queue_1->metrics.shared.queued_messages), 0));
+  cr_assert(eq(sz, stats_counter_get(queue_1->metrics.owned.queued_messages), 0));
+  cr_assert(eq(sz, stats_counter_get(queue_2->metrics.shared.queued_messages), 0));
+  cr_assert(eq(sz, stats_counter_get(queue_2->metrics.owned.queued_messages), 0));
 
   stats_cluster_key_builder_free(driver_sck_builder);
   stats_cluster_key_builder_free(queue_sck_builder);
@@ -450,8 +451,8 @@ Test(logqueue_disk, test_non_reliable_queue_front_cache_size)
 
   cr_assert(log_queue_disk_start(queue));
   _assert_log_queue_disk_non_reliable_is_empty(queue);
-  cr_assert_eq(nrq->front_cache.limit, front_cache_size/2);
-  cr_assert_eq(nrq->front_cache_output.limit, front_cache_size/2);
+  cr_assert(eq(int, nrq->front_cache.limit, front_cache_size/2));
+  cr_assert(eq(int, nrq->front_cache_output.limit, front_cache_size/2));
 
   LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
   path_options.flow_control_requested = TRUE;
@@ -459,7 +460,7 @@ Test(logqueue_disk, test_non_reliable_queue_front_cache_size)
   for (gint i = 1; i <= front_cache_size/2; i++)
     {
       log_queue_push_tail(queue, log_msg_new_empty(), &path_options);
-      cr_assert_eq(nrq->front_cache.len, i);
+      cr_assert(eq(int, nrq->front_cache.len, i));
     }
 
   _pop_msg(queue);
@@ -467,13 +468,13 @@ Test(logqueue_disk, test_non_reliable_queue_front_cache_size)
   for (gint i = 1; i <= front_cache_size/2; i++)
     log_queue_push_tail(queue, log_msg_new_empty(), &path_options);
 
-  cr_assert_eq(log_queue_get_length(queue), front_cache_size - 1);
-  cr_assert_eq(nrq->front_cache.len, front_cache_size/2);
-  cr_assert_eq(nrq->front_cache_output.len, front_cache_size/2 - 1);
+  cr_assert(eq(i64, log_queue_get_length(queue), front_cache_size - 1));
+  cr_assert(eq(int, nrq->front_cache.len, front_cache_size/2));
+  cr_assert(eq(int, nrq->front_cache_output.len, front_cache_size/2 - 1));
 
   log_queue_push_tail(queue, log_msg_new_empty(), &path_options);
   log_queue_push_tail(queue, log_msg_new_empty(), &path_options);
-  cr_assert_eq(qdisk_get_length(nrq->super.qdisk), 2);
+  cr_assert(eq(i64, qdisk_get_length(nrq->super.qdisk), 2));
 
   _pop_msgs(queue, front_cache_size + 1);
   log_queue_ack_backlog(queue, front_cache_size + 2);
@@ -523,17 +524,17 @@ Test(logqueue_disk, test_non_reliable_queue_segments)
   for (gint i = 1; i <= additional_messages; i++)
     log_queue_push_tail(queue, log_msg_new_empty(), &path_options);
 
-  cr_assert_eq(nrq->front_cache.len, front_cache_size/2);
-  cr_assert_eq(qdisk_get_length(nrq->super.qdisk), additional_messages);
+  cr_assert(eq(int, nrq->front_cache.len, front_cache_size/2));
+  cr_assert(eq(i64, qdisk_get_length(nrq->super.qdisk), additional_messages));
 
   _pop_msg(queue);
-  cr_assert_eq(nrq->front_cache_output.len, front_cache_size/2);
-  cr_assert_eq(nrq->front_cache.len, front_cache_size/2);
-  cr_assert_eq(qdisk_get_length(nrq->super.qdisk), additional_messages - front_cache_size/2 - 1);
-  cr_assert_eq(log_queue_get_length(queue), front_cache_size/2 + additional_messages - 1);
+  cr_assert(eq(int, nrq->front_cache_output.len, front_cache_size/2));
+  cr_assert(eq(int, nrq->front_cache.len, front_cache_size/2));
+  cr_assert(eq(i64, qdisk_get_length(nrq->super.qdisk), additional_messages - front_cache_size/2 - 1));
+  cr_assert(eq(i64, log_queue_get_length(queue), front_cache_size/2 + additional_messages - 1));
 
   _pop_msgs(queue, front_cache_size/2 + additional_messages - 1);
-  cr_assert_eq(nrq->backlog.len, front_cache_size/2 + additional_messages);
+  cr_assert(eq(int, nrq->backlog.len, front_cache_size/2 + additional_messages));
   log_queue_ack_backlog(queue, front_cache_size/2 + additional_messages);
 
   _assert_log_queue_disk_non_reliable_is_empty(queue);
@@ -545,17 +546,17 @@ Test(logqueue_disk, test_non_reliable_queue_segments)
   for (gint i = 1; i <= additional_messages; i++)
     log_queue_push_tail(queue, log_msg_new_empty(), &path_options);
 
-  cr_assert_eq(nrq->front_cache_output.len, 0);
+  cr_assert(eq(int, nrq->front_cache_output.len, 0));
   LogMessage *peeked_msg = log_queue_peek_head(queue);
-  cr_assert_eq(peeked_msg, msg1);
+  cr_assert(eq(ptr, peeked_msg, msg1));
   log_msg_unref(msg1);
   log_msg_unref(peeked_msg);
 
   _pop_msg(queue);
-  cr_assert_neq(nrq->front_cache_output.len, 0);
+  cr_assert(ne(int, nrq->front_cache_output.len, 0));
 
   peeked_msg = log_queue_peek_head(queue);
-  cr_assert_eq(peeked_msg, msg2);
+  cr_assert(eq(ptr, peeked_msg, msg2));
   log_msg_unref(msg2);
   log_msg_unref(peeked_msg);
 
@@ -602,11 +603,11 @@ Test(logqueue_disk, test_non_reliable_queue_rewind)
     log_queue_push_tail(queue, log_msg_new_empty(), &path_options);
 
   _pop_msgs(queue, 5555);
-  cr_assert_eq(nrq->front_cache_output.len, 0);
+  cr_assert(eq(int, nrq->front_cache_output.len, 0));
   log_queue_rewind_backlog(queue, 3);
-  cr_assert_eq(nrq->front_cache_output.len, 3);
+  cr_assert(eq(int, nrq->front_cache_output.len, 3));
   log_queue_rewind_backlog_all(queue);
-  cr_assert_eq(nrq->front_cache_output.len, 5555);
+  cr_assert(eq(int, nrq->front_cache_output.len, 5555));
 
   _pop_msgs(queue, 5555);
   log_queue_ack_backlog(queue, 5555);
@@ -650,9 +651,9 @@ Test(logqueue_disk, test_non_reliable_queue_persistance)
 
   _pop_msg(queue);
   log_queue_ack_backlog(queue, 1);
-  cr_assert_eq(nrq->front_cache_output.len, front_cache_size/2);
-  cr_assert_eq(nrq->front_cache.len, front_cache_size/2);
-  cr_assert_eq(qdisk_get_length(nrq->super.qdisk), 5555 - front_cache_size - 1);
+  cr_assert(eq(int, nrq->front_cache_output.len, front_cache_size/2));
+  cr_assert(eq(int, nrq->front_cache.len, front_cache_size/2));
+  cr_assert(eq(i64, qdisk_get_length(nrq->super.qdisk), 5555 - front_cache_size - 1));
 
   /* restart */
   gboolean persistent;
@@ -666,22 +667,22 @@ Test(logqueue_disk, test_non_reliable_queue_persistance)
   cr_assert(log_queue_disk_start(queue));
 
   // the loaded front_cache elements are now distributed between front_cache and front_cache_output
-  cr_assert_eq(nrq->front_cache_output.len, front_cache_size/2);
-  cr_assert_eq(nrq->front_cache.len, front_cache_size/2);
-  cr_assert_eq(qdisk_get_length(nrq->super.qdisk), 5555 - front_cache_size - 1);
+  cr_assert(eq(int, nrq->front_cache_output.len, front_cache_size/2));
+  cr_assert(eq(int, nrq->front_cache.len, front_cache_size/2));
+  cr_assert(eq(i64, qdisk_get_length(nrq->super.qdisk), 5555 - front_cache_size - 1));
 
   log_queue_push_tail(queue, log_msg_new_empty(), &path_options);
-  cr_assert_eq(log_queue_get_length(queue), 5555);
+  cr_assert(eq(i64, log_queue_get_length(queue), 5555));
   _pop_msgs(queue, 5555);
   log_queue_ack_backlog(queue, 5555);
 
   log_queue_push_tail(queue, log_msg_new_empty(), &path_options);
   log_queue_push_tail(queue, log_msg_new_empty(), &path_options);
-  cr_assert_eq(nrq->front_cache.len, 2);
+  cr_assert(eq(int, nrq->front_cache.len, 2));
   _pop_msg(queue);
   log_queue_ack_backlog(queue, 1);
 
-  cr_assert_eq(nrq->front_cache_output.len, 1);
+  cr_assert(eq(int, nrq->front_cache_output.len, 1));
   _pop_msg(queue);
   log_queue_ack_backlog(queue, 1);
 

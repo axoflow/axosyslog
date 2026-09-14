@@ -20,6 +20,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "varbindlist-scanner.h"
 #include "apphook.h"
@@ -37,7 +38,7 @@ typedef struct
 static void
 _expect_no_more_tokens(VarBindListScanner *scanner)
 {
-  cr_expect_not(varbindlist_scanner_scan_next(scanner));
+  cr_expect(not(varbindlist_scanner_scan_next(scanner)));
 }
 
 static void
@@ -45,9 +46,9 @@ _expect_next_key_type_value(VarBindListScanner *scanner, const gchar *key, const
                             const gchar *value)
 {
   cr_expect(varbindlist_scanner_scan_next(scanner));
-  cr_expect_str_eq(varbindlist_scanner_get_current_key(scanner), key);
-  cr_expect_str_eq(varbindlist_scanner_get_current_type(scanner), type);
-  cr_expect_str_eq(varbindlist_scanner_get_current_value(scanner), value);
+  cr_expect(eq(str, varbindlist_scanner_get_current_key(scanner), key));
+  cr_expect(eq(str, varbindlist_scanner_get_current_type(scanner), type));
+  cr_expect(eq(str, varbindlist_scanner_get_current_value(scanner), value));
 }
 
 static VarBindListScanner *

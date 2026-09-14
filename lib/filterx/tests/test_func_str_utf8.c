@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/filterx-lib.h"
 
 #include "filterx/func-str.h"
@@ -46,7 +47,7 @@ _create_utf8_validate_expr(FilterXObject *arg)
   GError *error = NULL;
   FilterXExpr *fn = filterx_simple_function_new("utf8_validate", filterx_function_args_new(args, NULL),
                                                 filterx_simple_function_utf8_validate, &error);
-  cr_assert_null(error);
+  cr_assert(zero(ptr, error));
   return fn;
 }
 
@@ -55,7 +56,7 @@ Test(filterx_func_utf8_validate, valid_string)
   FilterXExpr *fn = _create_utf8_validate_expr(filterx_string_new("foobar", -1));
   FilterXObject *res = init_and_eval_expr(fn);
 
-  cr_assert_not_null(res);
+  cr_assert(not(zero(ptr, res)));
   assert_object_repr_equals(res, "true");
 
   filterx_object_unref(res);
@@ -69,7 +70,7 @@ Test(filterx_func_utf8_validate, valid_utf8_string)
   FilterXExpr *fn = _create_utf8_validate_expr(filterx_string_new(almafa_utf8, -1));
   FilterXObject *res = init_and_eval_expr(fn);
 
-  cr_assert_not_null(res);
+  cr_assert(not(zero(ptr, res)));
   assert_object_repr_equals(res, "true");
 
   filterx_object_unref(res);
@@ -82,7 +83,7 @@ Test(filterx_func_utf8_validate, invalid_utf8_string)
   FilterXExpr *fn = _create_utf8_validate_expr(filterx_string_new("\x80\x81\x82", 3));
   FilterXObject *res = init_and_eval_expr(fn);
 
-  cr_assert_not_null(res);
+  cr_assert(not(zero(ptr, res)));
   assert_object_repr_equals(res, "false");
 
   filterx_object_unref(res);
@@ -94,7 +95,7 @@ Test(filterx_func_utf8_validate, wrong_arg_type)
   FilterXExpr *fn = _create_utf8_validate_expr(filterx_integer_new(42));
   FilterXObject *res = init_and_eval_expr(fn);
 
-  cr_assert_null(res);
+  cr_assert(zero(ptr, res));
 
   filterx_expr_unref(fn);
 }
@@ -110,7 +111,7 @@ _create_utf8_sanitize_expr(FilterXObject *arg)
   GError *error = NULL;
   FilterXExpr *fn = filterx_simple_function_new("utf8_sanitize", filterx_function_args_new(args, NULL),
                                                 filterx_simple_function_utf8_sanitize, &error);
-  cr_assert_null(error);
+  cr_assert(zero(ptr, error));
   return fn;
 }
 
@@ -119,7 +120,7 @@ Test(filterx_func_utf8_sanitize, valid_string_unchanged)
   FilterXExpr *fn = _create_utf8_sanitize_expr(filterx_string_new("foobar", -1));
   FilterXObject *res = init_and_eval_expr(fn);
 
-  cr_assert_not_null(res);
+  cr_assert(not(zero(ptr, res)));
   assert_object_str_equals(res, "foobar");
 
   filterx_object_unref(res);
@@ -132,7 +133,7 @@ Test(filterx_func_utf8_sanitize, invalid_utf8_string_escaped)
   FilterXExpr *fn = _create_utf8_sanitize_expr(filterx_string_new("\x80\x81\x82", 3));
   FilterXObject *res = init_and_eval_expr(fn);
 
-  cr_assert_not_null(res);
+  cr_assert(not(zero(ptr, res)));
   assert_object_str_equals(res, "\\x80\\x81\\x82");
 
   filterx_object_unref(res);
@@ -144,12 +145,12 @@ Test(filterx_func_utf8_sanitize, idempotent)
   /* Escaped output is valid UTF-8, so a second call returns it unchanged. */
   FilterXExpr *fn = _create_utf8_sanitize_expr(filterx_string_new("\x80\x81\x82", 3));
   FilterXObject *first = init_and_eval_expr(fn);
-  cr_assert_not_null(first);
+  cr_assert(not(zero(ptr, first)));
   filterx_expr_unref(fn);
 
   fn = _create_utf8_sanitize_expr(filterx_object_ref(first));
   FilterXObject *second = init_and_eval_expr(fn);
-  cr_assert_not_null(second);
+  cr_assert(not(zero(ptr, second)));
 
   assert_object_str_equals(second, "\\x80\\x81\\x82");
 
@@ -163,7 +164,7 @@ Test(filterx_func_utf8_sanitize, wrong_arg_type)
   FilterXExpr *fn = _create_utf8_sanitize_expr(filterx_integer_new(42));
   FilterXObject *res = init_and_eval_expr(fn);
 
-  cr_assert_null(res);
+  cr_assert(zero(ptr, res));
 
   filterx_expr_unref(fn);
 }

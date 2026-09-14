@@ -20,6 +20,7 @@
  *
  */
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/fake-time.h"
 
 #include "timeutils/cache.h"
@@ -31,12 +32,12 @@ Test(test_cache, test_cached_localtime_no_dst)
   WallClockTime wct = WALL_CLOCK_TIME_INIT;
 
   cached_localtime_wct(&t, &wct);
-  cr_assert_eq(wct.wct_gmtoff, 12*3600 + 45*60);
+  cr_assert(eq(long, wct.wct_gmtoff, 12*3600 + 45*60));
   for (gint i = 0; i < 15; i++)
     {
       t += 60;
       cached_localtime_wct(&t, &wct);
-      cr_assert_eq(wct.wct_gmtoff, 12*3600 + 45*60);
+      cr_assert(eq(long, wct.wct_gmtoff, 12*3600 + 45*60));
     }
 }
 
@@ -46,12 +47,12 @@ Test(test_cache, test_cached_localtime_dst)
   WallClockTime wct = WALL_CLOCK_TIME_INIT;
 
   cached_localtime_wct(&t, &wct);
-  cr_assert_eq(wct.wct_gmtoff, 12*3600 + 45*60);
+  cr_assert(eq(long, wct.wct_gmtoff, 12*3600 + 45*60));
   for (gint i = 0; i < 15; i++)
     {
       t += 60;
       cached_localtime_wct(&t, &wct);
-      cr_assert_eq(wct.wct_gmtoff, 12*3600 + 45*60);
+      cr_assert(eq(long, wct.wct_gmtoff, 12*3600 + 45*60));
     }
 }
 
@@ -79,8 +80,8 @@ Test(test_cache, test_cached_gmtime_multi_slot)
         {
           struct tm tm;
           cached_gmtime(&t[h], &tm);
-          cr_assert_eq(tm.tm_hour, ref[h].tm_hour);
-          cr_assert_eq(tm.tm_min, ref[h].tm_min);
+          cr_assert(eq(int, tm.tm_hour, ref[h].tm_hour));
+          cr_assert(eq(int, tm.tm_min, ref[h].tm_min));
         }
     }
 }
@@ -103,8 +104,8 @@ Test(test_cache, test_cached_localtime_multi_slot)
         {
           struct tm tm;
           cached_localtime(&t[h], &tm);
-          cr_assert_eq(tm.tm_hour, ref[h].tm_hour);
-          cr_assert_eq(tm.tm_min, ref[h].tm_min);
+          cr_assert(eq(int, tm.tm_hour, ref[h].tm_hour));
+          cr_assert(eq(int, tm.tm_min, ref[h].tm_min));
         }
     }
 }
@@ -128,7 +129,7 @@ Test(test_cache, test_cached_mktime_multi_slot)
       for (gint h = 0; h < MULTI_SLOT_HOURS; h++)
         {
           struct tm scratch = tm[h];
-          cr_assert_eq(cached_mktime(&scratch), ref[h]);
+          cr_assert(eq(i64, cached_mktime(&scratch), ref[h]));
         }
     }
 }

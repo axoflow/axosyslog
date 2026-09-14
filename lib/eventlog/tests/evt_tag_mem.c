@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include <evtlog.h>
 #include "libtest/parameterized.h"
 
@@ -52,7 +53,7 @@ StaticParameterizedTest(struct evt_tag_mem_params *params, test_params, evt_tag_
   GString *expected_result = g_string_sized_new(8);
   g_string_append_printf(expected_result, "; %s='%s'", key, params->new_value);
 
-  cr_assert_str_eq(formatted_result, expected_result->str);
+  cr_assert(eq(str, formatted_result, expected_result->str));
 
 
   free(formatted_result);

@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "userdb.h"
 
@@ -34,18 +35,18 @@ Test(user_db, resolve_user_root)
   /* On OSX the root user is disabled by default */
 #ifndef __APPLE__
   cr_assert(resolve_user("root", &uid));
-  cr_assert_eq(uid, 0);
+  cr_assert(eq(int, uid, 0));
 #endif
   cr_assert(resolve_user("0", &uid));
-  cr_assert_eq(uid, 0);
+  cr_assert(eq(int, uid, 0));
 }
 
 Test(user_db, resolve_non_existing_user)
 {
   gint uid;
 
-  cr_assert_not(resolve_user("nemtudom", &uid));
-  cr_assert_not(resolve_user("", &uid));
+  cr_assert(not(resolve_user("nemtudom", &uid)));
+  cr_assert(not(resolve_user("", &uid)));
 }
 
 Test(user_db, resolve_group)
@@ -53,20 +54,20 @@ Test(user_db, resolve_group)
   gint gid;
 
   cr_assert(resolve_group("0", &gid));
-  cr_assert_eq(gid, 0);
+  cr_assert(eq(int, gid, 0));
 
   cr_assert(resolve_group("sys", &gid));
 
   cr_assert(resolve_group("-1", &gid));
-  cr_assert_eq(gid, -1);
+  cr_assert(eq(int, gid, -1));
 }
 
 Test(user_db, resolve_non_existing_group)
 {
   gint gid;
 
-  cr_assert_not(resolve_group("nincsily", &gid));
-  cr_assert_not(resolve_group("", &gid));
+  cr_assert(not(resolve_group("nincsily", &gid)));
+  cr_assert(not(resolve_group("", &gid)));
 }
 
 /* On OSX the root user is disabled by default */
@@ -78,13 +79,13 @@ Test(user_db, resolve_user_group)
   char str[] = "root:sys";
 
   struct group *sys_group = getgrnam("sys");
-  cr_assert(sys_group);
+  cr_assert(not(zero(ptr, sys_group)));
 
   gint expected_gid = sys_group->gr_gid;
 
   cr_assert(resolve_user_group(str, &uid, &gid));
-  cr_assert_eq(uid, 0);
-  cr_assert_eq(gid, expected_gid);
+  cr_assert(eq(int, uid, 0));
+  cr_assert(eq(int, gid, expected_gid));
 }
 #endif
 
@@ -94,5 +95,5 @@ Test(user_db, resolve_none_existing_user_group)
   gint gid;
   char str[] = "nemtudom:nincsily";
 
-  cr_assert_not(resolve_user_group(str, &uid, &gid));
+  cr_assert(not(resolve_user_group(str, &uid, &gid)));
 }

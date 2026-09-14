@@ -20,6 +20,7 @@
  *
  */
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/filterx-lib.h"
 #include "filterx/object-string.h"
 #include "filterx/object-null.h"
@@ -31,7 +32,7 @@
 Test(filterx_protobuf, test_filterx_protobuf_typecast_null_args)
 {
   FilterXObject *obj = filterx_typecast_protobuf(NULL, NULL, 0);
-  cr_assert_null(obj);
+  cr_assert(zero(ptr, obj));
 }
 
 Test(filterx_protobuf, test_filterx_protobuf_typecast_empty_args)
@@ -39,7 +40,7 @@ Test(filterx_protobuf, test_filterx_protobuf_typecast_empty_args)
   FilterXObject *args[] = { NULL };
 
   FilterXObject *obj = filterx_typecast_protobuf(NULL, args, 0);
-  cr_assert_null(obj);
+  cr_assert(zero(ptr, obj));
 }
 
 Test(filterx_protobuf, test_filterx_protobuf_typecast_null_arg)
@@ -47,7 +48,7 @@ Test(filterx_protobuf, test_filterx_protobuf_typecast_null_arg)
   FilterXObject *args[] = { NULL };
 
   FilterXObject *obj = filterx_typecast_protobuf(NULL, args, G_N_ELEMENTS(args));
-  cr_assert_null(obj);
+  cr_assert(zero(ptr, obj));
 
   filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
 }
@@ -57,7 +58,7 @@ Test(filterx_protobuf, test_filterx_protobuf_typecast_null_object_arg)
   FilterXObject *args[] = { filterx_null_new() };
 
   FilterXObject *obj = filterx_typecast_protobuf(NULL, args, G_N_ELEMENTS(args));
-  cr_assert_null(obj);
+  cr_assert(zero(ptr, obj));
 
   filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
 }
@@ -67,13 +68,14 @@ Test(filterx_protobuf, test_filterx_protobuf_typecast_from_bytes)
   FilterXObject *args[] = { filterx_bytes_new("not valid \0protobuf!", 20) };
 
   FilterXObject *obj = filterx_typecast_protobuf(NULL, args, G_N_ELEMENTS(args));
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(protobuf)));
 
   gsize size;
   const gchar *bytes = filterx_protobuf_get_value_ref(obj, &size);
 
-  cr_assert(memcmp("not valid \0protobuf!", bytes, size) == 0);
+  cr_assert(eq(mem, ((struct cr_mem){ .data = "not valid \0protobuf!", .size = size }),
+               ((struct cr_mem){ .data = bytes, .size = size })));
 
   filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
   filterx_object_unref(obj);
@@ -84,7 +86,7 @@ Test(filterx_protobuf, test_filterx_protobuf_typecast_from_protobuf)
   FilterXObject *args[] = { filterx_protobuf_new("not valid \0protobuf!", 20) };
 
   FilterXObject *obj = filterx_typecast_protobuf(NULL, args, G_N_ELEMENTS(args));
-  cr_assert_eq(args[0], obj);
+  cr_assert(eq(ptr, args[0], obj));
 
   filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
   filterx_object_unref(obj);

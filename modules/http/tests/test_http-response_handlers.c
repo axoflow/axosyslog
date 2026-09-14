@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "response-handler.h"
 
@@ -28,11 +29,11 @@ Test(response_handlers, test_response_handlers)
 {
   HttpResponseHandlers *self = http_response_handlers_new();
 
-  cr_assert_null(http_response_handlers_lookup(self, 404));
+  cr_assert(zero(ptr, http_response_handlers_lookup(self, 404)));
 
   HttpResponseHandler response_handler =  { .status_code = 404 };
   http_response_handlers_insert(self, &response_handler);
-  cr_assert(http_response_handlers_lookup(self, 404));
+  cr_assert(not(zero(ptr, http_response_handlers_lookup(self, 404))));
 
   http_response_handlers_free(self);
 
@@ -55,17 +56,17 @@ Test(response_handlers, test_response_handlers_multiple_entries)
 {
   HttpResponseHandlers *self = http_response_handlers_new();
 
-  cr_assert_null(http_response_handlers_lookup(self, 404));
+  cr_assert(zero(ptr, http_response_handlers_lookup(self, 404)));
 
   HttpResponseHandler response_handler404 =  { .status_code = 404, .action = action404};
   HttpResponseHandler response_handler505 =  { .status_code = 505, .action = action505};
   http_response_handlers_insert(self, &response_handler404);
   http_response_handlers_insert(self, &response_handler505);
-  cr_assert(http_response_handlers_lookup(self, 404));
-  cr_assert_eq(http_response_handlers_lookup(self, 404)->action, action404);
-  cr_assert(http_response_handlers_lookup(self, 505));
-  cr_assert_eq(http_response_handlers_lookup(self, 505)->action, action505);
-  cr_assert_null(http_response_handlers_lookup(self, 101));
+  cr_assert(not(zero(ptr, http_response_handlers_lookup(self, 404))));
+  cr_assert(eq(ptr, http_response_handlers_lookup(self, 404)->action, action404));
+  cr_assert(not(zero(ptr, http_response_handlers_lookup(self, 505))));
+  cr_assert(eq(ptr, http_response_handlers_lookup(self, 505)->action, action505));
+  cr_assert(zero(ptr, http_response_handlers_lookup(self, 101)));
 
   http_response_handlers_free(self);
 

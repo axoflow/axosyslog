@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/filterx-lib.h"
 
 #include "filterx/func-flatten.h"
@@ -39,8 +40,8 @@ _assert_flatten_init_fail(GList *args)
   GError *err = NULL;
   GError *args_err = NULL;
   FilterXExpr *func = filterx_function_flatten_new(filterx_function_args_new(args, &args_err), &err);
-  cr_assert(!func);
-  cr_assert(err);
+  cr_assert(zero(ptr, func));
+  cr_assert(not(zero(ptr, err)));
   g_error_free(err);
 }
 
@@ -52,16 +53,16 @@ _assert_flatten(GList *args, const gchar *expected_repr)
   GError *err = NULL;
   GError *args_err = NULL;
   FilterXExpr *func = filterx_function_flatten_new(filterx_function_args_new(args, &args_err), &err);
-  cr_assert(!err);
+  cr_assert(zero(ptr, err));
 
   FilterXObject *obj = init_and_eval_expr(func);
-  cr_assert(obj);
+  cr_assert(not(zero(ptr, obj)));
   gboolean success;
   cr_assert(filterx_boolean_unwrap(obj, &success));
   cr_assert(success);
 
   FilterXObject *modifiable_object = init_and_eval_expr(modifiable_object_expr);
-  cr_assert(modifiable_object);
+  cr_assert(not(zero(ptr, modifiable_object)));
 
   assert_object_repr_equals(modifiable_object, expected_repr);
 
@@ -131,16 +132,16 @@ Test(filterx_func_flatten, rejects_excessive_nesting)
     g_string_append_c(input, '}');
 
   FilterXObject *dict = filterx_object_from_json(input->str, -1, NULL);
-  cr_assert_not_null(dict);
+  cr_assert(not(zero(ptr, dict)));
 
   GList *args = g_list_append(NULL, filterx_function_arg_new(NULL, filterx_object_expr_new(dict)));
   GError *err = NULL;
   GError *args_err = NULL;
   FilterXExpr *func = filterx_function_flatten_new(filterx_function_args_new(args, &args_err), &err);
-  cr_assert(!err);
+  cr_assert(zero(ptr, err));
 
   FilterXObject *obj = init_and_eval_expr(func);
-  cr_assert_null(obj);
+  cr_assert(zero(ptr, obj));
 
   filterx_expr_unref(func);
   g_string_free(input, TRUE);

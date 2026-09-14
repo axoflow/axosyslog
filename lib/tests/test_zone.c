@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "apphook.h"
 #include "timeutils/cache.h"
@@ -88,9 +89,9 @@ test_time_zone(const time_t stamp_to_test, const char *time_zone)
   info = time_zone_info_new(time_zone);
   offset = time_zone_info_get_offset(info, stamp_to_test);
   expected_offset = get_local_timezone_ofs(stamp_to_test);
-  cr_assert_eq(difftime(offset, expected_offset), 0.0,
-               "unixtimestamp: %ld TimeZoneName (%s) localtime offset(%ld), timezone file offset(%ld)\n",
-               (glong) stamp_to_test, time_zone, (glong) expected_offset, (glong) offset);
+  cr_assert(eq(dbl, difftime(offset, expected_offset), 0.0),
+            "unixtimestamp: %ld TimeZoneName (%s) localtime offset(%ld), timezone file offset(%ld)\n",
+            (glong) stamp_to_test, time_zone, (glong) expected_offset, (glong) offset);
 
   time_zone_info_free(info);
 }
@@ -116,15 +117,15 @@ assert_time_zone_offset(TimezoneOffsetTestCase c)
   set_time_zone(c.time_zone);
 
   offset = get_local_timezone_ofs(c.utc);
-  cr_assert_eq(offset, c.expected_offset,
-               "Timezone offset mismatch: zone: %s, %ld, expected %ld\n", c.time_zone, offset, c.expected_offset);
+  cr_assert(eq(long, offset, c.expected_offset),
+            "Timezone offset mismatch: zone: %s, %ld, expected %ld\n", c.time_zone, offset, c.expected_offset);
 }
 
 void
 assert_timestamp_format(GString *target, UnixTime *stamp, TimestampFormatTestCase c)
 {
   format_unix_time(stamp, target, c.format, c.zone_offset, c.frac_digits);
-  cr_assert_str_eq(target->str, c.expected_format, "Actual: %s, Expected: %s", target->str, c.expected_format);
+  cr_assert(eq(str, target->str, c.expected_format), "Actual: %s, Expected: %s", target->str, c.expected_format);
 }
 
 TestSuite(zone, .init = app_startup, .fini = app_shutdown);

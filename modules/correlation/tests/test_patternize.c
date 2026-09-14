@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/parameterized.h"
 
 #include "patternize.h"
@@ -187,9 +188,9 @@ StaticParameterizedTest(PatternizeParams *param, test_frequent_words_params, dbp
               ret = 0;
             }
 
-          cr_expect_eq(ret, (guint) expected_occurrence,
-                       "Frequent words test case failed; word: '%s', expected=%d, got=%d, support=%d\nInput:%s\n",
-                       expected_word, expected_occurrence, ret, param->support, param->logs);
+          cr_expect(eq(uint, ret, (guint) expected_occurrence),
+                    "Frequent words test case failed; word: '%s', expected=%d, got=%d, support=%d\nInput:%s\n",
+                    expected_word, expected_occurrence, ret, param->support, param->logs);
 
           g_strfreev(expected_item);
         }
@@ -377,14 +378,14 @@ StaticParameterizedTest(PatternizeParams *param, test_find_clusters_slct_params,
       guint expected_support;
 
       expected_item = g_strsplit(expecteds[i], ":", 0);
-      cr_assert(sscanf(expected_item[1], "%d", &expected_support) == 1,
+      cr_assert(eq(int, sscanf(expected_item[1], "%d", &expected_support), 1),
                 "Failed to parse expected support value: '%s'", expected_item[1]);
 
       expected_lines_s = g_strsplit(expected_item[0], ",", 0);
 
       for (j = 0; expected_lines_s[j]; ++j)
         {
-          cr_assert(sscanf(expected_lines_s[j], "%d", &expected_lines[j]) == 1,
+          cr_assert(eq(int, sscanf(expected_lines_s[j], "%d", &expected_lines[j]), 1),
                     "Failed to parse expected line number: '%s'", expected_lines_s[j]);
           ++num_of_expected_lines;
         }
@@ -395,8 +396,9 @@ StaticParameterizedTest(PatternizeParams *param, test_find_clusters_slct_params,
       find_data->logs = logmessages->logmessages;
       test_cluster = (Cluster *) g_hash_table_find(clusters, _clusters_find, find_data);
 
-      cr_expect_not(!test_cluster || test_cluster->loglines->len != expected_support,
-                    "expected_cluster='%s', expected_support='%d'\nInput:\n%s\n", expected_item[0], expected_support, param->logs);
+      cr_expect(test_cluster && test_cluster->loglines->len == expected_support,
+                "expected_cluster='%s', expected_support='%d'\nInput:\n%s\n", expected_item[0], expected_support,
+                param->logs);
 
       g_free(find_data);
       g_strfreev(expected_item);

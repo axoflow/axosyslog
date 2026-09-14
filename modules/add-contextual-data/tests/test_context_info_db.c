@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/parameterized.h"
 #include "libtest/cr_template.h"
 
@@ -44,19 +45,19 @@ _count_records(gpointer arg, const ContextualDataRecord *record)
 static void
 _test_empty_db(ContextInfoDB *context_info_db)
 {
-  cr_assert_not(context_info_db_is_loaded(context_info_db) == TRUE,
-                "Empty ContextInfoDB should be in unloaded state.");
-  cr_assert_not(context_info_db_is_indexed(context_info_db) == TRUE,
-                "Empty ContextInfoDB should be in un-indexed state.");
-  cr_assert_not(context_info_db_contains(context_info_db, "selector") == TRUE,
-                "Method context_info_db_contains should work with empty ContextInfoDB.");
-  cr_assert_eq(context_info_db_number_of_records(context_info_db, "selector"), 0,
-               "Method context_info_db_number should work with empty ContextInfoDB.");
+  cr_assert(not(context_info_db_is_loaded(context_info_db)),
+            "Empty ContextInfoDB should be in unloaded state.");
+  cr_assert(not(context_info_db_is_indexed(context_info_db)),
+            "Empty ContextInfoDB should be in un-indexed state.");
+  cr_assert(not(context_info_db_contains(context_info_db, "selector")),
+            "Method context_info_db_contains should work with empty ContextInfoDB.");
+  cr_assert(eq(sz, context_info_db_number_of_records(context_info_db, "selector"), 0),
+            "Method context_info_db_number should work with empty ContextInfoDB.");
   int ctr = 0;
   context_info_db_foreach_record(context_info_db, "selector", _count_records,
                                  (gpointer) & ctr);
-  cr_assert_eq(ctr, 0,
-               "Method context_info_db_foreach_record should work for with empty ContextInfoDB.");
+  cr_assert(eq(int, ctr, 0),
+            "Method context_info_db_foreach_record should work for with empty ContextInfoDB.");
 }
 
 Test(add_contextual_data, test_empty_db)
@@ -130,13 +131,13 @@ Test(add_contextual_data, test_insert)
 
   _fill_context_info_db(context_info_db, "selector", "name", "value", 2, 5);
   int ctr = 0;
-  cr_assert_eq(context_info_db_number_of_records(context_info_db, "selector-0"), 5,
-               "selector-0 should have 5 nv-pairs");
+  cr_assert(eq(sz, context_info_db_number_of_records(context_info_db, "selector-0"), 5),
+            "selector-0 should have 5 nv-pairs");
   context_info_db_foreach_record(context_info_db, "selector-0", _count_records,
                                  (gpointer) & ctr);
-  cr_assert_eq(ctr, 5, "foreach should find 5 nv-pairs for selector-0");
-  cr_assert_eq(g_list_length(context_info_db_ordered_selectors(context_info_db)), 2,
-               "2 different selectors were saved to the ordered list");
+  cr_assert(eq(int, ctr, 5), "foreach should find 5 nv-pairs for selector-0");
+  cr_assert(eq(uint, g_list_length(context_info_db_ordered_selectors(context_info_db)), 2),
+            "2 different selectors were saved to the ordered list");
 
   context_info_db_unref(context_info_db);
 }
@@ -151,8 +152,8 @@ Test(add_contextual_data, test_get_selectors)
   GList *selector0 = g_list_find_custom(selectors, "selector-0", _g_strcmp);
   GList *selector1 = g_list_find_custom(selectors, "selector-1", _g_strcmp);
 
-  cr_assert_str_eq((const gchar *)selector0->data, "selector-0");
-  cr_assert_str_eq((const gchar *)selector1->data, "selector-1");
+  cr_assert(eq(str, (const gchar *)selector0->data, "selector-0"));
+  cr_assert(eq(str, (const gchar *)selector1->data, "selector-1"));
 
 
   context_info_db_unref(context_info_db);
@@ -204,12 +205,12 @@ _assert_context_info_db_contains_name_value_pairs_by_selector(ContextInfoDB *
   context_info_db_foreach_record(context_info_db, selector,
                                  _foreach_get_nvpairs,
                                  (gpointer) & result_store);
-  cr_assert_eq(result_store.ctr, number_of_expected_nvpairs);
+  cr_assert(eq(i64, result_store.ctr, number_of_expected_nvpairs));
   guint i;
   for (i = 0; i < number_of_expected_nvpairs; i++)
     {
-      cr_assert_str_eq(result[i].name, expected_nvpairs[i].name);
-      cr_assert_str_eq(result[i].value, expected_nvpairs[i].value);
+      cr_assert(eq(str, result[i].name, expected_nvpairs[i].name));
+      cr_assert(eq(str, result[i].value, expected_nvpairs[i].value));
     }
 }
 
@@ -345,12 +346,12 @@ Test(add_contextual_data, test_import_with_invalid_csv_content)
   ContextualDataRecordScanner *scanner =
     contextual_data_record_scanner_new(configuration, NULL);
 
-  cr_assert_not(context_info_db_import(db, fp, "dummy.csv", scanner),
-                "Successfully import an invalid CSV file.");
-  cr_assert_not(context_info_db_is_loaded(db),
-                "The context_info_db_is_loaded reports True after a failing import operation. ");
-  cr_assert_not(context_info_db_is_indexed(db),
-                "The context_info_db_is_indexed reports True after failing import&load operations.");
+  cr_assert(not(context_info_db_import(db, fp, "dummy.csv", scanner)),
+            "Successfully import an invalid CSV file.");
+  cr_assert(not(context_info_db_is_loaded(db)),
+            "The context_info_db_is_loaded reports True after a failing import operation. ");
+  cr_assert(not(context_info_db_is_indexed(db)),
+            "The context_info_db_is_indexed reports True after failing import&load operations.");
 
   fclose(fp);
   context_info_db_unref(db);
@@ -457,10 +458,10 @@ Test(add_contextual_data, test_ignore_case_off)
   cr_assert(context_info_db_import(db, fp, "dummy.csv", scanner),
             "Failed to import valid CSV file.");
 
-  cr_assert_not(context_info_db_contains(db, "Localhost"));
-  cr_assert_not(context_info_db_contains(db, "localhost"));
-  cr_assert_not(context_info_db_contains(db, "localhosT"));
-  cr_assert_not(context_info_db_contains(db, "LOCALHOST"));
+  cr_assert(not(context_info_db_contains(db, "Localhost")));
+  cr_assert(not(context_info_db_contains(db, "localhost")));
+  cr_assert(not(context_info_db_contains(db, "localhosT")));
+  cr_assert(not(context_info_db_contains(db, "LOCALHOST")));
   cr_assert(context_info_db_contains(db, "LoCaLhOsT"));
 
   fclose(fp);

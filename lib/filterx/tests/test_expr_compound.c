@@ -23,6 +23,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/filterx-lib.h"
 
 #include "filterx/object-string.h"
@@ -42,7 +43,7 @@ static FilterXExpr *
 _define_test_var(const char *name)
 {
   FilterXExpr *expr = filterx_msg_variable_expr_new(name);
-  cr_assert(expr != NULL);
+  cr_assert(not(zero(ptr, expr)));
   g_hash_table_insert(test_vars, g_strdup(name), expr);
   return expr;
 }
@@ -51,7 +52,7 @@ static FilterXExpr *
 _get_test_var(const char *name)
 {
   FilterXExpr *expr = g_hash_table_lookup(test_vars, name);
-  cr_assert(expr != NULL);
+  cr_assert(not(zero(ptr, expr)));
   return expr;
 }
 
@@ -80,10 +81,10 @@ void
 _assert_set_test_variable(const char *var_name, FilterXExpr *expr)
 {
   FilterXExpr *assign = _assert_assign_var(var_name, expr);
-  cr_assert(assign != NULL);
+  cr_assert(not(zero(ptr, assign)));
 
   FilterXObject *assign_eval_res = init_and_eval_expr(assign);
-  cr_assert(assign_eval_res != NULL);
+  cr_assert(not(zero(ptr, assign_eval_res)));
   cr_assert(filterx_object_truthy(assign_eval_res));
 
   filterx_expr_unref(assign);
@@ -106,18 +107,18 @@ Test(expr_compound, test_compound_all_the_statements_must_execute_and_return_tru
                                                        NULL);
 
   FilterXObject *res = init_and_eval_expr(compound);
-  cr_assert(res != NULL);
+  cr_assert(not(zero(ptr, res)));
   cr_assert(filterx_object_truthy(res));
   filterx_object_unref(res);
 
   FilterXObject *control_value = _assert_get_test_variable("$control-value");
-  cr_assert_eq(0, _assert_cmp_string_to_filterx_object("matching", control_value));
+  cr_assert(eq(int, 0, _assert_cmp_string_to_filterx_object("matching", control_value)));
   filterx_object_unref(control_value);
   control_value = _assert_get_test_variable("$control-value2");
-  cr_assert_eq(0, _assert_cmp_string_to_filterx_object("matching2", control_value));
+  cr_assert(eq(int, 0, _assert_cmp_string_to_filterx_object("matching2", control_value)));
   filterx_object_unref(control_value);
   control_value = _assert_get_test_variable("$control-value3");
-  cr_assert_eq(0, _assert_cmp_string_to_filterx_object("matching3", control_value));
+  cr_assert(eq(int, 0, _assert_cmp_string_to_filterx_object("matching3", control_value)));
   filterx_object_unref(control_value);
 
   filterx_expr_unref(compound);
@@ -132,19 +133,19 @@ Test(expr_compound, test_compound_all_the_statements_must_execute_and_return_the
                                                        NULL);
 
   FilterXObject *res = init_and_eval_expr(compound);
-  cr_assert(res != NULL);
+  cr_assert(not(zero(ptr, res)));
   cr_assert(filterx_object_truthy(res));
-  cr_assert_eq(0, _assert_cmp_string_to_filterx_object("matching3", res));
+  cr_assert(eq(int, 0, _assert_cmp_string_to_filterx_object("matching3", res)));
   filterx_object_unref(res);
 
   FilterXObject *control_value = _assert_get_test_variable("$control-value");
-  cr_assert_eq(0, _assert_cmp_string_to_filterx_object("matching", control_value));
+  cr_assert(eq(int, 0, _assert_cmp_string_to_filterx_object("matching", control_value)));
   filterx_object_unref(control_value);
   control_value = _assert_get_test_variable("$control-value2");
-  cr_assert_eq(0, _assert_cmp_string_to_filterx_object("matching2", control_value));
+  cr_assert(eq(int, 0, _assert_cmp_string_to_filterx_object("matching2", control_value)));
   filterx_object_unref(control_value);
   control_value = _assert_get_test_variable("$control-value3");
-  cr_assert_eq(0, _assert_cmp_string_to_filterx_object("matching3", control_value));
+  cr_assert(eq(int, 0, _assert_cmp_string_to_filterx_object("matching3", control_value)));
   filterx_object_unref(control_value);
 
   filterx_expr_unref(compound);

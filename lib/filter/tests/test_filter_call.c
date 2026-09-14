@@ -21,6 +21,7 @@
  *
  */
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "filter/filter-call.h"
 #include "filter/filter-expr.h"
@@ -29,9 +30,9 @@
 Test(filter_call, undefined_filter_ref)
 {
   FilterExprNode *filter = filter_call_new("undefined_filter", configuration);
-  cr_assert_not_null(filter);
+  cr_assert(not(zero(ptr, filter)));
 
-  cr_assert_not(filter_expr_init(filter, configuration));
+  cr_assert(not(filter_expr_init(filter, configuration)));
 
   filter_expr_unref(filter);
 }

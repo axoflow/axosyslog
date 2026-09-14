@@ -20,6 +20,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/filterx-lib.h"
 
 #include "apphook.h"
@@ -61,39 +62,39 @@ _generate_string_list(const gchar *elts, ...)
 Test(filterx_func_parse_csv, test_helper_generate_string_list_empty)
 {
   FilterXObject *col_names = _generate_string_list(NULL);
-  cr_assert_not_null(col_names);
+  cr_assert(not(zero(ptr, col_names)));
 
   GString *repr = scratch_buffers_alloc();
   LogMessageValueType lmvt;
 
   cr_assert(filterx_object_marshal(col_names, repr, &lmvt));
-  cr_assert_str_eq(repr->str, "");
+  cr_assert(eq(str, repr->str, ""));
   filterx_object_unref(col_names);
 }
 
 Test(filterx_func_parse_csv, test_helper_generate_string_list)
 {
   FilterXObject *col_names = _generate_string_list("1st", NULL);
-  cr_assert_not_null(col_names);
+  cr_assert(not(zero(ptr, col_names)));
 
   GString *repr = scratch_buffers_alloc();
   LogMessageValueType lmvt;
 
   cr_assert(filterx_object_marshal(col_names, repr, &lmvt));
-  cr_assert_str_eq(repr->str, "1st");
+  cr_assert(eq(str, repr->str, "1st"));
   filterx_object_unref(col_names);
 }
 
 Test(filterx_func_parse_csv, test_helper_generate_string_list_multiple_elts)
 {
   FilterXObject *col_names = _generate_string_list("1st", "2nd", "3rd", NULL);
-  cr_assert_not_null(col_names);
+  cr_assert(not(zero(ptr, col_names)));
 
   GString *repr = scratch_buffers_alloc();
   LogMessageValueType lmvt;
 
   cr_assert(filterx_object_marshal(col_names, repr, &lmvt));
-  cr_assert_str_eq(repr->str, "1st,2nd,3rd");
+  cr_assert(eq(str, repr->str, "1st,2nd,3rd"));
   filterx_object_unref(col_names);
 }
 
@@ -102,10 +103,10 @@ Test(filterx_func_parse_csv, test_empty_args_error)
   GError *err = NULL;
   GError *args_err = NULL;
   FilterXExpr *func = filterx_function_parse_csv_new(filterx_function_args_new(NULL, &args_err), &err);
-  cr_assert_null(args_err);
-  cr_assert_null(func);
-  cr_assert_not_null(err);
-  cr_assert(strstr(err->message, FILTERX_FUNC_PARSE_CSV_USAGE) != NULL);
+  cr_assert(zero(ptr, args_err));
+  cr_assert(zero(ptr, func));
+  cr_assert(not(zero(ptr, err)));
+  cr_assert(not(zero(ptr, strstr(err->message, FILTERX_FUNC_PARSE_CSV_USAGE))));
   g_error_free(err);
 }
 
@@ -119,12 +120,12 @@ Test(filterx_func_parse_csv, test_skipped_opts_causes_default_behaviour)
   GError *err = NULL;
   GError *args_err = NULL;
   FilterXExpr *func = filterx_function_parse_csv_new(filterx_function_args_new(args, &args_err), &err);
-  cr_assert_null(args_err);
-  cr_assert_null(err);
+  cr_assert(zero(ptr, args_err));
+  cr_assert(zero(ptr, err));
 
   FilterXObject *obj = init_and_eval_expr(func);
 
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(sequence)));
 
   GString *repr = scratch_buffers_alloc();
@@ -132,7 +133,7 @@ Test(filterx_func_parse_csv, test_skipped_opts_causes_default_behaviour)
   LogMessageValueType lmvt;
   cr_assert(filterx_object_marshal(obj, repr, &lmvt));
 
-  cr_assert_str_eq(repr->str, "foo,bar,baz,tik,tak,toe");
+  cr_assert(eq(str, repr->str, "foo,bar,baz,tik,tak,toe"));
   filterx_expr_unref(func);
   filterx_object_unref(obj);
   g_error_free(err);
@@ -149,12 +150,12 @@ Test(filterx_func_parse_csv, test_set_optional_first_argument_column_names)
   GError *err = NULL;
   GError *args_err = NULL;
   FilterXExpr *func = filterx_function_parse_csv_new(filterx_function_args_new(args, &args_err), &err);
-  cr_assert_null(args_err);
-  cr_assert_null(err);
+  cr_assert(zero(ptr, args_err));
+  cr_assert(zero(ptr, err));
 
   FilterXObject *obj = init_and_eval_expr(func);
 
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(dict)));
 
   GString *repr = scratch_buffers_alloc();
@@ -162,7 +163,7 @@ Test(filterx_func_parse_csv, test_set_optional_first_argument_column_names)
   LogMessageValueType lmvt;
   cr_assert(filterx_object_marshal(obj, repr, &lmvt));
 
-  cr_assert_str_eq(repr->str, "{\"1st\":\"foo\",\"2nd\":\"bar\",\"3rd\":\"baz\"}");
+  cr_assert(eq(str, repr->str, "{\"1st\":\"foo\",\"2nd\":\"bar\",\"3rd\":\"baz\"}"));
   filterx_expr_unref(func);
   filterx_object_unref(obj);
   g_error_free(err);
@@ -180,12 +181,12 @@ Test(filterx_func_parse_csv, test_column_names_sets_expected_column_size_additio
   GError *err = NULL;
   GError *args_err = NULL;
   FilterXExpr *func = filterx_function_parse_csv_new(filterx_function_args_new(args, &args_err), &err);
-  cr_assert_null(args_err);
-  cr_assert_null(err);
+  cr_assert(zero(ptr, args_err));
+  cr_assert(zero(ptr, err));
 
   FilterXObject *obj = init_and_eval_expr(func);
 
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(dict)));
 
   GString *repr = scratch_buffers_alloc();
@@ -193,7 +194,7 @@ Test(filterx_func_parse_csv, test_column_names_sets_expected_column_size_additio
   LogMessageValueType lmvt;
   cr_assert(filterx_object_marshal(obj, repr, &lmvt));
 
-  cr_assert_str_eq(repr->str, "{\"1st\":\"foo\",\"2nd\":\"bar\",\"3rd\":\"baz\"}");
+  cr_assert(eq(str, repr->str, "{\"1st\":\"foo\",\"2nd\":\"bar\",\"3rd\":\"baz\"}"));
   filterx_expr_unref(func);
   filterx_object_unref(obj);
   g_error_free(err);
@@ -210,12 +211,12 @@ Test(filterx_func_parse_csv, test_optional_argument_delimiters)
   GError *err = NULL;
   GError *args_err = NULL;
   FilterXExpr *func = filterx_function_parse_csv_new(filterx_function_args_new(args, &args_err), &err);
-  cr_assert_null(args_err);
-  cr_assert_null(err);
+  cr_assert(zero(ptr, args_err));
+  cr_assert(zero(ptr, err));
 
   FilterXObject *obj = init_and_eval_expr(func);
 
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(sequence)));
 
   GString *repr = scratch_buffers_alloc();
@@ -223,7 +224,7 @@ Test(filterx_func_parse_csv, test_optional_argument_delimiters)
   LogMessageValueType lmvt;
   cr_assert(filterx_object_marshal(obj, repr, &lmvt));
 
-  cr_assert_str_eq(repr->str, "foo,bar,baz,tik|tak:toe");
+  cr_assert(eq(str, repr->str, "foo,bar,baz,tik|tak:toe"));
   filterx_expr_unref(func);
   filterx_object_unref(obj);
   g_error_free(err);
@@ -240,12 +241,12 @@ Test(filterx_func_parse_csv, test_optional_argument_dialect)
   GError *err = NULL;
   GError *args_err = NULL;
   FilterXExpr *func = filterx_function_parse_csv_new(filterx_function_args_new(args, &args_err), &err);
-  cr_assert_null(args_err);
-  cr_assert_null(err);
+  cr_assert(zero(ptr, args_err));
+  cr_assert(zero(ptr, err));
 
   FilterXObject *obj = init_and_eval_expr(func);
 
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(sequence)));
 
   GString *repr = scratch_buffers_alloc();
@@ -253,7 +254,7 @@ Test(filterx_func_parse_csv, test_optional_argument_dialect)
   LogMessageValueType lmvt;
   cr_assert(filterx_object_marshal(obj, repr, &lmvt));
 
-  cr_assert_str_eq(repr->str, "'PTHREAD \"support initialized'");
+  cr_assert(eq(str, repr->str, "'PTHREAD \"support initialized'"));
   filterx_expr_unref(func);
   filterx_object_unref(obj);
   g_error_free(err);
@@ -273,12 +274,12 @@ Test(filterx_func_parse_csv, test_optional_argument_flag_greedy)
   GError *err = NULL;
   GError *args_err = NULL;
   FilterXExpr *func = filterx_function_parse_csv_new(filterx_function_args_new(args, &args_err), &err);
-  cr_assert_null(args_err);
-  cr_assert_null(err);
+  cr_assert(zero(ptr, args_err));
+  cr_assert(zero(ptr, err));
 
   FilterXObject *obj = init_and_eval_expr(func);
 
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(dict)));
 
   GString *repr = scratch_buffers_alloc();
@@ -286,7 +287,7 @@ Test(filterx_func_parse_csv, test_optional_argument_flag_greedy)
   LogMessageValueType lmvt;
   cr_assert(filterx_object_marshal(obj, repr, &lmvt));
 
-  cr_assert_str_eq(repr->str, "{\"1st\":\"foo\",\"2nd\":\"bar\",\"3rd\":\"baz\",\"rest\":\"tik,tak,toe\"}");
+  cr_assert(eq(str, repr->str, "{\"1st\":\"foo\",\"2nd\":\"bar\",\"3rd\":\"baz\",\"rest\":\"tik,tak,toe\"}"));
   filterx_expr_unref(func);
   filterx_object_unref(obj);
   g_error_free(err);
@@ -306,12 +307,12 @@ Test(filterx_func_parse_csv, test_optional_argument_flag_non_greedy)
   GError *err = NULL;
   GError *args_err = NULL;
   FilterXExpr *func = filterx_function_parse_csv_new(filterx_function_args_new(args, &args_err), &err);
-  cr_assert_null(args_err);
-  cr_assert_null(err);
+  cr_assert(zero(ptr, args_err));
+  cr_assert(zero(ptr, err));
 
   FilterXObject *obj = init_and_eval_expr(func);
 
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(dict)));
 
   GString *repr = scratch_buffers_alloc();
@@ -319,7 +320,7 @@ Test(filterx_func_parse_csv, test_optional_argument_flag_non_greedy)
   LogMessageValueType lmvt;
   cr_assert(filterx_object_marshal(obj, repr, &lmvt));
 
-  cr_assert_str_eq(repr->str, "{\"1st\":\"foo\",\"2nd\":\"bar\",\"3rd\":\"baz\",\"rest\":\"tik\"}");
+  cr_assert(eq(str, repr->str, "{\"1st\":\"foo\",\"2nd\":\"bar\",\"3rd\":\"baz\",\"rest\":\"tik\"}"));
   filterx_expr_unref(func);
   filterx_object_unref(obj);
   g_error_free(err);
@@ -339,12 +340,12 @@ Test(filterx_func_parse_csv, test_optional_argument_flag_strip_whitespace)
   GError *err = NULL;
   GError *args_err = NULL;
   FilterXExpr *func = filterx_function_parse_csv_new(filterx_function_args_new(args, &args_err), &err);
-  cr_assert_null(args_err);
-  cr_assert_null(err);
+  cr_assert(zero(ptr, args_err));
+  cr_assert(zero(ptr, err));
 
   FilterXObject *obj = init_and_eval_expr(func);
 
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(sequence)));
 
   GString *repr = scratch_buffers_alloc();
@@ -352,7 +353,7 @@ Test(filterx_func_parse_csv, test_optional_argument_flag_strip_whitespace)
   LogMessageValueType lmvt;
   cr_assert(filterx_object_marshal(obj, repr, &lmvt));
 
-  cr_assert_str_eq(repr->str, "foo,bar,baz,\"tik tak toe\"");
+  cr_assert(eq(str, repr->str, "foo,bar,baz,\"tik tak toe\""));
   filterx_expr_unref(func);
   filterx_object_unref(obj);
   g_error_free(err);
@@ -372,12 +373,12 @@ Test(filterx_func_parse_csv, test_optional_argument_flag_not_to_strip_whitespace
   GError *err = NULL;
   GError *args_err = NULL;
   FilterXExpr *func = filterx_function_parse_csv_new(filterx_function_args_new(args, &args_err), &err);
-  cr_assert_null(args_err);
-  cr_assert_null(err);
+  cr_assert(zero(ptr, args_err));
+  cr_assert(zero(ptr, err));
 
   FilterXObject *obj = init_and_eval_expr(func);
 
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(sequence)));
 
   GString *repr = scratch_buffers_alloc();
@@ -385,7 +386,7 @@ Test(filterx_func_parse_csv, test_optional_argument_flag_not_to_strip_whitespace
   LogMessageValueType lmvt;
   cr_assert(filterx_object_marshal(obj, repr, &lmvt));
 
-  cr_assert_str_eq(repr->str, "\"  foo \",\"    bar  \",\" baz   \",\"    tik tak toe\"");
+  cr_assert(eq(str, repr->str, "\"  foo \",\"    bar  \",\" baz   \",\"    tik tak toe\""));
   filterx_expr_unref(func);
   filterx_object_unref(obj);
   g_error_free(err);
@@ -403,12 +404,12 @@ Test(filterx_func_parse_csv, test_optional_argument_string_delimiters)
   GError *err = NULL;
   GError *args_err = NULL;
   FilterXExpr *func = filterx_function_parse_csv_new(filterx_function_args_new(args, &args_err), &err);
-  cr_assert_null(args_err);
-  cr_assert_null(err);
+  cr_assert(zero(ptr, args_err));
+  cr_assert(zero(ptr, err));
 
   FilterXObject *obj = init_and_eval_expr(func);
 
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(sequence)));
 
   GString *repr = scratch_buffers_alloc();
@@ -416,7 +417,7 @@ Test(filterx_func_parse_csv, test_optional_argument_string_delimiters)
   LogMessageValueType lmvt;
   cr_assert(filterx_object_marshal(obj, repr, &lmvt));
 
-  cr_assert_str_eq(repr->str, "testing,string,delimiters,this,way");
+  cr_assert(eq(str, repr->str, "testing,string,delimiters,this,way"));
   filterx_expr_unref(func);
   filterx_object_unref(obj);
   g_error_free(err);
@@ -436,12 +437,12 @@ Test(filterx_func_parse_csv, test_optional_argument_string_delimiters_and_delimi
   GError *err = NULL;
   GError *args_err = NULL;
   FilterXExpr *func = filterx_function_parse_csv_new(filterx_function_args_new(args, &args_err), &err);
-  cr_assert_null(args_err);
-  cr_assert_null(err);
+  cr_assert(zero(ptr, args_err));
+  cr_assert(zero(ptr, err));
 
   FilterXObject *obj = init_and_eval_expr(func);
 
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(sequence)));
 
   GString *repr = scratch_buffers_alloc();
@@ -449,7 +450,7 @@ Test(filterx_func_parse_csv, test_optional_argument_string_delimiters_and_delimi
   LogMessageValueType lmvt;
   cr_assert(filterx_object_marshal(obj, repr, &lmvt));
 
-  cr_assert_str_eq(repr->str, "testing,delimiter,chaos,with,this,long,string");
+  cr_assert(eq(str, repr->str, "testing,delimiter,chaos,with,this,long,string"));
   filterx_expr_unref(func);
   filterx_object_unref(obj);
   g_error_free(err);
@@ -469,12 +470,12 @@ Test(filterx_func_parse_csv, test_optional_argument_delimiter_default_unset_when
   GError *err = NULL;
   GError *args_err = NULL;
   FilterXExpr *func = filterx_function_parse_csv_new(filterx_function_args_new(args, &args_err), &err);
-  cr_assert_null(args_err);
-  cr_assert_null(err);
+  cr_assert(zero(ptr, args_err));
+  cr_assert(zero(ptr, err));
 
   FilterXObject *obj = init_and_eval_expr(func);
 
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(sequence)));
 
   FilterXObject *elt = filterx_sequence_get_subscript(obj, 1);
@@ -482,7 +483,7 @@ Test(filterx_func_parse_csv, test_optional_argument_delimiter_default_unset_when
   GString *repr = scratch_buffers_alloc();
   cr_assert(filterx_object_str(elt, repr));
 
-  cr_assert_str_eq(repr->str, "bar,baz");
+  cr_assert(eq(str, repr->str, "bar,baz"));
   filterx_object_unref(elt);
   filterx_expr_unref(func);
   filterx_object_unref(obj);
@@ -500,9 +501,9 @@ Test(filterx_func_parse_csv, test_optional_argument_delimiter_unable_to_set_with
   GError *err = NULL;
   GError *args_err = NULL;
   FilterXExpr *func = filterx_function_parse_csv_new(filterx_function_args_new(args, &args_err), &err);
-  cr_assert_null(args_err);
-  cr_assert_not_null(err);
-  cr_assert(strcmp(err->message, FILTERX_FUNC_PARSE_ERR_EMPTY_DELIMITER));
+  cr_assert(zero(ptr, args_err));
+  cr_assert(not(zero(ptr, err)));
+  cr_assert(ne(str, err->message, FILTERX_FUNC_PARSE_ERR_EMPTY_DELIMITER));
 
   filterx_expr_unref(func);
   g_error_free(err);

@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/cr_template.h"
 
 #include "logmsg/logmsg.h"
@@ -69,7 +70,8 @@ format_template_thread(gpointer s)
   for (i = 0; i < 10000; i++)
     {
       log_template_format(templ, msg, &options, result);
-      cr_assert_str_eq(result->str, expected, "multi-threaded formatting yielded invalid result (iteration: %d)", i);
+      cr_assert(eq(str, result->str, expected),
+                "multi-threaded formatting yielded invalid result (iteration: %d)", i);
       scratch_buffers_explicit_gc();
     }
   g_string_free(result, TRUE);
@@ -363,7 +365,7 @@ Test(template, test_loghost_macro)
   const gchar *short_name = get_local_hostname_short();
 
   /* by default $LOGHOST is using fqdn as the template options we are using uses use_fqdn by default */
-  cr_assert_not(configuration->template_options.use_fqdn);
+  cr_assert(not(configuration->template_options.use_fqdn));
   configuration->template_options.use_fqdn = TRUE;
   assert_template_format("$LOGHOST", fqdn);
   configuration->template_options.use_fqdn = FALSE;
@@ -481,15 +483,15 @@ assert_template_trivial_value(const gchar *template_code, LogMessage *msg,
   cr_assert(log_template_is_trivial(template));
 
   const gchar *trivial_value = log_template_get_trivial_value_and_type(template, msg, NULL, &type);
-  cr_assert_str_eq(trivial_value, expected_value);
-  cr_assert_eq(type, expected_type);
+  cr_assert(eq(str, trivial_value, expected_value));
+  cr_assert(eq(int, type, expected_type));
 
   GString *formatted_value = g_string_sized_new(64);
   log_template_format_value_and_type(template, msg, &DEFAULT_TEMPLATE_EVAL_OPTIONS, formatted_value, &type);
-  cr_assert_str_eq(trivial_value, formatted_value->str,
-                   "Formatted and trivial value does not match: '%s' - '%s'", trivial_value, formatted_value->str);
-  cr_assert_eq(type, expected_type,
-               "Formatted and trivial type does not match: '%d' - '%d'", type, expected_type);
+  cr_assert(eq(str, trivial_value, formatted_value->str),
+            "Formatted and trivial value does not match: '%s' - '%s'", trivial_value, formatted_value->str);
+  cr_assert(eq(int, type, expected_type),
+            "Formatted and trivial type does not match: '%d' - '%d'", type, expected_type);
 
   g_string_free(formatted_value, TRUE);
   log_template_unref(template);
@@ -522,18 +524,18 @@ Test(template, test_get_trivial_handle_returns_the_handle_associated_with_the_tr
   LogTemplate *template;
 
   template = compile_template("$MESSAGE");
-  cr_assert(log_template_is_trivial(template) == TRUE);
-  cr_assert(log_template_get_trivial_value_handle(template) == LM_V_MESSAGE);
+  cr_assert(log_template_is_trivial(template));
+  cr_assert(eq(u32, log_template_get_trivial_value_handle(template), LM_V_MESSAGE));
   log_template_unref(template);
 
   template = compile_template("$1");
-  cr_assert(log_template_is_trivial(template) == TRUE);
-  cr_assert(log_template_get_trivial_value_handle(template) == log_msg_get_match_handle(1));
+  cr_assert(log_template_is_trivial(template));
+  cr_assert(eq(u32, log_template_get_trivial_value_handle(template), log_msg_get_match_handle(1)));
   log_template_unref(template);
 
   template = compile_template("literal");
-  cr_assert(log_template_is_trivial(template) == TRUE);
-  cr_assert(log_template_get_trivial_value_handle(template) == LM_V_NONE);
+  cr_assert(log_template_is_trivial(template));
+  cr_assert(eq(u32, log_template_get_trivial_value_handle(template), LM_V_NONE));
   log_template_unref(template);
 }
 
@@ -542,7 +544,7 @@ Test(template, test_invalid_templates_are_trivial)
   LogMessage *msg = create_sample_message();
   LogTemplate *template = log_template_new(configuration, NULL);
 
-  cr_assert_not(log_template_compile(template, "$1 $2 ${MSG invalid", NULL));
+  cr_assert(not(log_template_compile(template, "$1 $2 ${MSG invalid", NULL)));
   cr_assert(log_template_is_trivial(template), "Invalid templates are trivial");
   cr_assert(g_str_has_prefix(log_template_get_trivial_value(template, NULL, NULL), "error in template"));
   log_template_unref(template);
@@ -555,31 +557,31 @@ Test(template, test_non_trivial_templates)
   LogTemplate *template;
 
   template = compile_escaped_template("$1");
-  cr_assert_not(log_template_is_trivial(template), "Escaped template is not trivial");
+  cr_assert(not(log_template_is_trivial(template)), "Escaped template is not trivial");
   log_template_unref(template);
 
   template = compile_template("$1 $2");
-  cr_assert_not(log_template_is_trivial(template), "Multi-element template is not trivial");
+  cr_assert(not(log_template_is_trivial(template)), "Multi-element template is not trivial");
   log_template_unref(template);
 
   template = compile_template("$1 literal");
-  cr_assert_not(log_template_is_trivial(template), "Multi-element template is not trivial");
+  cr_assert(not(log_template_is_trivial(template)), "Multi-element template is not trivial");
   log_template_unref(template);
 
   template = compile_template("pre${1}");
-  cr_assert_not(log_template_is_trivial(template), "Single-value template with preliminary text is not trivial");
+  cr_assert(not(log_template_is_trivial(template)), "Single-value template with preliminary text is not trivial");
   log_template_unref(template);
 
   template = compile_template("${MSG}@3");
-  cr_assert_not(log_template_is_trivial(template), "Template referencing non-last context element is not trivial");
+  cr_assert(not(log_template_is_trivial(template)), "Template referencing non-last context element is not trivial");
   log_template_unref(template);
 
   template = compile_template("$(echo test)");
-  cr_assert_not(log_template_is_trivial(template), "Template functions are not trivial");
+  cr_assert(not(log_template_is_trivial(template)), "Template functions are not trivial");
   log_template_unref(template);
 
   template = compile_template("$DATE");
-  cr_assert_not(log_template_is_trivial(template), "Hard macros are not trivial");
+  cr_assert(not(log_template_is_trivial(template)), "Hard macros are not trivial");
   log_template_unref(template);
 }
 
@@ -591,13 +593,13 @@ assert_template_literal_value(const gchar *template_code, const gchar *expected_
   cr_assert(log_template_is_literal_string(template));
 
   const gchar *literal_val = log_template_get_literal_value(template, NULL);
-  cr_assert_str_eq(literal_val, expected_value);
+  cr_assert(eq(str, literal_val, expected_value));
 
   GString *formatted_value = g_string_sized_new(64);
   LogMessage *msg = create_sample_message();
   log_template_format(template, msg, &DEFAULT_TEMPLATE_EVAL_OPTIONS, formatted_value);
-  cr_assert_str_eq(literal_val, formatted_value->str,
-                   "Formatted and literal value does not match: '%s' - '%s'", literal_val, formatted_value->str);
+  cr_assert(eq(str, literal_val, formatted_value->str),
+            "Formatted and literal value does not match: '%s' - '%s'", literal_val, formatted_value->str);
 
   log_msg_unref(msg);
   g_string_free(formatted_value, TRUE);
@@ -612,7 +614,7 @@ Test(template, test_literal_string_templates)
   assert_template_literal_value("$$not a macro", "$not a macro");
 
   LogTemplate *template = compile_template("a b c d $MSG");
-  cr_assert_not(log_template_is_literal_string(template));
+  cr_assert(not(log_template_is_literal_string(template)));
   log_template_unref(template);
 }
 
@@ -624,7 +626,7 @@ Test(template, test_compile_literal_string)
   cr_assert(log_template_is_literal_string(template));
   cr_assert(log_template_is_trivial(template));
 
-  cr_assert_str_eq(log_template_get_literal_value(template, NULL), "test literal");
+  cr_assert(eq(str, log_template_get_literal_value(template, NULL), "test literal"));
 
   log_template_unref(template);
 }
@@ -673,40 +675,40 @@ Test(template, test_type_hint_overrides_the_calculated_type)
 
   /* no type-hint */
   log_template_format_value_and_type(template, msg, &DEFAULT_TEMPLATE_EVAL_OPTIONS, formatted_value, &type);
-  cr_assert_str_eq("123", formatted_value->str);
-  cr_assert_eq(type, LM_VT_INTEGER);
+  cr_assert(eq(str, "123", formatted_value->str));
+  cr_assert(eq(int, type, LM_VT_INTEGER));
 
   cr_assert(log_template_set_type_hint(template, "float", NULL));
   log_template_format_value_and_type(template, msg, &DEFAULT_TEMPLATE_EVAL_OPTIONS, formatted_value, &type);
-  cr_assert_str_eq("123", formatted_value->str);
-  cr_assert_eq(type, LM_VT_DOUBLE);
+  cr_assert(eq(str, "123", formatted_value->str));
+  cr_assert(eq(int, type, LM_VT_DOUBLE));
 
   cr_assert(log_template_set_type_hint(template, "string", NULL));
   log_template_format_value_and_type(template, msg, &DEFAULT_TEMPLATE_EVAL_OPTIONS, formatted_value, &type);
-  cr_assert_str_eq("123", formatted_value->str);
-  cr_assert_eq(type, LM_VT_STRING);
+  cr_assert(eq(str, "123", formatted_value->str));
+  cr_assert(eq(int, type, LM_VT_STRING));
 
   log_template_unref(template);
   template = compile_template("${HOST}");
   cr_assert(log_template_set_type_hint(template, "int64", NULL));
   log_template_format_value_and_type(template, msg, &DEFAULT_TEMPLATE_EVAL_OPTIONS, formatted_value, &type);
-  cr_assert_str_eq("bzorp", formatted_value->str);
-  cr_assert_eq(type, LM_VT_INTEGER);
+  cr_assert(eq(str, "bzorp", formatted_value->str));
+  cr_assert(eq(int, type, LM_VT_INTEGER));
 
   /* empty string with a type uses the type hint */
   log_template_unref(template);
   template = compile_template("");
   cr_assert(log_template_set_type_hint(template, "null", NULL));
   log_template_format_value_and_type(template, msg, &DEFAULT_TEMPLATE_EVAL_OPTIONS, formatted_value, &type);
-  cr_assert_str_eq("", formatted_value->str);
-  cr_assert_eq(type, LM_VT_NULL);
+  cr_assert(eq(str, "", formatted_value->str));
+  cr_assert(eq(int, type, LM_VT_NULL));
 
   log_template_unref(template);
   /* msgref out of range */
   template = compile_template("${HOST}@2");
   log_template_format_value_and_type(template, msg, &DEFAULT_TEMPLATE_EVAL_OPTIONS, formatted_value, &type);
-  cr_assert_str_eq("", formatted_value->str);
-  cr_assert_eq(type, LM_VT_STRING);
+  cr_assert(eq(str, "", formatted_value->str));
+  cr_assert(eq(int, type, LM_VT_STRING));
 
   log_msg_unref(msg);
   g_string_free(formatted_value, TRUE);
@@ -720,24 +722,24 @@ Test(template, test_log_template_compile_with_type_hint_sets_the_type_hint_membe
   GError *error = NULL;
   gboolean result;
 
-  cr_assert_eq(template->type_hint, LM_VT_NONE);
+  cr_assert(eq(int, template->type_hint, LM_VT_NONE));
 
   result = log_template_compile_with_type_hint(template, "int64(1234)", &error);
   cr_assert(result);
-  cr_assert_eq(error, NULL);
-  cr_assert_eq(template->type_hint, LM_VT_INTEGER);
+  cr_assert(zero(ptr, error));
+  cr_assert(eq(int, template->type_hint, LM_VT_INTEGER));
   result = log_template_compile_with_type_hint(template, "string(1234)", &error);
   cr_assert(result);
-  cr_assert_eq(error, NULL);
-  cr_assert_eq(template->type_hint, LM_VT_STRING);
+  cr_assert(zero(ptr, error));
+  cr_assert(eq(int, template->type_hint, LM_VT_STRING));
   result = log_template_compile_with_type_hint(template, "list(foo,bar,baz)", &error);
   cr_assert(result);
-  cr_assert_eq(error, NULL);
-  cr_assert_eq(template->type_hint, LM_VT_LIST);
+  cr_assert(zero(ptr, error));
+  cr_assert(eq(int, template->type_hint, LM_VT_LIST));
   result = log_template_compile_with_type_hint(template, "generic-string", &error);
   cr_assert(result);
-  cr_assert_eq(error, NULL);
-  cr_assert_eq(template->type_hint, LM_VT_NONE);
+  cr_assert(zero(ptr, error));
+  cr_assert(eq(int, template->type_hint, LM_VT_NONE));
   log_template_unref(template);
 }
 
@@ -748,17 +750,17 @@ Test(template, test_log_template_compile_with_invalid_type_hint_resets_the_type_
   GError *error = NULL;
   gboolean result;
 
-  cr_assert_eq(template->type_hint, LM_VT_NONE);
+  cr_assert(eq(int, template->type_hint, LM_VT_NONE));
 
   result = log_template_compile_with_type_hint(template, "int64(1234)", &error);
   cr_assert(result);
-  cr_assert_eq(error, NULL);
-  cr_assert_eq(template->type_hint, LM_VT_INTEGER);
+  cr_assert(zero(ptr, error));
+  cr_assert(eq(int, template->type_hint, LM_VT_INTEGER));
   result = log_template_compile_with_type_hint(template, "unknown(generic-string)", &error);
-  cr_assert_not(result);
-  cr_assert_neq(error, NULL);
+  cr_assert(not(result));
+  cr_assert(not(zero(ptr, error)));
   g_clear_error(&error);
-  cr_assert_eq(template->type_hint, LM_VT_NONE);
+  cr_assert(eq(int, template->type_hint, LM_VT_NONE));
   log_template_unref(template);
 }
 
@@ -772,26 +774,26 @@ Test(template, test_log_template_with_escaping_produces_string_even_if_the_value
 
   LogTemplate *template = compile_template("$FACILITY_NUM");
   log_template_format_value_and_type(template, msg, &DEFAULT_TEMPLATE_EVAL_OPTIONS, formatted_value, &type);
-  cr_assert_str_eq("19", formatted_value->str);
-  cr_assert_eq(type, LM_VT_INTEGER);
+  cr_assert(eq(str, "19", formatted_value->str));
+  cr_assert(eq(int, type, LM_VT_INTEGER));
   log_template_unref(template);
 
   template = compile_escaped_template("$FACILITY_NUM");
   log_template_format_value_and_type(template, msg, &DEFAULT_TEMPLATE_EVAL_OPTIONS, formatted_value, &type);
-  cr_assert_str_eq("19", formatted_value->str);
-  cr_assert_eq(type, LM_VT_STRING);
+  cr_assert(eq(str, "19", formatted_value->str));
+  cr_assert(eq(int, type, LM_VT_STRING));
   log_template_unref(template);
 
   template = compile_template("$number1");
   log_template_format_value_and_type(template, msg, &DEFAULT_TEMPLATE_EVAL_OPTIONS, formatted_value, &type);
-  cr_assert_str_eq("123", formatted_value->str);
-  cr_assert_eq(type, LM_VT_INTEGER);
+  cr_assert(eq(str, "123", formatted_value->str));
+  cr_assert(eq(int, type, LM_VT_INTEGER));
   log_template_unref(template);
 
   template = compile_escaped_template("$number1");
   log_template_format_value_and_type(template, msg, &DEFAULT_TEMPLATE_EVAL_OPTIONS, formatted_value, &type);
-  cr_assert_str_eq("123", formatted_value->str);
-  cr_assert_eq(type, LM_VT_STRING);
+  cr_assert(eq(str, "123", formatted_value->str));
+  cr_assert(eq(int, type, LM_VT_STRING));
   log_template_unref(template);
 
   log_msg_unref(msg);
@@ -812,51 +814,51 @@ Test(template, test_bytes_and_protobuf_types_are_rendered_when_necessary)
 
   result = log_template_compile(template, "$bytes", &error);
   cr_assert(result);
-  cr_assert_eq(error, NULL);
+  cr_assert(zero(ptr, error));
   log_template_format_value_and_type(template, msg, &DEFAULT_TEMPLATE_EVAL_OPTIONS, formatted_value, &type);
-  cr_assert_str_eq("", formatted_value->str);
-  cr_assert_eq(type, LM_VT_NULL);
+  cr_assert(eq(str, "", formatted_value->str));
+  cr_assert(eq(int, type, LM_VT_NULL));
 
   result = log_template_compile(template, "$protobuf", &error);
   cr_assert(result);
-  cr_assert_eq(error, NULL);
+  cr_assert(zero(ptr, error));
   log_template_format_value_and_type(template, msg, &DEFAULT_TEMPLATE_EVAL_OPTIONS, formatted_value, &type);
-  cr_assert_str_eq("", formatted_value->str);
-  cr_assert_eq(type, LM_VT_NULL);
+  cr_assert(eq(str, "", formatted_value->str));
+  cr_assert(eq(int, type, LM_VT_NULL));
 
   result = log_template_compile_with_type_hint(template, "bytes($bytes almafa)", &error);
   cr_assert(result);
-  cr_assert_eq(error, NULL);
-  cr_assert_eq(template->type_hint, LM_VT_BYTES);
+  cr_assert(zero(ptr, error));
+  cr_assert(eq(int, template->type_hint, LM_VT_BYTES));
   log_template_format_value_and_type(template, msg, &DEFAULT_TEMPLATE_EVAL_OPTIONS, formatted_value, &type);
-  cr_assert_eq(formatted_value->len, 11);
-  cr_assert_eq(memcmp(formatted_value->str, "\0\1\2\3 almafa", 11), 0);
-  cr_assert_eq(type, LM_VT_BYTES);
+  cr_assert(eq(sz, formatted_value->len, 11));
+  cr_assert(eq(int, memcmp(formatted_value->str, "\0\1\2\3 almafa", 11), 0));
+  cr_assert(eq(int, type, LM_VT_BYTES));
 
   result = log_template_compile_with_type_hint(template, "protobuf($protobuf almafa)", &error);
   cr_assert(result);
-  cr_assert_eq(error, NULL);
-  cr_assert_eq(template->type_hint, LM_VT_PROTOBUF);
+  cr_assert(zero(ptr, error));
+  cr_assert(eq(int, template->type_hint, LM_VT_PROTOBUF));
   log_template_format_value_and_type(template, msg, &DEFAULT_TEMPLATE_EVAL_OPTIONS, formatted_value, &type);
-  cr_assert_eq(formatted_value->len, 11);
-  cr_assert_eq(memcmp(formatted_value->str, "\4\5\6\7 almafa", 11), 0);
-  cr_assert_eq(type, LM_VT_PROTOBUF);
+  cr_assert(eq(sz, formatted_value->len, 11));
+  cr_assert(eq(int, memcmp(formatted_value->str, "\4\5\6\7 almafa", 11), 0));
+  cr_assert(eq(int, type, LM_VT_PROTOBUF));
 
   result = log_template_compile_with_type_hint(template, "bytes($protobuf)", &error);
   cr_assert(result);
-  cr_assert_eq(error, NULL);
-  cr_assert_eq(template->type_hint, LM_VT_BYTES);
+  cr_assert(zero(ptr, error));
+  cr_assert(eq(int, template->type_hint, LM_VT_BYTES));
   log_template_format_value_and_type(template, msg, &DEFAULT_TEMPLATE_EVAL_OPTIONS, formatted_value, &type);
-  cr_assert_str_eq("", formatted_value->str);
-  cr_assert_eq(type, LM_VT_BYTES);
+  cr_assert(eq(str, "", formatted_value->str));
+  cr_assert(eq(int, type, LM_VT_BYTES));
 
   result = log_template_compile_with_type_hint(template, "protobuf($bytes)", &error);
   cr_assert(result);
-  cr_assert_eq(error, NULL);
-  cr_assert_eq(template->type_hint, LM_VT_PROTOBUF);
+  cr_assert(zero(ptr, error));
+  cr_assert(eq(int, template->type_hint, LM_VT_PROTOBUF));
   log_template_format_value_and_type(template, msg, &DEFAULT_TEMPLATE_EVAL_OPTIONS, formatted_value, &type);
-  cr_assert_str_eq("", formatted_value->str);
-  cr_assert_eq(type, LM_VT_PROTOBUF);
+  cr_assert(eq(str, "", formatted_value->str));
+  cr_assert(eq(int, type, LM_VT_PROTOBUF));
 
   log_template_unref(template);
   log_msg_unref(msg);

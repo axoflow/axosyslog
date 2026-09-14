@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/grab-logging.h"
 #include "libtest/msg_parse_lib.h"
 
@@ -97,7 +98,7 @@ Test(rename, source_option_mandatory)
 {
   LogRewrite *rename = log_rewrite_rename_new(cfg, 0, LM_V_MESSAGE);
 
-  cr_assert_not(log_pipe_init(&rename->super));
+  cr_assert(not(log_pipe_init(&rename->super)));
 
   log_pipe_unref(&rename->super);
 }
@@ -106,7 +107,7 @@ Test(rename, destination_option_mandatory)
 {
   LogRewrite *rename = log_rewrite_rename_new(cfg, LM_V_MESSAGE, 0);
 
-  cr_assert_not(log_pipe_init(&rename->super));
+  cr_assert(not(log_pipe_init(&rename->super)));
 
   log_pipe_unref(&rename->super);
 }

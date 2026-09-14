@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "value-pairs/value-pairs.h"
 #include "apphook.h"
@@ -46,20 +47,20 @@ test_vp_obj_start(const gchar *name,
   switch(times_called)
     {
     case 0:
-      cr_expect_null(prefix, "First vp_obj_start but prefix is not NULL!");
+      cr_expect(zero(ptr, prefix), "First vp_obj_start but prefix is not NULL!");
       break;
     case 1:
-      cr_expect_str_eq(prefix, "root", "Second vp_obj_start but prefix is not 'root'!");
+      cr_expect(eq(str, prefix, "root"), "Second vp_obj_start but prefix is not 'root'!");
       *prefix_data = &root_data;
       break;
     case 2:
-      cr_expect_str_eq(prefix, "root.test", "Third vp_obj_start but prefix is not 'root.test'!");
-      cr_expect_str_eq(prev, "root", "Wrong previous prefix");
-      cr_expect_eq(*((gint *)(*prev_data)), root_data, "Wrong previous data");
+      cr_expect(eq(str, prefix, "root.test"), "Third vp_obj_start but prefix is not 'root.test'!");
+      cr_expect(eq(str, prev, "root"), "Wrong previous prefix");
+      cr_expect(eq(int, *((gint *)(*prev_data)), root_data), "Wrong previous data");
       *prefix_data = &root_test_data;
       break;
     default:
-      cr_expect_fail("vp_obj_start called more times than number of path elements!");
+      cr_fail("vp_obj_start called more times than number of path elements!");
     }
   times_called++;
   return FALSE;
@@ -76,18 +77,18 @@ test_vp_obj_stop(const gchar *name,
   switch(times_called)
     {
     case 0:
-      cr_expect_str_eq(prefix, "root.test", "First vp_obj_stop but prefix is not 'root.test'!");
-      cr_expect_str_eq(prev, "root", "Wrong previous prefix");
-      cr_expect_eq(*((gint *)(*prev_data)), root_data, "Wrong previous data");
+      cr_expect(eq(str, prefix, "root.test"), "First vp_obj_stop but prefix is not 'root.test'!");
+      cr_expect(eq(str, prev, "root"), "Wrong previous prefix");
+      cr_expect(eq(int, *((gint *)(*prev_data)), root_data), "Wrong previous data");
       break;
     case 1:
-      cr_expect_str_eq(prefix, "root", "Second vp_obj_stop but prefix is not 'root'!");
+      cr_expect(eq(str, prefix, "root"), "Second vp_obj_stop but prefix is not 'root'!");
       break;
     case 2:
-      cr_expect_null(prefix, "Third vp_obj_stop but prefix is not NULL!");
+      cr_expect(zero(ptr, prefix), "Third vp_obj_stop but prefix is not NULL!");
       break;
     default:
-      cr_expect_fail("vp_obj_stop called more times than number of path elements!");
+      cr_fail("vp_obj_stop called more times than number of path elements!");
     }
   times_called++;
   return FALSE;
@@ -99,9 +100,9 @@ test_vp_value(const gchar *name, const gchar *prefix,
               LogMessageValueType type, const gchar *value, gsize value_len,
               gpointer *prefix_data, gpointer user_data)
 {
-  cr_expect_str_eq(prefix, "root.test", "Wrong prefix");
-  cr_expect_str_eq(value, "value", "Wrong value");
-  cr_expect_eq(*((gint *)(*prefix_data)), root_test_data, "Wrong prefix data");
+  cr_expect(eq(str, prefix, "root.test"), "Wrong prefix");
+  cr_expect(eq(str, value, "value"), "Wrong value");
+  cr_expect(eq(int, *((gint *)(*prefix_data)), root_test_data), "Wrong prefix data");
 
   return FALSE;
 }
