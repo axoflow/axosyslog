@@ -366,17 +366,17 @@ _convert_to_dict(GMarkupParseContext *context, XmlElemContext *elem_context, GEr
         }
     }
 
-  FilterXObject *parent_obj = filterx_ref_unwrap_rw(elem_context->parent_obj);
+  FilterXObject *parent_obj = filterx_ref_unwrap_ro(elem_context->parent_obj);
   if (filterx_object_is_type(parent_obj, &FILTERX_TYPE_NAME(mapping)))
     {
-      if (!filterx_object_set_subscript(parent_obj, key, &dict_obj))
+      if (!filterx_object_set_subscript(elem_context->parent_obj, key, &dict_obj))
         _set_error(error, "failed to replace leaf node object with: \"%s\"={}", parent_elem_name);
       goto exit;
     }
 
   if (filterx_object_is_type(parent_obj, &FILTERX_TYPE_NAME(sequence)))
     {
-      if (!filterx_sequence_set_subscript(parent_obj, -1, &dict_obj))
+      if (!filterx_sequence_set_subscript(elem_context->parent_obj, -1, &dict_obj))
         _set_error(error, "failed to replace leaf node object with: {}");
       goto exit;
     }
