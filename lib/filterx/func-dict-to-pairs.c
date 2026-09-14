@@ -54,6 +54,7 @@ _add_pair_to_list(FilterXObject *key, FilterXObject *value, gpointer user_data)
                                           "Failed to create dict for pair");
       goto exit;
     }
+  filterx_object_cow_prepare(&pair);
 
   if (!filterx_object_setattr(pair, self->key_name_object, &key))
     {
@@ -106,6 +107,7 @@ _dict_to_pairs_eval(FilterXExpr *s)
     }
 
   result = filterx_list_new();
+  filterx_object_cow_prepare(&result);
 
   gpointer user_data[] = { self, result };
   if (!filterx_object_iter(dict_obj, _add_pair_to_list, user_data))
