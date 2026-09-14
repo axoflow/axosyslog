@@ -440,3 +440,44 @@ def test_opentelemetry_source_filterx_dict_mode_sets_peer_address(
     sourceip, ip_proto = file_destination.read_log().split()
     assert sourceip in ("127.0.0.1", "::1")
     assert ip_proto in ("4", "6")
+
+
+def test_opentelemetry_source_filterx_dict_mode_writes(
+    syslog_ng: SyslogNg,
+    config: SyslogNgConfig,
+    port_allocator,
+) -> None:
+    opentelemetry_source = config.create_opentelemetry_source(port=port_allocator(), mode="filterx-dict")
+    filterx = config.create_filterx(r"""
+        log.body = "new_body";
+        log.attributes.string = "new_string";
+        log.attributes.new_key = "new_value";
+        log.attributes.dict.key = "new_dict_value";
+        log.attributes.list[0] = "new_list_elem";
+        resource.attributes.dict.key = "new_resource_value";
+        scope.attributes.dict.key = "new_scope_value";
+        $MSG = {
+            "body": log.body,
+            "log_attributes": log.attributes,
+            "resource_dict": resource.attributes.dict,
+            "scope_dict": scope.attributes.dict,
+        };""")
+    file_destination = config.create_file_destination(file_name="output.log", template=TEMPLATE)
+    config.create_logpath(statements=[opentelemetry_source, filterx, file_destination])
+
+    expected_log_attributes = dict(LOG_1_OUTPUT["attributes"])
+    expected_log_attributes.update({
+        "string": "new_string",
+        "new_key": "new_value",
+        "dict": {"key": "new_dict_value"},
+        "list": ["new_list_elem"],
+    })
+
+    syslog_ng.start(config)
+    opentelemetry_source.write_log(resource=RESOURCE_1, scope=SCOPE_1, log=LOG_1)
+    assert json.loads(file_destination.read_log()) == {
+        "body": "new_body",
+        "log_attributes": expected_log_attributes,
+        "resource_dict": {"key": "new_resource_value"},
+        "scope_dict": {"key": "new_scope_value"},
+    }

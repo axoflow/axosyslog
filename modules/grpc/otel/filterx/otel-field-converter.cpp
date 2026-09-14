@@ -41,6 +41,7 @@
 #include "filterx/object-dict.h"
 #include "filterx/object-list.h"
 #include "filterx/filterx-sequence.h"
+#include "filterx/filterx-ref.h"
 
 #include "compat/cpp-end.h"
 
@@ -428,6 +429,16 @@ syslogng::grpc::otel::iter_on_otel_protobuf_message_fields(google::protobuf::Mes
 
 static FilterXObject *_convert_field_value_to_plain(FilterXObject *value);
 
+/* the stores below must go through an xref, as that is what links the stored
+ * child to its parent container, making a later write through the child land
+ * in the parent */
+static FilterXObject *
+_new_container_ref(FilterXObject *container)
+{
+  filterx_object_cow_prepare(&container);
+  return container;
+}
+
 static gboolean
 _add_field_to_dict(FilterXObject *key, FilterXObject *value, gpointer user_data)
 {
@@ -463,7 +474,7 @@ _convert_field_value_to_plain(FilterXObject *value)
 {
   if (filterx_object_is_type(value, &FILTERX_TYPE_NAME(otel_kvlist)))
     {
-      FilterXObject *dict = filterx_dict_new();
+      FilterXObject *dict = _new_container_ref(filterx_dict_new());
       if (!filterx_object_iter(value, _add_field_to_dict, dict))
         {
           filterx_object_unref(dict);
@@ -474,7 +485,7 @@ _convert_field_value_to_plain(FilterXObject *value)
 
   if (filterx_object_is_type(value, &FILTERX_TYPE_NAME(otel_array)))
     {
-      FilterXObject *list = filterx_list_new();
+      FilterXObject *list = _new_container_ref(filterx_list_new());
       if (!filterx_object_iter(value, _append_element_to_list, list))
         {
           filterx_object_unref(list);
@@ -492,7 +503,7 @@ syslogng::grpc::otel::otel_protobuf_message_to_filterx_dict(const google::protob
   /* the reflection based getters need a mutable Message, but only set fields are read */
   google::protobuf::Message &mutable_message = const_cast<google::protobuf::Message &>(message);
 
-  FilterXObject *dict = filterx_dict_new();
+  FilterXObject *dict = _new_container_ref(filterx_dict_new());
   if (!iter_on_otel_protobuf_message_fields(mutable_message, _add_field_to_dict, dict))
     {
       filterx_object_unref(dict);
