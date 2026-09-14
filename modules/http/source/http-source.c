@@ -296,7 +296,7 @@ _create_response(HTTPRequest *http_request, HTTPSourceConnection *connection)
     {
       HTTPResponse *response = http_response_new_empty();
       http_message_set_http_version(&response->super, 1, 1);
-      http_response_set_status_code(response, HTTP_FORBIDDEN);
+      http_response_set_status_code(response, HTTP_UNAUTHORIZED);
       return response;
     }
 
