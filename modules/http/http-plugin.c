@@ -25,6 +25,7 @@
 #include "plugin-types.h"
 
 extern CfgParser http_source_parser;
+extern CfgParser elasticsearch_bulk_parser;
 
 static Plugin http_plugins[] =
 {
@@ -37,6 +38,11 @@ static Plugin http_plugins[] =
     .type = LL_CONTEXT_SOURCE,
     .name = "ehttp",
     .parser = &http_source_parser,
+  },
+  {
+    .type = LL_CONTEXT_SOURCE,
+    .name = "elasticsearch-bulk",
+    .parser = &elasticsearch_bulk_parser,
   },
 };
 

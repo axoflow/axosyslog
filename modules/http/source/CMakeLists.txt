@@ -1,6 +1,15 @@
-add_library(ehttp-source STATIC
+add_library(http-decompression STATIC
   http-decompression.c
   http-decompression.h
+)
+
+target_link_libraries(http-decompression PUBLIC syslog-ng ${ZLIB_LIBRARIES})
+target_include_directories(http-decompression
+  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
+  PRIVATE ${ZLIB_INCLUDE_DIRS}
+)
+
+add_library(ehttp-source STATIC
   http-source-parser.c
   http-source-parser.h
   http-source.c
@@ -9,10 +18,10 @@ add_library(ehttp-source STATIC
   ${CMAKE_CURRENT_BINARY_DIR}/http-source-grammar.h
 )
 
-target_link_libraries(ehttp-source PUBLIC syslog-ng ${ZLIB_LIBRARIES})
+target_link_libraries(ehttp-source PUBLIC syslog-ng http-decompression)
 target_include_directories(ehttp-source
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
-  PRIVATE ${CMAKE_CURRENT_BINARY_DIR} ${ZLIB_INCLUDE_DIRS}
+  PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
 )
 
 generate_y_from_ym(modules/http/source/http-source-grammar)
@@ -25,3 +34,5 @@ set_source_files_properties(
     PROPERTIES
     COMPILE_FLAGS ${BISON_BUILT_SOURCE_CFLAGS}
 )
+
+add_subdirectory(elasticsearch-bulk)
