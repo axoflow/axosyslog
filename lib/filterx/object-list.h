@@ -40,6 +40,8 @@ G_STATIC_ASSERT(sizeof(FilterXListObject) == sizeof(FilterXMutableObject));
 
 FILTERX_DECLARE_TYPE(list);
 
+/* the object without its xref wrapper, only for code that needs the concrete type */
+FilterXObject *filterx_list_new_bare(void);
 FilterXObject *filterx_list_new(void);
 FilterXObject *filterx_list_new_from_syslog_ng_list(const gchar *repr, gssize repr_len);
 FilterXObject *filterx_list_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len);

@@ -30,6 +30,8 @@ typedef gint32 FilterXDictAnchor;
 
 FILTERX_DECLARE_TYPE(dict);
 
+/* the object without its xref wrapper, only for code that needs the concrete type */
+FilterXObject *filterx_dict_new_bare(void);
 FilterXObject *filterx_dict_new(void);
 FilterXObject *filterx_dict_sized_new(gsize init_size);
 FilterXObject *filterx_dict_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len);

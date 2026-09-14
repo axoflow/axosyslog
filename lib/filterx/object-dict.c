@@ -749,7 +749,7 @@ _filterx_dict_iter(FilterXObject *s, FilterXObjectIterFunc func, gpointer user_d
 }
 
 static FilterXObject *
-filterx_dict_new_with_table(FilterXDictTable *table)
+_filterx_dict_new_bare_with_table(FilterXDictTable *table)
 {
   FilterXDictObject *self = filterx_new_object(FilterXDictObject);
 
@@ -770,7 +770,7 @@ _filterx_dict_clone_container(FilterXObject *s, FilterXObject *container, Filter
       new_table = _table_new(self->table->size);
       _table_clone(new_table, self->table, container, child_of_interest, dup);
     }
-  return filterx_dict_new_with_table(new_table);
+  return _filterx_dict_new_bare_with_table(new_table);
 }
 
 static FilterXObject *
@@ -846,21 +846,32 @@ filterx_dict_set_subscript_by_anchor(FilterXObject *s, FilterXDictAnchor anchor,
 }
 
 FilterXObject *
+filterx_dict_new_bare(void)
+{
+  return _filterx_dict_new_bare_with_table(NULL);
+}
+
+FilterXObject *
 filterx_dict_new(void)
 {
-  return filterx_dict_new_with_table(NULL);
+  FilterXObject *self = filterx_dict_new_bare();
+  filterx_object_cow_prepare(&self);
+  return self;
 }
 
 FilterXObject *
 filterx_dict_sized_new(gsize init_size)
 {
   if (init_size == 0)
-    return filterx_dict_new_with_table(NULL);
+    return filterx_dict_new();
 
   if (init_size < FILTERX_DICT_MIN_SIZE)
     init_size = FILTERX_DICT_MIN_SIZE;
   init_size = init_size * 3 / 2;
-  return filterx_dict_new_with_table(_table_new(init_size));
+
+  FilterXObject *self = _filterx_dict_new_bare_with_table(_table_new(init_size));
+  filterx_object_cow_prepare(&self);
+  return self;
 }
 
 static void

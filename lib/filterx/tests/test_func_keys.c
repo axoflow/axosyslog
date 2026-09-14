@@ -100,7 +100,7 @@ Test(filterx_func_keys, valid_input)
   cr_assert_null(error);
   FilterXObject *res = init_and_eval_expr(fn);
   cr_assert_not_null(res);
-  cr_assert(filterx_object_is_type(res, &FILTERX_TYPE_NAME(sequence)));
+  cr_assert(filterx_object_is_type_or_ref(res, &FILTERX_TYPE_NAME(sequence)));
 
   assert_object_repr_equals(res, "[\"foo\",\"bar\",\"baz\"]");
 

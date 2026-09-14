@@ -140,7 +140,6 @@ filterx_dpath_elem_get_or_create(FilterXObject *dict, FilterXDPathElement *elem)
     return value;
 
   value = filterx_dict_new();
-  filterx_object_cow_prepare(&value);
   filterx_dpath_elem_set(dict, elem, &value);
   return value;
 }

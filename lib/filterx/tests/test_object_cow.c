@@ -33,7 +33,7 @@
 
 Test(filterx_cow, test_filterx_cow_wrap_adds_an_xref_wrapper)
 {
-  FilterXObject *d = filterx_dict_new();
+  FilterXObject *d = filterx_dict_new_bare();
 
   cr_assert(filterx_object_is_type(d, &FILTERX_TYPE_NAME(dict)));
   filterx_object_cow_prepare(&d);

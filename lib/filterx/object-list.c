@@ -208,13 +208,21 @@ _filterx_list_is_member_of(FilterXObject *s, FilterXObject *member)
 
 
 FilterXObject *
-filterx_list_new(void)
+filterx_list_new_bare(void)
 {
   FilterXListObject *self = filterx_new_object(FilterXListObject);
   filterx_sequence_init_instance(&self->super, &FILTERX_TYPE_NAME(list));
 
   self->array = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
   return &self->super.super;
+}
+
+FilterXObject *
+filterx_list_new(void)
+{
+  FilterXObject *self = filterx_list_new_bare();
+  filterx_object_cow_prepare(&self);
+  return self;
 }
 
 static inline FilterXObject *
@@ -228,7 +236,7 @@ _filterx_list_clone_container(FilterXObject *s, FilterXObject *container, Filter
                               gboolean dup)
 {
   FilterXListObject *self = (FilterXListObject *) s;
-  FilterXListObject *clone = (FilterXListObject *) filterx_list_new();
+  FilterXListObject *clone = (FilterXListObject *) filterx_list_new_bare();
   gboolean child_found = FALSE;
 
   for (gsize i = 0; i < self->array->len; i++)
@@ -368,7 +376,6 @@ filterx_list_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len
   if (filterx_object_is_type(arg_unwrapped, &FILTERX_TYPE_NAME(sequence)))
     {
       FilterXObject *self = filterx_list_new();
-      filterx_object_cow_prepare(&self);
       if (!filterx_sequence_merge(self, arg_unwrapped))
         {
           filterx_object_unref(self);

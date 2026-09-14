@@ -67,7 +67,6 @@ static FilterXObject *
 _create_dict_from_failure_info_entry(FilterXFailureInfo *fi)
 {
   FilterXObject *fx_finfo_entry = filterx_dict_new();
-  filterx_object_cow_prepare(&fx_finfo_entry);
 
   if (fi->meta)
     {
@@ -77,13 +76,11 @@ _create_dict_from_failure_info_entry(FilterXFailureInfo *fi)
     }
 
   FilterXObject *fx_errors = filterx_list_new();
-  filterx_object_cow_prepare(&fx_errors);
 
   for (gint i = 0; i < fi->error_count; i++)
     {
       FilterXError *error = &fi->errors[i];
       FilterXObject *fx_error_entry = filterx_dict_new();
-      filterx_object_cow_prepare(&fx_error_entry);
 
       _set_subscript_cstr(fx_error_entry, "location", filterx_expr_format_location(error->expr)->str);
       _set_subscript_cstr(fx_error_entry, "line", filterx_expr_get_text(error->expr));

@@ -438,7 +438,6 @@ _literal_dict_eval_early(FilterXLiteralContainer *self)
 {
   gsize len = filterx_pointer_list_get_length(&self->elements);
   FilterXObject *dict_ref = filterx_dict_sized_new(len);
-  filterx_object_cow_prepare(&dict_ref);
 
   FilterXObject *dict = filterx_ref_unwrap_rw(dict_ref);
 
@@ -480,10 +479,7 @@ _literal_dict_eval(FilterXExpr *s)
       pl = &self->nonliteral_elements;
     }
   else
-    {
-      dict_ref = filterx_dict_new();
-      filterx_object_cow_prepare(&dict_ref);
-    }
+    dict_ref = filterx_dict_new();
   FilterXObject *dict = filterx_ref_unwrap_rw(dict_ref);
 
   gsize len = filterx_pointer_list_get_length(pl);
@@ -586,7 +582,6 @@ _literal_list_eval_adaptive(FilterXExpr *s, gboolean early_eval)
   FilterXLiteralContainer *self = (FilterXLiteralContainer *) s;
 
   FilterXObject *result = filterx_list_new();
-  filterx_object_cow_prepare(&result);
 
   gsize len = filterx_pointer_list_get_length(&self->elements);
   for (gsize i = 0; i < len; i++)
