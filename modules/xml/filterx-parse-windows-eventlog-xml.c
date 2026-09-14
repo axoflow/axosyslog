@@ -76,7 +76,6 @@ _convert_to_dict(GMarkupParseContext *context, XmlElemContext *elem_context, GEr
   FilterXObject *dict_obj = filterx_dict_new();
   if (!dict_obj)
     goto exit;
-  filterx_object_cow_prepare(&dict_obj);
 
   FilterXObject *parent_unwrapped = filterx_ref_unwrap_ro(elem_context->parent_obj);
   if (!filterx_object_is_type(parent_unwrapped, &FILTERX_TYPE_NAME(mapping)))
@@ -112,7 +111,6 @@ _prepare_elem(const gchar *new_elem_name, XmlElemContext *last_elem_context, Xml
   if (!filterx_object_is_key_set(new_elem_context->parent_obj, new_elem_key))
     {
       FilterXObject *empty_dict = filterx_dict_new();
-      filterx_object_cow_prepare(&empty_dict);
       xml_elem_context_set_current_obj(new_elem_context, empty_dict);
       filterx_object_unref(empty_dict);
 

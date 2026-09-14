@@ -163,9 +163,7 @@ _create_object_for_new_elem(FilterXObject *parent_obj, gboolean has_attrs, const
   if (has_attrs)
     {
       *new_elem_repr = "{}";
-      FilterXObject *dict = filterx_dict_new();
-      filterx_object_cow_prepare(&dict);
-      return dict;
+      return filterx_dict_new();
     }
 
   /*
@@ -201,7 +199,6 @@ _store_second_elem(XmlElemContext *new_elem_context, FilterXObject **existing_ob
   FilterXObject *list_obj = filterx_list_new();
   if (!list_obj)
     goto fail;
-  filterx_object_cow_prepare(&list_obj);
 
   if (!filterx_sequence_append(list_obj, existing_obj))
     goto fail;
@@ -345,7 +342,6 @@ _convert_to_dict(GMarkupParseContext *context, XmlElemContext *elem_context, GEr
   FilterXObject *dict_obj = filterx_dict_new();
   if (!dict_obj)
     goto exit;
-  filterx_object_cow_prepare(&dict_obj);
 
   /* current_obj is either a dict or a string, ensured by filterx_parse_xml_prepare_elem() and _text_cb(). */
   gsize existing_value_len;
@@ -630,7 +626,6 @@ _parse(FilterXFunctionParseXml *self, const gchar *raw_xml, gsize raw_xml_len)
   };
 
   FilterXObject *result = filterx_dict_new();
-  filterx_object_cow_prepare(&result);
 
   FilterXParseXmlState *state = self->create_state();;
   gpointer user_data[] = { self, state };

@@ -71,8 +71,6 @@ _convert_from_json_object(const gchar *json_text, gsize json_len,
 {
   FilterXObject *res = filterx_dict_new();
 
-  filterx_object_cow_prepare(&res);
-
   /* NOTE: skip object token */
   jsmntok_t *token = *tokens;
   gsize elements = token->size;
@@ -111,7 +109,6 @@ _convert_from_json_array(const gchar *json_text, gsize json_len,
                          jsmntok_t **tokens, jsmntok_t *sentinel, gint depth)
 {
   FilterXObject *res = filterx_list_new();
-  filterx_object_cow_prepare(&res);
 
   /* NOTE: skip list token */
   jsmntok_t *token = *tokens;
