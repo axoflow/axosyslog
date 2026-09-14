@@ -42,8 +42,9 @@ typedef struct _LogTransportTLS
 
   GByteArray *writev_buf;
 
-  /* a blocked SSL_write() must be repeated with the identical buffer; writev()
-   * remembers the pending one here (NULL when nothing is pending) and replays it */
+  /* a blocked SSL_write() must be repeated with the same pending content;
+   * writev() remembers the pending buffer here (NULL when nothing is pending)
+   * and replays it, as the iov of the retry may be assembled differently */
   gconstpointer write_blocked_buf;
   gsize write_blocked_len;
 

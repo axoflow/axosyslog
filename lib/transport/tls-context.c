@@ -653,6 +653,8 @@ tls_context_setup_session(TLSContext *self)
   if (!ssl)
     return NULL;
 
+  SSL_set_mode(ssl, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
+
   if (self->mode == TM_CLIENT)
     SSL_set_connect_state(ssl);
   else
