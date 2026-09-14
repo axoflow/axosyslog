@@ -200,6 +200,9 @@ public:
     try
       {
         ProtoReflectors reflectors(*message, field_name);
+        /* repeated fields have no presence, the protocol defines them as always existing */
+        if (reflectors.field_descriptor->is_repeated())
+          return true;
         return reflectors.reflection->HasField(*message, reflectors.field_descriptor);
       }
     catch(const std::exception &ex)
