@@ -75,6 +75,7 @@ void main_loop_reload_config(MainLoop *self);
 void main_loop_verify_config(GString *result, MainLoop *self);
 gboolean main_loop_is_terminating(MainLoop *self);
 void main_loop_exit(MainLoop *self);
+void main_loop_exit_force(MainLoop *self);
 
 int main_loop_read_and_init_config(MainLoop *self);
 gboolean main_loop_was_last_reload_successful(MainLoop *self);
