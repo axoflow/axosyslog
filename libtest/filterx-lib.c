@@ -83,7 +83,7 @@ assert_object_str_equals(FilterXObject *obj, const gchar *expected_str)
 FilterXObject *
 filterx_test_dict_new(void)
 {
-  FilterXObject *result = filterx_dict_new();
+  FilterXObject *result = filterx_dict_new_bare();
   result->type = &FILTERX_TYPE_NAME(test_dict);
   return result;
 }
@@ -91,7 +91,7 @@ filterx_test_dict_new(void)
 FilterXObject *
 filterx_test_list_new(void)
 {
-  FilterXObject *result = filterx_list_new();
+  FilterXObject *result = filterx_list_new_bare();
   result->type = &FILTERX_TYPE_NAME(test_list);
   return result;
 }
