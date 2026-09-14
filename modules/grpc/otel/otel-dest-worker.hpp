@@ -56,6 +56,7 @@ class DestWorker : public syslogng::grpc::DestWorker
 {
 public:
   DestWorker(GrpcDestWorker *s);
+  ~DestWorker();
 
   LogThreadedResult insert(LogMessage *msg) override;
   LogThreadedResult flush(LogThreadedFlushMode mode) override;
@@ -85,7 +86,6 @@ protected:
   LogThreadedResult flush_spans();
 
 protected:
-  std::unique_ptr<::grpc::ClientContext> client_context;
   std::unique_ptr<LogsService::Stub> logs_service_stub;
   std::unique_ptr<MetricsService::Stub> metrics_service_stub;
   std::unique_ptr<TraceService::Stub> trace_service_stub;
@@ -111,6 +111,7 @@ protected:
   } current_msg_metadata;
 
   ScopeLogs *fallback_msg_scope_logs = nullptr;
+  LogMessage *batch_first_msg = nullptr;
 };
 
 }
