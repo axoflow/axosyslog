@@ -274,6 +274,13 @@ _filterx_parse_xml_start_eventid_method(FilterXFunctionParseXml *self,
 {
   XmlElemContext *last_elem_context = xml_elem_context_stack_peek_last(state->xml_elem_context_stack);
 
+  FilterXObject *current_obj = filterx_ref_unwrap_ro(last_elem_context->current_obj);
+  if (!filterx_object_is_type(current_obj, &FILTERX_TYPE_NAME(mapping)))
+    {
+      if (!_convert_to_dict(context, last_elem_context, error))
+        return;
+    }
+
   XmlElemContext new_elem_context = { 0 };
   if (!filterx_parse_xml_prepare_elem(element_name, last_elem_context, FALSE, &new_elem_context, error))
     return;
