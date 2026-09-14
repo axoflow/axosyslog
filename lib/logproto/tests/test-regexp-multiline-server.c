@@ -99,10 +99,10 @@ StaticParameterizedTest(LogTransportMockConstructor *log_transport_mock_new, log
               LTM_EOF),
             "^Foo", NULL);
 
-  assert_proto_server_fetch(proto, "Foo First Line", -1);
-  assert_proto_server_fetch(proto, "Foo Second Line", -1);
-  assert_proto_server_fetch(proto, "Foo Third Line", -1);
-  assert_proto_server_fetch(proto, "Foo Multiline\nmulti", -1);
+  assert_proto_server_fetch(&proto, "Foo First Line", -1);
+  assert_proto_server_fetch(&proto, "Foo Second Line", -1);
+  assert_proto_server_fetch(&proto, "Foo Third Line", -1);
+  assert_proto_server_fetch(&proto, "Foo Multiline\nmulti", -1);
 
   log_proto_server_free(proto);
 }
@@ -127,10 +127,10 @@ StaticParameterizedTest(LogTransportMockConstructor *log_transport_mock_new, log
               LTM_EOF),
             "^Foo", " Bar$");
 
-  assert_proto_server_fetch(proto, "Foo First Line", -1);
-  assert_proto_server_fetch(proto, "Foo Second Line", -1);
-  assert_proto_server_fetch(proto, "Foo Third Line", -1);
-  assert_proto_server_fetch(proto, "Foo Multiline\nmulti", -1);
+  assert_proto_server_fetch(&proto, "Foo First Line", -1);
+  assert_proto_server_fetch(&proto, "Foo Second Line", -1);
+  assert_proto_server_fetch(&proto, "Foo Third Line", -1);
+  assert_proto_server_fetch(&proto, "Foo Multiline\nmulti", -1);
 
   log_proto_server_free(proto);
 }
@@ -153,8 +153,8 @@ StaticParameterizedTest(LogTransportMockConstructor *log_transport_mock_new, log
               LTM_EOF),
             "^prefix", "suffix");
 
-  assert_proto_server_fetch(proto, "prefix first suffix", -1);
-  assert_proto_server_fetch(proto, "prefix multi\nsuffix", -1);
+  assert_proto_server_fetch(&proto, "prefix first suffix", -1);
+  assert_proto_server_fetch(&proto, "prefix multi\nsuffix", -1);
 
   log_proto_server_free(proto);
 }
@@ -179,10 +179,10 @@ StaticParameterizedTest(LogTransportMockConstructor *log_transport_mock_new, log
               LTM_EOF),
             NULL, " Bar$");
 
-  assert_proto_server_fetch(proto, "Foo First Line", -1);
-  assert_proto_server_fetch(proto, "Foo Second Line", -1);
-  assert_proto_server_fetch(proto, "Foo Third Line", -1);
-  assert_proto_server_fetch(proto, "Foo Multiline\nmulti", -1);
+  assert_proto_server_fetch(&proto, "Foo First Line", -1);
+  assert_proto_server_fetch(&proto, "Foo Second Line", -1);
+  assert_proto_server_fetch(&proto, "Foo Third Line", -1);
+  assert_proto_server_fetch(&proto, "Foo Multiline\nmulti", -1);
 
   log_proto_server_free(proto);
 }
@@ -207,10 +207,10 @@ StaticParameterizedTest(LogTransportMockConstructor *log_transport_mock_new, log
               LTM_EOF),
             "^Foo", NULL);
 
-  assert_proto_server_fetch(proto, "First Line", -1);
-  assert_proto_server_fetch(proto, "Foo Second Line", -1);
-  assert_proto_server_fetch(proto, "Foo Third Line", -1);
-  assert_proto_server_fetch(proto, "Foo Multiline\nmulti", -1);
+  assert_proto_server_fetch(&proto, "First Line", -1);
+  assert_proto_server_fetch(&proto, "Foo Second Line", -1);
+  assert_proto_server_fetch(&proto, "Foo Third Line", -1);
+  assert_proto_server_fetch(&proto, "Foo Multiline\nmulti", -1);
 
   log_proto_server_free(proto);
 }

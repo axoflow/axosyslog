@@ -173,7 +173,15 @@ log_reader_wakeup_triggered(gpointer s)
 {
   LogReader *self = (LogReader *) s;
 
-  if (!self->io_job.working && self->suspended)
+  /* NOTE: the suspended state keeps the watches running, so this condition
+   * is TRUE either if 1) we are suspended or 2) we are not suspended but
+   * initialized.
+   *
+   * A wakeup might be triggered in both states: when 1) we are coming out
+   * of suspended state (ie window opens up), or when 2) the proto
+   * explicitly requests a wakeup for a different event.
+   */
+  if (!self->io_job.working && self->watches_running)
     {
       /* NOTE: by the time working is set to FALSE we're over an
        * update_watches call.  So it is called either here (when
@@ -283,10 +291,40 @@ log_reader_is_opened(LogReader *self)
  * Set watches state so we are polling the event(s) that comes next.
  *****************************************************************************/
 
+static inline gboolean
+_is_proto_waiting_for_writability(LogReader *self, LogProtoPrepareAction prepare_action, GIOCondition cond)
+{
+  if (prepare_action != LPPA_POLL_IO)
+    return FALSE;
+
+  LogTransportIOCond io_req = log_transport_stack_get_io_requirement(&self->proto->transport_stack);
+
+  /* The `cond` variable alone does not tell a proto write from a read, as
+   * the transport may flip the direction during a bidirectional handshake
+   * (e.g.  TLS).  */
+
+  if (cond == G_IO_OUT)
+    {
+      /* LTIO_READ_WANTS_WRITE: is a read pending inside a TLS read, so even
+       * if `cond` is G_IO_OUT we still want to suspend.
+       */
+
+      return io_req != LTIO_READ_WANTS_WRITE;
+    }
+  else if (cond == G_IO_IN)
+    {
+      /* LTIO_WRITE_WANTS_READ: is a write pending inside a TLS write, so
+       * even if `cond` is G_IO_IN we still want to continue.
+       */
+      return io_req == LTIO_WRITE_WANTS_READ;
+    }
+  return FALSE;
+}
+
 static void
 log_reader_update_watches(LogReader *self)
 {
-  GIOCondition cond;
+  GIOCondition cond = 0;
   gint idle_timeout = -1;
 
   main_loop_assert_main_thread();
@@ -297,14 +335,12 @@ log_reader_update_watches(LogReader *self)
   if (!log_reader_is_opened(self))
     return;
 
-  gboolean free_to_send = log_source_free_to_send(&self->super);
-  if (!free_to_send)
+  LogProtoPrepareAction prepare_action = log_proto_server_poll_prepare(self->proto, &cond, &idle_timeout);
+  if (!log_source_free_to_send(&self->super) && !_is_proto_waiting_for_writability(self, prepare_action, cond))
     {
       log_reader_suspend_until_awoken(self);
       return;
     }
-
-  LogProtoPrepareAction prepare_action = log_proto_server_poll_prepare(self->proto, &cond, &idle_timeout);
 
   if (idle_timeout > 0)
     {
@@ -407,39 +443,6 @@ _add_aux_nvpair(const gchar *name, const gchar *value, gsize value_len, gpointer
   log_msg_set_value_by_name(msg, name, value, value_len);;
 }
 
-static inline gint
-log_reader_process_handshake(LogReader *self)
-{
-  gboolean handshake_finished = FALSE;
-  LogProtoServer *proto_replacement = NULL;
-  LogProtoStatus status = log_proto_server_handshake(self->proto, &handshake_finished, &proto_replacement);
-
-  if (proto_replacement)
-    {
-      g_assert(handshake_finished == FALSE);
-      log_transport_stack_move(&proto_replacement->transport_stack, &self->proto->transport_stack);
-      log_proto_server_free(self->proto);
-      self->proto = proto_replacement;
-    }
-
-  switch (status)
-    {
-    case LPS_EOF:
-    case LPS_ERROR:
-      return status == LPS_ERROR ? NC_READ_ERROR : NC_CLOSE;
-    case LPS_SUCCESS:
-      if (handshake_finished)
-        self->handshake_in_progress = FALSE;
-      break;
-    case LPS_AGAIN:
-      break;
-    default:
-      g_assert_not_reached();
-      break;
-    }
-  return 0;
-}
-
 static void
 _log_reader_insert_msg_length_stats(LogReader *self, gsize len)
 {
@@ -537,10 +540,6 @@ log_reader_fetch_log(LogReader *self)
     aux = NULL;
 
   log_transport_aux_data_init(aux);
-  if (self->handshake_in_progress)
-    {
-      return log_reader_process_handshake(self);
-    }
 
   /* NOTE: this loop is here to decrease the load on the main loop, we try
    * to fetch a couple of messages in a single run (but only up to
@@ -579,6 +578,7 @@ log_reader_fetch_log(LogReader *self)
         case LPS_SUCCESS:
           break;
         case LPS_AGAIN:
+          log_proto_server_apply_replacement(&self->proto);
           break;
         default:
           g_assert_not_reached();
@@ -814,7 +814,6 @@ log_reader_new(GlobalConfig *cfg)
   self->super.super.free_fn = log_reader_free;
   self->super.wakeup = log_reader_wakeup;
   self->super.schedule_dynamic_window_realloc = _schedule_dynamic_window_realloc;
-  self->handshake_in_progress = TRUE;
   log_reader_init_watches(self);
   g_mutex_init(&self->pending_close_lock);
   g_cond_init(&self->pending_close_cond);

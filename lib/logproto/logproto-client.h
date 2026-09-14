@@ -72,7 +72,6 @@ struct _LogProtoClient
   LogProtoStatus (*process_in)(LogProtoClient *s);
   LogProtoStatus (*flush)(LogProtoClient *s);
   gboolean (*validate_options)(LogProtoClient *s);
-  LogProtoStatus (*handshake)(LogProtoClient *s, gboolean *handshake_finished);
   gboolean (*restart_with_state)(LogProtoClient *s, PersistState *state, const gchar *persist_name);
   void (*free_fn)(LogProtoClient *s);
   LogProtoClientFlowControlFuncs flow_control_funcs;
@@ -109,17 +108,6 @@ static inline gboolean
 log_proto_client_validate_options(LogProtoClient *self)
 {
   return self->validate_options(self);
-}
-
-static inline LogProtoStatus
-log_proto_client_handshake(LogProtoClient *s, gboolean *handshake_finished)
-{
-  if (s->handshake)
-    {
-      return s->handshake(s, handshake_finished);
-    }
-  *handshake_finished = TRUE;
-  return LPS_SUCCESS;
 }
 
 static inline gboolean
