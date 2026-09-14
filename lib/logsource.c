@@ -517,25 +517,14 @@ log_source_deinit(LogPipe *s)
 }
 
 static void
-_log_source_post(LogSource *self, LogMessage *msg, FilterXEvalContext *filterx_context)
+_log_source_track_msg(LogSource *self, LogMessage *msg, LogPathOptions *path_options)
 {
-  valgrind_start_instrumentation();
-
-  GlobalConfig *cfg = log_pipe_get_config(&self->super);
-
-  LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
-  path_options.flow_control_requested = cfg->flow_control;
-  path_options.filterx_context = filterx_context;
-
-  if (path_options.flow_control_requested)
-    msg_trace("Enabling flow control", log_pipe_location_tag(&self->super), evt_tag_msg_reference(msg));
-
   ack_tracker_track_msg(self->ack_tracker, msg);
 
   /* NOTE: we start by enabling flow-control, thus we need an acknowledgement */
-  path_options.ack_needed = TRUE;
+  path_options->ack_needed = TRUE;
   log_msg_ref(msg);
-  log_msg_add_ack(msg, &path_options);
+  log_msg_add_ack(msg, path_options);
   msg->ack_func = log_source_msg_ack;
 
   gint old_window_size = _window_size_sub(self, 1, NULL);
@@ -556,6 +545,23 @@ _log_source_post(LogSource *self, LogMessage *msg, FilterXEvalContext *filterx_c
    */
 
   g_assert(old_window_size > 0);
+}
+
+static void
+_log_source_post(LogSource *self, LogMessage *msg, FilterXEvalContext *filterx_context)
+{
+  valgrind_start_instrumentation();
+
+  GlobalConfig *cfg = log_pipe_get_config(&self->super);
+
+  LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
+  path_options.flow_control_requested = cfg->flow_control;
+  path_options.filterx_context = filterx_context;
+
+  if (path_options.flow_control_requested)
+    msg_trace("Enabling flow control", log_pipe_location_tag(&self->super), evt_tag_msg_reference(msg));
+
+  _log_source_track_msg(self, msg, &path_options);
 
   ScratchBuffersMarker mark;
   scratch_buffers_mark(&mark);
@@ -563,6 +569,15 @@ _log_source_post(LogSource *self, LogMessage *msg, FilterXEvalContext *filterx_c
   scratch_buffers_reclaim_marked(mark);
 
   valgrind_stop_instrumentation();
+}
+
+void
+log_source_drop(LogSource *self, LogMessage *msg)
+{
+  LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
+
+  _log_source_track_msg(self, msg, &path_options);
+  log_msg_drop(msg, &path_options, AT_PROCESSED);
 }
 
 void

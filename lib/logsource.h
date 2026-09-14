@@ -143,6 +143,7 @@ gboolean log_source_deinit(LogPipe *s);
 
 void log_source_post(LogSource *self, LogMessage *msg);
 void log_source_post_with_filterx_context(LogSource *self, LogMessage *msg, FilterXEvalContext *filterx_context);
+void log_source_drop(LogSource *self, LogMessage *msg);
 
 void log_source_set_options(LogSource *self, LogSourceOptions *options, const gchar *stats_id,
                             StatsClusterKeyBuilder *kb, gboolean threaded, LogExprNode *expr_node);

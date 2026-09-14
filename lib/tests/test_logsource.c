@@ -31,6 +31,8 @@
 #include "cfg.h"
 #include "apphook.h"
 #include "dynamic-window-pool.h"
+#include "ack-tracker/ack_tracker.h"
+#include "ack-tracker/ack_tracker_factory.h"
 
 #include <syslog.h>
 #include <string.h>
@@ -300,6 +302,74 @@ Test(log_source, test_suspend)
 
   test_pipe_ack_messages(next_pipe, 1);
   cr_assert(log_source_free_to_send(source));
+
+  test_pipe_destroy(next_pipe);
+  test_source_destroy(source);
+}
+
+typedef struct _TestBookmarkData
+{
+  guint *saved_ctr;
+} TestBookmarkData;
+
+static void
+_save_bookmark(Bookmark *bookmark)
+{
+  TestBookmarkData *bookmark_data = (TestBookmarkData *) &bookmark->container;
+  (*bookmark_data->saved_ctr)++;
+}
+
+static void
+_fill_bookmark(Bookmark *bookmark, guint *saved_ctr)
+{
+  TestBookmarkData *bookmark_data = (TestBookmarkData *) &bookmark->container;
+
+  bookmark_data->saved_ctr = saved_ctr;
+  bookmark->save = _save_bookmark;
+}
+
+static LogSource *
+_test_source_init_with_consecutive_ack_tracker(LogSourceOptions *options)
+{
+  TestSource *source = g_new0(TestSource, 1);
+  log_source_init_instance(&source->super, cfg);
+  source->super.wakeup = test_source_wakeup;
+
+  log_source_options_init(options, cfg, TEST_SOURCE_GROUP);
+  log_source_set_options(&source->super, options, TEST_STATS_ID, NULL, TRUE, NULL);
+  log_source_set_ack_tracker_factory(&source->super, consecutive_ack_tracker_factory_new());
+  cr_assert(log_pipe_init(&source->super.super));
+  return &source->super;
+}
+
+Test(log_source, test_dropped_message_is_acknowledged_in_order_and_returns_its_window_slot)
+{
+  source_options.init_window_size = 3;
+
+  LogSource *source = _test_source_init_with_consecutive_ack_tracker(&source_options);
+  TestPipe *next_pipe = test_pipe_init();
+  log_pipe_append(&source->super, &next_pipe->super);
+  guint posted_saved = 0, dropped_saved = 0;
+
+  _fill_bookmark(ack_tracker_request_bookmark(source->ack_tracker), &posted_saved);
+  log_source_post(source, log_msg_new_empty());
+  cr_assert_eq(window_size_counter_get(&source->window_size, NULL), 2);
+
+  _fill_bookmark(ack_tracker_request_bookmark(source->ack_tracker), &dropped_saved);
+  log_source_drop(source, log_msg_new_empty());
+  cr_assert_eq(dropped_saved, 0, "a dropped message waits for the posted one before it");
+  cr_assert_eq(window_size_counter_get(&source->window_size, NULL), 1,
+               "a dropped message holds its window slot until the range it is in is released");
+
+  test_pipe_ack_messages(next_pipe, 1);
+  cr_assert_eq(dropped_saved, 1, "the dropped message is the last of the acknowledged range");
+  cr_assert_eq(posted_saved, 0);
+  cr_assert_eq(window_size_counter_get(&source->window_size, NULL), 3);
+
+  _fill_bookmark(ack_tracker_request_bookmark(source->ack_tracker), &dropped_saved);
+  log_source_drop(source, log_msg_new_empty());
+  cr_assert_eq(dropped_saved, 2, "a dropped message with nothing before it is acknowledged at once");
+  cr_assert_eq(window_size_counter_get(&source->window_size, NULL), 3);
 
   test_pipe_destroy(next_pipe);
   test_source_destroy(source);

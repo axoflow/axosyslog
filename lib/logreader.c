@@ -494,7 +494,7 @@ log_reader_construct_message(LogReader *self, const guchar *line, gsize length)
   msg_format_parse_into(&self->options->parse_options, m, line, &length);
   if (length == 0 && !(self->options->flags & LR_EMPTY_LINES))
     {
-      log_msg_unref(m);
+      log_source_drop(&self->super, m);
       return NULL;
     }
 
