@@ -1294,30 +1294,19 @@ static AltpStepControl
 _on_awaiting_durability(LogProtoAltpServer *self, LogProtoStatus *status)
 {
   guint32 frames_acked;
-  gboolean partial = FALSE;
 
   g_assert(self->record != NULL);
 
-  if (g_atomic_int_get(&self->ack_timed_out))
-    {
-      g_atomic_int_set(&self->ack_timed_out, 0);
+  gboolean timed_out = g_atomic_int_compare_and_exchange(&self->ack_timed_out, 1, 0);
 
-      if (self->options.ack_timeout_action == ALTP_ACK_TIMEOUT_ACTION_CLOSE)
-        return _abandon_batch(self);
-
-      /* acknowledge the prefix durable at this moment and disown the Frames
-       * beyond it by setting frames_read := frames_acked (9.3, 12.1) */
-      frames_acked = altp_session_record_acknowledge(self->record, &self->owner, TRUE);
-      msg_notice("Acknowledging an ALTP Batch partially, the acknowledgement timeout expired",
-                 evt_tag_str("session_id", self->session_id),
-                 evt_tag_int("frames_acked", frames_acked));
-      partial = TRUE;
-    }
-  else if (altp_session_record_wait_for_durability(self->record, &self->owner, &frames_acked))
+  if (altp_session_record_wait_for_durability(self->record, &self->owner, &frames_acked))
     {
       frames_acked = altp_session_record_acknowledge(self->record, &self->owner, FALSE);
+      _queue_acknowledgement(self, frames_acked, FALSE);
+      return ALTP_CTRL_NEXT_STATE;
     }
-  else
+
+  if (!timed_out)
     {
       /* nothing is parsed while we wait and the input stays buffered (12.1);
        * the LogReader suspends us until we are woken up */
@@ -1325,7 +1314,16 @@ _on_awaiting_durability(LogProtoAltpServer *self, LogProtoStatus *status)
       return ALTP_CTRL_RETURN_WITH_STATUS;
     }
 
-  _queue_acknowledgement(self, frames_acked, partial);
+  if (self->options.ack_timeout_action == ALTP_ACK_TIMEOUT_ACTION_CLOSE)
+    return _abandon_batch(self);
+
+  /* acknowledge the prefix durable at this moment and disown the Frames
+   * beyond it by setting frames_read := frames_acked (9.3, 12.1) */
+  frames_acked = altp_session_record_acknowledge(self->record, &self->owner, TRUE);
+  msg_notice("Acknowledging an ALTP Batch partially, the acknowledgement timeout expired",
+             evt_tag_str("session_id", self->session_id),
+             evt_tag_int("frames_acked", frames_acked));
+  _queue_acknowledgement(self, frames_acked, TRUE);
   return ALTP_CTRL_NEXT_STATE;
 }
 
@@ -1507,6 +1505,9 @@ log_proto_altp_server_poll_prepare(LogProtoServer *s, GIOCondition *cond, gint *
   *timeout = 0;
 
   _handle_displacement(self);
+
+  if (self->state != ALTP_AWAITING_DURABILITY)
+    g_atomic_int_set(&self->ack_timed_out, 0);
 
   gboolean acknowledgement_due = self->state == ALTP_AWAITING_DURABILITY && _is_acknowledgement_due(self);
   _update_ack_timer(self, self->state == ALTP_AWAITING_DURABILITY && !acknowledgement_due);

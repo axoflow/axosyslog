@@ -1755,6 +1755,54 @@ Test(altp, the_acknowledgement_timeout_wakes_the_owning_connection)
   _connection_deinit(&conn);
 }
 
+Test(altp, a_batch_that_became_durable_before_its_timeout_was_seen_is_acknowledged_in_full)
+{
+  LogProtoServerFactory *factory = _parse_altp_transport("altp()");
+  AltpTestConnection conn;
+
+  _connection_init(&conn, factory,
+                   log_transport_mock_endless_records_new("SYNC s1\nDATA\n", -1, "3 abc3 def.\n", -1, LTM_EOF),
+                   FALSE);
+
+  cr_assert_eq(_pump(&conn), ALTP_PUMP_SUSPENDED);
+
+  log_proto_altp_server_fire_ack_timeout(conn.proto);
+  _report_durable(&conn, 0);
+  _report_durable(&conn, 1);
+
+  _assert_replies(&conn, ALTP_BANNER "250 Received 0\n250 Ready\n250 Received 2\n");
+
+  _connection_deinit(&conn);
+}
+
+Test(altp, an_acknowledgement_timeout_that_expired_after_its_wait_ended_does_not_abandon_the_next_batch)
+{
+  LogProtoServerFactory *factory = _parse_altp_transport("altp()");
+  AltpTestConnection conn;
+
+  _connection_init(&conn, factory,
+                   log_transport_mock_endless_records_new("SYNC s1\nDATA\n", -1, "3 abc3 def.\n", -1, LTM_EOF),
+                   FALSE);
+
+  cr_assert_eq(_pump(&conn), ALTP_PUMP_SUSPENDED);
+  _report_durable(&conn, 0);
+  _report_durable(&conn, 1);
+  _assert_replies(&conn, ALTP_BANNER "250 Received 0\n250 Ready\n250 Received 2\n");
+
+  log_proto_altp_server_fire_ack_timeout(conn.proto);
+
+  _inject(&conn, "DATA\n");
+  _inject(&conn, "5 world.\n");
+  cr_assert_eq(_pump(&conn), ALTP_PUMP_SUSPENDED, "the timeout of the previous wait must not end this one");
+  _assert_frame(&conn, 2, "world", 5);
+
+  _report_durable(&conn, 2);
+  _assert_replies(&conn, ALTP_BANNER "250 Received 0\n250 Ready\n250 Received 2\n"
+                                     "250 Ready\n250 Received 1\n");
+
+  _connection_deinit(&conn);
+}
+
 Test(altp, a_displaced_connection_is_woken_by_the_takeover)
 {
   LogProtoServerFactory *factory = _parse_altp_transport("altp()");
