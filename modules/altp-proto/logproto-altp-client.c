@@ -160,6 +160,10 @@ typedef struct _LogProtoAltpClient
    * yet, oldest first: a Frame counts as sent only once written whole (10.2) */
   GArray *frame_ends;
 
+  /* the Batch is closed and its terminator is appended once the pending
+   * output is written, as a write of its own (see _drain_output()) */
+  gboolean terminator_due;
+
   /* the reply being read is in in_buf[in_pos .. in_end) */
   gchar in_buf[ALTP_MAX_REPLY_LINE];
   gsize in_pos, in_end;
@@ -510,7 +514,7 @@ _append_frame(LogProtoAltpClient *self, const guchar *payload, gsize payload_len
 static void
 _close_batch(LogProtoAltpClient *self)
 {
-  _append_command(self, ALTP_BATCH_TERMINATOR);
+  self->terminator_due = TRUE;
   self->state = ALTP_SENDER_BATCH_CLOSED;
 }
 
@@ -534,36 +538,50 @@ _count_written_frames(LogProtoAltpClient *self)
   _persist_sender_state(self);
 }
 
-/* LPS_PARTIAL means output remains, which poll_prepare() turns into G_IO_OUT. */
+/* LPS_PARTIAL means output remains, which poll_prepare() turns into G_IO_OUT.
+ *
+ * The terminator never shares a write with Frame octets: a write that holds
+ * Frames may block with part of it on the wire, and under ZLIB -- whose
+ * write() takes the whole buffer or nothing -- the proto cannot tell which
+ * part.  Written on its own, a blocked terminator is the only thing an
+ * acknowledgement can overtake (see _on_acknowledgement()).
+ */
 static LogProtoStatus
 _drain_output(LogProtoAltpClient *self)
 {
-  while (_has_pending_output(self))
+  while (TRUE)
     {
-      gssize rc = log_transport_stack_write(&self->super.transport_stack, self->out_buf->str + self->out_pos,
-                                            self->out_buf->len - self->out_pos);
-      if (rc > 0)
+      while (_has_pending_output(self))
         {
-          self->out_pos += rc;
-          _count_written_frames(self);
-          continue;
+          gssize rc = log_transport_stack_write(&self->super.transport_stack, self->out_buf->str + self->out_pos,
+                                                self->out_buf->len - self->out_pos);
+          if (rc > 0)
+            {
+              self->out_pos += rc;
+              _count_written_frames(self);
+              continue;
+            }
+
+          if (rc < 0 && errno != EAGAIN && errno != EINTR)
+            {
+              msg_error("Error writing to the ALTP Receiver",
+                        evt_tag_int(EVT_TAG_FD, self->super.transport_stack.fd),
+                        evt_tag_error(EVT_TAG_OSERROR));
+              return LPS_ERROR;
+            }
+
+          return LPS_PARTIAL;
         }
 
-      if (rc < 0 && errno != EAGAIN && errno != EINTR)
-        {
-          msg_error("Error writing to the ALTP Receiver",
-                    evt_tag_int(EVT_TAG_FD, self->super.transport_stack.fd),
-                    evt_tag_error(EVT_TAG_OSERROR));
-          return LPS_ERROR;
-        }
+      g_string_truncate(self->out_buf, 0);
+      self->out_pos = 0;
 
-      return LPS_PARTIAL;
+      if (!self->terminator_due)
+        return LPS_SUCCESS;
+
+      self->terminator_due = FALSE;
+      g_string_append(self->out_buf, ALTP_BATCH_TERMINATOR);
     }
-
-  g_string_truncate(self->out_buf, 0);
-  self->out_pos = 0;
-
-  return LPS_SUCCESS;
 }
 
 static LogProtoStatus
@@ -838,14 +856,19 @@ _parse_received(const gchar *text, gsize text_len, guint32 *frames_acked)
 static LogProtoStatus
 _on_acknowledgement(LogProtoAltpClient *self, guint32 frames_acked)
 {
-  if (_has_pending_output(self))
+  if (self->frame_ends->len > 0 || self->terminator_due)
     {
-      /* the terminator is the last octet of the Batch, so this cannot answer
-       * anything we finished sending: close and let the next SYNC establish
-       * the count authoritatively (14.1) */
+      /* A Frame is still being written, or the terminator is not even out
+       * yet, so this cannot answer anything we finished sending: close and
+       * let the next SYNC establish the count authoritatively (14.1).  A
+       * pending tail of the terminator alone is another matter: a compressed
+       * terminator is decodable by the peer before the last octets of its
+       * sync flush marker are written, so the acknowledgement may legitimately
+       * overtake them. */
       msg_error("ALTP acknowledgement arrived before the Batch was written in full, closing the connection",
                 evt_tag_int("frames_acked", frames_acked),
                 evt_tag_int("pending_octets", self->out_buf->len - self->out_pos),
+                evt_tag_int("pending_frames", self->frame_ends->len),
                 evt_tag_int(EVT_TAG_FD, self->super.transport_stack.fd));
       return LPS_ERROR;
     }

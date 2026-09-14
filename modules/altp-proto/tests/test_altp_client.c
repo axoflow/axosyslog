@@ -140,6 +140,9 @@ typedef struct _ThrottledTransport
   LogTransport *mock;
   /* octets still accepted, -1 for "as many as offered" */
   gssize write_budget;
+  /* a write beyond the budget takes nothing rather than a prefix, the way the
+   * zlib adapter behaves */
+  gboolean write_all_or_nothing;
   gboolean at_eof;
 } ThrottledTransport;
 
@@ -166,7 +169,14 @@ _throttled_write(LogTransport *s, const gpointer buf, gsize count)
     }
 
   if (self->write_budget > 0 && (gsize) self->write_budget < count)
-    count = self->write_budget;
+    {
+      if (self->write_all_or_nothing)
+        {
+          errno = EAGAIN;
+          return -1;
+        }
+      count = self->write_budget;
+    }
 
   gssize written = log_transport_write(self->mock, buf, count);
 
@@ -1460,6 +1470,71 @@ Test(altp_client, a_reply_that_is_not_the_one_due_closes_the_connection)
   /* `250 Ready` where `250 Received n` was due (14.1) */
   cr_assert_eq(_reply(&sender, ALTP_READY), LPS_ERROR);
   cr_assert_eq(sender.acked, 0);
+
+  _sender_deinit(&sender);
+}
+
+Test(altp_client, an_acknowledgement_arriving_while_a_frame_is_half_written_closes_the_connection)
+{
+  AltpTestSender sender;
+
+  _sender_init(&sender, _parse_altp_transport("altp()"), FALSE, NULL);
+  g_free(_negotiate(&sender));
+
+  sender.throttle->write_budget = 2;
+  _post_and_assert_consumed(&sender, "one");
+  cr_assert_eq(_flush(&sender), LPS_PARTIAL);
+  _assert_written(&sender, "3 ");
+
+  cr_assert_eq(_reply(&sender, "250 Received 1\n"), LPS_ERROR);
+  cr_assert_eq(sender.acked, 0);
+
+  _sender_deinit(&sender);
+}
+
+Test(altp_client, an_acknowledgement_overtaking_the_tail_of_the_terminator_is_accepted)
+{
+  AltpTestSender sender;
+
+  _sender_init(&sender, _parse_altp_transport("altp()"), FALSE, NULL);
+  g_free(_negotiate(&sender));
+
+  _post_and_assert_consumed(&sender, "one");
+  _assert_written(&sender, "3 one");
+
+  sender.throttle->write_budget = 1;
+  cr_assert_eq(_flush(&sender), LPS_PARTIAL);
+  _assert_written(&sender, ".");
+
+  cr_assert_eq(_reply(&sender, "250 Received 1\n"), LPS_PARTIAL);
+  cr_assert_eq(sender.acked, 1, "every Frame was written in full, so the acknowledgement stands");
+  cr_assert_eq(sender.rewind_calls, 1);
+
+  sender.throttle->write_budget = -1;
+  cr_assert_eq(_flush(&sender), LPS_SUCCESS);
+  _assert_written(&sender, "\n" ALTP_DATA);
+
+  _sender_deinit(&sender);
+}
+
+Test(altp_client, the_terminator_never_shares_a_write_with_a_frame)
+{
+  AltpTestSender sender;
+
+  _sender_init(&sender, _parse_altp_transport("altp(batch-size(1))"), FALSE, NULL);
+  g_free(_negotiate(&sender));
+
+  sender.throttle->write_all_or_nothing = TRUE;
+  sender.throttle->write_budget = strlen("3 one");
+  _post_and_assert_consumed(&sender, "one");
+  _assert_written(&sender, "3 one");
+
+  cr_assert_eq(_reply(&sender, "250 Received 1\n"), LPS_PARTIAL);
+  cr_assert_eq(sender.acked, 1, "the Frame was written whole, only the terminator is blocked");
+
+  sender.throttle->write_budget = -1;
+  cr_assert_eq(_flush(&sender), LPS_SUCCESS);
+  _assert_written(&sender, ALTP_TERMINATOR ALTP_DATA);
 
   _sender_deinit(&sender);
 }
