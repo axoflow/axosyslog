@@ -1938,6 +1938,15 @@ _bind_registry(PersistState *state, gint session_expiration)
   return _bind_registry_full(state, session_expiration, ALTP_DEFAULT_MAX_SESSIONS);
 }
 
+/* the process stops: the module table lets go of the bound registries and the
+ * persistent state is written out and loaded again */
+static PersistState *
+_restart_receiver(PersistState *state)
+{
+  altp_session_registries_shutdown();
+  return restart_persist_state(state);
+}
+
 /* deliver @count Frames upstream and report the first @durable of them durable */
 static void
 _drive_record(AltpSessionRecord *record, guint count, guint durable)
@@ -1986,7 +1995,7 @@ Test(altp, the_counters_of_a_session_survive_a_restart_of_the_receiver)
   /* the Receiver stops and the persistent state is written out */
   altp_session_record_unref(record);
   altp_session_registry_unref(registry);
-  state = restart_persist_state(state);
+  state = _restart_receiver(state);
 
   registry = _bind_registry(state, 3600);
   cr_assert_eq(altp_session_registry_get_session_count(registry), 0,
@@ -2014,7 +2023,7 @@ Test(altp, the_restart_rule_rewinds_frames_read_to_the_durable_prefix)
 
   altp_session_record_unref(record);
   altp_session_registry_unref(registry);
-  state = restart_persist_state(state);
+  state = _restart_receiver(state);
 
   registry = _bind_registry(state, 3600);
   record = altp_session_registry_lookup(registry, "s1");
@@ -2043,7 +2052,7 @@ Test(altp, the_restart_sweep_forgets_a_session_unused_for_longer_than_session_ex
   altp_session_record_unref(record);
   altp_session_registry_unref(registry);
 
-  state = restart_persist_state(state);
+  state = _restart_receiver(state);
   registry = _bind_registry(state, 100);
 
   record = altp_session_registry_lookup(registry, "s_old");
@@ -2082,7 +2091,7 @@ Test(altp, a_persisted_session_record_of_an_unknown_version_is_refused)
   _drive_record(record, 2, 2);
   altp_session_record_unref(record);
   altp_session_registry_unref(registry);
-  state = restart_persist_state(state);
+  state = _restart_receiver(state);
 
   registry = _bind_registry(state, 3600);
   record = altp_session_registry_lookup(registry, "s1");
@@ -2187,6 +2196,35 @@ Test(altp, two_receivers_of_one_registry_share_the_smaller_session_expiration)
 
   altp_session_registry_unref(again);
   altp_session_registry_unref(registry);
+  commit_and_destroy_persist_state(state);
+}
+
+Test(altp, a_bound_registry_outlives_the_receivers_that_bound_it_until_the_process_stops)
+{
+  PersistState *state = clean_and_create_persist_state_for_test("test_altp_bound_registry.persist");
+  AltpSessionRegistry *registry = _bind_registry(state, 3600);
+
+  AltpSessionRecord *record = altp_session_registry_lookup(registry, "s1");
+  _drive_record(record, 3, 2);
+  altp_session_record_unref(record);
+  altp_session_registry_unref(registry);
+
+  AltpSessionRegistry *again = _bind_registry(state, 3600);
+
+  cr_assert_eq(again, registry, "a reload with no live Connection has to find the very same Session Registry");
+  record = altp_session_registry_lookup(again, "s1");
+  _assert_counters(record, 3, 2);
+  altp_session_record_unref(record);
+  altp_session_registry_unref(again);
+
+  state = _restart_receiver(state);
+  registry = _bind_registry(state, 3600);
+  record = altp_session_registry_lookup(registry, "s1");
+  _assert_counters(record, 2, 2);
+
+  altp_session_record_unref(record);
+  altp_session_registry_unref(registry);
+  altp_session_registries_shutdown();
   commit_and_destroy_persist_state(state);
 }
 

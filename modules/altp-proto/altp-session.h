@@ -97,12 +97,18 @@ const gchar *altp_session_registry_get_name(AltpSessionRegistry *self);
  *
  * The first caller wins: a configuration reload binds again and finds the
  * registry bound already, so the Session Records of the Connections that
- * survived stay authoritative.  @session_expiration and @max_sessions (0 for
+ * survived stay authoritative.  The module table keeps a bound registry alive
+ * until altp_session_registries_shutdown(), so this holds with no Connection
+ * alive at the reload too.  @session_expiration and @max_sessions (0 for
  * unlimited) are per driver while the registry is per persistent name, so the
  * smaller of two differing values applies.
  */
 void altp_session_registry_bind_persist_state(AltpSessionRegistry *self, PersistState *state,
                                               gint session_expiration, gint max_sessions);
+
+/* drop the references of the module table: run at AH_SHUTDOWN, and by a test
+ * that simulates a restart */
+void altp_session_registries_shutdown(void);
 
 /* Look up the Session Record of @session_id: the one in memory, else the one
  * loaded from the persistent state, else a fresh one with zero counters (7.2,

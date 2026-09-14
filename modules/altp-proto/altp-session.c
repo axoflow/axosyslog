@@ -22,6 +22,7 @@
  */
 
 #include "altp-session.h"
+#include "apphook.h"
 #include "mainloop-call.h"
 #include "messages.h"
 #include "persistable-state-header.h"
@@ -109,6 +110,9 @@ struct _AltpSessionRegistry
    */
   PersistState *persist_state;
   gboolean bound;
+  /* the module table holds a reference from the first binding until
+   * altp_session_registries_shutdown() */
+  gboolean pinned;
   gint session_expiration;
   /* the largest number of Session Records we keep, G_MAXINT for unlimited */
   gint max_sessions;
@@ -189,6 +193,12 @@ G_LOCK_DEFINE_STATIC(altp_session_registries);
 
 static void _registry_expiry_timer_expired(gpointer cookie);
 
+static void
+_shutdown_hook(gint type, gpointer user_data)
+{
+  altp_session_registries_shutdown();
+}
+
 static AltpSessionRegistry *
 _registry_new(const gchar *name)
 {
@@ -233,7 +243,10 @@ altp_session_registry_ref_by_name(const gchar *name)
 
   G_LOCK(altp_session_registries);
   if (!altp_session_registries)
-    altp_session_registries = g_hash_table_new(g_str_hash, g_str_equal);
+    {
+      altp_session_registries = g_hash_table_new(g_str_hash, g_str_equal);
+      register_application_hook(AH_SHUTDOWN, _shutdown_hook, NULL, AHM_RUN_ONCE);
+    }
 
   self = g_hash_table_lookup(altp_session_registries, name);
   if (self)
@@ -284,6 +297,35 @@ altp_session_registry_unref(AltpSessionRegistry *self)
 
   if (last_ref)
     _registry_free(self);
+}
+
+void
+altp_session_registries_shutdown(void)
+{
+  GPtrArray *pinned = g_ptr_array_new();
+  GHashTableIter iter;
+  gpointer value;
+
+  G_LOCK(altp_session_registries);
+  if (altp_session_registries)
+    {
+      g_hash_table_iter_init(&iter, altp_session_registries);
+      while (g_hash_table_iter_next(&iter, NULL, &value))
+        {
+          AltpSessionRegistry *registry = (AltpSessionRegistry *) value;
+
+          if (registry->pinned)
+            {
+              registry->pinned = FALSE;
+              g_ptr_array_add(pinned, registry);
+            }
+        }
+    }
+  G_UNLOCK(altp_session_registries);
+
+  for (guint i = 0; i < pinned->len; i++)
+    altp_session_registry_unref((AltpSessionRegistry *) g_ptr_array_index(pinned, i));
+  g_ptr_array_free(pinned, TRUE);
 }
 
 const gchar *
@@ -894,6 +936,8 @@ altp_session_registry_bind_persist_state(AltpSessionRegistry *self, PersistState
     }
 
   self->bound = TRUE;
+  self->pinned = TRUE;
+  altp_session_registry_ref(self);
   self->session_expiration = session_expiration;
   self->max_sessions = _normalize_max_sessions(max_sessions);
   self->persist_state = state;
