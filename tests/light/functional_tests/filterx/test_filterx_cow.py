@@ -672,3 +672,72 @@ def test_tuple_changing_mutable_elements_cause_clone(config, syslog_ng):
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
     assert file_true.read_log() == """(1,2,3,[4,5,6,{"foo":"foovalue","bar":"barvalue"}])--{"bar":"barvalue"}"""
+
+
+def test_parsed_cef_extensions_child_writes_land_in_the_dict(config, syslog_ng):
+    (file_true, file_false, _) = create_config(
+        config, [
+            """
+                c = parse_cef('CEF:0|Vendor|Product|1.0|100|Name|5|src=1.1.1.1 dst=2.2.2.2', separate_extensions=true);
+                c.extensions.src = '10.0.0.1';
+                $MSG = string(c.extensions);
+            """,
+        ],
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == """{"src":"10.0.0.1","dst":"2.2.2.2"}"""
+
+
+def test_parsed_xml_nested_element_writes_land_in_the_dict(config, syslog_ng):
+    (file_true, file_false, _) = create_config(
+        config, [
+            """
+                x = parse_xml('<r><a><b>1</b></a></r>');
+                x.r.a.b = 'changed';
+                $MSG = string(x);
+            """,
+        ],
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == """{"r":{"a":{"b":"changed"}}}"""
+
+
+def test_parsed_xml_repeated_element_writes_land_in_the_list(config, syslog_ng):
+    (file_true, file_false, _) = create_config(
+        config, [
+            """
+                x = parse_xml('<r><a><b>1</b></a><a><b>2</b></a></r>');
+                x.r.a[0].b = 'changed';
+                $MSG = string(x);
+            """,
+        ],
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == """{"r":{"a":[{"b":"changed"},{"b":"2"}]}}"""
+
+
+def test_dict_to_pairs_value_child_writes_land_in_the_pair(config, syslog_ng):
+    (file_true, file_false, _) = create_config(
+        config, [
+            """
+                d = {'key_1': {'nested': 'orig'}};
+                p = dict_to_pairs(d, 'key', 'value');
+                p[0].value.nested = 'changed';
+                $MSG = string(p);
+            """,
+        ],
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == """[{"key":"key_1","value":{"nested":"changed"}}]"""
