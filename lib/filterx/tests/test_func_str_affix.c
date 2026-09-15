@@ -94,6 +94,20 @@ Test(filterx_func_affix, includes_with_non_literal_needle_in_literal_list)
                                                    _non_literal_needle(",deny,"), NULL), "true");
 }
 
+Test(filterx_func_affix, literal_haystack_and_needle_is_folded)
+{
+  FilterXExpr *fn = _create_optimized_affix_expr(filterx_function_includes_new, ",abort,deny,",
+                                                 filterx_literal_new(filterx_string_new(",deny,", -1)));
+  cr_assert(filterx_expr_is_literal(fn));
+
+  FilterXObject *res = init_and_eval_expr(fn);
+  cr_assert_not_null(res);
+  assert_object_repr_equals(res, "true");
+
+  filterx_object_unref(res);
+  filterx_expr_unref(fn);
+}
+
 static void
 setup(void)
 {

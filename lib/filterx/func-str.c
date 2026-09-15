@@ -380,6 +380,25 @@ _expr_affix_needle_is_literal(FilterXExprAffix *self)
   return TRUE;
 }
 
+static FilterXObject *
+_expr_affix_fold(FilterXExprAffix *self)
+{
+  ScratchBuffersMarker marker;
+  scratch_buffers_mark(&marker);
+
+  FilterXObject *result = NULL;
+  FilterXObject *haystack_obj = filterx_literal_get_value(self->haystack);
+  const gchar *haystack;
+  gsize haystack_len;
+
+  if (_obj_format(haystack_obj, &haystack, &haystack_len, self->ignore_case))
+    result = _eval_against_literal_needles(self, haystack, haystack_len);
+
+  filterx_object_unref(haystack_obj);
+  scratch_buffers_reclaim_marked(marker);
+  return result;
+}
+
 static FilterXExpr *
 _expr_affix_optimize(FilterXExpr *s)
 {
@@ -391,7 +410,7 @@ _expr_affix_optimize(FilterXExpr *s)
   if (!filterx_expr_is_literal(self->haystack) || !_expr_affix_needle_is_literal(self))
     goto exit;
 
-  FilterXObject *result = _expr_affix_eval(s);
+  FilterXObject *result = _expr_affix_fold(self);
   if (result)
     return filterx_literal_new(result);
 
