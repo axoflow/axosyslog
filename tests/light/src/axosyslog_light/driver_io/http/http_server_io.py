@@ -56,7 +56,7 @@ class HttpServerIO():
             def do_POST(self):
                 content_length = int(self.headers.get("Content-Length", 0))
                 body = self.rfile.read(content_length)
-                q.put(body.decode("utf-8"))
+                q.put((dict(self.headers), body.decode("utf-8")))
                 status_code, response_body = next_response()
                 response_bytes = response_body.encode("utf-8") if response_body else b""
                 self.send_response(status_code)
@@ -87,19 +87,21 @@ class HttpServerIO():
             self._server = None
             self._thread = None
 
-    def read_number_of_messages(self, counter: int, timeout: float = DEFAULT_TIMEOUT):
-        messages = []
+    def read_number_of_requests(self, counter: int, timeout: float = DEFAULT_TIMEOUT):
+        requests = []
         deadline = time.monotonic() + timeout
-        while len(messages) < counter:
+        while len(requests) < counter:
             remaining = deadline - time.monotonic()
             if remaining <= 0:
-                raise Exception("Timeout waiting for {} messages, received {}".format(counter, len(messages)))
+                raise Exception("Timeout waiting for {} requests, received {}".format(counter, len(requests)))
             try:
-                msg = self._queue.get(timeout=min(remaining, 0.1))
-                messages.append(msg)
+                requests.append(self._queue.get(timeout=min(remaining, 0.1)))
             except queue.Empty:
                 pass
-        return messages
+        return requests
+
+    def read_number_of_messages(self, counter: int, timeout: float = DEFAULT_TIMEOUT):
+        return [body for _, body in self.read_number_of_requests(counter, timeout)]
 
     def read_until_messages(self, expected_messages, timeout: float = DEFAULT_TIMEOUT):
         received = []
@@ -110,7 +112,7 @@ class HttpServerIO():
             if remaining <= 0:
                 raise Exception("Timeout waiting for messages. Still missing: {}".format(to_find))
             try:
-                msg = self._queue.get(timeout=min(remaining, 0.1))
+                _, msg = self._queue.get(timeout=min(remaining, 0.1))
                 received.append(msg)
                 for expected in list(to_find):
                     if expected in msg:
