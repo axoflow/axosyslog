@@ -152,6 +152,24 @@ _assert_parse_event_data_fail(const gchar *event_data_xml)
   _assert_parse_fail(_create_input_from_event_data(event_data_xml));
 }
 
+static void
+_assert_parse(const gchar *xml, const gchar *expected_json)
+{
+  FilterXExpr *func = _create_expr(xml);
+
+  FilterXObject *result = init_and_eval_expr(func);
+  cr_assert(result);
+  cr_assert(filterx_eval_get_error_count() == 0);
+
+  GString *formatted_result = g_string_new(NULL);
+  filterx_object_repr(result, formatted_result);
+  cr_assert_str_eq(formatted_result->str, expected_json);
+
+  g_string_free(formatted_result, TRUE);
+  filterx_object_unref(result);
+  filterx_expr_unref(func);
+}
+
 Test(filterx_parse_windows_eventlog_xml, valid_inputs)
 {
   _assert_parse_event_data("<Data Name='param1'>foo</Data>\n",
@@ -175,6 +193,21 @@ Test(filterx_parse_windows_eventlog_xml, invalid_inputs)
   _assert_parse_event_data_fail("<Data Name='param1' almafa='kortefa'>foo</Data>\n");
   _assert_parse_fail("<Event xmlns='http://unexpected.schema.url'></Event>");
   _assert_parse_fail("<NotEvent xmlns='http://schemas.microsoft.com/win/2004/08/events/event'></NotEvent>");
+}
+
+Test(filterx_parse_windows_eventlog_xml, eventid_as_first_child_of_system)
+{
+  _assert_parse("<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'>"
+                "<System><EventID>999</EventID></System>"
+                "</Event>",
+                "{\"Event\":{\"@xmlns\":\"http://schemas.microsoft.com/win/2004/08/events/event\","
+                "\"System\":{\"EventID\":\"999\"}}}");
+
+  _assert_parse("<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'>"
+                "<System><EventID Qualifiers='0'>999</EventID><Level>2</Level></System>"
+                "</Event>",
+                "{\"Event\":{\"@xmlns\":\"http://schemas.microsoft.com/win/2004/08/events/event\","
+                "\"System\":{\"EventID\":\"999\",\"EventIDQualifiers\":\"0\",\"Level\":\"2\"}}}");
 }
 
 static void
