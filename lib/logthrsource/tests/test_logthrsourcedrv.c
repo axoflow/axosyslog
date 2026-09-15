@@ -232,6 +232,15 @@ _do_not_ack_messages(LogPipe *s, LogMessage *msg, const LogPathOptions *path_opt
   driver->pending_msgs = g_list_append(driver->pending_msgs, msg);
 }
 
+static void
+_ack_pending_msgs(TestThreadedSourceDriver *self)
+{
+  /* detach first: the acks wake the worker, which appends to the field from its own thread */
+  GList *pending_msgs = self->pending_msgs;
+  self->pending_msgs = NULL;
+  g_list_free_full(pending_msgs, _drop_msg);
+}
+
 TestSuite(logthrsourcedrv, .init = setup, .fini = teardown, .timeout = 10);
 
 Test(logthrsourcedrv, test_threaded_source_blocking_post)
@@ -265,6 +274,37 @@ Test(logthrsourcedrv, test_threaded_source_suspend)
   cr_assert(stats_counter_get(recvd_messages) == 5);
   cr_assert(s->suspended);
   cr_assert(s->exit_requested);
+
+  destroy_test_threaded_source(s);
+}
+
+Test(logthrsourcedrv, test_threaded_source_blocking_post_after_worker_restart)
+{
+  TestThreadedSourceDriver *s = create_threaded_source_blocking();
+
+  s->num_of_messages_to_generate = 2;
+  s->super.worker_options.super.init_window_size = 2;
+  s->super.super.super.super.queue = _do_not_ack_messages;
+
+  start_test_threaded_source(s);
+  request_exit_and_wait_for_stop(s);
+
+  StatsCounterItem *recvd_messages = _get_source(s)->metrics.recvd_messages;
+  cr_assert(stats_counter_get(recvd_messages) == 2);
+
+  /* the worker restarts with its window exhausted, like a
+   * reload_keep_alive source after a reload */
+  StatsCounterItem *window_full_total = _get_source(s)->metrics.window_full_total;
+  gsize window_full_before_restart = stats_counter_get(window_full_total);
+  s->num_of_messages_to_generate = 1;
+  cr_assert(log_pipe_post_config_init(&s->super.super.super.super));
+  /* the acks must come after the restarted worker checked its window */
+  while (stats_counter_get(window_full_total) == window_full_before_restart)
+    g_usleep(1000);
+  _ack_pending_msgs(s);
+  request_exit_and_wait_for_stop(s);
+
+  cr_assert(stats_counter_get(recvd_messages) == 3);
 
   destroy_test_threaded_source(s);
 }

@@ -167,6 +167,14 @@ _worker_thread_run(MainLoopThreadedWorker *s)
             evt_tag_str("driver", self->control->super.super.id),
             evt_tag_int("worker_index", self->worker_index));
 
+  /* a reload's exit request wakes a suspended worker before its window has
+   * room again, and a worker kept alive across the reload restarts with
+   * that window */
+  wakeup_cond_lock(&self->wakeup_cond);
+  if (!log_threaded_source_worker_free_to_send(self))
+    _worker_suspend(self);
+  wakeup_cond_unlock(&self->wakeup_cond);
+
   self->run(self);
 
   msg_debug("Worker thread finished",
