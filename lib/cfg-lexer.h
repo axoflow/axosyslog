@@ -225,6 +225,7 @@ const gchar *cfg_lexer_format_location(CfgLexer *self, const CFG_LTYPE *yylloc, 
 void cfg_lexer_undo_set_file_location(CfgLexer *self, CFG_LTYPE *yylloc);
 void cfg_lexer_set_file_location(CfgLexer *self, const gchar *filename, gint line, gint column);
 EVTTAG *cfg_lexer_format_location_tag(CfgLexer *self, const CFG_LTYPE *yylloc);
+const CFG_LTYPE *cfg_lexer_get_enclosing_file_location(CfgLexer *self, const CFG_LTYPE *yylloc);
 
 /* context tracking */
 void cfg_lexer_push_context(CfgLexer *self, gint context, CfgLexerKeyword *keywords, const gchar *desc);

@@ -247,4 +247,5 @@ EXTRA_DIST += \
 	lib/tests/testdata-lexer/include-test/bar.conf			\
 	lib/tests/testdata-lexer/include-test/baz.conf 			\
 	lib/tests/testdata-lexer/include-test/foo.conf 			\
-	lib/tests/testdata-lexer/include-test/invalid~include~file.conf
+	lib/tests/testdata-lexer/include-test/invalid~include~file.conf	\
+	lib/tests/testdata-lexer/warning-generator.conf

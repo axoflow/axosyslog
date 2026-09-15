@@ -350,6 +350,23 @@ foo\n");
                "@version parsing mismatch, value %04x expected %04x", configuration->user_version, VERSION_VALUE_CURRENT);
 }
 
+Test(lexer, at_warning_emits_the_message_on_every_occurrence)
+{
+  parser->lexer->ignore_pragma = FALSE;
+
+  start_grabbing_messages();
+  _input("@warning \"repeated warning\"\n\
+foo\n\
+@warning \"repeated warning\"\n\
+bar\n");
+  assert_parser_identifier("foo");
+  assert_grabbed_log_contains("repeated warning");
+
+  reset_grabbed_messages();
+  assert_parser_identifier("bar");
+  assert_grabbed_log_contains("repeated warning");
+}
+
 Test(lexer, test_lexer_others)
 {
   _input("#This is a full line comment\nfoobar");
@@ -513,6 +530,60 @@ Test(lexer, generator_plugins_are_expanded)
   cfg_lexer_push_context(parser->lexer, main_parser.context, main_parser.keywords, main_parser.name);
   _input("fake-generator();\n");
   assert_parser_identifier("fake_generator_content");
+  cfg_lexer_pop_context(lexer);
+}
+
+static gboolean
+_warning_generator_generate(CfgBlockGenerator *self, GlobalConfig *cfg, gpointer args, GString *result,
+                            const gchar *reference)
+{
+  g_string_append(result, "@warning \"generated warning\"\nwarning_generator_content");
+  return TRUE;
+}
+
+static CfgBlockGenerator *
+warning_generator_new(void)
+{
+  CfgBlockGenerator *self = g_new0(CfgBlockGenerator, 1);
+  cfg_block_generator_init_instance(self, LL_CONTEXT_ROOT, "warning-generator");
+  self->generate = _warning_generator_generate;
+  return self;
+}
+
+Test(lexer, at_warning_in_generated_blocks_is_emitted_on_every_expansion)
+{
+  CfgLexer *lexer = parser->lexer;
+
+  cfg_lexer_register_generator_plugin(&configuration->plugin_context, warning_generator_new());
+  parser->lexer->ignore_pragma = FALSE;
+  cfg_lexer_push_context(lexer, main_parser.context, main_parser.keywords, main_parser.name);
+
+  start_grabbing_messages();
+  _input("warning-generator(); warning-generator();\n");
+  assert_parser_identifier("warning_generator_content");
+  assert_grabbed_log_contains("generated warning");
+
+  reset_grabbed_messages();
+  assert_parser_char(';');
+  assert_parser_identifier("warning_generator_content");
+  assert_grabbed_log_contains("generated warning");
+
+  cfg_lexer_pop_context(lexer);
+}
+
+Test(lexer, at_warning_in_generated_blocks_reports_the_location_of_the_block_reference)
+{
+  CfgLexer *lexer = parser->lexer;
+
+  cfg_lexer_register_generator_plugin(&configuration->plugin_context, warning_generator_new());
+  parser->lexer->ignore_pragma = FALSE;
+  cfg_lexer_push_context(lexer, main_parser.context, main_parser.keywords, main_parser.name);
+
+  start_grabbing_messages();
+  _input("@include \"" TESTDATA_DIR "/warning-generator.conf\"\n");
+  assert_parser_identifier("warning_generator_content");
+  assert_grabbed_log_contains("location='" TESTDATA_DIR "/warning-generator.conf:2:3'");
+
   cfg_lexer_pop_context(lexer);
 }
 
