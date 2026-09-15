@@ -362,6 +362,24 @@ exit:
 
 }
 
+/* A cached needle without a string value is a non-literal element of a
+ * literal list, its expression is only evaluatable at eval time. */
+static gboolean
+_expr_affix_needle_is_literal(FilterXExprAffix *self)
+{
+  if (self->needle.cached_strings->len == 0)
+    return FALSE;
+
+  for (guint i = 0; i < self->needle.cached_strings->len; i++)
+    {
+      FilterXStringWithCache *needle = g_ptr_array_index(self->needle.cached_strings, i);
+      if (!needle->str_value)
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
 static FilterXExpr *
 _expr_affix_optimize(FilterXExpr *s)
 {
@@ -370,7 +388,7 @@ _expr_affix_optimize(FilterXExpr *s)
   if (!_expr_affix_cache_needle(self))
     goto exit;
 
-  if (!filterx_expr_is_literal(self->haystack))
+  if (!filterx_expr_is_literal(self->haystack) || !_expr_affix_needle_is_literal(self))
     goto exit;
 
   FilterXObject *result = _expr_affix_eval(s);
