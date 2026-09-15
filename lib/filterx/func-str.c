@@ -649,39 +649,35 @@ _strcasecmp_optimize(FilterXExpr *s)
 {
   FilterXStrcasecmp *self = (FilterXStrcasecmp *) s;
 
-  if (filterx_expr_is_literal(self->a.expr) && filterx_expr_is_literal(self->b.expr))
-    {
-      FilterXObject *result = _strcasecmp_eval(s);
-      if (!result)
-        goto exit;
-
-      return filterx_literal_new(result);
-    }
-
   if (filterx_expr_is_literal(self->a.expr))
     {
       GString *literal = _extract_literal(self->a.expr);
-      if (!literal)
-        goto exit;
-
-      filterx_expr_unref(self->a.expr);
-      self->a.literal = literal;
-      self->a_literal = TRUE;
-      goto exit;
+      if (literal)
+        {
+          filterx_expr_unref(self->a.expr);
+          self->a.literal = literal;
+          self->a_literal = TRUE;
+        }
     }
 
   if (filterx_expr_is_literal(self->b.expr))
     {
       GString *literal = _extract_literal(self->b.expr);
-      if (!literal)
-        goto exit;
-
-      filterx_expr_unref(self->b.expr);
-      self->b.literal = literal;
-      self->b_literal = TRUE;
+      if (literal)
+        {
+          filterx_expr_unref(self->b.expr);
+          self->b.literal = literal;
+          self->b_literal = TRUE;
+        }
     }
 
-exit:
+  if (self->a_literal && self->b_literal)
+    {
+      FilterXObject *result = _strcasecmp_eval(s);
+      if (result)
+        return filterx_literal_new(result);
+    }
+
   return filterx_function_optimize_method(&self->super);
 }
 
