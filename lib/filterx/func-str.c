@@ -362,6 +362,43 @@ exit:
 
 }
 
+/* A cached needle without a string value is a non-literal element of a
+ * literal list, its expression is only evaluatable at eval time. */
+static gboolean
+_expr_affix_needle_is_literal(FilterXExprAffix *self)
+{
+  if (self->needle.cached_strings->len == 0)
+    return FALSE;
+
+  for (guint i = 0; i < self->needle.cached_strings->len; i++)
+    {
+      FilterXStringWithCache *needle = g_ptr_array_index(self->needle.cached_strings, i);
+      if (!needle->str_value)
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
+static FilterXObject *
+_expr_affix_fold(FilterXExprAffix *self)
+{
+  ScratchBuffersMarker marker;
+  scratch_buffers_mark(&marker);
+
+  FilterXObject *result = NULL;
+  FilterXObject *haystack_obj = filterx_literal_get_value(self->haystack);
+  const gchar *haystack;
+  gsize haystack_len;
+
+  if (_obj_format(haystack_obj, &haystack, &haystack_len, self->ignore_case))
+    result = _eval_against_literal_needles(self, haystack, haystack_len);
+
+  filterx_object_unref(haystack_obj);
+  scratch_buffers_reclaim_marked(marker);
+  return result;
+}
+
 static FilterXExpr *
 _expr_affix_optimize(FilterXExpr *s)
 {
@@ -370,10 +407,10 @@ _expr_affix_optimize(FilterXExpr *s)
   if (!_expr_affix_cache_needle(self))
     goto exit;
 
-  if (!filterx_expr_is_literal(self->haystack))
+  if (!filterx_expr_is_literal(self->haystack) || !_expr_affix_needle_is_literal(self))
     goto exit;
 
-  FilterXObject *result = _expr_affix_eval(s);
+  FilterXObject *result = _expr_affix_fold(self);
   if (result)
     return filterx_literal_new(result);
 
@@ -612,39 +649,35 @@ _strcasecmp_optimize(FilterXExpr *s)
 {
   FilterXStrcasecmp *self = (FilterXStrcasecmp *) s;
 
-  if (filterx_expr_is_literal(self->a.expr) && filterx_expr_is_literal(self->b.expr))
-    {
-      FilterXObject *result = _strcasecmp_eval(s);
-      if (!result)
-        goto exit;
-
-      return filterx_literal_new(result);
-    }
-
   if (filterx_expr_is_literal(self->a.expr))
     {
       GString *literal = _extract_literal(self->a.expr);
-      if (!literal)
-        goto exit;
-
-      filterx_expr_unref(self->a.expr);
-      self->a.literal = literal;
-      self->a_literal = TRUE;
-      goto exit;
+      if (literal)
+        {
+          filterx_expr_unref(self->a.expr);
+          self->a.literal = literal;
+          self->a_literal = TRUE;
+        }
     }
 
   if (filterx_expr_is_literal(self->b.expr))
     {
       GString *literal = _extract_literal(self->b.expr);
-      if (!literal)
-        goto exit;
-
-      filterx_expr_unref(self->b.expr);
-      self->b.literal = literal;
-      self->b_literal = TRUE;
+      if (literal)
+        {
+          filterx_expr_unref(self->b.expr);
+          self->b.literal = literal;
+          self->b_literal = TRUE;
+        }
     }
 
-exit:
+  if (self->a_literal && self->b_literal)
+    {
+      FilterXObject *result = _strcasecmp_eval(s);
+      if (result)
+        return filterx_literal_new(result);
+    }
+
   return filterx_function_optimize_method(&self->super);
 }
 
