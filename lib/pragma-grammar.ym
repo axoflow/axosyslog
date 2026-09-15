@@ -49,6 +49,7 @@
 %token KW_REQUIRES
 %token KW_LINE
 %token KW_CONFIG_ID
+%token KW_WARNING
 
 %code {
 
@@ -105,6 +106,7 @@ stmt_without_eol
         | define_stmt
         | module_stmt
         | config_id_stmt
+        | warning_stmt
         ;
 
 	/* LL_EOL as a token needs to be consumed by the rules below, as they can
@@ -168,6 +170,16 @@ config_id_stmt
       cfg_set_user_config_id(configuration, $3);
       free($3);
     }
+
+warning_stmt
+	: KW_WARNING string
+          {
+            const CFG_LTYPE *lloc = cfg_lexer_get_enclosing_file_location(lexer, &@1);
+
+            msg_warning($2, cfg_lexer_format_location_tag(lexer, lloc));
+            free($2);
+          }
+	;
 
 include_stmt
         : KW_INCLUDE string LL_EOL

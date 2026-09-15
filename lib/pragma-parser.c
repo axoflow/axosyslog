@@ -73,6 +73,7 @@ static CfgLexerKeyword pragma_keywords[] =
   { "requires",           KW_REQUIRES, },
   { "line",               KW_LINE },
   { "config_id",          KW_CONFIG_ID },
+  { "warning",            KW_WARNING },
   { CFG_KEYWORD_STOP },
 };
 

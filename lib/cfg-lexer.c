@@ -167,6 +167,21 @@ cfg_lexer_format_location_tag(CfgLexer *self, const CFG_LTYPE *yylloc)
   return evt_tag_str("location", cfg_lexer_format_location(self, yylloc, buf, sizeof(buf)));
 }
 
+const CFG_LTYPE *
+cfg_lexer_get_enclosing_file_location(CfgLexer *self, const CFG_LTYPE *yylloc)
+{
+  for (gint depth = self->include_depth; depth >= 0; depth--)
+    {
+      CfgIncludeLevel *level = &self->include_stack[depth];
+
+      if (level->include_type != CFGI_FILE)
+        continue;
+
+      return depth == self->include_depth ? yylloc : &level->lloc;
+    }
+  return yylloc;
+}
+
 void
 cfg_lexer_undo_set_file_location(CfgLexer *self, CFG_LTYPE *yylloc)
 {
