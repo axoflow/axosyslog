@@ -258,14 +258,18 @@ class AltpSender:
                 del self.__buffer[:lf + 1]
                 return line.decode("utf-8", errors="replace")
             if len(self.__buffer) >= ALTP_MAX_LINE_LENGTH:
-                raise AltpError("ALTP reply line exceeds {} octets: {!r}".format(
-                    ALTP_MAX_LINE_LENGTH, bytes(self.__buffer),
-                ))
+                raise AltpError(
+                    "ALTP reply line exceeds {} octets: {!r}".format(
+                        ALTP_MAX_LINE_LENGTH, bytes(self.__buffer),
+                    ),
+                )
             chunk = sock.recv(4096)
             if not chunk:
-                raise AltpError("the ALTP Connection was closed with an incomplete reply: {!r}".format(
-                    bytes(self.__buffer),
-                ))
+                raise AltpError(
+                    "the ALTP Connection was closed with an incomplete reply: {!r}".format(
+                        bytes(self.__buffer),
+                    ),
+                )
             if self.__inflate is not None:
                 # a chunk may hold no complete deflate block yet, and then yields nothing
                 chunk = self.__inflate.decompress(chunk)

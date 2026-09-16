@@ -367,8 +367,10 @@ def test_altp_destination_requests_zlib_and_deflates_its_frames(config, syslog_n
     """The `ZLIB` sequence of Appendix A.2, seen from the Receiver."""
     receiver = AltpFakeReceiver(port_allocator())
     try:
-        source = _build_config(config, port_allocator, receiver.port,
-                               transport="altp(compression(yes))", flush_lines=10)
+        source = _build_config(
+            config, port_allocator, receiver.port,
+            transport="altp(compression(yes))", flush_lines=10,
+        )
         syslog_ng.start(config)
 
         receiver.open_session(compressed=True)
@@ -387,8 +389,10 @@ def test_altp_destination_stays_in_the_clear_when_zlib_is_not_advertised(config,
     so compression() alone does not put ZLIB on the wire (spec 5.3)."""
     receiver = AltpFakeReceiver(port_allocator())
     try:
-        source = _build_config(config, port_allocator, receiver.port,
-                               transport="altp(compression(yes))", flush_lines=10)
+        source = _build_config(
+            config, port_allocator, receiver.port,
+            transport="altp(compression(yes))", flush_lines=10,
+        )
         syslog_ng.start(config)
 
         # the Capability list is empty, so the Frames arrive uncompressed
