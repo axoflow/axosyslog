@@ -133,6 +133,18 @@ class AltpFakeReceiver:
                 return frames
             frames.append(frame)
 
+    def read_frames(self, count: int) -> typing.List[bytes]:
+        """@count Frames over as many Batches as the Sender splits them into, each
+        Batch acknowledged in full as it arrives.  A Batch also closes whenever the
+        LogWriter runs out of messages, so the split depends on arrival timing."""
+        frames = []
+        while len(frames) < count:
+            batch = self.read_batch()
+            assert batch, "the Sender never closes an empty Batch (ADR-0010)"
+            frames += batch
+            self.acknowledge_and_expect_data(len(batch))
+        return frames
+
     def expect_banner_and_ehlo(self) -> None:
         """A Sender writes nothing before the banner and answers it with EHLO (spec 5.1, 5.2)."""
         self.send(b"220 ALTP 1.0\n")
@@ -362,12 +374,10 @@ def test_altp_destination_requests_zlib_and_deflates_its_frames(config, syslog_n
         receiver.open_session(compressed=True)
 
         source.write_logs(messages(2))
-        assert receiver.read_batch() == frames_of(messages(2))
-
-        receiver.acknowledge_and_expect_data(2)
+        assert receiver.read_frames(2) == frames_of(messages(2))
 
         source.write_logs(messages(1, first=2))
-        assert receiver.read_batch() == frames_of(messages(1, first=2))
+        assert receiver.read_frames(1) == frames_of(messages(1, first=2))
     finally:
         receiver.stop()
 
@@ -385,7 +395,7 @@ def test_altp_destination_stays_in_the_clear_when_zlib_is_not_advertised(config,
         receiver.open_session()
 
         source.write_logs(messages(2))
-        assert receiver.read_batch() == frames_of(messages(2))
+        assert receiver.read_frames(2) == frames_of(messages(2))
     finally:
         receiver.stop()
 
@@ -400,12 +410,10 @@ def test_altp_destination_writes_the_commands_and_frames_of_the_specification(co
         receiver.open_session()
 
         source.write_logs(messages(2))
-        assert receiver.read_batch() == frames_of(messages(2))
-
-        receiver.acknowledge_and_expect_data(2)
+        assert receiver.read_frames(2) == frames_of(messages(2))
 
         source.write_logs(messages(1, first=2))
-        assert receiver.read_batch() == frames_of(messages(1, first=2))
+        assert receiver.read_frames(1) == frames_of(messages(1, first=2))
     finally:
         receiver.stop()
 
@@ -420,20 +428,22 @@ def test_altp_destination_releases_the_frames_the_next_sync_reports(config, sysl
         session_id = receiver.open_session()
 
         source.write_logs(messages(2))
-        assert receiver.read_batch() == frames_of(messages(2))
+        first = receiver.read_batch()
+        assert first and first == frames_of(messages(len(first)))
 
-        # lost before the acknowledgement: the Sender retains both Frames
+        # lost before the acknowledgement: the Sender retains every Frame it sent
         receiver.close()
 
         receiver.accept()
         receiver.expect_banner_and_ehlo()
         assert receiver.expect_sync() == session_id, "the Session ID MUST NOT change across reconnections (7.1)"
 
-        # both Frames became durable after all, so the Sender resends nothing
-        receiver.acknowledge_and_expect_data(2)
+        # the Frames became durable after all, so the Sender resends none of them
+        receiver.acknowledge_and_expect_data(len(first))
 
         source.write_logs(messages(1, first=2))
-        assert receiver.read_batch() == frames_of(messages(1, first=2))
+        remaining = 3 - len(first)
+        assert receiver.read_frames(remaining) == frames_of(messages(remaining, first=len(first)))
     finally:
         receiver.stop()
 
@@ -448,16 +458,17 @@ def test_altp_destination_resends_the_frames_beyond_a_partial_acknowledgement(co
         receiver.open_session()
 
         source.write_logs(messages(3))
-        assert receiver.read_batch() == frames_of(messages(3))
+        first = receiver.read_batch()
+        assert first and first == frames_of(messages(len(first)))
 
-        # only the first Frame is durable: the other two are resent in their
-        # original order, in the Batch the fresh DATA opened
+        # only the first Frame is durable: the Frames beyond it are resent in
+        # their original order, in the Batch the fresh DATA opened, ahead of
+        # the ones the Sender had not written yet
         receiver.acknowledge_and_expect_data(1)
-        assert receiver.read_batch() == frames_of(messages(2, first=1))
+        assert receiver.read_frames(2) == frames_of(messages(2, first=1))
 
-        receiver.acknowledge_and_expect_data(2)
         source.write_logs(messages(1, first=3))
-        assert receiver.read_batch() == frames_of(messages(1, first=3))
+        assert receiver.read_frames(1) == frames_of(messages(1, first=3))
     finally:
         receiver.stop()
 
@@ -473,10 +484,16 @@ def test_altp_destination_bounds_its_batch_by_the_frame_count(config, syslog_ng,
 
         source.write_logs(messages(4))
 
-        assert receiver.read_batch() == frames_of(messages(2))
-        receiver.acknowledge_and_expect_data(2)
-        assert receiver.read_batch() == frames_of(messages(2, first=2))
-        receiver.acknowledge_and_expect_data(2)
+        # a Batch also closes when the writer runs out of messages, so the split
+        # depends on arrival timing; the bound does not
+        frames = []
+        while len(frames) < 4:
+            batch = receiver.read_batch()
+            assert 1 <= len(batch) <= 2, "flush-lines() bounds the Batch (8.4)"
+            frames += batch
+            receiver.acknowledge_and_expect_data(len(batch))
+
+        assert frames == frames_of(messages(4))
     finally:
         receiver.stop()
 
