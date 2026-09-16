@@ -155,6 +155,9 @@ _parse_altp_transport_into(LogProtoServerOptionsStorage *storage, const gchar *c
 static LogProtoServerFactory *
 _parse_altp_transport(const gchar *config_snippet)
 {
+  if (options_initialized)
+    log_proto_server_options_destroy(&options_storage.super);
+
   LogProtoServerFactory *factory = _parse_altp_transport_into(&options_storage, config_snippet);
 
   options_initialized = TRUE;
@@ -1246,7 +1249,7 @@ Test(altp, a_second_sync_with_another_session_id_is_answered_511_and_closes)
 {
   _assert_conversation("altp()", "SYNC s1\nSYNC s2\n",
                        ALTP_BANNER "250 Received 0\n"
-                       "511 Another session is already bound to this connection\n", FALSE);
+              "511 Another session is already bound to this connection\n", FALSE);
 }
 
 Test(altp, sync_over_plaintext_is_answered_505_when_the_receiver_requires_tls)
