@@ -549,7 +549,8 @@ start
 	;
 
 stmts
-        : stmt semicolons stmts
+        : stmt ';' stmts
+        | ';' stmts
 	|
 	;
 
@@ -658,8 +659,9 @@ source_content
         ;
 
 source_items
-        : source_item semicolons source_items	{ $$ = log_expr_node_append_tail(log_expr_node_new_pipe($1, &@1), $3); }
-        | log_fork semicolons source_items      { $$ = log_expr_node_append_tail($1,  $3); }
+        : source_item ';' source_items		{ $$ = log_expr_node_append_tail(log_expr_node_new_pipe($1, &@1), $3); }
+        | log_fork ';' source_items             { $$ = log_expr_node_append_tail($1,  $3); }
+        | ';' source_items                      { $$ = $2; }
 	|					{ $$ = NULL; }
 	;
 
@@ -761,8 +763,9 @@ dest_content
 
 dest_items
         /* all destination drivers are added as an independent branch in a junction*/
-        : dest_item semicolons dest_items	{ $$ = log_expr_node_append_tail(log_expr_node_new_pipe($1, &@1), $3); }
-        | log_fork semicolons dest_items        { $$ = log_expr_node_append_tail($1,  $3); }
+        : dest_item ';' dest_items		{ $$ = log_expr_node_append_tail(log_expr_node_new_pipe($1, &@1), $3); }
+        | log_fork ';' dest_items               { $$ = log_expr_node_append_tail($1,  $3); }
+        | ';' dest_items                        { $$ = $2; }
 	|					{ $$ = NULL; }
 	;
 
@@ -790,7 +793,8 @@ dest_plugin
         ;
 
 log_items
-	: log_item semicolons log_items		{ log_expr_node_append_tail($1, $3); $$ = $1; }
+	: log_item ';' log_items		{ log_expr_node_append_tail($1, $3); $$ = $1; }
+	| ';' log_items				{ $$ = $2; }
 	|					{ $$ = NULL; }
 	;
 
