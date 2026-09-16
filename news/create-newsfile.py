@@ -50,9 +50,12 @@ blocks = [
 entry_format = "*-*.md"
 
 
-def print_usage_if_needed():
-    ArgumentParser(usage="\rCreates NEWS.md file from the entries in the news/ folder.\n"
-                         "It also deletes the entry files.").parse_args()
+def parse_args():
+    parser = ArgumentParser(usage="\rCreates NEWS.md file from the entries in the news/ folder.\n"
+                                  "It also deletes the entry files.")
+    parser.add_argument('--update', action='store_true',
+                        help='add the entries to the existing NEWS.md instead of recreating it')
+    return parser.parse_args()
 
 
 def _exec(command):
@@ -62,20 +65,23 @@ def _exec(command):
     return stdout
 
 
+def create_entry(f):
+    match_pr_id = re.search(r'(\d+)(-\d+)?.md$', f.name)
+    if not match_pr_id:
+        sys.exit('Invalid filename: {}'.format(f.name))
+
+    pr_id = match_pr_id.group(1)
+
+    entry = '  * {}\n([#{}](https://github.com/axoflow/axosyslog/pull/{}))'.format(f.read_text().rstrip(), pr_id, pr_id)
+    entry = entry.replace('\n', '\n    ')
+    entry = entry.replace('\n    \n', '\n\n')
+    return entry
+
+
 def create_block(block_name, files):
     block = '## {}\n\n'.format(block_name)
     for f in files:
-        entry = ''
-        match_pr_id = re.search(r'(\d+)(-\d+)?.md$', f.name)
-        if not match_pr_id:
-            sys.exit('Invalid filename: {}'.format(f.name))
-
-        pr_id = match_pr_id.group(1)
-
-        entry += '  * {}\n([#{}](https://github.com/axoflow/axosyslog/pull/{}))'.format(f.read_text().rstrip(), pr_id, pr_id)
-        entry = entry.replace('\n', '\n    ')
-        entry = entry.replace('\n    \n', '\n\n')
-        block += entry + '\n\n'
+        block += create_entry(f) + '\n\n'
     block += '\n'
     return block
 
@@ -88,6 +94,10 @@ def get_last_version():
 def get_next_version():
     next_version = (root_dir / 'VERSION.txt').read_text().rstrip()
     return next_version
+
+
+def get_newsfile_version():
+    return newsfile.read_text().split('\n', 1)[0]
 
 
 def create_version():
@@ -177,24 +187,77 @@ def check_if_news_is_already_uptodate():
     return get_last_version() == get_next_version()
 
 
+def find_block_last_line(lines, block_name):
+    heading = '## {}'.format(block_name)
+    if heading not in lines:
+        return None
+
+    last_line = lines.index(heading)
+    for i in range(last_line + 1, len(lines)):
+        if lines[i].startswith('## ') or lines[i].startswith('[1] '):
+            break
+        if lines[i] != '':
+            last_line = i
+    return last_line
+
+
+def insert_entries(lines, block_name, files):
+    entry_lines = '\n\n'.join(create_entry(f) for f in files).split('\n')
+
+    last_line = find_block_last_line(lines, block_name)
+    if last_line is not None:
+        lines[last_line + 1:last_line + 1] = [''] + entry_lines
+        return
+
+    preceding_blocks = ['Highlights'] + [name for name, _ in blocks]
+    preceding_blocks = preceding_blocks[:preceding_blocks.index(block_name)]
+    for preceding_block in reversed(preceding_blocks):
+        last_line = find_block_last_line(lines, preceding_block)
+        if last_line is not None:
+            lines[last_line + 1:last_line + 1] = ['', '', '## {}'.format(block_name), ''] + entry_lines
+            return
+
+    sys.exit('Cannot find where to insert the {} block into {}'.format(block_name, newsfile))
+
+
+def update_newsfile(processed_files):
+    lines = newsfile.read_text().split('\n')
+    for block_name, glob in blocks:
+        entries = list(news_dir.glob(glob))
+        if len(entries) > 0:
+            insert_entries(lines, block_name, entries)
+            processed_files += [ str(entry.relative_to(root_dir)) for entry in entries ]
+    newsfile.write_text('\n'.join(lines))
+    print('Newsfile updated at {}\n'.format(newsfile.resolve()))
+
+
 def remove_files(files):
     _exec("git rm " + " ".join(files))
 
 def main():
-    print_usage_if_needed()
-
-    if check_if_news_is_already_uptodate():
-        if check_if_news_entries_are_present():
-            print('NEWS.md file is already up-to-date with VERSION.txt but news entries still exist (news/*.md).\n'
-                  'Remove NEWS entries or bump the VERSION.txt file.\n')
-            return 1
-        print("NEWS file is already up-to-date, no new NEWS entries, assuming it has been manually prepared")
-        return 0
+    args = parse_args()
 
     processed_files = []
 
-    news = create_news_content(processed_files)
-    create_newsfile(news)
+    if args.update:
+        if get_newsfile_version() != get_next_version():
+            print('NEWS.md file is not for the version in VERSION.txt, create it without --update first.\n')
+            return 1
+        if not check_if_news_entries_are_present():
+            print('No new NEWS entries')
+            return 0
+        update_newsfile(processed_files)
+    else:
+        if check_if_news_is_already_uptodate():
+            if check_if_news_entries_are_present():
+                print('NEWS.md file is already up-to-date with VERSION.txt but news entries still exist (news/*.md).\n'
+                      'Add them with --update, remove them or bump the VERSION.txt file.\n')
+                return 1
+            print("NEWS file is already up-to-date, no new NEWS entries, assuming it has been manually prepared")
+            return 0
+
+        news = create_news_content(processed_files)
+        create_newsfile(news)
 
     if processed_files:
         remove_files(processed_files)
