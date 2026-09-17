@@ -78,6 +78,10 @@ http_transport_mapper_apply_transport(TransportMapper *s, GlobalConfig *cfg)
   if (!transport_mapper_inet_validate_tls_options(self))
     return FALSE;
 
+  /* no "+tls" variant: the webhook() source these drivers replace reports
+   * "http" for an encrypted connection too */
+  self->super.transport_name = g_strdup("http");
+
   return TRUE;
 }
 
