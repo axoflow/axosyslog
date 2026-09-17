@@ -127,6 +127,57 @@ def test_lumberjack_version1_data_frames_become_json(config, syslog_ng, port_all
     ]
 
 
+def test_lumberjack_compressed_window_is_inflated(config, syslog_ng, port_allocator):
+    """A window sent as one `C` frame, the Beats default at level 3, is inflated and acknowledged (spec 9)."""
+    port = port_allocator()
+    destination = start_lumberjack_receiver(config, syslog_ng, port)
+
+    with LumberjackSender(compression_level=3) as sender:
+        sender.connect("localhost", port)
+        assert sender.send_batch(events(3)) == 3
+
+    assert destination.read_logs(3) == expected_messages(3)
+
+
+def test_lumberjack_compressed_version1_window(config, syslog_ng, port_allocator):
+    """logstash-forwarder always compressed: a version 1 window is `W` and one `C` frame of `D` frames."""
+    port = port_allocator()
+    destination = start_lumberjack_receiver(config, syslog_ng, port)
+
+    with LumberjackSender(version=1, compression_level=3) as sender:
+        sender.connect("localhost", port)
+        assert sender.send_batch([[("line", "compressed"), ("host", "web-1")]]) == 1
+
+    assert destination.read_logs(1) == ['1 {"line":"compressed","host":"web-1"}']
+
+
+def test_lumberjack_compressed_and_plain_windows_share_a_connection(config, syslog_ng, port_allocator):
+    """A receiver accepts plain and compressed windows interchangeably on one connection (spec 9.3)."""
+    port = port_allocator()
+    destination = start_lumberjack_receiver(config, syslog_ng, port)
+
+    with LumberjackSender(compression_level=6) as sender:
+        sender.connect("localhost", port)
+        assert sender.send_batch(events(2)) == 2
+        sender.compression_level = 0
+        assert sender.send_batch(events(2, first=2)) == 2
+        sender.compression_level = 1
+        assert sender.send_batch(events(1, first=4)) == 1
+
+    assert destination.read_logs(5) == expected_messages(5)
+
+
+def test_lumberjack_corrupt_compressed_frame_closes_the_connection(config, syslog_ng, port_allocator):
+    """A `C` frame that is not a zlib stream is a protocol error: no ACK, the connection closes (spec 14.1)."""
+    port = port_allocator()
+    start_lumberjack_receiver(config, syslog_ng, port)
+
+    with LumberjackSender() as sender:
+        sender.connect("localhost", port)
+        sender.send_raw(sender.encode_window(2, 1) + b"2C" + b"\x00\x00\x00\x05" + b"\x00" * 5)
+        sender.wait_for_close()
+
+
 def test_lumberjack_over_tls(config, syslog_ng, port_allocator, testcase_parameters):
     """A tls() block on the driver means TLS from the first octet, no STARTTLS (spec 15.2)."""
     port = port_allocator()

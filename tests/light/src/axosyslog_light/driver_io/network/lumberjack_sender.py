@@ -37,6 +37,7 @@ import socket
 import ssl
 import struct
 import typing
+import zlib
 
 from axosyslog_light.common.blocking import DEFAULT_TIMEOUT
 
@@ -58,11 +59,15 @@ class LumberjackError(Exception):
 class LumberjackSender:
     """One Lumberjack connection, driven synchronously."""
 
-    def __init__(self, version: int = 2, timeout: float = DEFAULT_TIMEOUT) -> None:
+    def __init__(self, version: int = 2, timeout: float = DEFAULT_TIMEOUT, compression_level: int = 0) -> None:
+        """With a @compression_level above 0 every window goes out as one `C` frame, as go-lumber does (spec 9.3)."""
         if version not in (1, 2):
             raise ValueError("Lumberjack version must be 1 or 2")
+        if not 0 <= compression_level <= 9:
+            raise ValueError("the zlib compression level is 0..9")
         self.version = version
         self.timeout = timeout
+        self.compression_level = compression_level
         self.__socket: typing.Optional[socket.socket] = None
         self.__buffer = bytearray()
 
@@ -127,6 +132,12 @@ class LumberjackSender:
             frame += struct.pack(">I", len(value_bytes)) + value_bytes
         return bytes(frame)
 
+    @staticmethod
+    def encode_compressed_frame(version: int, frames: bytes, level: int) -> bytes:
+        """A `C` frame: the zlib stream of whole data frames (spec 9.1)."""
+        compressed = zlib.compress(frames, level)
+        return (b"1" if version == 1 else b"2") + b"C" + struct.pack(">I", len(compressed)) + compressed
+
     def encode_frame(self, seq: int, payload: Payload) -> bytes:
         if self.version == 1:
             if isinstance(payload, dict):
@@ -151,10 +162,12 @@ class LumberjackSender:
         A conforming sender numbers from 1 in every window; a @first_seq above that
         imitates the running counter of logstash-forwarder or ferro-lumberjack.
         """
-        data = bytearray(self.encode_window(self.version, len(payloads)))
+        frames = bytearray()
         for seq, payload in enumerate(payloads, start=first_seq):
-            data += self.encode_frame(seq, payload)
-        return bytes(data)
+            frames += self.encode_frame(seq, payload)
+        if self.compression_level > 0:
+            frames = bytearray(self.encode_compressed_frame(self.version, bytes(frames), self.compression_level))
+        return self.encode_window(self.version, len(payloads)) + bytes(frames)
 
     # ------------------------------------------------------------------ I/O
 
