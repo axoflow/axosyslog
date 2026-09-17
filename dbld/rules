@@ -214,7 +214,7 @@ tag-release:
 	$(GIT) tag $(GIT_RELEASE_TAG)
 
 clean:
-	rm -rf $(BUILD_DIR)/*
+	rm -rf $(BUILD_DIR)/* $(BUILD_DIR)/.[!.]*
 
 run: run-$(DEFAULT_IMAGE)
 run: RUN_COMMAND=echo Specify RUN_COMMAND to do something sensible here

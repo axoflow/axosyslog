@@ -455,8 +455,8 @@ build_dbld() {
     say "dbld bootstrap${extra:+ (CONFIGURE_ADD=$extra)}"
     ( cd "$ROOT" && ./dbld/rules bootstrap CONFIGURE_ADD="$extra" )
   fi
-  say "dbld make-install"
-  ( cd "$ROOT" && ./dbld/rules make-install )
+  say "dbld make-install (-j$JOBS)"
+  ( cd "$ROOT" && ./dbld/rules make-install MAKE_ARGS="-j$JOBS" )
   BIN="$ROOT/dbld/install/sbin/syslog-ng"
 }
 
