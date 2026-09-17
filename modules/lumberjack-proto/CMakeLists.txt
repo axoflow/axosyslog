@@ -12,6 +12,7 @@ add_module(
   TARGET lumberjack-proto
   GRAMMAR lumberjack-proto-grammar
   SOURCES ${LUMBERJACK_PROTO_SOURCES}
+  DEPENDS ZLIB::ZLIB
 )
 
 add_test_subdirectory(tests)

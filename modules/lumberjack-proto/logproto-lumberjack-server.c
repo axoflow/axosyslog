@@ -40,10 +40,13 @@
  * semantics of the canonical receivers.  While a window waits, `A(0)`
  * keepalives keep the sender from timing out (10).
  *
- * Compressed (`C`) frames are not supported yet and close the connection as a
- * protocol error.  TLS is the transport's business: a tls() block on the
- * driver puts a TLS factory on the stack and this proto switches to it before
- * the first byte is read (15.2).
+ * A compressed (`C`) frame is a zlib stream of whole data frames (9).  It is
+ * inflated as it arrives into a second input that the same parser reads from,
+ * so a frame inside it is subject to the same limits as a plain one whatever
+ * it inflates to, and the frame is never buffered whole in either form.  TLS
+ * is the transport's business: a tls() block on the driver puts a TLS factory
+ * on the stack and this proto switches to it before the first byte is read
+ * (15.2).
  */
 
 #include "logproto-lumberjack-server.h"
@@ -58,6 +61,7 @@
 #include "utf8utils.h"
 
 #include <iv.h>
+#include <zlib.h>
 
 #include <errno.h>
 #include <string.h>
@@ -78,6 +82,8 @@
 #define LUMBERJACK_FRAME_TYPE_LEN    2
 /* version, type, sequence, payload length or pair count (5.2, 6.2) */
 #define LUMBERJACK_DATA_HEADER_LEN   10
+/* version, type, compressed length (9.1) */
+#define LUMBERJACK_COMPRESSED_HEADER_LEN 6
 #define LUMBERJACK_FIELD_LEN_LEN     4
 
 /* the number of read()s a single fetch() is allowed to issue, to keep one
@@ -124,6 +130,9 @@ typedef enum
   LUMBERJACK_SKIP_PAYLOAD,
   /* the key/value pairs of a version 1 `D` frame are being read */
   LUMBERJACK_DATA_PAIRS,
+  /* the data frames of a `C` frame were all read: its zlib stream has to end
+   * and what remains of the frame is discarded */
+  LUMBERJACK_ENVELOPE_END,
   /* out_buf, acknowledgements or keepalives, is being written */
   LUMBERJACK_SENDING,
   LUMBERJACK_CLOSED,
@@ -145,6 +154,18 @@ typedef enum
   LUMBERJACK_CTRL_NEXT_STATE,
   LUMBERJACK_CTRL_RETURN_WITH_STATUS,
 } LumberjackStepControl;
+
+/* what a request for more input came back with */
+typedef enum
+{
+  /* more input is buffered, the handler can go on */
+  LUMBERJACK_INPUT_READY,
+  /* nothing to parse right now: fetch() returns with the status */
+  LUMBERJACK_INPUT_WAIT,
+  /* the state changed, a compressed frame ended or a protocol error was
+   * found: the state machine has to dispatch again */
+  LUMBERJACK_INPUT_STATE_CHANGED,
+} LumberjackInputResult;
 
 typedef struct _LumberjackFetchContext
 {
@@ -251,6 +272,21 @@ typedef struct _LogProtoLumberjackServer
     /* the JSON object the frame is turned into */
     GString *json;
   } data_frame;
+
+  /* the compressed `C` frame being read (9): its zlib stream is inflated into
+   * @inflated, which the parser reads the frames inside from */
+  struct
+  {
+    gboolean active;
+    /* octets of the frame not taken from the socket input yet */
+    gsize compressed_remaining;
+    /* inflate() returned Z_STREAM_END, the checksum is verified */
+    gboolean stream_ended;
+    /* kept for the life of the connection, reset for every frame */
+    z_stream stream;
+    gboolean stream_initialized;
+  } envelope;
+  LumberjackInput inflated;
 
   /* frames delivered upstream on this connection: the position a Bookmark
    * carries and the end_position of a pending window */
@@ -803,18 +839,203 @@ _fetch_input(LogProtoLumberjackServer *self, LogProtoStatus *status)
   return TRUE;
 }
 
-/* Get more input for the parser, within the read budget of this fetch().
- * TRUE if there is more to parse; FALSE otherwise, with @status carrying the
- * root cause, LPS_SUCCESS meaning a read that would block or a spent budget. */
+/****************************************************************************
+ * Compressed frames (specification 9)
+ ****************************************************************************/
+
+static void
+_log_zlib_error(LogProtoLumberjackServer *self, const gchar *message, gint rc)
+{
+  gchar peer[MAX_SOCKADDR_STRING];
+
+  msg_error(message,
+            evt_tag_int("zlib_rc", rc),
+            evt_tag_str("zlib_msg", self->envelope.stream.msg ? : ""),
+            evt_tag_long("compressed_remaining", self->envelope.compressed_remaining),
+            evt_tag_int("frames_read", self->window.done),
+            evt_tag_str("client", _format_peer_address(self, peer, sizeof(peer))),
+            evt_tag_int(EVT_TAG_FD, self->super.transport_stack.fd));
+}
+
+/* A `C` frame of @compressed_len octets starts at the current input, the
+ * socket (9.1).  The frames inside are parsed from @inflated from here on. */
+static LumberjackStepControl
+_envelope_start(LogProtoLumberjackServer *self, guint32 compressed_len, LogProtoStatus *status)
+{
+  z_stream *z = &self->envelope.stream;
+
+  if (!self->envelope.stream_initialized)
+    {
+      gint rc = inflateInit(z);
+
+      if (rc != Z_OK)
+        {
+          _log_zlib_error(self, "Error initializing the zlib decompressor of a Lumberjack connection", rc);
+          *status = LPS_ERROR;
+          return LUMBERJACK_CTRL_RETURN_WITH_STATUS;
+        }
+      self->envelope.stream_initialized = TRUE;
+    }
+  else
+    inflateReset(z);
+
+  _input_consume(self->cur, LUMBERJACK_COMPRESSED_HEADER_LEN);
+  _input_init(&self->inflated, (gsize) self->super.options->init_buffer_size);
+  self->inflated.pos = self->inflated.end = 0;
+
+  self->envelope.active = TRUE;
+  self->envelope.compressed_remaining = compressed_len;
+  self->envelope.stream_ended = FALSE;
+  self->cur = &self->inflated;
+  self->state = LUMBERJACK_FRAME_HEADER;
+
+  msg_trace("Lumberjack compressed frame starts",
+            evt_tag_long("compressed_length", compressed_len),
+            evt_tag_int("frames_read", self->window.done),
+            evt_tag_int(EVT_TAG_FD, self->super.transport_stack.fd));
+  return LUMBERJACK_CTRL_NEXT_STATE;
+}
+
+/* The zlib stream ended and the parser wants more.  A frame that started in
+ * the compressed frame has to end in it (9.2), so the only clean end is a
+ * frame boundary with nothing pending. */
+static LumberjackInputResult
+_envelope_content_exhausted(LogProtoLumberjackServer *self)
+{
+  gchar peer[MAX_SOCKADDR_STRING];
+  gboolean at_frame_boundary = _input_buffered(&self->inflated) == 0
+                               && (self->state == LUMBERJACK_FRAME_HEADER || self->state == LUMBERJACK_ENVELOPE_END);
+
+  if (at_frame_boundary)
+    {
+      self->state = LUMBERJACK_ENVELOPE_END;
+      return LUMBERJACK_INPUT_STATE_CHANGED;
+    }
+
+  msg_error("Lumberjack frame straddles the end of a compressed frame, frames must be compressed whole",
+            evt_tag_long("inflated_remaining", _input_buffered(&self->inflated)),
+            evt_tag_int("frames_read", self->window.done),
+            evt_tag_str("client", _format_peer_address(self, peer, sizeof(peer))),
+            evt_tag_int(EVT_TAG_FD, self->super.transport_stack.fd));
+  _protocol_error(self, LUMBERJACK_ERR_COMPRESSION);
+  return LUMBERJACK_INPUT_STATE_CHANGED;
+}
+
+/* Inflate the next piece of the compressed frame into @inflated: what the
+ * socket input holds of the frame, reading the socket when that is empty.  The
+ * output is bounded by the free space of @inflated, which the parser sizes to
+ * a single frame, so a frame that inflates to gigabytes costs one frame buffer
+ * and is skipped piece by piece like any oversize frame (16). */
+static LumberjackInputResult
+_inflate_step(LogProtoLumberjackServer *self, LogProtoStatus *status)
+{
+  gchar peer[MAX_SOCKADDR_STRING];
+  LumberjackInput *in = &self->inflated;
+  LumberjackInput *sock = &self->sock;
+  z_stream *z = &self->envelope.stream;
+
+  if (self->envelope.stream_ended)
+    return _envelope_content_exhausted(self);
+
+  /* the parser asked for more than is buffered, so a frame's worth of room is
+   * there once the parsed prefix is dropped */
+  if (in->end == in->size)
+    _input_compact(in);
+  if (in->end == in->size)
+    _input_ensure_space(in, in->size + 1);
+
+  do
+    {
+      gsize avail_in = MIN(_input_buffered(sock), self->envelope.compressed_remaining);
+
+      if (avail_in == 0)
+        {
+          if (self->envelope.compressed_remaining == 0)
+            {
+              msg_error("Lumberjack compressed frame ends before its zlib stream does, the frame is truncated",
+                        evt_tag_int("frames_read", self->window.done),
+                        evt_tag_str("client", _format_peer_address(self, peer, sizeof(peer))),
+                        evt_tag_int(EVT_TAG_FD, self->super.transport_stack.fd));
+              _protocol_error(self, LUMBERJACK_ERR_COMPRESSION);
+              return LUMBERJACK_INPUT_STATE_CHANGED;
+            }
+          if (!_fetch_input(self, status))
+            return LUMBERJACK_INPUT_WAIT;
+          continue;
+        }
+
+      z->next_in = (Bytef *) _input_data(sock);
+      z->avail_in = avail_in;
+      z->next_out = &in->buf[in->end];
+      z->avail_out = in->size - in->end;
+
+      gint rc = inflate(z, Z_NO_FLUSH);
+      gsize consumed = avail_in - z->avail_in;
+      gsize produced = (in->size - in->end) - z->avail_out;
+
+      _input_consume(sock, consumed);
+      self->envelope.compressed_remaining -= consumed;
+      in->end += produced;
+
+      if (rc == Z_STREAM_END)
+        self->envelope.stream_ended = TRUE;
+      else if (rc != Z_OK && rc != Z_BUF_ERROR)
+        {
+          _log_zlib_error(self, "Error inflating a Lumberjack compressed frame, the zlib stream is corrupt", rc);
+          _protocol_error(self, LUMBERJACK_ERR_COMPRESSION);
+          return LUMBERJACK_INPUT_STATE_CHANGED;
+        }
+
+      if (produced > 0)
+        return LUMBERJACK_INPUT_READY;
+    }
+  while (!self->envelope.stream_ended);
+
+  return _envelope_content_exhausted(self);
+}
+
+/* inside a compressed frame, progress needs no read while the socket holds
+ * compressed octets to inflate, or the stream ended and the parser has yet to
+ * act on that */
 static gboolean
+_envelope_can_progress(LogProtoLumberjackServer *self)
+{
+  if (!self->envelope.active)
+    return FALSE;
+  if (!self->envelope.stream_ended)
+    return _input_buffered(&self->sock) > 0 || self->envelope.compressed_remaining == 0;
+  if (_input_buffered(&self->inflated) > 0 || self->state != LUMBERJACK_ENVELOPE_END)
+    return TRUE;
+  return self->envelope.compressed_remaining == 0 || _input_buffered(&self->sock) > 0;
+}
+
+/****************************************************************************
+ * Input for the parser
+ ****************************************************************************/
+
+/* Get more input for the parser, within the read budget of this fetch(): a
+ * read of the socket, or a piece of the compressed frame inflated.  @status
+ * carries the root cause of LUMBERJACK_INPUT_WAIT, LPS_SUCCESS meaning a read
+ * that would block or a spent budget. */
+static LumberjackInputResult
 _fetch_more(LogProtoLumberjackServer *self, LogProtoStatus *status)
 {
   *status = LPS_SUCCESS;
 
   if (self->fetch_counter++ >= MAX_FETCH_COUNT)
-    return FALSE;
+    return LUMBERJACK_INPUT_WAIT;
 
-  return _fetch_input(self, status);
+  if (self->cur == &self->inflated)
+    return _inflate_step(self, status);
+
+  return _fetch_input(self, status) ? LUMBERJACK_INPUT_READY : LUMBERJACK_INPUT_WAIT;
+}
+
+/* the handler asked for input and cannot go on in this step */
+static inline LumberjackStepControl
+_step_after_fetch(LumberjackInputResult result)
+{
+  return result == LUMBERJACK_INPUT_WAIT ? LUMBERJACK_CTRL_RETURN_WITH_STATUS : LUMBERJACK_CTRL_NEXT_STATE;
 }
 
 /* the whole frame header is buffered, or enough of it to reject it */
@@ -831,6 +1052,8 @@ _frame_header_available(LogProtoLumberjackServer *self)
     return TRUE;
   if (p[1] == LUMBERJACK_TYPE_JSON || p[1] == LUMBERJACK_TYPE_DATA)
     return avail >= LUMBERJACK_DATA_HEADER_LEN;
+  if (p[1] == LUMBERJACK_TYPE_COMPRESSED)
+    return avail >= LUMBERJACK_COMPRESSED_HEADER_LEN;
   return TRUE;
 }
 
@@ -876,17 +1099,11 @@ _note_oversize_frame(LogProtoLumberjackServer *self, gsize declared)
                    evt_tag_int(EVT_TAG_FD, self->super.transport_stack.fd));
 }
 
-/* one frame of the window was read, delivered or dropped (7.2) */
+/* every frame of the window was read: it waits for its frames to become
+ * durable (7.2) */
 static void
-_frame_complete(LogProtoLumberjackServer *self)
+_window_complete(LogProtoLumberjackServer *self)
 {
-  self->window.done++;
-  if (self->window.done < self->window.size)
-    {
-      self->state = LUMBERJACK_FRAME_HEADER;
-      return;
-    }
-
   LumberjackPendingWindow *pending = g_new0(LumberjackPendingWindow, 1);
 
   pending->version = self->window.version;
@@ -907,6 +1124,28 @@ _frame_complete(LogProtoLumberjackServer *self)
   self->window.size = 0;
   self->window.done = 0;
   self->state = LUMBERJACK_WINDOW_HEADER;
+}
+
+/* one frame of the window was read, delivered or dropped (7.2) */
+static void
+_frame_complete(LogProtoLumberjackServer *self)
+{
+  self->window.done++;
+  if (self->window.done < self->window.size)
+    {
+      self->state = LUMBERJACK_FRAME_HEADER;
+      return;
+    }
+
+  if (self->envelope.active)
+    {
+      /* the window is complete once its compressed frame is: the zlib
+       * checksum comes after the last data frame (9.4) */
+      self->state = LUMBERJACK_ENVELOPE_END;
+      return;
+    }
+
+  _window_complete(self);
 }
 
 /* The payload becomes $MESSAGE as it is, no syslog parsing: a Beats event is a
@@ -980,9 +1219,7 @@ _on_window_header(LogProtoLumberjackServer *self, LogProtoStatus *status)
   gchar peer[MAX_SOCKADDR_STRING];
   if (_buffered(self) < LUMBERJACK_WINDOW_HEADER_LEN)
     {
-      if (!_fetch_more(self, status))
-        return LUMBERJACK_CTRL_RETURN_WITH_STATUS;
-      return LUMBERJACK_CTRL_NEXT_STATE;
+      return _step_after_fetch(_fetch_more(self, status));
     }
 
   const guchar *p = _input(self);
@@ -1047,9 +1284,7 @@ _on_frame_header(LogProtoLumberjackServer *self, LogProtoStatus *status)
   gchar peer[MAX_SOCKADDR_STRING];
   if (!_frame_header_available(self))
     {
-      if (!_fetch_more(self, status))
-        return LUMBERJACK_CTRL_RETURN_WITH_STATUS;
-      return LUMBERJACK_CTRL_NEXT_STATE;
+      return _step_after_fetch(_fetch_more(self, status));
     }
 
   const guchar *p = _input(self);
@@ -1073,13 +1308,24 @@ _on_frame_header(LogProtoLumberjackServer *self, LogProtoStatus *status)
       break;
 
     case LUMBERJACK_TYPE_COMPRESSED:
-      msg_error("Compressed Lumberjack frames are not supported yet, closing the connection; "
-                "disable compression on the sender",
-                evt_tag_str("client", _format_peer_address(self, peer, sizeof(peer))),
-                evt_tag_int(EVT_TAG_FD, self->super.transport_stack.fd));
-      return _protocol_error(self, LUMBERJACK_ERR_COMPRESSION);
+      if (self->envelope.active)
+        {
+          /* no sender nests them and the specification lets a receiver reject it (9.2) */
+          msg_error("Lumberjack compressed frame inside a compressed frame, nesting is not accepted",
+                    evt_tag_str("client", _format_peer_address(self, peer, sizeof(peer))),
+                    evt_tag_int(EVT_TAG_FD, self->super.transport_stack.fd));
+          return _protocol_error(self, LUMBERJACK_ERR_FRAME_TYPE);
+        }
+      return _envelope_start(self, _read_u32(p + 2), status);
 
     case LUMBERJACK_TYPE_WINDOW:
+      if (self->envelope.active)
+        {
+          msg_error("Lumberjack window frame inside a compressed frame, only data frames may be compressed",
+                    evt_tag_str("client", _format_peer_address(self, peer, sizeof(peer))),
+                    evt_tag_int(EVT_TAG_FD, self->super.transport_stack.fd));
+          return _protocol_error(self, LUMBERJACK_ERR_FRAME_TYPE);
+        }
       msg_error("Lumberjack window frame inside a window, the previous window is incomplete",
                 evt_tag_int("window_size", self->window.size),
                 evt_tag_int("frames_read", self->window.done),
@@ -1171,9 +1417,7 @@ _on_json_payload(LogProtoLumberjackServer *self, LumberjackFetchContext *ctx, Lo
 
   if (_buffered(self) < self->json_frame.len)
     {
-      if (!_fetch_more(self, status))
-        return LUMBERJACK_CTRL_RETURN_WITH_STATUS;
-      return LUMBERJACK_CTRL_NEXT_STATE;
+      return _step_after_fetch(_fetch_more(self, status));
     }
 
   if (!_deliver(self, ctx, (const gchar *) _input(self), self->json_frame.len))
@@ -1201,9 +1445,7 @@ _on_skip_payload(LogProtoLumberjackServer *self, LogProtoStatus *status)
 
   if (self->json_frame.skip_remaining > 0)
     {
-      if (!_fetch_more(self, status))
-        return LUMBERJACK_CTRL_RETURN_WITH_STATUS;
-      return LUMBERJACK_CTRL_NEXT_STATE;
+      return _step_after_fetch(_fetch_more(self, status));
     }
 
   _frame_complete(self);
@@ -1236,8 +1478,10 @@ _on_data_pairs(LogProtoLumberjackServer *self, LumberjackFetchContext *ctx, LogP
     {
       if (!_pair_step_available(self))
         {
-          if (!_fetch_more(self, status))
-            return LUMBERJACK_CTRL_RETURN_WITH_STATUS;
+          LumberjackInputResult more = _fetch_more(self, status);
+
+          if (more != LUMBERJACK_INPUT_READY)
+            return _step_after_fetch(more);
           continue;
         }
 
@@ -1320,6 +1564,49 @@ _on_data_pairs(LogProtoLumberjackServer *self, LumberjackFetchContext *ctx, LogP
   return LUMBERJACK_CTRL_RETURN_WITH_STATUS;
 }
 
+/* The data frames of the compressed frame were all parsed.  Its zlib stream
+ * has to end right there, with nothing after the last frame; what remains of
+ * the declared compressed length after the stream is padding, which is
+ * discarded so that the socket input stays aligned (9.4). */
+static LumberjackStepControl
+_on_envelope_end(LogProtoLumberjackServer *self, LogProtoStatus *status)
+{
+  gchar peer[MAX_SOCKADDR_STRING];
+
+  if (_input_buffered(&self->inflated) > 0)
+    {
+      msg_error("Lumberjack compressed frame carries data after the last frame of the window",
+                evt_tag_long("inflated_remaining", _input_buffered(&self->inflated)),
+                evt_tag_int("window_size", self->window.size),
+                evt_tag_str("client", _format_peer_address(self, peer, sizeof(peer))),
+                evt_tag_int(EVT_TAG_FD, self->super.transport_stack.fd));
+      return _protocol_error(self, LUMBERJACK_ERR_COMPRESSION);
+    }
+
+  /* the inflated input is current until the stream ends, so this inflates;
+   * whatever comes out is caught above on the next round */
+  if (!self->envelope.stream_ended)
+    return _step_after_fetch(_fetch_more(self, status));
+
+  self->cur = &self->sock;
+  gsize skipped = MIN(_input_buffered(&self->sock), self->envelope.compressed_remaining);
+  _input_consume(&self->sock, skipped);
+  self->envelope.compressed_remaining -= skipped;
+  if (self->envelope.compressed_remaining > 0)
+    return _step_after_fetch(_fetch_more(self, status));
+
+  self->envelope.active = FALSE;
+  msg_trace("Lumberjack compressed frame ends",
+            evt_tag_int("frames_read", self->window.done),
+            evt_tag_int(EVT_TAG_FD, self->super.transport_stack.fd));
+
+  if (self->window.done < self->window.size)
+    self->state = LUMBERJACK_FRAME_HEADER;
+  else
+    _window_complete(self);
+  return LUMBERJACK_CTRL_NEXT_STATE;
+}
+
 static LumberjackStepControl
 _on_closed(LogProtoLumberjackServer *self, LogProtoStatus *status)
 {
@@ -1345,6 +1632,8 @@ _step_state_machine(LogProtoLumberjackServer *self, LumberjackFetchContext *ctx,
       return _on_skip_payload(self, status);
     case LUMBERJACK_DATA_PAIRS:
       return _on_data_pairs(self, ctx, status);
+    case LUMBERJACK_ENVELOPE_END:
+      return _on_envelope_end(self, status);
     case LUMBERJACK_SENDING:
       return _flush_output(self, status);
     case LUMBERJACK_CLOSED:
@@ -1489,22 +1778,27 @@ log_proto_lumberjack_server_poll_prepare(LogProtoServer *s, GIOCondition *cond, 
 
         case LUMBERJACK_FRAME_HEADER:
           *timeout = self->options.window_timeout;
-          fetch_now = _frame_header_available(self);
+          fetch_now = _frame_header_available(self) || _envelope_can_progress(self);
           break;
 
         case LUMBERJACK_JSON_PAYLOAD:
           *timeout = self->options.window_timeout;
-          fetch_now = _buffered(self) >= self->json_frame.len;
+          fetch_now = _buffered(self) >= self->json_frame.len || _envelope_can_progress(self);
           break;
 
         case LUMBERJACK_SKIP_PAYLOAD:
           *timeout = self->options.window_timeout;
-          fetch_now = _buffered(self) > 0;
+          fetch_now = _buffered(self) > 0 || _envelope_can_progress(self);
           break;
 
         case LUMBERJACK_DATA_PAIRS:
           *timeout = self->options.window_timeout;
-          fetch_now = _pair_step_available(self);
+          fetch_now = _pair_step_available(self) || _envelope_can_progress(self);
+          break;
+
+        case LUMBERJACK_ENVELOPE_END:
+          *timeout = self->options.window_timeout;
+          fetch_now = _envelope_can_progress(self);
           break;
 
         default:
@@ -1542,6 +1836,9 @@ log_proto_lumberjack_server_free(LogProtoServer *s)
   _ack_state_unref(self->ack_state);
 
   g_queue_free_full(self->pending, g_free);
+  if (self->envelope.stream_initialized)
+    inflateEnd(&self->envelope.stream);
+  _input_free(&self->inflated);
   _input_free(&self->sock);
   g_string_free(self->out_buf, TRUE);
   g_string_free(self->data_frame.json, TRUE);
