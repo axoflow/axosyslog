@@ -23,7 +23,6 @@ RUN /dbld/builddeps set_default_llvm_version 18
 
 RUN /dbld/builddeps install_criterion
 
-VOLUME /source
 VOLUME /build
 
 ENTRYPOINT ["/entrypoint.sh"]

@@ -26,6 +26,13 @@ The source code and build products are mounted externally in the following locat
 - **/build** -> axosyslog/dbld/build
 - **/install** -> axosyslog/dbld/install
 
+A linked `git worktree` works too: the worktree and the main checkout's `.git`
+are mounted at their host paths and `/source` becomes a symlink to the
+worktree, so the paths git records relative to the host layout for the
+worktree and its submodules keep resolving inside the container. This needs
+an image without the old `VOLUME /source` declaration; if the container
+refuses to start from a worktree, rebuild yours with `dbld/rules image-<os>`.
+
 ## Examples
 
 ### Building AxoSyslog from tarball using the 'tarball' image

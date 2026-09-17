@@ -21,7 +21,6 @@ RUN /dbld/builddeps install_rpm_build_deps
 RUN /dbld/builddeps install_criterion_latest
 RUN /dbld/builddeps install_gradle
 
-VOLUME /source
 VOLUME /build
 
 ENTRYPOINT ["/entrypoint.sh"]
