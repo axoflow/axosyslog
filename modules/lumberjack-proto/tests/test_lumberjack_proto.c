@@ -41,6 +41,7 @@
 
 #include <errno.h>
 #include <string.h>
+#include <zlib.h>
 
 /* The lumberjack options only fit into a LogProtoServerOptionsStorage union,
  * unlike the bare LogProtoServerOptions of proto_lib.h, so the tests own one. */
@@ -263,6 +264,12 @@ _put_u32(GString *s, guint32 v)
   g_string_append_len(s, (const gchar *) buf, 4);
 }
 
+static guint32
+_read_u32_from(const guchar *p)
+{
+  return ((guint32) p[0] << 24) | ((guint32) p[1] << 16) | ((guint32) p[2] << 8) | (guint32) p[3];
+}
+
 static void
 _put_window(GString *s, gchar version, guint32 size)
 {
@@ -310,6 +317,50 @@ _put_data_frame(GString *s, guint32 seq, guint32 count, ...)
       g_string_append(s, value);
     }
   va_end(va);
+}
+
+/* a `C` frame of @version carrying @frames deflated at @level (specification 9.1) */
+static void
+_put_compressed(GString *s, gchar version, const GString *frames, gint level)
+{
+  uLongf compressed_len = compressBound(frames->len);
+  guchar *compressed = g_malloc(compressed_len);
+
+  cr_assert_eq(compress2(compressed, &compressed_len, (const Bytef *) frames->str, frames->len, level), Z_OK);
+  g_string_append_c(s, version);
+  g_string_append_c(s, 'C');
+  _put_u32(s, compressed_len);
+  g_string_append_len(s, (const gchar *) compressed, compressed_len);
+  g_free(compressed);
+}
+
+static GString *
+_json_frames(guint32 first, guint32 count, const gchar *prefix)
+{
+  GString *frames = g_string_new("");
+
+  for (guint32 i = first; i < first + count; i++)
+    {
+      gchar *payload = g_strdup_printf("{\"message\":\"%s-%u\"}", prefix, i);
+
+      _put_json_frame(frames, i, payload);
+      g_free(payload);
+    }
+  return frames;
+}
+
+/* the way the canonical sender compresses: one `C` frame per window covering
+ * every data frame (9.2) */
+static GString *
+_compressed_window_of_json(guint32 size, const gchar *prefix, gint level)
+{
+  GString *frames = _json_frames(1, size, prefix);
+  GString *s = g_string_new("");
+
+  _put_window(s, '2', size);
+  _put_compressed(s, '2', frames, level);
+  g_string_free(frames, TRUE);
+  return s;
 }
 
 static GString *
@@ -1078,16 +1129,6 @@ Test(lumberjack, window_frame_inside_a_window_is_a_protocol_error)
   _assert_protocol_error(input, "window frame inside a window");
 }
 
-Test(lumberjack, compressed_frame_is_a_protocol_error_for_now)
-{
-  GString *input = g_string_new("");
-
-  _put_window(input, '2', 1);
-  g_string_append(input, "2C");
-  _put_u32(input, 10);
-  _assert_protocol_error(input, "Compressed Lumberjack frames are not supported yet");
-}
-
 /* Sequence numbers are not enforced (specification 8.2, 8.3): frames are
  * counted by position and the window is acknowledged with the last sequence
  * number seen, which is what a sender numbering from a running counter, like
@@ -1226,6 +1267,392 @@ Test(lumberjack, unknown_frame_type_is_a_protocol_error)
   _put_u32(input, 1);
   _put_u32(input, 1);
   _assert_protocol_error(input, "Unknown Lumberjack frame type");
+}
+
+/****************************************************************************
+ * Compressed frames (specification 9)
+ ****************************************************************************/
+
+static void
+_assert_compressed_window_delivered(LumberjackTestConnection *conn, guint32 size, const gchar *prefix)
+{
+  cr_assert_eq(_pump_until(conn, 0, size), LUMBERJACK_PUMP_MESSAGES);
+  for (guint32 i = 1; i <= size; i++)
+    {
+      gchar *payload = g_strdup_printf("{\"message\":\"%s-%u\"}", prefix, i);
+
+      _assert_message(conn, i - 1, payload, "2");
+      g_free(payload);
+    }
+}
+
+Test(lumberjack, compressed_window_is_inflated_and_acknowledged)
+{
+  LumberjackTestConnection conn;
+
+  _connection_init(&conn);
+  /* level 3 is what Beats and go-lumber use by default (9.3) */
+  _inject(&conn, _compressed_window_of_json(3, "c", 3));
+  _assert_compressed_window_delivered(&conn, 3, "c");
+
+  _assert_nothing_written(&conn);
+  _report_durable(&conn, 2);
+  _assert_written(&conn, _ack('2', 3));
+  _connection_deinit(&conn);
+}
+
+/* the byte-exact vector of Appendix B.6: W(2) and a `C` frame of two `J`
+ * frames deflated at level 6 */
+Test(lumberjack, appendix_b6_compressed_frame_vector)
+{
+  static const guchar vector[] =
+  {
+    0x32, 0x57, 0x00, 0x00, 0x00, 0x02,
+    0x32, 0x43, 0x00, 0x00, 0x00, 0x27,
+    0x78, 0x9c, 0x33, 0xf2, 0x62, 0x60, 0x60, 0x60, 0x04, 0x62, 0xce, 0x6a, 0xa5, 0x6c, 0x25, 0x2b,
+    0xa5, 0x32, 0xa5, 0x5a, 0x23, 0x90, 0x10, 0x13, 0x10, 0xb3, 0x57, 0x2b, 0xe5, 0x29, 0x59, 0x19,
+    0xd6, 0x02, 0x00, 0x5c, 0x36, 0x05, 0xbc,
+  };
+  LumberjackTestConnection conn;
+  GString *input = g_string_new_len((const gchar *) vector, sizeof(vector));
+
+  _connection_init(&conn);
+  _inject(&conn, input);
+  cr_assert_eq(_pump_until(&conn, 0, 2), LUMBERJACK_PUMP_MESSAGES);
+  _assert_message(&conn, 0, "{\"k\":\"v\"}", "2");
+  _assert_message(&conn, 1, "{\"n\":1}", "2");
+  _report_durable(&conn, 1);
+  _assert_written(&conn, _ack('2', 2));
+  _connection_deinit(&conn);
+}
+
+Test(lumberjack, every_compression_level_is_accepted)
+{
+  static const gint levels[] = { 1, 6, 9 };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(levels); i++)
+    {
+      LumberjackTestConnection conn;
+
+      _connection_init(&conn);
+      _inject(&conn, _compressed_window_of_json(4, "lvl", levels[i]));
+      _assert_compressed_window_delivered(&conn, 4, "lvl");
+      _report_durable(&conn, 3);
+      _assert_written(&conn, _ack('2', 4));
+      _connection_deinit(&conn);
+    }
+}
+
+/* logstash-forwarder always compressed, so a version 1 window is `W` and
+ * one `C` frame of `D` frames */
+Test(lumberjack, version1_data_frames_inside_a_compressed_frame)
+{
+  LumberjackTestConnection conn;
+  GString *frames = g_string_new("");
+  GString *input = g_string_new("");
+
+  _put_data_frame(frames, 1, 2, "line", "first", "host", "web");
+  _put_data_frame(frames, 2, 1, "line", "second");
+  _put_window(input, '1', 2);
+  _put_compressed(input, '1', frames, 3);
+  g_string_free(frames, TRUE);
+
+  _connection_init(&conn);
+  _inject(&conn, input);
+  cr_assert_eq(_pump_until(&conn, 0, 2), LUMBERJACK_PUMP_MESSAGES);
+  _assert_message(&conn, 0, "{\"line\":\"first\",\"host\":\"web\"}", "1");
+  _assert_message(&conn, 1, "{\"line\":\"second\"}", "1");
+  _report_durable(&conn, 1);
+  _assert_written(&conn, _ack('1', 2));
+  _connection_deinit(&conn);
+}
+
+Test(lumberjack, plain_and_compressed_frames_mixed_in_a_window)
+{
+  LumberjackTestConnection conn;
+  GString *input = g_string_new("");
+  GString *middle = _json_frames(2, 1, "mix");
+
+  _put_window(input, '2', 3);
+  _put_json_frame(input, 1, "{\"message\":\"mix-1\"}");
+  _put_compressed(input, '2', middle, 6);
+  _put_json_frame(input, 3, "{\"message\":\"mix-3\"}");
+  g_string_free(middle, TRUE);
+
+  _connection_init(&conn);
+  _inject(&conn, input);
+  _assert_compressed_window_delivered(&conn, 3, "mix");
+  _report_durable(&conn, 2);
+  _assert_written(&conn, _ack('2', 3));
+  _connection_deinit(&conn);
+}
+
+Test(lumberjack, two_compressed_frames_in_a_window)
+{
+  LumberjackTestConnection conn;
+  GString *input = g_string_new("");
+  GString *first = _json_frames(1, 2, "two");
+  GString *second = _json_frames(3, 2, "two");
+
+  _put_window(input, '2', 4);
+  _put_compressed(input, '2', first, 6);
+  _put_compressed(input, '2', second, 6);
+  g_string_free(first, TRUE);
+  g_string_free(second, TRUE);
+
+  _connection_init(&conn);
+  _inject(&conn, input);
+  _assert_compressed_window_delivered(&conn, 4, "two");
+  _report_durable(&conn, 3);
+  _assert_written(&conn, _ack('2', 4));
+  _connection_deinit(&conn);
+}
+
+Test(lumberjack, compressed_frame_arriving_one_octet_at_a_time_is_inflated)
+{
+  LumberjackTestConnection conn;
+
+  _connection_init_stream(&conn, _compressed_window_of_json(3, "slow", 6));
+  _assert_compressed_window_delivered(&conn, 3, "slow");
+  _report_durable(&conn, 2);
+  _assert_written(&conn, _ack('2', 3));
+  _connection_deinit(&conn);
+}
+
+Test(lumberjack, compressed_windows_pipelined_are_acknowledged_in_order)
+{
+  LumberjackTestConnection conn;
+  GString *expected = _ack('2', 2);
+  GString *second = _ack('2', 3);
+
+  _connection_init(&conn);
+  _inject(&conn, _compressed_window_of_json(2, "a", 3));
+  _inject(&conn, _compressed_window_of_json(3, "b", 3));
+  cr_assert_eq(_pump_until(&conn, 0, 5), LUMBERJACK_PUMP_MESSAGES);
+  _assert_message(&conn, 4, "{\"message\":\"b-3\"}", "2");
+
+  _report_durable(&conn, 4);
+  g_string_append_len(expected, second->str, second->len);
+  g_string_free(second, TRUE);
+  _assert_written(&conn, expected);
+  _connection_deinit(&conn);
+}
+
+Test(lumberjack, flow_control_window_full_inside_a_compressed_frame_resumes)
+{
+  LumberjackTestConnection conn;
+
+  _connection_init(&conn);
+  _inject(&conn, _compressed_window_of_json(3, "fc", 3));
+  cr_assert_eq(_pump_until(&conn, 0, 1), LUMBERJACK_PUMP_MESSAGES);
+
+  conn.window_full = TRUE;
+  cr_assert_eq(_pump(&conn), LUMBERJACK_PUMP_IDLE);
+  cr_assert_eq(conn.messages->len, 1);
+
+  conn.window_full = FALSE;
+  _assert_compressed_window_delivered(&conn, 3, "fc");
+  _report_durable(&conn, 2);
+  _assert_written(&conn, _ack('2', 3));
+  _connection_deinit(&conn);
+}
+
+/* a frame that inflates to far more than log-msg-size() is skipped as it is
+ * inflated and never buffered, then counted toward the acknowledgement */
+Test(lumberjack, oversize_frame_inside_a_compressed_frame_is_skipped_and_counted)
+{
+  LumberjackTestConnection conn;
+  GString *frames = g_string_new("");
+  GString *input = g_string_new("");
+  gsize bomb_len = 4 * 1024 * 1024;
+  gchar *bomb = g_malloc(bomb_len);
+
+  memset(bomb, 'z', bomb_len);
+  _put_json_frame(frames, 1, "{\"n\":1}");
+  _put_json_frame_len(frames, 2, bomb, bomb_len);
+  _put_json_frame(frames, 3, "{\"n\":3}");
+  g_free(bomb);
+  _put_window(input, '2', 3);
+  _put_compressed(input, '2', frames, 9);
+  g_string_free(frames, TRUE);
+
+  _connection_init(&conn);
+  options_storage.super.max_msg_size = 100;
+  cr_assert_lt(input->len, (gsize) 16384, "the bomb did not compress, the test is void");
+
+  start_grabbing_messages();
+  _inject(&conn, input);
+  cr_assert_eq(_pump_until(&conn, 0, 2), LUMBERJACK_PUMP_MESSAGES);
+  stop_grabbing_messages();
+  assert_grabbed_log_contains("Dropping a message larger than log-msg-size()");
+
+  _assert_message(&conn, 0, "{\"n\":1}", "2");
+  _assert_message(&conn, 1, "{\"n\":3}", "2");
+  _report_durable(&conn, 1);
+  _assert_written(&conn, _ack('2', 3));
+  _connection_deinit(&conn);
+}
+
+/* the canonical receiver drains what follows the zlib stream within the
+ * declared length (9.4) */
+Test(lumberjack, padding_after_the_zlib_stream_is_discarded)
+{
+  LumberjackTestConnection conn;
+  GString *frames = _json_frames(1, 2, "pad");
+  GString *compressed = g_string_new("");
+  GString *input = g_string_new("");
+
+  _put_compressed(compressed, '2', frames, 6);
+  g_string_free(frames, TRUE);
+  /* raise the declared length by the padding and append it */
+  guint32 declared = _read_u32_from((const guchar *) compressed->str + 2);
+  _put_window(input, '2', 2);
+  g_string_append_len(input, compressed->str, 2);
+  _put_u32(input, declared + 5);
+  g_string_append_len(input, compressed->str + 6, compressed->len - 6);
+  g_string_append(input, "XXXXX");
+  g_string_free(compressed, TRUE);
+  /* and a plain window after it proves the socket input stayed aligned */
+  _put_window(input, '2', 1);
+  _put_json_frame(input, 1, "{\"after\":true}");
+
+  _connection_init(&conn);
+  _inject(&conn, input);
+  cr_assert_eq(_pump_until(&conn, 0, 3), LUMBERJACK_PUMP_MESSAGES);
+  _assert_message(&conn, 2, "{\"after\":true}", "2");
+  _report_durable(&conn, 2);
+  GString *expected = _ack('2', 2);
+  GString *second = _ack('2', 1);
+  g_string_append_len(expected, second->str, second->len);
+  g_string_free(second, TRUE);
+  _assert_written(&conn, expected);
+  _connection_deinit(&conn);
+}
+
+Test(lumberjack, truncated_zlib_stream_is_a_protocol_error)
+{
+  GString *frames = _json_frames(1, 2, "trunc");
+  GString *compressed = g_string_new("");
+  GString *input = g_string_new("");
+
+  _put_compressed(compressed, '2', frames, 6);
+  g_string_free(frames, TRUE);
+  /* declare and send four octets less: the Adler-32 trailer is cut off */
+  guint32 declared = _read_u32_from((const guchar *) compressed->str + 2);
+  _put_window(input, '2', 2);
+  g_string_append_len(input, compressed->str, 2);
+  _put_u32(input, declared - 4);
+  g_string_append_len(input, compressed->str + 6, compressed->len - 6 - 4);
+  g_string_free(compressed, TRUE);
+  /* the next window must not be mistaken for the rest of the stream */
+  _put_window(input, '2', 1);
+  _put_json_frame(input, 1, "{}");
+
+  _assert_protocol_error(input, "compressed frame ends before its zlib stream does");
+}
+
+Test(lumberjack, compressed_frame_of_zero_length_is_a_protocol_error)
+{
+  GString *input = g_string_new("");
+
+  _put_window(input, '2', 1);
+  g_string_append(input, "2C");
+  _put_u32(input, 0);
+  _assert_protocol_error(input, "compressed frame ends before its zlib stream does");
+}
+
+Test(lumberjack, corrupt_checksum_is_a_protocol_error)
+{
+  GString *frames = _json_frames(1, 2, "adler");
+  GString *input = g_string_new("");
+
+  _put_window(input, '2', 2);
+  _put_compressed(input, '2', frames, 6);
+  g_string_free(frames, TRUE);
+  input->str[input->len - 1] ^= 0xff;
+
+  _assert_protocol_error(input, "the zlib stream is corrupt");
+}
+
+Test(lumberjack, garbage_instead_of_a_zlib_stream_is_a_protocol_error)
+{
+  GString *input = g_string_new("");
+
+  /* the negative vector of Appendix B.8: a `00 00` zlib header */
+  _put_window(input, '2', 1);
+  g_string_append(input, "2C");
+  _put_u32(input, 5);
+  g_string_append_len(input, "\0\0\0\0\0", 5);
+  _assert_protocol_error(input, "the zlib stream is corrupt");
+}
+
+Test(lumberjack, frame_straddling_the_end_of_a_compressed_frame_is_a_protocol_error)
+{
+  GString *frames = _json_frames(1, 1, "straddle");
+  GString *input = g_string_new("");
+
+  /* the second frame is cut after its header, the rest would follow plain */
+  gsize whole = frames->len;
+  _put_json_frame(frames, 2, "{\"message\":\"straddle-2\"}");
+  g_string_truncate(frames, whole + 12);
+  _put_window(input, '2', 2);
+  _put_compressed(input, '2', frames, 6);
+  g_string_free(frames, TRUE);
+
+  _assert_protocol_error(input, "frame straddles the end of a compressed frame");
+}
+
+Test(lumberjack, window_frame_inside_a_compressed_frame_is_a_protocol_error)
+{
+  GString *frames = g_string_new("");
+  GString *input = g_string_new("");
+
+  _put_window(frames, '2', 1);
+  _put_json_frame(frames, 1, "{}");
+  _put_window(input, '2', 1);
+  _put_compressed(input, '2', frames, 6);
+  g_string_free(frames, TRUE);
+
+  _assert_protocol_error(input, "window frame inside a compressed frame");
+}
+
+Test(lumberjack, nested_compressed_frame_is_a_protocol_error)
+{
+  GString *inner = _json_frames(1, 1, "nested");
+  GString *outer = g_string_new("");
+  GString *input = g_string_new("");
+
+  _put_compressed(outer, '2', inner, 6);
+  _put_window(input, '2', 1);
+  _put_compressed(input, '2', outer, 6);
+  g_string_free(inner, TRUE);
+  g_string_free(outer, TRUE);
+
+  _assert_protocol_error(input, "compressed frame inside a compressed frame");
+}
+
+Test(lumberjack, frames_beyond_the_window_inside_a_compressed_frame_are_a_protocol_error)
+{
+  GString *frames = _json_frames(1, 2, "extra");
+  GString *input = g_string_new("");
+
+  _put_window(input, '2', 1);
+  _put_compressed(input, '2', frames, 6);
+  g_string_free(frames, TRUE);
+
+  _assert_protocol_error(input, "carries data after the last frame of the window");
+}
+
+Test(lumberjack, compressed_frame_version_differing_from_the_window_is_a_protocol_error)
+{
+  GString *frames = _json_frames(1, 1, "v");
+  GString *input = g_string_new("");
+
+  _put_window(input, '1', 1);
+  _put_compressed(input, '2', frames, 6);
+  g_string_free(frames, TRUE);
+
+  _assert_protocol_error(input, "frame version differs from the version of its window");
 }
 
 /****************************************************************************

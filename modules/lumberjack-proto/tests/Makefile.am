@@ -7,7 +7,7 @@ check_PROGRAMS						+=	\
 modules_lumberjack_proto_tests_test_lumberjack_proto_CFLAGS	=	\
 	$(TEST_CFLAGS) -I$(top_srcdir)/modules/lumberjack-proto
 modules_lumberjack_proto_tests_test_lumberjack_proto_LDADD	=	\
-	$(TEST_LDADD)
+	$(TEST_LDADD) $(ZLIB_LIBS)
 modules_lumberjack_proto_tests_test_lumberjack_proto_LDFLAGS	=	\
 	$(PREOPEN_CORE)						\
 	-dlpreopen $(top_builddir)/modules/lumberjack-proto/liblumberjack-proto.la \

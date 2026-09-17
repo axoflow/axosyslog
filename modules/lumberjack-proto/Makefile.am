@@ -14,7 +14,7 @@ modules_lumberjack_proto_liblumberjack_proto_la_CPPFLAGS	=	\
 	-I$(top_srcdir)/modules/lumberjack-proto		\
 	-I$(top_builddir)/modules/lumberjack-proto
 modules_lumberjack_proto_liblumberjack_proto_la_LIBADD	=	\
-	$(MODULE_DEPS_LIBS)
+	$(MODULE_DEPS_LIBS) $(ZLIB_LIBS)
 modules_lumberjack_proto_liblumberjack_proto_la_LDFLAGS	=	\
 	$(MODULE_LDFLAGS)
 modules_lumberjack_proto_liblumberjack_proto_la_CFLAGS	=	\
