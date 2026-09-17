@@ -29,7 +29,11 @@
  * A connection is a sequence of windows: a `W` frame announcing N, then N
  * data frames (`J` in version 2, `D` in version 1) numbered 1..N, which the
  * receiver acknowledges with a single `A(N)` once it took responsibility for
- * them (7, 8).  Here every data frame becomes a LogMessage as soon as it is
+ * them (7, 8).  The sequence numbers are not enforced: senders that number
+ * from a counter running across windows (logstash-forwarder, ruby-lumberjack,
+ * ferro-lumberjack) are acknowledged with the last sequence number they sent,
+ * the only value they can correlate, which is N for a conforming sender
+ * (8.2, 8.3).  Here every data frame becomes a LogMessage as soon as it is
  * parsed and the window is acknowledged once the pipeline acknowledged its
  * last frame: with flags(flow-control) and a disk-buffer downstream the ACK
  * means "stored", without flow control it degrades to "received", the
@@ -85,7 +89,6 @@ enum
 {
   LUMBERJACK_ERR_VERSION,
   LUMBERJACK_ERR_FRAME_TYPE,
-  LUMBERJACK_ERR_SEQUENCE,
   LUMBERJACK_ERR_WINDOW_SIZE,
   LUMBERJACK_ERR_LENGTH,
   LUMBERJACK_ERR_COMPRESSION,
@@ -94,7 +97,7 @@ enum
 
 static const gchar *LUMBERJACK_ERROR_REASONS[LUMBERJACK_ERR_MAX] =
 {
-  "version", "frame_type", "sequence", "window_size", "length", "compression",
+  "version", "frame_type", "window_size", "length", "compression",
 };
 
 /* the `version` label values of lumberjack_frames_total */
@@ -158,12 +161,15 @@ typedef struct _LumberjackFetchContext
 /* A window whose frames were all read, waiting for the pipeline to
  * acknowledge them.  @end_position is the number of frames delivered on the
  * connection up to and including its last frame: once that many are durable,
- * A(size) goes out (8.3).  A window whose every frame was dropped has
+ * A(ack_seq) goes out (8.3).  A window whose every frame was dropped has
  * end_position of the frame before it and is acknowledged right away. */
 typedef struct _LumberjackPendingWindow
 {
   guchar version;
   guint32 size;
+  /* the value of the acknowledgement: the last sequence number seen, or the
+   * size for a sender numbering from 1 (see _frame_complete()) */
+  guint32 ack_seq;
   guint64 end_position;
 } LumberjackPendingWindow;
 
@@ -211,6 +217,8 @@ typedef struct _LogProtoLumberjackServer
     guint32 size;
     /* frames read so far, delivered or dropped */
     guint32 done;
+    /* the sequence number of the last frame read */
+    guint32 last_seq;
   } window;
 
   /* the version 2 `J` frame being read (6.2) */
@@ -587,9 +595,10 @@ _queue_due_output(LogProtoLumberjackServer *self)
     {
       msg_debug("Acknowledging a Lumberjack window",
                 evt_tag_int("window_size", head->size),
+                evt_tag_int("sequence", head->ack_seq),
                 evt_tag_str("client", _format_peer_address(self, peer, sizeof(peer))),
                 evt_tag_int(EVT_TAG_FD, self->super.transport_stack.fd));
-      _append_ack(self, head->version, head->size);
+      _append_ack(self, head->version, head->ack_seq);
       stats_counter_inc(self->metrics.acknowledgements);
       g_queue_pop_head(self->pending);
       g_free(head);
@@ -826,6 +835,11 @@ _frame_complete(LogProtoLumberjackServer *self)
 
   pending->version = self->window.version;
   pending->size = self->window.size;
+  /* The last sequence number seen is the count for a sender numbering from 1
+   * and the only value a sender with a running counter correlates (8.3).  A
+   * last sequence number of 0 would be read as a keepalive (10.2), so such a
+   * window is acknowledged by count, as the canonical receiver does. */
+  pending->ack_seq = self->window.last_seq ? self->window.last_seq : self->window.size;
   pending->end_position = self->delivered;
   g_queue_push_tail(self->pending, pending);
 
@@ -924,7 +938,7 @@ _on_window_header(LogProtoLumberjackServer *self, LogProtoStatus *status)
       msg_error("Invalid Lumberjack protocol version byte, expected '1' or '2'",
                 evt_tag_mem("input", p, LUMBERJACK_WINDOW_HEADER_LEN),
                 evt_tag_str("hint", version == 0x16 ? "this looks like a TLS ClientHello, does the client "
-                            "expect TLS on a plaintext source?" : ""),
+                  "expect TLS on a plaintext source?" : ""),
                 evt_tag_str("client", _format_peer_address(self, peer, sizeof(peer))),
                 evt_tag_int(EVT_TAG_FD, self->super.transport_stack.fd));
       return _protocol_error(self, LUMBERJACK_ERR_VERSION);
@@ -966,6 +980,7 @@ _on_window_header(LogProtoLumberjackServer *self, LogProtoStatus *status)
   self->window.version = version;
   self->window.size = size;
   self->window.done = 0;
+  self->window.last_seq = 0;
   self->state = LUMBERJACK_FRAME_HEADER;
   return LUMBERJACK_CTRL_NEXT_STATE;
 }
@@ -1039,14 +1054,17 @@ _on_frame_header(LogProtoLumberjackServer *self, LogProtoStatus *status)
 
   if (seq != self->window.done + 1)
     {
-      msg_error("Lumberjack frame out of sequence, frames are numbered 1..N within a window",
+      /* Not an error (8.3): the frame is counted by position like the
+       * canonical receiver does, and the window is acknowledged with the last
+       * sequence number seen, the value a running-counter sender expects. */
+      msg_trace("Lumberjack frame out of sequence, frames are numbered 1..N within a window by conforming senders",
                 evt_tag_int("sequence", seq),
                 evt_tag_int("expected", self->window.done + 1),
                 evt_tag_int("window_size", self->window.size),
                 evt_tag_str("client", _format_peer_address(self, peer, sizeof(peer))),
                 evt_tag_int(EVT_TAG_FD, self->super.transport_stack.fd));
-      return _protocol_error(self, LUMBERJACK_ERR_SEQUENCE);
     }
+  self->window.last_seq = seq;
 
   self->buffer_pos += LUMBERJACK_DATA_HEADER_LEN;
 
