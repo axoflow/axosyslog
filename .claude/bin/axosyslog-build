@@ -4,9 +4,11 @@
 # It encapsulates the four build modes and their legitimate flavors so there is
 # always a correct build path.
 #
-# cmake and autotools work in any checkout -- a plain clone, a branch, or a git
-# worktree -- and build out-of-tree in build/ (or --build-dir=NAME); dbld and
-# alpine need a plain checkout.
+# Every mode works in any checkout -- a plain clone, a branch, or a linked git
+# worktree. cmake and autotools build out-of-tree in build/ (or --build-dir=NAME);
+# dbld and alpine build in a container, into which dbld/rules mounts a worktree
+# at its host path (plus the main checkout's .git) with /source symlinked to it,
+# so git resolves in there too.
 #
 # Usage:  axosyslog-build [mode] [flavors] [actions]
 #
@@ -228,15 +230,6 @@ ROOT="$(git -C "$(pwd)" rev-parse --show-toplevel 2>/dev/null)" || fail "not ins
 
 # every build-dir path goes through $BUILD; --build-dir moves it off the default
 BUILD="$ROOT/${BUILD_SUBDIR:-build}"
-
-# dbld/alpine bind-mount the checkout into a container. dbld/rules mounts the git
-# common-dir, but a linked worktree's submodule gitdirs (lib/ivykis) are recorded
-# against the main checkout and still don't resolve there -- so plain checkout only.
-if [ -f "$ROOT/.git" ]; then
-  case "$MODE" in
-    dbld|alpine) fail "$MODE does not work from a git worktree; run it from a plain checkout" ;;
-  esac
-fi
 
 # --- one build mode per tree; switch with --clean ---------------------------
 # Mixing modes regenerates lib/ivykis with a different libtool and corrupts it.
@@ -505,7 +498,15 @@ esac
 if [ -n "$BIN" ] && [ "$DO_INSTALL" -eq 1 ] && [ -x "$BIN" ]; then
   say "installed binary: $BIN"
   # smoke test: a binary that can't start (missing lib, bad module dir) must fail here
-  ver="$("$BIN" -V)" || fail "installed binary does not run: $BIN"
-  printf '%s\n' "${ver%%$'\n'*}"
+  if [ "$MODE" = dbld ]; then
+    # the dbld binary is linked against its container prefix (/install), so it
+    # only runs in there; the entrypoint chatter precedes the version line
+    ver="$(cd "$ROOT" && ./dbld/rules run RUN_COMMAND="set -o pipefail; /install/sbin/syslog-ng -V | head -1")" \
+      || fail "installed binary does not run in the dbld container: $BIN"
+    printf '%s\n' "${ver##*$'\n'}"
+  else
+    ver="$("$BIN" -V)" || fail "installed binary does not run: $BIN"
+    printf '%s\n' "${ver%%$'\n'*}"
+  fi
 fi
 say "done ($MODE)"

@@ -19,6 +19,14 @@ axosyslog-build autotools  # release/packaging build instead
   build-tree `build/syslog-ng/syslog-ng` — the latter misses runtime libraries
   and does not match how syslog-ng really executes (module path, persist/control
   sockets). `axosyslog-build` installs and runs from the prefix for you.
+- **Every mode works from a linked git worktree**, dbld included: `dbld/rules`
+  mounts a worktree at its host path (plus the main checkout's `.git`) and
+  symlinks `/source` to it, so the relative submodule paths git records still
+  resolve in the container. That needs an image without `VOLUME /source`; if
+  the container refuses to start from a worktree, rebuild the image with
+  `./dbld/rules image-<os>`. The dbld binary lands in `dbld/install/` and is
+  linked against the container's `/install` prefix, so it only runs inside the
+  container; `axosyslog-build` smoke-tests it there via `./dbld/rules run`.
 - **One build mode per tree.** Mixing modes regenerates `lib/ivykis` with a
   different libtool and corrupts it. `git status` and `git submodule status`
   both stay clean (the regenerated files are gitignored and `.gitmodules` sets

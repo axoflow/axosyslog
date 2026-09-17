@@ -20,7 +20,6 @@ RUN /dbld/builddeps install_rpm_build_deps
 
 RUN /dbld/builddeps install_criterion_latest
 
-VOLUME /source
 VOLUME /build
 
 ENTRYPOINT ["/entrypoint.sh"]

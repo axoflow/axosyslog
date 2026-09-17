@@ -20,7 +20,6 @@ RUN /dbld/builddeps install_dbld_dependencies
 RUN /dbld/builddeps install_apt_packages
 RUN /dbld/builddeps install_debian_build_deps
 
-VOLUME /source
 VOLUME /build
 
 ENTRYPOINT ["/entrypoint.sh"]
