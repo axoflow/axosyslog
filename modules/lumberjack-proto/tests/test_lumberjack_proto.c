@@ -1088,14 +1088,92 @@ Test(lumberjack, compressed_frame_is_a_protocol_error_for_now)
   _assert_protocol_error(input, "Compressed Lumberjack frames are not supported yet");
 }
 
-Test(lumberjack, sequence_gap_is_a_protocol_error)
+/* Sequence numbers are not enforced (specification 8.2, 8.3): frames are
+ * counted by position and the window is acknowledged with the last sequence
+ * number seen, which is what a sender numbering from a running counter, like
+ * logstash-forwarder or ferro-lumberjack, expects. */
+Test(lumberjack, out_of_sequence_frames_are_accepted_and_the_last_sequence_is_echoed)
 {
+  LumberjackTestConnection conn;
   GString *input = g_string_new("");
 
   _put_window(input, '2', 2);
+  _put_json_frame(input, 1, "{\"n\":1}");
+  _put_json_frame(input, 3, "{\"n\":3}");
+
+  _connection_init(&conn);
+  _inject(&conn, input);
+  cr_assert_eq(_pump_until(&conn, 0, 2), LUMBERJACK_PUMP_MESSAGES);
+  _assert_message(&conn, 1, "{\"n\":3}", "2");
+
+  _report_durable(&conn, 1);
+  _assert_written(&conn, _ack('2', 3));
+  _connection_deinit(&conn);
+}
+
+Test(lumberjack, running_sequence_counter_across_windows_is_echoed_per_window)
+{
+  LumberjackTestConnection conn;
+  GString *input = g_string_new("");
+  GString *expected = _ack('2', 2);
+  GString *second = _ack('2', 5);
+
+  _put_window(input, '2', 2);
   _put_json_frame(input, 1, "{}");
+  _put_json_frame(input, 2, "{}");
+  _put_window(input, '2', 3);
   _put_json_frame(input, 3, "{}");
-  _assert_protocol_error(input, "frame out of sequence");
+  _put_json_frame(input, 4, "{}");
+  _put_json_frame(input, 5, "{}");
+
+  _connection_init(&conn);
+  _inject(&conn, input);
+  _pump_until(&conn, 0, 5);
+  _report_durable(&conn, 4);
+
+  g_string_append_len(expected, second->str, second->len);
+  g_string_free(second, TRUE);
+  _assert_written(&conn, expected);
+  _connection_deinit(&conn);
+}
+
+/* A(0) is the keepalive (specification 10.2), so a window whose last frame
+ * carries sequence number 0 is acknowledged by count instead. */
+Test(lumberjack, last_sequence_of_zero_is_acknowledged_by_count)
+{
+  LumberjackTestConnection conn;
+  GString *input = g_string_new("");
+
+  _put_window(input, '2', 2);
+  _put_json_frame(input, 0, "{}");
+  _put_json_frame(input, 0, "{}");
+
+  _connection_init(&conn);
+  _inject(&conn, input);
+  _pump_until(&conn, 0, 2);
+  _report_durable(&conn, 1);
+  _assert_written(&conn, _ack('2', 2));
+  _connection_deinit(&conn);
+}
+
+Test(lumberjack, dropped_last_frame_still_sets_the_acknowledged_sequence)
+{
+  LumberjackTestConnection conn;
+  GString *input = g_string_new("");
+  gchar big[200];
+
+  memset(big, 'x', sizeof(big));
+  _put_window(input, '2', 2);
+  _put_json_frame(input, 7, "{}");
+  _put_json_frame_len(input, 8, big, sizeof(big));
+
+  _connection_init(&conn);
+  options_storage.super.max_msg_size = 100;
+  _inject(&conn, input);
+  _pump_until(&conn, 0, 1);
+  _report_durable(&conn, 0);
+  _assert_written(&conn, _ack('2', 8));
+  _connection_deinit(&conn);
 }
 
 Test(lumberjack, frame_version_differing_from_the_window_is_a_protocol_error)

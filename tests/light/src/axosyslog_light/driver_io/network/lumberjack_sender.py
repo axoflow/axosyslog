@@ -145,10 +145,14 @@ class LumberjackSender:
             raise TypeError("a version 2 payload is a dict, a str or bytes")
         return self.encode_json_frame(seq, payload)
 
-    def encode_window_with_frames(self, payloads: typing.Sequence[Payload]) -> bytes:
-        """A `W` frame followed by one data frame per payload, numbered from 1 (spec 7.1, 8.2)."""
+    def encode_window_with_frames(self, payloads: typing.Sequence[Payload], first_seq: int = 1) -> bytes:
+        """A `W` frame followed by one data frame per payload, numbered from @first_seq (spec 7.1, 8.2).
+
+        A conforming sender numbers from 1 in every window; a @first_seq above that
+        imitates the running counter of logstash-forwarder or ferro-lumberjack.
+        """
         data = bytearray(self.encode_window(self.version, len(payloads)))
-        for seq, payload in enumerate(payloads, start=1):
+        for seq, payload in enumerate(payloads, start=first_seq):
             data += self.encode_frame(seq, payload)
         return bytes(data)
 
@@ -158,9 +162,9 @@ class LumberjackSender:
         logger.debug("Lumberjack sender writes %d octets: %r", len(data), data[:64])
         self.__connected_socket().sendall(data)
 
-    def send_window(self, payloads: typing.Sequence[Payload]) -> None:
+    def send_window(self, payloads: typing.Sequence[Payload], first_seq: int = 1) -> None:
         """Write a whole window without waiting for its acknowledgement."""
-        self.send_raw(self.encode_window_with_frames(payloads))
+        self.send_raw(self.encode_window_with_frames(payloads, first_seq))
 
     def read_ack(self, timeout: typing.Optional[float] = None, skip_keepalives: bool = True) -> int:
         """Read one `A` frame and return its sequence number.
@@ -181,9 +185,14 @@ class LumberjackSender:
                 continue
             return seq
 
-    def send_batch(self, payloads: typing.Sequence[Payload], timeout: typing.Optional[float] = None) -> int:
-        """Write a window and wait for its acknowledgement; returns the acknowledged count."""
-        self.send_window(payloads)
+    def send_batch(
+        self,
+        payloads: typing.Sequence[Payload],
+        timeout: typing.Optional[float] = None,
+        first_seq: int = 1,
+    ) -> int:
+        """Write a window and wait for its acknowledgement; returns the acknowledged sequence number."""
+        self.send_window(payloads, first_seq)
         return self.read_ack(timeout)
 
     def wait_for_close(self, timeout: typing.Optional[float] = None) -> None:

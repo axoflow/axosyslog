@@ -96,6 +96,19 @@ def test_lumberjack_pipelined_windows_are_acknowledged_in_order(config, syslog_n
     assert destination.read_logs(5) == expected_messages(5)
 
 
+def test_lumberjack_running_sequence_counter_is_echoed(config, syslog_ng, port_allocator):
+    """A sender numbering frames from a counter running across windows gets its last sequence back (spec 8.3)."""
+    port = port_allocator()
+    destination = start_lumberjack_receiver(config, syslog_ng, port)
+
+    with LumberjackSender() as sender:
+        sender.connect("localhost", port)
+        assert sender.send_batch(events(2), first_seq=1) == 2
+        assert sender.send_batch(events(3, first=2), first_seq=3) == 5
+
+    assert destination.read_logs(5) == expected_messages(5)
+
+
 def test_lumberjack_version1_data_frames_become_json(config, syslog_ng, port_allocator):
     """The key/value pairs of a version 1 frame arrive as a flat JSON object with string values (spec 5.2)."""
     port = port_allocator()
