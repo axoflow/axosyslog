@@ -201,6 +201,15 @@ typedef struct _LumberjackBookmarkData
 
 G_STATIC_ASSERT(sizeof(LumberjackBookmarkData) <= sizeof(BookmarkContainer));
 
+/* A byte range being parsed: buf[pos .. end) is the unparsed input, buf holds
+ * @size octets.  The socket input is one of these; the inflated content of a
+ * compressed frame is another, and the parser reads whichever is current. */
+typedef struct _LumberjackInput
+{
+  guchar *buf;
+  gsize size, pos, end;
+} LumberjackInput;
+
 typedef struct _LogProtoLumberjackServer
 {
   LogProtoServer super;
@@ -255,9 +264,11 @@ typedef struct _LogProtoLumberjackServer
   gint keepalive_due;
   struct iv_timer keepalive_timer;
 
-  /* the unparsed input is buffer[buffer_pos .. buffer_end) */
-  guchar *buffer;
-  gsize buffer_size, buffer_pos, buffer_end;
+  /* what was read from the transport and not parsed yet */
+  LumberjackInput sock;
+  /* the input the parser reads: the socket input, unless a compressed frame
+   * is being read */
+  LumberjackInput *cur;
   guint fetch_counter;
 
   /* the acknowledgements being written, out_buf[out_pos ..) is still unwritten */
@@ -303,15 +314,34 @@ _append_u32(GString *s, guint32 v)
 }
 
 static inline gsize
+_input_buffered(LumberjackInput *in)
+{
+  return in->end - in->pos;
+}
+
+static inline const guchar *
+_input_data(LumberjackInput *in)
+{
+  return &in->buf[in->pos];
+}
+
+static inline void
+_input_consume(LumberjackInput *in, gsize len)
+{
+  in->pos += len;
+}
+
+/* the unparsed octets of the current input, for the parser */
+static inline gsize
 _buffered(LogProtoLumberjackServer *self)
 {
-  return self->buffer_end - self->buffer_pos;
+  return _input_buffered(self->cur);
 }
 
 static inline const guchar *
 _input(LogProtoLumberjackServer *self)
 {
-  return &self->buffer[self->buffer_pos];
+  return _input_data(self->cur);
 }
 
 /* The peer for log messages, formatted into @buf: the address the transport
@@ -677,58 +707,70 @@ _protocol_error(LogProtoLumberjackServer *self, gint reason)
  ****************************************************************************/
 
 static void
+_input_init(LumberjackInput *in, gsize size)
+{
+  if (G_LIKELY(in->buf))
+    return;
+
+  in->size = MAX(size, (gsize) 64);
+  in->buf = g_malloc(in->size);
+}
+
+static void
+_input_free(LumberjackInput *in)
+{
+  g_free(in->buf);
+  in->buf = NULL;
+}
+
+static void
+_input_compact(LumberjackInput *in)
+{
+  if (in->pos == 0)
+    return;
+
+  memmove(in->buf, &in->buf[in->pos], in->end - in->pos);
+  in->end -= in->pos;
+  in->pos = 0;
+}
+
+/* Make room for @needed octets at pos.  A payload we buffer is capped at
+ * log-msg-size(), so this never grows the buffer beyond max_msg_size. */
+static void
+_input_ensure_space(LumberjackInput *in, gsize needed)
+{
+  if (in->size - in->pos >= needed)
+    return;
+
+  _input_compact(in);
+  if (in->size >= needed)
+    return;
+
+  in->size = MAX(needed, in->size * 2);
+  in->buf = g_realloc(in->buf, in->size);
+}
+
+static void
 _ensure_buffer(LogProtoLumberjackServer *self)
 {
-  if (G_LIKELY(self->buffer))
-    return;
-
-  self->buffer_size = MAX((gsize) self->super.options->init_buffer_size, (gsize) 64);
-  self->buffer = g_malloc(self->buffer_size);
+  _input_init(&self->sock, (gsize) self->super.options->init_buffer_size);
 }
 
-static void
-_compact_buffer(LogProtoLumberjackServer *self)
-{
-  if (self->buffer_pos == 0)
-    return;
-
-  memmove(self->buffer, &self->buffer[self->buffer_pos], self->buffer_end - self->buffer_pos);
-  self->buffer_end -= self->buffer_pos;
-  self->buffer_pos = 0;
-}
-
-/* Make room for @needed octets at buffer_pos.  A payload we buffer is capped
- * at log-msg-size(), so this never grows the buffer beyond max_msg_size. */
-static void
-_ensure_buffer_space(LogProtoLumberjackServer *self, gsize needed)
-{
-  if (self->buffer_size - self->buffer_pos >= needed)
-    return;
-
-  _compact_buffer(self);
-  if (self->buffer_size >= needed)
-    return;
-
-  self->buffer_size = MAX(needed, self->buffer_size * 2);
-  self->buffer = g_realloc(self->buffer, self->buffer_size);
-}
-
-/* TRUE if anything was read; @status carries the root cause otherwise. */
+/* Read from the transport into the socket input.  TRUE if anything was read;
+ * @status carries the root cause otherwise. */
 static gboolean
 _fetch_input(LogProtoLumberjackServer *self, LogProtoStatus *status)
 {
   gchar peer[MAX_SOCKADDR_STRING];
+  LumberjackInput *in = &self->sock;
   *status = LPS_SUCCESS;
 
-  if (self->fetch_counter++ >= MAX_FETCH_COUNT)
-    return FALSE;
-
-  _compact_buffer(self);
-  g_assert(self->buffer_end < self->buffer_size);
+  _input_compact(in);
+  g_assert(in->end < in->size);
 
   log_transport_aux_data_reinit(&self->buffer_aux);
   gssize rc = log_transport_stack_read(&self->super.transport_stack,
-                                       &self->buffer[self->buffer_end], self->buffer_size - self->buffer_end,
+                                       &in->buf[in->end], in->size - in->end,
                                        &self->buffer_aux);
   if (rc < 0)
     {
@@ -744,7 +786,7 @@ _fetch_input(LogProtoLumberjackServer *self, LogProtoStatus *status)
 
   if (rc == 0)
     {
-      if (_buffered(self) > 0 || self->state != LUMBERJACK_WINDOW_HEADER)
+      if (_input_buffered(in) > 0 || self->state != LUMBERJACK_WINDOW_HEADER)
         msg_notice("EOF on a Lumberjack connection in the middle of a window, the sender will retransmit it",
                    evt_tag_int("window_size", self->window.size),
                    evt_tag_int("frames_read", self->window.done),
@@ -757,8 +799,22 @@ _fetch_input(LogProtoLumberjackServer *self, LogProtoStatus *status)
       return FALSE;
     }
 
-  self->buffer_end += rc;
+  in->end += rc;
   return TRUE;
+}
+
+/* Get more input for the parser, within the read budget of this fetch().
+ * TRUE if there is more to parse; FALSE otherwise, with @status carrying the
+ * root cause, LPS_SUCCESS meaning a read that would block or a spent budget. */
+static gboolean
+_fetch_more(LogProtoLumberjackServer *self, LogProtoStatus *status)
+{
+  *status = LPS_SUCCESS;
+
+  if (self->fetch_counter++ >= MAX_FETCH_COUNT)
+    return FALSE;
+
+  return _fetch_input(self, status);
 }
 
 /* the whole frame header is buffered, or enough of it to reject it */
@@ -924,7 +980,7 @@ _on_window_header(LogProtoLumberjackServer *self, LogProtoStatus *status)
   gchar peer[MAX_SOCKADDR_STRING];
   if (_buffered(self) < LUMBERJACK_WINDOW_HEADER_LEN)
     {
-      if (!_fetch_input(self, status))
+      if (!_fetch_more(self, status))
         return LUMBERJACK_CTRL_RETURN_WITH_STATUS;
       return LUMBERJACK_CTRL_NEXT_STATE;
     }
@@ -954,7 +1010,7 @@ _on_window_header(LogProtoLumberjackServer *self, LogProtoStatus *status)
       return _protocol_error(self, LUMBERJACK_ERR_FRAME_TYPE);
     }
 
-  self->buffer_pos += LUMBERJACK_WINDOW_HEADER_LEN;
+  _input_consume(self->cur, LUMBERJACK_WINDOW_HEADER_LEN);
 
   if (size == 0)
     {
@@ -991,7 +1047,7 @@ _on_frame_header(LogProtoLumberjackServer *self, LogProtoStatus *status)
   gchar peer[MAX_SOCKADDR_STRING];
   if (!_frame_header_available(self))
     {
-      if (!_fetch_input(self, status))
+      if (!_fetch_more(self, status))
         return LUMBERJACK_CTRL_RETURN_WITH_STATUS;
       return LUMBERJACK_CTRL_NEXT_STATE;
     }
@@ -1066,7 +1122,7 @@ _on_frame_header(LogProtoLumberjackServer *self, LogProtoStatus *status)
     }
   self->window.last_seq = seq;
 
-  self->buffer_pos += LUMBERJACK_DATA_HEADER_LEN;
+  _input_consume(self->cur, LUMBERJACK_DATA_HEADER_LEN);
 
   if (type == LUMBERJACK_TYPE_JSON)
     {
@@ -1102,11 +1158,11 @@ _on_frame_header(LogProtoLumberjackServer *self, LogProtoStatus *status)
 static LumberjackStepControl
 _on_json_payload(LogProtoLumberjackServer *self, LumberjackFetchContext *ctx, LogProtoStatus *status)
 {
-  _ensure_buffer_space(self, self->json_frame.len);
+  _input_ensure_space(self->cur, self->json_frame.len);
 
   if (_buffered(self) < self->json_frame.len)
     {
-      if (!_fetch_input(self, status))
+      if (!_fetch_more(self, status))
         return LUMBERJACK_CTRL_RETURN_WITH_STATUS;
       return LUMBERJACK_CTRL_NEXT_STATE;
     }
@@ -1117,7 +1173,7 @@ _on_json_payload(LogProtoLumberjackServer *self, LumberjackFetchContext *ctx, Lo
       return LUMBERJACK_CTRL_RETURN_WITH_STATUS;
     }
 
-  self->buffer_pos += self->json_frame.len;
+  _input_consume(self->cur, self->json_frame.len);
   self->json_frame.len = 0;
   _frame_complete(self);
 
@@ -1131,12 +1187,12 @@ _on_skip_payload(LogProtoLumberjackServer *self, LogProtoStatus *status)
 {
   gsize skipped = MIN(_buffered(self), self->json_frame.skip_remaining);
 
-  self->buffer_pos += skipped;
+  _input_consume(self->cur, skipped);
   self->json_frame.skip_remaining -= skipped;
 
   if (self->json_frame.skip_remaining > 0)
     {
-      if (!_fetch_input(self, status))
+      if (!_fetch_more(self, status))
         return LUMBERJACK_CTRL_RETURN_WITH_STATUS;
       return LUMBERJACK_CTRL_NEXT_STATE;
     }
@@ -1171,7 +1227,7 @@ _on_data_pairs(LogProtoLumberjackServer *self, LumberjackFetchContext *ctx, LogP
     {
       if (!_pair_step_available(self))
         {
-          if (!_fetch_input(self, status))
+          if (!_fetch_more(self, status))
             return LUMBERJACK_CTRL_RETURN_WITH_STATUS;
           continue;
         }
@@ -1181,7 +1237,7 @@ _on_data_pairs(LogProtoLumberjackServer *self, LumberjackFetchContext *ctx, LogP
         case LUMBERJACK_PAIR_KEY_LEN:
         case LUMBERJACK_PAIR_VALUE_LEN:
           self->data_frame.field_len = _read_u32(_input(self));
-          self->buffer_pos += LUMBERJACK_FIELD_LEN_LEN;
+          _input_consume(self->cur, LUMBERJACK_FIELD_LEN_LEN);
           /* the JSON needs the field, its quotes, a colon or comma and the
            * closing brace on top of what is there already */
           gsize needed = self->data_frame.json->len + self->data_frame.field_len;
@@ -1199,7 +1255,7 @@ _on_data_pairs(LogProtoLumberjackServer *self, LumberjackFetchContext *ctx, LogP
             {
               gsize skipped = MIN(_buffered(self), self->data_frame.field_len);
 
-              self->buffer_pos += skipped;
+              _input_consume(self->cur, skipped);
               self->data_frame.field_len -= skipped;
               if (self->data_frame.field_len > 0)
                 break;
@@ -1214,7 +1270,7 @@ _on_data_pairs(LogProtoLumberjackServer *self, LumberjackFetchContext *ctx, LogP
               else
                 g_string_append_c(self->data_frame.json, ':');
               _append_json_string(self->data_frame.json, _input(self), self->data_frame.field_len);
-              self->buffer_pos += self->data_frame.field_len;
+              _input_consume(self->cur, self->data_frame.field_len);
               self->data_frame.field_len = 0;
             }
 
@@ -1477,7 +1533,7 @@ log_proto_lumberjack_server_free(LogProtoServer *s)
   _ack_state_unref(self->ack_state);
 
   g_queue_free_full(self->pending, g_free);
-  g_free(self->buffer);
+  _input_free(&self->sock);
   g_string_free(self->out_buf, TRUE);
   g_string_free(self->data_frame.json, TRUE);
   log_transport_aux_data_destroy(&self->buffer_aux);
@@ -1498,6 +1554,7 @@ log_proto_lumberjack_server_new(LogTransport *transport, const LogProtoServerOpt
 
   self->options = *lumberjack_options;
   self->state = LUMBERJACK_START;
+  self->cur = &self->sock;
   self->out_buf = g_string_sized_new(LUMBERJACK_ACK_LEN * 4);
   self->data_frame.json = g_string_sized_new(256);
   self->pending = g_queue_new();
