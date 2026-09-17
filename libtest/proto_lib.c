@@ -26,6 +26,7 @@
 #include "grab-logging.h"
 
 #include "cfg.h"
+#include "messages.h"
 #include <string.h>
 
 LogProtoServerOptions proto_server_options;
@@ -36,38 +37,36 @@ assert_proto_server_status(LogProtoServer *proto, LogProtoStatus status, LogProt
   cr_assert_eq(status, expected_status, "LogProtoServer expected status mismatch");
 }
 
-LogProtoStatus
-proto_server_handshake(LogProtoServer **proto)
+/* One fetch(); a replacement the proto asks for is applied and reported in
+ * @replaced, starting the replacement with a fresh @may_read like the reader's
+ * next pass does, and LPS_AGAIN reads as LPS_SUCCESS. */
+static LogProtoStatus
+_fetch_once(LogProtoServer **proto, const guchar **msg, gsize *msg_len, gboolean *may_read,
+            LogTransportAuxData *aux, Bookmark *bookmark, gboolean *replaced)
 {
-  gboolean handshake_finished = FALSE;
-  LogProtoStatus status;
+  LogProtoStatus status = log_proto_server_fetch(*proto, msg, msg_len, may_read, aux, bookmark);
 
-  start_grabbing_messages();
-  do
+  *replaced = FALSE;
+  if (status == LPS_AGAIN)
     {
-      LogProtoServer *proto_replacement = NULL;
-      status = log_proto_server_handshake(*proto, &handshake_finished, &proto_replacement);
-      if (status == LPS_AGAIN)
-        status = LPS_SUCCESS;
-      if (proto_replacement)
-        {
-          log_transport_stack_move(&proto_replacement->transport_stack, &(*proto)->transport_stack);
-          log_proto_server_free(*proto);
-          *proto = proto_replacement;
-        }
+      *replaced = log_proto_server_apply_replacement(proto);
+      if (*replaced)
+        *may_read = TRUE;
+      status = LPS_SUCCESS;
     }
-  while (status == LPS_SUCCESS && handshake_finished == FALSE);
-  stop_grabbing_messages();
   return status;
 }
 
+/* Fetch until a message is produced, so that logproto-auto-server is
+ * transparent here. */
 LogProtoStatus
-proto_server_fetch(LogProtoServer *proto, const guchar **msg, gsize *msg_len)
+proto_server_fetch(LogProtoServer **proto, const guchar **msg, gsize *msg_len)
 {
   Bookmark bookmark;
   LogTransportAuxData aux = {0};
   GSockAddr *saddr;
   gboolean may_read = TRUE;
+  gboolean replaced;
   LogProtoStatus status;
 
   start_grabbing_messages();
@@ -75,9 +74,7 @@ proto_server_fetch(LogProtoServer *proto, const guchar **msg, gsize *msg_len)
   do
     {
       log_transport_aux_data_reinit(&aux);
-      status = log_proto_server_fetch(proto, msg, msg_len, &may_read, &aux, &bookmark);
-      if (status == LPS_AGAIN)
-        status = LPS_SUCCESS;
+      status = _fetch_once(proto, msg, msg_len, &may_read, &aux, &bookmark, &replaced);
     }
   while (status == LPS_SUCCESS && *msg == NULL && may_read);
 
@@ -102,18 +99,41 @@ construct_server_proto_plugin(const gchar *name, LogTransport *transport)
   return log_proto_server_factory_construct(proto_factory, transport, &proto_server_options, NULL);
 }
 
+/* Assert that *proto replaces itself and apply the replacement.
+ * @detect_message, when given, pins down which proto was chosen. */
 void
-assert_proto_server_handshake(LogProtoServer **proto)
+assert_proto_server_replacement(LogProtoServer **proto, const gchar *detect_message)
 {
+  gboolean replaced = FALSE;
+  const guchar *msg = NULL;
+  gsize msg_len = 0;
+  LogTransportAuxData aux = {0};
+  Bookmark bookmark;
+  gboolean may_read = TRUE;
   LogProtoStatus status;
+  gint saved_debug_flag = debug_flag;
 
-  status = proto_server_handshake(proto);
+  debug_flag = TRUE;
+  start_grabbing_messages();
+  log_transport_aux_data_init(&aux);
+  do
+    {
+      log_transport_aux_data_reinit(&aux);
+      status = _fetch_once(proto, &msg, &msg_len, &may_read, &aux, &bookmark, &replaced);
+      cr_assert_null(msg, "a proto that replaces itself must not return a message");
+    }
+  while (status == LPS_SUCCESS && !replaced && may_read);
+  log_transport_aux_data_destroy(&aux);
+  stop_grabbing_messages();
+  debug_flag = saved_debug_flag;
 
   assert_proto_server_status(*proto, status, LPS_SUCCESS);
+  if (detect_message)
+    assert_grabbed_log_contains(detect_message);
 }
 
 void
-assert_proto_server_fetch(LogProtoServer *proto, const gchar *expected_msg, gssize expected_msg_len)
+assert_proto_server_fetch(LogProtoServer **proto, const gchar *expected_msg, gssize expected_msg_len)
 {
   const guchar *msg = NULL;
   gsize msg_len = 0;
@@ -121,7 +141,7 @@ assert_proto_server_fetch(LogProtoServer *proto, const gchar *expected_msg, gssi
 
   status = proto_server_fetch(proto, &msg, &msg_len);
 
-  assert_proto_server_status(proto, status, LPS_SUCCESS);
+  assert_proto_server_status(*proto, status, LPS_SUCCESS);
 
   if (expected_msg_len < 0)
     expected_msg_len = strlen(expected_msg);
@@ -133,7 +153,7 @@ assert_proto_server_fetch(LogProtoServer *proto, const gchar *expected_msg, gssi
 }
 
 void
-assert_proto_server_fetch_single_read(LogProtoServer *proto, const gchar *expected_msg, gssize expected_msg_len)
+assert_proto_server_fetch_single_read(LogProtoServer **proto, const gchar *expected_msg, gssize expected_msg_len)
 {
   const guchar *msg = NULL;
   gsize msg_len = 0;
@@ -141,11 +161,12 @@ assert_proto_server_fetch_single_read(LogProtoServer *proto, const gchar *expect
   LogTransportAuxData aux = {0};
   Bookmark bookmark;
   gboolean may_read = TRUE;
+  gboolean replaced;
 
   start_grabbing_messages();
   log_transport_aux_data_init(&aux);
-  status = log_proto_server_fetch(proto, &msg, &msg_len, &may_read, &aux, &bookmark);
-  assert_proto_server_status(proto, status, LPS_SUCCESS);
+  status = _fetch_once(proto, &msg, &msg_len, &may_read, &aux, &bookmark, &replaced);
+  assert_proto_server_status(*proto, status, LPS_SUCCESS);
 
   if (expected_msg)
     {
@@ -167,7 +188,7 @@ assert_proto_server_fetch_single_read(LogProtoServer *proto, const gchar *expect
 }
 
 void
-assert_proto_server_fetch_failure(LogProtoServer *proto, LogProtoStatus expected_status, const gchar *error_message)
+assert_proto_server_fetch_failure(LogProtoServer **proto, LogProtoStatus expected_status, const gchar *error_message)
 {
   const guchar *msg = NULL;
   gsize msg_len = 0;
@@ -175,23 +196,14 @@ assert_proto_server_fetch_failure(LogProtoServer *proto, LogProtoStatus expected
 
   status = proto_server_fetch(proto, &msg, &msg_len);
 
-  assert_proto_server_status(proto, status, expected_status);
+  assert_proto_server_status(*proto, status, expected_status);
   if (error_message)
     assert_grabbed_log_contains(error_message);
 }
 
-void
-assert_proto_server_handshake_failure(LogProtoServer **proto, LogProtoStatus expected_status)
-{
-  LogProtoStatus status;
-
-  status = proto_server_handshake(proto);
-
-  assert_proto_server_status(*proto, status, expected_status);
-}
 
 void
-assert_proto_server_fetch_ignored_eof(LogProtoServer *proto)
+assert_proto_server_fetch_ignored_eof(LogProtoServer **proto)
 {
   const guchar *msg = NULL;
   gsize msg_len = 0;
@@ -199,13 +211,12 @@ assert_proto_server_fetch_ignored_eof(LogProtoServer *proto)
   LogTransportAuxData aux = {0};
   Bookmark bookmark;
   gboolean may_read = TRUE;
+  gboolean replaced;
 
   start_grabbing_messages();
   log_transport_aux_data_init(&aux);
-  status = log_proto_server_fetch(proto, &msg, &msg_len, &may_read, &aux, &bookmark);
-  if (status == LPS_AGAIN)
-    status = LPS_SUCCESS;
-  assert_proto_server_status(proto, status, LPS_SUCCESS);
+  status = _fetch_once(proto, &msg, &msg_len, &may_read, &aux, &bookmark, &replaced);
+  assert_proto_server_status(*proto, status, LPS_SUCCESS);
   cr_assert_null(msg, "when an EOF is ignored msg must be NULL");
   cr_assert_null(aux.peer_addr, "returned saddr must be NULL on success");
   log_transport_aux_data_destroy(&aux);
