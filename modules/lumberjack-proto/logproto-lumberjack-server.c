@@ -1105,6 +1105,15 @@ _on_frame_header(LogProtoLumberjackServer *self, LogProtoStatus *status)
       return _protocol_error(self, LUMBERJACK_ERR_FRAME_TYPE);
     }
 
+  if (type == LUMBERJACK_TYPE_JSON && version != LUMBERJACK_VERSION_2)
+    {
+      /* version 1 has no JSON frame: an unknown type for the version (4.2, 5) */
+      msg_error("Lumberjack JSON frame ('J') in a version 1 window, version 1 carries data frames ('D') only",
+                evt_tag_str("client", _format_peer_address(self, peer, sizeof(peer))),
+                evt_tag_int(EVT_TAG_FD, self->super.transport_stack.fd));
+      return _protocol_error(self, LUMBERJACK_ERR_FRAME_TYPE);
+    }
+
   guint32 seq = _read_u32(p + 2);
   guint32 declared = _read_u32(p + 6);
 
