@@ -1196,6 +1196,18 @@ Test(lumberjack, data_frame_in_a_version2_window_is_a_protocol_error)
   _assert_protocol_error(input, "data frame ('D') in a version 2 window");
 }
 
+Test(lumberjack, json_frame_in_a_version1_window_is_a_protocol_error)
+{
+  GString *input = g_string_new("");
+
+  _put_window(input, '1', 1);
+  g_string_append(input, "1J");
+  _put_u32(input, 1);
+  _put_u32(input, 2);
+  g_string_append(input, "{}");
+  _assert_protocol_error(input, "JSON frame ('J') in a version 1 window");
+}
+
 Test(lumberjack, empty_json_payload_is_a_protocol_error)
 {
   GString *input = g_string_new("");
