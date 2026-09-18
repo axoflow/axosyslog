@@ -91,3 +91,57 @@ def test_http_destination_adapter_retries_on_partial_failure(
     requests = http_destination.read_logs(2)
     assert len(requests) == 2
     assert all("test message" in r for r in requests)
+
+
+BATCH_HOSTS = ["host-a", "host-b"]
+MESSAGES_PER_HOST = 3
+
+
+def _syslog_lines(hosts, messages_per_host):
+    return [
+        "<38>Sep 15 10:00:00 {} app: message\n".format(host)
+        for host in hosts
+        for _ in range(messages_per_host)
+    ]
+
+
+def test_http_destination_templated_header_flushes_on_host_change(config, syslog_ng, port_allocator):
+    port = port_allocator()
+
+    config.update_global_options(keep_hostname="yes")
+
+    file_source = config.create_file_source(file_name="input.log")
+    file_source.write_logs(_syslog_lines(BATCH_HOSTS, MESSAGES_PER_HOST))
+
+    http_destination = config.create_http_destination(
+        port=port,
+        headers=[config.stringify("X-Host: ${HOST}")],
+        body=config.stringify("${HOST}"),
+        batch_lines=len(BATCH_HOSTS) * MESSAGES_PER_HOST,
+        batch_timeout=1000,
+        workers=1,
+        worker_partition_key=config.stringify("${HOST}"),
+    )
+    config.create_logpath(statements=[file_source, http_destination])
+
+    syslog_ng.start(config)
+
+    requests = http_destination.read_requests(len(BATCH_HOSTS))
+    assert [headers["X-Host"] for headers, _ in requests] == BATCH_HOSTS
+    for headers, body in requests:
+        assert body.split("\n") == [headers["X-Host"]] * MESSAGES_PER_HOST
+
+
+def test_http_destination_templated_header_requires_worker_partition_key(config, syslog_ng, port_allocator):
+    generator_source = config.create_example_msg_generator_source(num=1)
+    http_destination = config.create_http_destination(
+        port=port_allocator(),
+        headers=[config.stringify("X-Host: ${HOST}")],
+        body=config.stringify("${MSG}"),
+        batch_lines=10,
+    )
+    config.create_logpath(statements=[generator_source, http_destination])
+
+    with pytest.raises(Exception):
+        syslog_ng.start(config)
+    assert syslog_ng.wait_for_message_in_console_log("worker-partition-key() must be set") != []
