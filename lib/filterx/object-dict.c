@@ -774,7 +774,13 @@ _filterx_dict_clone_container(FilterXObject *s, FilterXObject *container, Filter
       new_table = _table_new(self->table->size);
       _table_clone(new_table, self->table, container, child_of_interest, dup);
     }
-  return _filterx_dict_new_bare_with_table(new_table);
+  FilterXObject *clone = _filterx_dict_new_bare_with_table(new_table);
+
+  /* a shallow (copy-on-write) clone shares the children, so it borrows from
+   * the message just like the original; a deep one copied them */
+  if (!dup)
+    clone->is_nvtable_backed = s->is_nvtable_backed;
+  return clone;
 }
 
 static FilterXObject *

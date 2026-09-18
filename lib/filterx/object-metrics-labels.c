@@ -171,9 +171,11 @@ _set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject **new_value)
   *label = stats_cluster_label_len(key_str, key_len, value_str, value_len);
 
   g_ptr_array_add(self->objects, stored_key);
+  filterx_object_note_child_stored(s, stored_key);
 
   /* sink the ref we got from _obj_to_string */
   g_ptr_array_add(self->objects, value);
+  filterx_object_note_child_stored(s, value);
 
   self->sorted = FALSE;
   self->deduped = FALSE;
