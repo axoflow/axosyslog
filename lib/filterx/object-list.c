@@ -258,6 +258,11 @@ _filterx_list_clone_container(FilterXObject *s, FilterXObject *container, Filter
       g_ptr_array_add(clone->array, el);
     }
   g_assert(child_found || child_of_interest == NULL);
+
+  /* a shallow (copy-on-write) clone shares the children, so it borrows from
+   * the message just like the original; a deep one copied them */
+  if (!dup)
+    clone->super.super.is_nvtable_backed = s->is_nvtable_backed;
   return &clone->super.super;
 }
 

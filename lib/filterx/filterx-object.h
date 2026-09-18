@@ -915,6 +915,29 @@ filterx_object_cow_fork(FilterXObject **pself)
   return filterx_object_cow_fork2(*pself, pself);
 }
 
+/* TRUE if @self borrows its bytes from a LogMessage's NVTable, or is a
+ * container holding something that does; for an xref, the value behind it
+ * is what counts.  Such an object is only valid as long as the message is,
+ * see filterx_object_note_child_stored() for how the mark spreads. */
+static inline gboolean
+filterx_object_borrows_from_message(FilterXObject *self)
+{
+  return self->is_nvtable_backed || filterx_ref_unwrap_ro(self)->is_nvtable_backed;
+}
+
+/* is_nvtable_backed is transitive: a container holding a message backed
+ * value borrows from the message just as much, so every store marks the
+ * immediate container.  The xref mutators then carry the mark up the
+ * container chain, see _filterx_ref_propagate_nvtable_backed(). The mark is
+ * sticky (removing the child does not clear it): the worst case is an
+ * unnecessary copy, never a dangling one. */
+static inline void
+filterx_object_note_child_stored(FilterXObject *container, FilterXObject *child)
+{
+  if (container && filterx_object_borrows_from_message(child))
+    container->is_nvtable_backed = TRUE;
+}
+
 /*
  * A container's children must live where the container does, or outlive it:
  * in the same arena, on the heap, or preserved.  Anything else dangles as
@@ -949,6 +972,7 @@ static inline FilterXObject *
 filterx_object_cow_store(FilterXObject *container, FilterXObject **pself)
 {
   filterx_object_cow_prepare(pself);
+  filterx_object_note_child_stored(container, *pself);
 
   FilterXObject *stored = filterx_ref_ground(filterx_object_ref(*pself));
   filterx_object_assert_child_storable(container, stored);

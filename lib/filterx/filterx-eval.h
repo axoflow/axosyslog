@@ -309,6 +309,11 @@ filterx_eval_restore_allocator(gpointer *saved_state)
  *   5) allocated on the stack by the caller, not reference counted at all,
  *      only valid until that frame returns.
  *      (filterx_object_is_stack_allocated())
+ *
+ * Orthogonal to the above, an object may borrow its bytes from the
+ * LogMessage being processed instead of owning them (a message backed
+ * string or message_value, or a container holding one), valid only as long
+ * as that message is. (filterx_object_borrows_from_message())
  */
 
 typedef enum
@@ -351,6 +356,9 @@ filterx_eval_retain_dup_needed(FilterXObject *object, FilterXEvalRetainGoal goal
     case FX_RETAIN_UNTIL_FINAL_DELIVERY:
       return FALSE;
     case FX_RETAIN_UNTIL_RELOAD:
+      /* bytes borrowed from the message do not outlive it, this goal does */
+      if (filterx_object_borrows_from_message(object))
+        return TRUE;
       if (object->early_allocation)
         {
           /* early allocated objects, these are always preserved and will be good until reload */
@@ -371,6 +379,9 @@ filterx_eval_retain_dup_needed(FilterXObject *object, FilterXEvalRetainGoal goal
 #endif
       return TRUE;
     case FX_RETAIN_DECOUPLE_CONFIG:
+      /* bytes borrowed from the message do not outlive it, this goal does */
+      if (filterx_object_borrows_from_message(object))
+        return TRUE;
       /* we want a proper reference counted object, allocated on the heap,
        * preserved objects are not good enough as we want them to survive a
        * reload */
