@@ -511,6 +511,7 @@ fi
 %{_libdir}/syslog-ng/libhook-commands.so
 %{_libdir}/syslog-ng/libjson-plugin.so
 %{_libdir}/syslog-ng/libkvformat.so
+%{_libdir}/syslog-ng/liblumberjack-proto.so
 %{_libdir}/syslog-ng/liblinux-kmsg-format.so
 %{_libdir}/syslog-ng/libmap-value-pairs.so
 %{_libdir}/syslog-ng/libpseudofile.so
