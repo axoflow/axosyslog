@@ -179,9 +179,9 @@ _load_json_file_version(FilterXFunctionCacheJsonFile *self, GError **error)
   gboolean result = FALSE;
 
   filterx_env_init(&json_env);
-  filterx_eval_begin_restricted_context(&json_reload_context, &json_env);
+  filterx_stash_begin_build_context(&json_reload_context, &json_env);
   FilterXObject *json = _load_json_file(self->filepath, error);
-  filterx_eval_end_restricted_context(&json_reload_context);
+  filterx_stash_end_build_context(&json_reload_context);
 
   if (json)
     result = filterx_stash_store(&self->stashed_object, json, &json_env);

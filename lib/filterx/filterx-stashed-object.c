@@ -131,6 +131,30 @@ filterx_stash_retrieve(FilterXStashedObject **stash)
   return filterx_object_ref(stashed_object->object);
 }
 
+/*
+ * The context to build a to-be-stashed object in.  It is a restricted
+ * context, like compile time: no message, no allocator, everything created
+ * in it ends up frozen into @env.  Unlike compile time though, @env's
+ * lifetime is managed by the stash, and not the configuration: it is
+ * released once the stash is replaced and the last eval context still
+ * holding a reference to it finishes.
+ *
+ * So nothing built here counts as an "early allocation" (something that
+ * lives as long as the configuration),
+ */
+void
+filterx_stash_begin_build_context(FilterXEvalContext *context, FilterXEnvironment *env)
+{
+  filterx_eval_begin_restricted_context(context, env);
+  context->allocations_shared = FALSE;
+}
+
+void
+filterx_stash_end_build_context(FilterXEvalContext *context)
+{
+  filterx_eval_end_restricted_context(context);
+}
+
 /* NOTE: this consumes the `object` reference */
 gboolean
 filterx_stash_store(FilterXStashedObject **stash, FilterXObject *object, FilterXEnvironment *env)
