@@ -125,7 +125,10 @@ void filterx_eval_freeze_object(FilterXObject **object);
  *
  * Takes a full, self contained snapshot of @context: its scope (and the
  * scope's entire parent chain) with all of its variables/values, and
- * current_frame_meta.
+ * current_frame_meta.  Every value is copied into the snapshot, except a
+ * preserved one, which is shared: a hibernated one lasts as long as the
+ * process, a frozen one as long as the stash references the snapshot
+ * takes.
  *
  * The result is a heap allocated, standalone FilterXEvalContext with no
  * previous_context and an arena of its own.  So it can be kept around

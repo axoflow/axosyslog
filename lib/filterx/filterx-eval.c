@@ -23,6 +23,8 @@
 #include "filterx/filterx-error.h"
 #include "filterx/filterx-expr.h"
 #include "filterx/filterx-config.h"
+#include "filterx/filterx-stashed-object.h"
+#include "filterx/filterx-ref.h"
 #include "logpipe.h"
 #include "scratch-buffers.h"
 #include "tls-support.h"
@@ -500,9 +502,10 @@ filterx_eval_set_control_modifier(FilterXEvalContext *context, FilterXEvalContro
  * What a snapshot holds has to stay valid regardless of which thread ends
  * up using it, and a resumed evaluation writes through it.
  *
- * A hibernated object lasts as long as the process, so it is shared.
- * Anything else is copied, with whatever allocator the snapshot context
- * has in effect.
+ * A preserved object is shared: a hibernated one lasts as long as the
+ * process, a frozen one as long as the stash references of the snapshot,
+ * see _pin_stashes().  Anything else is copied, with whatever allocator
+ * the snapshot context has in effect.
  */
 static FilterXObject *
 _snapshot_value(FilterXObject *value, gpointer user_data)
@@ -510,10 +513,34 @@ _snapshot_value(FilterXObject *value, gpointer user_data)
   if (!value)
     return NULL;
 
-  if (value->ref_cnt == FILTERX_OBJECT_REFCOUNT_HIBERNATED)
+  if (filterx_object_is_preserved(value))
     return filterx_object_ref(value);
 
+  /* an xref around a frozen value: the xref belongs to the live evaluation,
+   * so the snapshot gets one of its own, the frozen value is shared */
+  if (filterx_object_is_ref(value) && filterx_object_is_preserved(filterx_ref_unwrap_ro(value)))
+    return _filterx_ref_new(filterx_object_ref(filterx_ref_unwrap_ro(value)));
+
   return filterx_object_dup(value);
+}
+
+/* Give the snapshot stash references of its own, so the frozen objects it
+ * shares stay valid across a config reload or a reload of the stashed file.
+ * The references of the context may live in its arena, hence the clones. */
+static void
+_pin_stashes(FilterXEvalContext *new_context, FilterXEvalContext *context)
+{
+  for (guint i = 0; i < context->weak_refs->len; i++)
+    {
+      FilterXObject *o = g_ptr_array_index(context->weak_refs, i);
+
+      if (!filterx_object_is_type(o, &FILTERX_TYPE_NAME(stash_reference)))
+        continue;
+
+      FilterXObject *pin = filterx_object_dup(o);
+      pin->weak_referenced = TRUE;
+      g_ptr_array_add(new_context->weak_refs, pin);
+    }
 }
 
 /* The stash references go last: a weak ref can be an xref around a frozen
@@ -560,6 +587,7 @@ filterx_eval_context_dup(FilterXEvalContext *context)
   if (context->config_stash)
     filterx_stash_pin(context->config_stash);
 
+  _pin_stashes(new_context, context);
   new_context->scope = filterx_scope_dup(context->scope, _snapshot_value, NULL);
   /* borrowed, the scope holds the reference */
   new_context->msg = new_context->scope->msg;

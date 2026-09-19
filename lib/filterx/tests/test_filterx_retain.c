@@ -780,6 +780,82 @@ Test(filterx_retain, snapshot_copies_a_message_backed_variable_value)
   filterx_scope_variable_layout_free(layout);
 }
 
+/* A frozen object is not copied: the snapshot takes its own references to
+ * the stashes of the evaluation. */
+static void
+_stash_store_nested_dict(FilterXStashedObject **stash)
+{
+  FilterXEnvironment env;
+  FilterXEvalContext build_context;
+
+  filterx_env_init(&env);
+  filterx_eval_begin_restricted_context(&build_context, &env);
+  FilterXObject *tree = _new_nested_dict();
+  filterx_eval_end_restricted_context(&build_context);
+
+  cr_assert(filterx_stash_store(stash, tree, &env));
+  filterx_env_clear(&env);
+}
+
+Test(filterx_retain, snapshot_pins_stashed_objects_instead_of_copying_them)
+{
+  FilterXStashedObject *stash = NULL;
+  _stash_store_nested_dict(&stash);
+
+  FilterXVariableHandle tree_handle = filterx_map_varname_to_handle("stashtree", FX_VAR_DECLARED_FLOATING);
+  FilterXVariableHandle items_handle = filterx_map_varname_to_handle("stashitems", FX_VAR_DECLARED_FLOATING);
+  FilterXVariableHandle handles[] = { tree_handle, items_handle };
+  FilterXScopeVariableLayout *layout = filterx_scope_variable_layout_new_from_handles(handles, G_N_ELEMENTS(handles));
+  FilterXScope *scope = filterx_scope_new(NULL, layout);
+  set_libtest_filterx_scope(scope);
+
+  _enable_allocator();
+  FilterXObject *tree = filterx_stash_retrieve(&stash);
+  cr_assert_eq(tree->ref_cnt, FILTERX_OBJECT_REFCOUNT_FROZEN);
+  FilterXObject *tree_value = filterx_ref_unwrap_ro(tree);
+
+  FilterXVariable *v = filterx_scope_register_variable(scope, FX_VAR_DECLARED_FLOATING, tree_handle, 0);
+  filterx_scope_set_variable(scope, v, &tree, TRUE);
+  filterx_object_unref(tree);
+
+  /* and a sub-object pulled out of it, the way lookup["items"] would */
+  FILTERX_STRING_DECLARE_ON_STACK(items_key, "items", -1);
+  FilterXObject *items = filterx_object_get_subscript(tree, items_key);
+  FILTERX_STRING_CLEAR_FROM_STACK(items_key);
+  cr_assert_not_null(items);
+  FilterXObject *items_value = filterx_ref_unwrap_ro(items);
+  cr_assert_eq(items_value->ref_cnt, FILTERX_OBJECT_REFCOUNT_FROZEN);
+
+  v = filterx_scope_register_variable(scope, FX_VAR_DECLARED_FLOATING, items_handle, 1);
+  filterx_scope_set_variable(scope, v, &items, TRUE);
+  filterx_object_unref(items);
+
+  FilterXEvalContext *dup = filterx_eval_context_dup(filterx_eval_get_context());
+
+  FilterXObject *dtree = filterx_variable_borrow_value(filterx_scope_lookup_variable(dup->scope, tree_handle, 0));
+  FilterXObject *ditems = filterx_variable_borrow_value(filterx_scope_lookup_variable(dup->scope, items_handle, 1));
+  cr_assert_eq(filterx_ref_unwrap_ro(dtree), tree_value, "the stashed tree was copied into the snapshot");
+  cr_assert_eq(filterx_ref_unwrap_ro(ditems), items_value,
+               "a sub-object of the stashed tree was copied into the snapshot");
+  _assert_decoupled(ditems, "snapshot");
+
+  /* the file gets reloaded (a new version replaces the old in the stash)
+   * and the live evaluation ends (its scope, allocator and weak refs go):
+   * from here on only the snapshot keeps the old version alive */
+  _stash_store_nested_dict(&stash);
+  set_libtest_filterx_scope(filterx_scope_new(NULL, NULL));
+  _release_allocator_memory();
+  g_ptr_array_set_size(filterx_eval_get_context()->weak_refs, 0);
+
+  assert_object_json_equals(dtree, NESTED_DICT_JSON);
+  assert_object_json_equals(ditems, "[4242,\"list-element\"]");
+
+  /* releasing the snapshot releases the old version */
+  filterx_eval_context_free_dup(dup);
+  filterx_scope_variable_layout_free(layout);
+  filterx_stashed_object_unref(stash);
+}
+
 /* The evaluation takes no reference to the stash of its configuration, the
  * snapshot takes one. */
 Test(filterx_retain, snapshot_takes_a_reference_to_the_stash_of_the_configuration)
