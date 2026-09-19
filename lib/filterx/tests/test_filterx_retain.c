@@ -883,6 +883,59 @@ Test(filterx_retain, snapshot_pins_stashed_objects_instead_of_copying_them)
   filterx_stashed_object_unref(stash);
 }
 
+static gboolean
+_count_variable(FilterXVariable *variable, gpointer user_data)
+{
+  (*(gint *) user_data)++;
+  return TRUE;
+}
+
+Test(filterx_retain, snapshot_skips_message_tied_variables_that_are_in_sync_with_the_message)
+{
+  LogMessage *msg = filterx_eval_get_context()->msg;
+  log_msg_set_value_by_name_with_type(msg, "snapread", "from-the-message", -1, LM_VT_STRING);
+  log_msg_set_value_by_name_with_type(msg, "snapwrite", "to-be-overwritten", -1, LM_VT_STRING);
+
+  FilterXVariableHandle read_handle = filterx_map_varname_to_handle("snapread", FX_VAR_MESSAGE_TIED);
+  FilterXVariableHandle write_handle = filterx_map_varname_to_handle("snapwrite", FX_VAR_MESSAGE_TIED);
+  FilterXVariableHandle handles[] = { read_handle, write_handle };
+  FilterXScopeVariableLayout *layout = filterx_scope_variable_layout_new_from_handles(handles, G_N_ELEMENTS(handles));
+  FilterXScope *scope = filterx_scope_new(NULL, layout);
+  set_libtest_filterx_scope(scope);
+
+  /* $snapread is only read: pulled into the scope, in sync with the message */
+  FilterXVariable *v = filterx_scope_register_variable(scope, FX_VAR_MESSAGE_TIED, read_handle, 0);
+  cr_assert_not(filterx_variable_is_assigned(v));
+  assert_object_str_equals(filterx_variable_borrow_value(v), "from-the-message");
+
+  /* $snapwrite is assigned to: only the scope knows the new value until the next sync */
+  v = filterx_scope_register_variable(scope, FX_VAR_MESSAGE_TIED, write_handle, 1);
+  FilterXObject *new_value = filterx_string_new("assigned-in-scope", -1);
+  filterx_scope_set_variable(scope, v, &new_value, TRUE);
+  filterx_object_unref(new_value);
+
+  FilterXEvalContext *dup = filterx_eval_context_dup(filterx_eval_get_context());
+
+  /* only the assigned one was carried over */
+  gint num_variables = 0;
+  cr_assert(filterx_scope_foreach_variable_readonly(dup->scope, _count_variable, &num_variables));
+  cr_assert_eq(num_variables, 1);
+
+  FilterXVariable *dv = filterx_scope_lookup_variable(dup->scope, write_handle, 1);
+  cr_assert_not_null(dv);
+  cr_assert(filterx_variable_is_assigned(dv));
+  assert_object_str_equals(filterx_variable_borrow_value(dv), "assigned-in-scope");
+
+  /* the other one is not there, and comes back from the snapshot's message
+   * the moment the resumed evaluation registers it */
+  cr_assert_null(filterx_scope_lookup_variable(dup->scope, read_handle, 0));
+  dv = filterx_scope_register_variable(dup->scope, FX_VAR_MESSAGE_TIED, read_handle, 0);
+  assert_object_str_equals(filterx_variable_borrow_value(dv), "from-the-message");
+
+  filterx_eval_context_free_dup(dup);
+  filterx_scope_variable_layout_free(layout);
+}
+
 static void
 setup(void)
 {
