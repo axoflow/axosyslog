@@ -452,6 +452,16 @@ _collect_variable_for_dup(FilterXVariable *variable, gpointer user_data)
       !filterx_variable_is_declared(variable) && !filterx_variable_is_message_tied(variable))
     return TRUE;
 
+  /* The snapshot keeps a reference on the message, and a read through the
+   * duplicate pulls the value from there again
+   * (filterx_scope_register_variable()).  The same condition
+   * filterx_scope_sync() uses to skip a variable, so a whiteout (no value,
+   * assigned) is carried over. */
+  if (filterx_variable_is_message_tied(variable) &&
+      !filterx_variable_is_assigned(variable) &&
+      variable->value && !filterx_object_is_dirty(variable->value))
+    return TRUE;
+
   FilterXScopeVariableSnapshot snapshot =
   {
     .handle = variable->handle,

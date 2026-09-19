@@ -86,8 +86,10 @@ void filterx_scope_free(FilterXScope *self);
  * flattened snapshot of the message-tied and declared floating variables
  * visible through @self's ancestor chain (plain floating variables don't
  * survive a scope boundary by design, see filterx_variable_is_declared()).
- * The copy holds a copy-on-write clone of the message as it is at this
- * point, and its variables are synced into that clone.
+ * Message-tied variables that are in sync with the message are left out
+ * altogether: the copy holds a copy-on-write clone of the message as it
+ * is at this point and pulls them from there on demand, only assigned or
+ * changed ones are carried over.
  * Each scope in the returned chain owns its own FilterXScopeVariableLayout;
  * free the result with filterx_scope_free_dup(), not a bare
  * filterx_scope_free(). */
