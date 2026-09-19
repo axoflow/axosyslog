@@ -60,6 +60,22 @@ typedef struct _FilterXFailureInfo
   gint error_count;
 } FilterXFailureInfo;
 
+/*
+ * FilterXEvalContinuation: describes how to resume evaluation later, e.g.
+ * once some function call within a statement (like aggregate()) decides a
+ * delayed continuation is needed.  Resuming re-enters parent_compound at
+ * statement_index.
+ *
+ * All fields are borrowed: the struct carries no ownership of its own.
+ */
+typedef struct _FilterXEvalContinuation
+{
+  LogPipe *owner_pipe;
+  FilterXExpr *statement_expr;
+  FilterXExpr *parent_compound;
+  gsize statement_index;
+} FilterXEvalContinuation;
+
 typedef struct _FilterXEvalContext FilterXEvalContext;
 struct _FilterXEvalContext
 {
@@ -68,7 +84,6 @@ struct _FilterXEvalContext
   FilterXError errors[FILTERX_CONTEXT_ERROR_STACK_SIZE];
   gint error_count;
   FilterXObject *current_frame_meta;
-  LogTemplateEvalOptions template_eval_options;
   GPtrArray *weak_refs;
   FilterXAllocator *allocator;
   FilterXAllocatorPosition allocator_position;
@@ -79,10 +94,37 @@ struct _FilterXEvalContext
   GArray *failure_info;
   gint weak_refs_offset;
   FilterXEnvironment *env;
+
+  /* NOTE: Only meaningful while this context is active during compilation */
+  FilterXEvalContinuation *continuation;
+
+  /* NOTE: only meaningful while resuming a FilterXEvalContinuation */
+  FilterXObject *resume_value;
 };
 
 FilterXEvalContext *filterx_eval_get_context(void);
 FilterXScope *filterx_eval_get_scope(void);
+
+static inline FilterXEvalContinuation *
+filterx_eval_get_continuation(void)
+{
+  FilterXEvalContext *context = filterx_eval_get_context();
+  return context ? context->continuation : NULL;
+}
+
+/* one-shot: clears resume_value as it returns it */
+static inline FilterXObject *
+filterx_eval_take_resume_value(void)
+{
+  FilterXEvalContext *context = filterx_eval_get_context();
+  if (!context || !context->resume_value)
+    return NULL;
+
+  FilterXObject *value = context->resume_value;
+  context->resume_value = NULL;
+  return value;
+}
+
 void filterx_eval_update_error_location_from_expr(FilterXExpr *expr);
 void filterx_eval_push_error(const gchar *message, FilterXObject *object);
 void filterx_eval_push_falsy_error(const gchar *message, FilterXObject *object);
@@ -90,6 +132,8 @@ void filterx_eval_push_error_static_info(const gchar *message, const gchar *info
 void filterx_eval_push_error_info_printf(const gchar *message, const gchar *fmt, ...) G_GNUC_PRINTF(2, 3);
 void filterx_eval_set_context(FilterXEvalContext *context);
 FilterXEvalResult filterx_eval_exec(FilterXEvalContext *context, FilterXExpr *expr, FilterXJITExecFunc jit_exec);
+FilterXEvalResult filterx_eval_resume_continuation(FilterXEvalContext *context, FilterXEvalContinuation *continuation,
+                                                   FilterXObject *resume_value, LogMessage **pmsg);
 const gchar *filterx_eval_get_last_error(void);
 const gchar *filterx_eval_get_error(gint index);
 gint filterx_eval_get_error_count(void);
@@ -109,6 +153,45 @@ void filterx_eval_end_restricted_context(FilterXEvalContext *context);
 void filterx_eval_begin_compile(FilterXEvalContext *context, GlobalConfig *cfg);
 void filterx_eval_end_compile(FilterXEvalContext *context);
 void filterx_eval_freeze_object(FilterXObject **object);
+
+/*
+ * filterx_eval_context_dup():
+ *
+ * Takes a full, self contained snapshot of @context: its scope (and the
+ * scope's entire parent chain) with all of its variables/values, and
+ * current_frame_meta.  Every retained value is decoupled from the thread
+ * specific allocator and from the current configuration (see
+ * FX_RETAIN_DECOUPLE_CONFIG), producing independent, owned copies.
+ *
+ * The result starts out with its own, empty weak_refs, but cloning a
+ * recursive mutable structure (a dict containing a dict, etc) re-populates
+ * it as it goes: every nested FilterXRef's parent_container weakref is
+ * re-established against the *cloned* parent, which is only reachable
+ * top-down (ownership flows container -> element, never the other way),
+ * so filterx_eval_store_weak_ref() is what keeps such a parent alive at
+ * all.  That call always targets whatever filterx_eval_get_context()
+ * currently returns, so the whole retain pass runs with the new context
+ * (not @context) set as active, ensuring those protections end up in the
+ * new context's own weak_refs -- and therefore keep working long after
+ * @context (and its weak_refs) are gone -- rather than in @context's,
+ * where they would otherwise silently turn into dangling pointers the
+ * moment @context ends.
+ *
+ * The result is a heap allocated, standalone FilterXEvalContext with no
+ * previous_context and no allocator (allocations always fall back to
+ * g_malloc()), so it can be kept around and used to resume evaluation
+ * later, potentially on a different thread, long after @context (and the
+ * thread specific allocator/stack storage it may be using) has gone away.
+ *
+ * @context must be the context that is currently active in this thread
+ * (i.e.  filterx_eval_get_context() == context), as retaining objects out
+ * of the thread specific allocator relies on that.
+ *
+ * The returned context must eventually be released with
+ * filterx_eval_context_free_dup().
+ */
+FilterXEvalContext *filterx_eval_context_dup(FilterXEvalContext *context);
+void filterx_eval_context_free_dup(FilterXEvalContext *context);
 
 FilterXEvalControl filterx_eval_get_control_modifier(FilterXEvalContext *context);
 void filterx_eval_set_control_modifier(FilterXEvalContext *context, FilterXEvalControl modifier);
@@ -227,25 +310,152 @@ filterx_eval_malloc_object(gsize object_size, gsize alloc_size)
   return result;
 }
 
+static inline void
+filterx_eval_switch_allocator(FilterXAllocator *new_allocator, gpointer *saved_state)
+{
+  FilterXEvalContext *context = filterx_eval_get_context();
+
+  *saved_state = context->allocator;
+  context->allocator = new_allocator;
+}
+
+static inline void
+filterx_eval_disable_allocator(gpointer *saved_state)
+{
+  filterx_eval_switch_allocator(NULL, saved_state);
+}
+
+static inline void
+filterx_eval_restore_allocator(gpointer *saved_state)
+{
+  FilterXEvalContext *context = filterx_eval_get_context();
+
+  context->allocator = (FilterXAllocator *) *saved_state;
+  *saved_state = NULL;
+}
+
+/*
+ * Retaining an object:
+ *
+ * Sometimes we need to retain an object for longer than what its initial
+ * allocation can warrant (e.g.  allocated from a thread specific allocator
+ * and we need to keep it until aggregation finishes).  An important
+ * constraint is that retained objects only allow read only access.
+ *
+ * The FX_RETAIN_* enums determine how long we want to make sure an object
+ * remains accessible.  A return value can refer to the same object (in case
+ * the current allocation suffices), or it can duplicate the object, in
+ * which case the caller will have its own copy.
+ *
+ * In both cases, only read only access is permitted, otherwise an object
+ * could potentially be accessed from multiple threads.
+ *
+ * An object instance can be allocated in one of the following ways:
+ *
+ * Shared access (multiple threads use the same object):
+ * -----------------------------------------------------
+ *   1) allocated early, at configuration load time and then frozen (filterx_object_is_hibernated())
+ *
+ *   2) allocated during runtime, frozen for a longer period, but then freed
+ *      asynchronously (e.g.  cache_json_file()) (filterx_object_is_frozen())
+ *
+ * Exclusive access (a single thread has access):
+ * ----------------------------------------------
+ *   3) allocated during runtime for pipeline access, using a pipeline
+ *      allocator that frees objects en-masse, the reference count exists
+ *      (for now) but does not drive the freeing of the object.  Once the
+ *      message is delivered, all objects are freed.
+ *      (filterx_object_is_refcounted() && object->allocator_used)
+ *
+ *   4) allocated during runtime for a single thread access, not using a
+ *      pipeline allocator, e.g.  the reference count drives the freeing of the
+ *      object. (filterx_object_is_refcounted() && !object->allocator_used)
+ */
+
+typedef enum
+{
+  /* retain this object at least up to the last delivery of the current
+   * message */
+  FX_RETAIN_UNTIL_FINAL_DELIVERY,
+  /* retain this object at least up to the next configuration reload */
+  FX_RETAIN_UNTIL_RELOAD,
+
+  /* retain this object independently from configurations, e.g.  until its
+   * reference count is larger than zero, even in face of configuration
+   * reloads */
+  FX_RETAIN_DECOUPLE_CONFIG,
+} FilterXEvalRetainGoal;
+
+static inline gboolean
+filterx_eval_retain_dup_needed(FilterXObject *object, FilterXEvalRetainGoal goal)
+{
+  if (!object)
+    return FALSE;
+
+  /* at any goals, we need to get our of the allocator's purview */
+  if (object->allocator_used)
+    return TRUE;
+
+  switch (goal)
+    {
+    case FX_RETAIN_UNTIL_FINAL_DELIVERY:
+      return FALSE;
+    case FX_RETAIN_UNTIL_RELOAD:
+      if (object->early_allocation)
+        {
+          /* early allocated objects, these are always preserved and will be good until reload */
+#if SYSLOG_NG_ENABLE_DEBUG
+          g_assert(filterx_object_is_preserved(object));
+#endif
+          return FALSE;
+        }
+      /* refcounted and hibnerated objects don't need duplication */
+      if (filterx_object_is_refcounted(object) ||
+          filterx_object_is_hibernated(object))
+        return FALSE;
+      /* the remaining case is stashed objects, which are not safe to keep
+       * around, so let's duplicate those */
+
+#if SYSLOG_NG_ENABLE_DEBUG
+      g_assert(filterx_object_is_frozen(object));
+#endif
+      return TRUE;
+    case FX_RETAIN_DECOUPLE_CONFIG:
+      /* we want a proper reference counted object, allocated on the heap,
+       * preserved objects are not good enough as we want them to survive a
+       * reload */
+      if (!filterx_object_is_preserved(object))
+        return FALSE;
+      return TRUE;
+    default:
+      g_assert_not_reached();
+    }
+}
+
 /* unplug this object from the current context, and guarantee it remains
  * available past the end of the scope, at least until the returned
  * reference is dropped using filterx_object_unref(). */
+static inline FilterXObject *
+filterx_eval_retain_dup(FilterXObject *object, FilterXEvalRetainGoal goal)
+{
+  if (!filterx_eval_retain_dup_needed(object, goal))
+    return filterx_object_ref(object);
+  else
+    return filterx_object_dup(object);
+}
+
 static inline void
-filterx_eval_retain_object(FilterXObject **pobject)
+filterx_eval_retain_object(FilterXObject **pobject, FilterXEvalRetainGoal goal)
 {
   FilterXObject *object = *pobject;
-  if (!object || filterx_object_is_preserved(object) || !object->allocator_used)
-    return;
+  gpointer allocator_state;
 
-  FilterXEvalContext *context = filterx_eval_get_context();
-  FilterXAllocator *saved_allocator = context->allocator;
-
-  /* NOTE: dup the object with a NULL allocator means we will allocate it from the heap */
-  context->allocator = NULL;
-  *pobject = filterx_object_dup(object);
+  filterx_eval_disable_allocator(&allocator_state);
+  *pobject = filterx_eval_retain_dup(object, goal);
+  filterx_eval_restore_allocator(&allocator_state);
   filterx_object_unref(object);
-  context->allocator = saved_allocator;
 }
+
 
 void filterx_eval_global_init(void);
 void filterx_eval_global_deinit(void);
