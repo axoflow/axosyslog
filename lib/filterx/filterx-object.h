@@ -314,6 +314,24 @@ filterx_object_is_preserved(FilterXObject *self)
 }
 
 static inline gboolean
+filterx_object_is_hibernated(FilterXObject *self)
+{
+  return self->ref_cnt == FILTERX_OBJECT_REFCOUNT_HIBERNATED;
+}
+
+static inline gboolean
+filterx_object_is_frozen(FilterXObject *self)
+{
+  return self->ref_cnt == FILTERX_OBJECT_REFCOUNT_FROZEN;
+}
+
+static inline gboolean
+filterx_object_is_refcounted(FilterXObject *self)
+{
+  return self->ref_cnt < FILTERX_OBJECT_REFCOUNT_BARRIER;
+}
+
+static inline gboolean
 filterx_object_is_stack_allocated(FilterXObject *self)
 {
   return self->ref_cnt == FILTERX_OBJECT_REFCOUNT_STACK;

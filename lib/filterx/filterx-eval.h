@@ -316,6 +316,13 @@ typedef enum
   /* retain this object at least up to the last delivery of the current
    * message */
   FX_RETAIN_UNTIL_FINAL_DELIVERY,
+  /* retain this object at least up to the next configuration reload */
+  FX_RETAIN_UNTIL_RELOAD,
+
+  /* retain this object independently from configurations, e.g.  until its
+   * reference count is larger than zero, even in face of configuration
+   * reloads */
+  FX_RETAIN_DECOUPLE_CONFIG,
 } FilterXEvalRetainGoal;
 
 static inline gboolean
@@ -343,6 +350,33 @@ filterx_eval_retain_dup_needed(FilterXObject *object, FilterXEvalRetainGoal goal
     {
     case FX_RETAIN_UNTIL_FINAL_DELIVERY:
       return FALSE;
+    case FX_RETAIN_UNTIL_RELOAD:
+      if (object->early_allocation)
+        {
+          /* early allocated objects, these are always preserved and will be good until reload */
+#if SYSLOG_NG_ENABLE_DEBUG
+          g_assert(filterx_object_is_preserved(object));
+#endif
+          return FALSE;
+        }
+      /* refcounted and hibnerated objects don't need duplication */
+      if (filterx_object_is_refcounted(object) ||
+          filterx_object_is_hibernated(object))
+        return FALSE;
+      /* the remaining case is stashed objects, which are not safe to keep
+       * around, so let's duplicate those */
+
+#if SYSLOG_NG_ENABLE_DEBUG
+      g_assert(filterx_object_is_frozen(object));
+#endif
+      return TRUE;
+    case FX_RETAIN_DECOUPLE_CONFIG:
+      /* we want a proper reference counted object, allocated on the heap,
+       * preserved objects are not good enough as we want them to survive a
+       * reload */
+      if (!filterx_object_is_preserved(object))
+        return FALSE;
+      return TRUE;
     default:
       g_assert_not_reached();
     }
