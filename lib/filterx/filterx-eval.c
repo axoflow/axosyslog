@@ -23,6 +23,8 @@
 #include "filterx/filterx-error.h"
 #include "filterx/filterx-expr.h"
 #include "filterx/filterx-config.h"
+#include "filterx/filterx-stashed-object.h"
+#include "filterx/filterx-ref.h"
 #include "logpipe.h"
 #include "scratch-buffers.h"
 #include "tls-support.h"
@@ -477,19 +479,60 @@ filterx_eval_set_control_modifier(FilterXEvalContext *context, FilterXEvalContro
   context->eval_control_modifier = modifier;
 }
 
+/* an xref of our own (and thus possibly allocator resident) around a value
+ * the snapshot keeps alive anyway: a fresh xref sharing the value is all
+ * that is needed, copying the value would defeat the pinning */
+static inline gboolean
+_is_xref_around_pinned_value(FilterXObject *value)
+{
+  if (!filterx_object_is_ref(value) || filterx_object_is_preserved(value))
+    return FALSE;
+
+  FilterXObject *inner = filterx_ref_unwrap_ro(value);
+  return filterx_object_is_frozen(inner) && !inner->early_allocation;
+}
+
 static FilterXObject *
 _dup_retain_value(FilterXObject *value, gpointer user_data)
 {
   if (!value)
     return NULL;
 
+  if (_is_xref_around_pinned_value(value))
+    return _filterx_ref_new(filterx_object_ref(filterx_ref_unwrap_ro(value)));
+
   /* Decouples the value from the thread specific allocator (always, via
    * the allocator residency check inside filterx_eval_retain_dup_needed())
    * and from the current configuration, guaranteeing an independent,
    * refcounted object -- allocated with whatever allocator the snapshot
    * context has in effect -- that remains valid regardless of which thread
-   * ends up using this duplicated context. */
-  return filterx_eval_retain_dup(value, FX_RETAIN_DECOUPLE_CONFIG);
+   * ends up using this duplicated context.  Except for values a stash keeps
+   * alive, which the snapshot pins instead, see _pin_stashes(). */
+  return filterx_eval_retain_dup(value, FX_RETAIN_SNAPSHOT);
+}
+
+/* Every stash the context read from left a stash_reference in its weak refs
+ * (see filterx_stash_retrieve()), keeping that stash version alive for as
+ * long as the context lasts.  Give the snapshot references of its own, so
+ * the values retained above by reference (FX_RETAIN_SNAPSHOT) stay valid
+ * for as long as the snapshot does, a config reload or a reload of the
+ * stashed file notwithstanding.  The references themselves may live in the
+ * live context's arena, hence the clones (made with the snapshot context's
+ * allocator, as everything else in it). */
+static void
+_pin_stashes(FilterXEvalContext *new_context, FilterXEvalContext *context)
+{
+  for (guint i = 0; i < context->weak_refs->len; i++)
+    {
+      FilterXObject *o = g_ptr_array_index(context->weak_refs, i);
+
+      if (!filterx_object_is_type(o, &FILTERX_TYPE_NAME(stash_reference)))
+        continue;
+
+      FilterXObject *pin = filterx_object_dup(o);
+      pin->weak_referenced = TRUE;
+      g_ptr_array_add(new_context->weak_refs, pin);
+    }
 }
 
 FilterXEvalContext *
@@ -539,6 +582,7 @@ filterx_eval_context_dup(FilterXEvalContext *context)
    */
   filterx_eval_set_context(new_context);
 
+  _pin_stashes(new_context, context);
   new_context->scope = filterx_scope_dup(context->scope, _dup_retain_value, NULL);
   /* the scope owns the only reference to the message, context->msg is
    * just a borrowed convenience pointer, mirroring filterx_eval_begin_context() */

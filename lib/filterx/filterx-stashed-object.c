@@ -58,8 +58,20 @@ filterx_stash_reference_free(FilterXObject *s)
 
 /* we are deriving from null to satisfy asserts in filterx_type_init(), this
  * object is never surfaced to user code */
+/* another reference to the same stash: whoever holds the clone keeps the
+ * stashed object (and everything frozen into its environment) alive just
+ * like the original does -- see filterx_eval_context_dup() */
+static FilterXObject *
+filterx_stash_reference_clone(FilterXObject *s)
+{
+  FilterXStashReference *self = (FilterXStashReference *) s;
+
+  return filterx_stash_reference_new(filterx_stashed_object_ref(self->stashed_object));
+}
+
 FILTERX_DEFINE_TYPE(stash_reference, FILTERX_TYPE_NAME(null),
                     .free_fn = filterx_stash_reference_free,
+                    .clone = filterx_stash_reference_clone,
                    );
 
 /*
