@@ -449,18 +449,21 @@ http_dd_init(LogPipe *s)
   gboolean is_batch_templated = http_load_balancer_is_url_templated(self->load_balancer) || is_body_prefix_templated;
 
   if (is_batching_enabled && is_batch_templated)
-    {
-      log_threaded_dest_driver_set_flush_on_worker_key_change(&self->super.super.super, TRUE);
+    log_threaded_dest_driver_set_flush_on_worker_key_change(&self->super.super.super, TRUE);
 
-      if (!self->super.worker_partition_key)
-        {
-          msg_error("http: worker-partition-key() must be set if using templates in the url() option "
-                    "while batching is enabled. "
-                    "Make sure to set worker-partition-key() with a template that contains all the templates "
-                    "used in the url() option",
-                    log_pipe_location_tag(&self->super.super.super.super));
-          return FALSE;
-        }
+  gboolean is_body_prefix_message_dependent = self->body_prefix_template &&
+                                              !log_template_is_message_independent(self->body_prefix_template);
+  gboolean is_batch_message_dependent = http_load_balancer_is_url_message_dependent(self->load_balancer)
+                                        || is_body_prefix_message_dependent;
+
+  if (is_batching_enabled && is_batch_message_dependent && !self->super.worker_partition_key)
+    {
+      msg_error("http: worker-partition-key() must be set if using message-dependent templates "
+                "in the url() or body-prefix() options while batching is enabled. "
+                "Make sure to set worker-partition-key() with a template that contains all the "
+                "message-dependent templates used in the url() and body-prefix() options",
+                log_pipe_location_tag(&self->super.super.super.super));
+      return FALSE;
     }
   if (self->batch_bytes > 0 && self->super.batch_lines == 0)
     self->super.batch_lines = G_MAXINT;
