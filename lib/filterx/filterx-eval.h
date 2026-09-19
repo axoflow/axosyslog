@@ -122,11 +122,13 @@ void filterx_eval_freeze_object(FilterXObject **object);
  * scope's entire parent chain) with all of its variables/values, and
  * current_frame_meta.  Every retained value is decoupled from the thread
  * specific allocator and from the current configuration (see
- * FX_RETAIN_DECOUPLE_CONFIG), producing independent, owned copies.
+ * FX_RETAIN_SNAPSHOT): an independent, owned copy, unless a stash the
+ * snapshot pins keeps it alive.
  *
- * The result starts out with its own, empty weak_refs, but cloning a
- * recursive mutable structure (a dict containing a dict, etc) re-populates
- * it as it goes: every nested FilterXRef's parent_container weakref is
+ * The result's weak_refs start out with those stash references (see
+ * _pin_stashes()), and cloning a recursive mutable structure (a dict
+ * containing a dict, etc) adds to them as it goes: every nested
+ * FilterXRef's parent_container weakref is
  * re-established against the *cloned* parent, which is only reachable
  * top-down (ownership flows container -> element, never the other way),
  * so filterx_eval_store_weak_ref() is what keeps such a parent alive at
@@ -375,6 +377,16 @@ typedef enum
    * reference count is larger than zero, even in face of configuration
    * reloads */
   FX_RETAIN_DECOUPLE_CONFIG,
+
+  /* FX_RETAIN_DECOUPLE_CONFIG for a snapshot of the current eval context
+   * that carries the context's stash references along (the way
+   * filterx_eval_context_dup() does): a frozen object owned by a stash
+   * rather than by the configuration -- frozen, but no early_allocation,
+   * see filterx_stash_begin_build_context() -- is then kept alive by the
+   * snapshot itself and does not need to be copied, however large it is
+   * (think of a cache_json_file() tree).  Only valid when the caller does
+   * carry those references. */
+  FX_RETAIN_SNAPSHOT,
 } FilterXEvalRetainGoal;
 
 static inline gboolean
@@ -432,6 +444,18 @@ filterx_eval_retain_dup_needed(FilterXObject *object, FilterXEvalRetainGoal goal
       if (!filterx_object_is_preserved(object))
         return FALSE;
       return TRUE;
+    case FX_RETAIN_SNAPSHOT:
+      if (filterx_object_borrows_from_message(object))
+        return TRUE;
+      if (!filterx_object_is_preserved(object))
+        return FALSE;
+      /* process lifetime, nothing to outlive */
+      if (filterx_object_is_hibernated(object))
+        return FALSE;
+      /* frozen: a config literal dies with the configuration and has to be
+       * copied; a stash owned one is pinned by the snapshot's own stash
+       * references, so a plain reference is enough */
+      return object->early_allocation;
     default:
       g_assert_not_reached();
     }
