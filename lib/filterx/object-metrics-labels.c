@@ -256,6 +256,13 @@ _iter(FilterXObject *s, FilterXObjectIterFunc func, gpointer user_data)
   return TRUE;
 }
 
+/* A real copy.  The labels borrow their bytes from the objects in
+ * self->objects, so sharing those (as a shallow copy would) would leave the
+ * clone depending on the original's storage: the allocator, the message,
+ * whatever the originals happened to borrow from.  Re-create every name and
+ * value as a string of the clone's own instead -- filterx_object_dup() is
+ * expected to hand back an independent object, that is what the retain
+ * machinery builds on. */
 static FilterXObject *
 _clone(FilterXObject *s)
 {
@@ -270,12 +277,15 @@ _clone(FilterXObject *s)
       StatsClusterLabel *label = &g_array_index(self->labels, StatsClusterLabel, i);
       StatsClusterLabel *cloned_label = &g_array_index(cloned->labels, StatsClusterLabel, i);
 
-      *cloned_label = *label;
-    }
+      FilterXObject *name = filterx_string_new(label->name, label->name_len);
+      FilterXObject *value = filterx_string_new(label->value, label->value_len);
+      gsize name_len, value_len;
+      const gchar *name_str = filterx_string_get_value_ref(name, &name_len);
+      const gchar *value_str = filterx_string_get_value_ref(value, &value_len);
 
-  for (guint i = 0; i < self->objects->len; i++)
-    {
-      g_ptr_array_add(cloned->objects, filterx_object_ref(g_ptr_array_index(self->objects, i)));
+      *cloned_label = stats_cluster_label_len(name_str, name_len, value_str, value_len);
+      g_ptr_array_add(cloned->objects, name);
+      g_ptr_array_add(cloned->objects, value);
     }
 
   return &cloned->super.super;
