@@ -244,6 +244,19 @@ filterx_eval_switch_allocator(FilterXAllocator *new_allocator, gpointer *saved_s
   context->allocator = new_allocator;
 }
 
+/* the id an object of @alloc_size allocated right now would carry:
+ * FILTERX_ALLOCATOR_ID_HEAP if there is no allocator to allocate from, or if
+ * the allocation is too large for it, see filterx_eval_malloc_object() */
+static inline guint16
+filterx_eval_current_allocator_id(gsize alloc_size)
+{
+  FilterXEvalContext *context = filterx_eval_get_context();
+
+  if (!context || !context->allocator || !filterx_allocator_alloc_size_supported(context->allocator, alloc_size))
+    return FILTERX_ALLOCATOR_ID_HEAP;
+  return context->allocator->id;
+}
+
 static inline void
 filterx_eval_disable_allocator(gpointer *saved_state)
 {

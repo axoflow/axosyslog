@@ -147,7 +147,7 @@ _filterx_list_set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject 
   FilterXObject **slot = (FilterXObject **) &g_ptr_array_index(self->array, normalized_index);
   filterx_ref_unset_parent_container(*slot);
   filterx_object_unref(*slot);
-  *slot = filterx_object_cow_store(new_value);
+  *slot = filterx_object_cow_store(s, new_value);
   return TRUE;
 }
 
