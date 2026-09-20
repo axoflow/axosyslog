@@ -22,12 +22,14 @@
 
 /*
  * This suite walks every allocation strategy a FilterXObject can have, and
- * checks what the two places that keep an object past its allocation do
+ * checks what the three places that keep an object past its allocation do
  * with it:
  *
  *   - filterx_eval_retain_object() / filterx_eval_retain_dup() get an object
  *     out of the allocator of the current context,
- *   - a container store never keeps a message backed value.
+ *   - a container store never keeps a message backed value,
+ *   - filterx_eval_context_dup() takes a snapshot of a whole context, valid
+ *     on any thread, for as long as it is kept.
  *
  * Wherever possible, independence is proven by tearing down the original
  * storage (freeing the allocator's areas or the LogMessage) and then
@@ -44,6 +46,7 @@
  *   6) message backed                     -- values borrowing their bytes from a LogMessage's NVTable
  *   7) mixed containers / indirect values -- heap objects that internally point at storage of another kind
  *   8) metrics_labels                     -- a container whose labels borrow bytes from the objects it keeps
+ *   9) context snapshots                  -- filterx_eval_context_dup(), what it copies and what it shares
  */
 
 #include <criterion/criterion.h>
@@ -53,6 +56,8 @@
 #include "filterx/filterx-allocator.h"
 #include "filterx/filterx-env.h"
 #include "filterx/filterx-ref.h"
+#include "filterx/filterx-scope.h"
+#include "filterx/filterx-variable.h"
 #include "filterx/filterx-mapping.h"
 #include "filterx/filterx-sequence.h"
 #include "filterx/object-string.h"
@@ -652,6 +657,221 @@ Test(filterx_retain, metrics_labels_keeps_a_copy_of_a_message_backed_key)
   _assert_repr_matches(ml, expected);
   filterx_object_unref(ml);
   filterx_object_unref(expected);
+}
+
+/* 9) context snapshots: filterx_eval_context_dup() keeps its copies in an
+ * arena of its own. */
+Test(filterx_retain, snapshot_copies_allocator_allocated_variable_values)
+{
+  FilterXVariableHandle handle = filterx_map_varname_to_handle("arenavar", FX_VAR_DECLARED_FLOATING);
+  FilterXScopeVariableLayout *layout = filterx_scope_variable_layout_new_from_handles(&handle, 1);
+  FilterXScope *scope = filterx_scope_new(NULL, layout);
+  set_libtest_filterx_scope(scope);
+
+  _enable_allocator();
+  FilterXVariable *v = filterx_scope_register_variable(scope, FX_VAR_DECLARED_FLOATING, handle, 0);
+  FilterXObject *value = _new_nested_dict();
+  cr_assert(filterx_object_is_allocator_resident(value));
+  filterx_scope_set_variable(scope, v, &value, TRUE);
+  filterx_object_unref(value);
+
+  FilterXEvalContext *dup = filterx_eval_context_dup(filterx_eval_get_context());
+  cr_assert_not_null(dup);
+
+  /* drop the live scope (and with it the allocator-resident original) while
+   * the allocator's memory is still valid, then pull the rug: only the
+   * duplicate's copies remain reachable */
+  set_libtest_filterx_scope(filterx_scope_new(NULL, NULL));
+  _release_allocator_memory();
+
+  FilterXVariable *dv = filterx_scope_lookup_variable(dup->scope, handle, 0);
+  cr_assert_not_null(dv);
+  FilterXObject *dvalue = filterx_variable_borrow_value(dv);
+  _assert_decoupled(dvalue, "context_dup");
+  assert_object_json_equals(dvalue, NESTED_DICT_JSON);
+
+  /* the copies live in the snapshot's own arena ... */
+  cr_assert_eq(dvalue->allocator_id, FILTERX_ALLOCATOR_ID_PRIVATE);
+  cr_assert_eq(filterx_ref_unwrap_ro(dvalue)->allocator_id, FILTERX_ALLOCATOR_ID_PRIVATE);
+
+  /* ... and so does whatever a resumed evaluation allocates, except what
+   * is too large for an arena, which falls back to the heap as always */
+  FilterXEvalContext *standing_context = filterx_eval_get_context();
+  filterx_eval_set_context(dup);
+  FilterXObject *small = filterx_string_new("made-during-replay", -1);
+  cr_assert_eq(small->allocator_id, FILTERX_ALLOCATOR_ID_PRIVATE);
+  gchar *big_str = g_strnfill(2 * FILTERX_ALLOCATOR_MAX_ALLOC_SIZE, 'x');
+  FilterXObject *big = filterx_string_new(big_str, -1);
+  cr_assert_not(filterx_object_is_allocator_resident(big));
+  filterx_object_unref(small);
+  filterx_object_unref(big);
+  g_free(big_str);
+  filterx_eval_set_context(standing_context);
+
+  filterx_eval_context_free_dup(dup);
+  filterx_scope_variable_layout_free(layout);
+}
+
+/* a heap object is reference counted, but the count is not atomic and the
+ * live evaluation still holds the object: a reference would share it with
+ * the thread that resumes the snapshot */
+Test(filterx_retain, snapshot_copies_a_heap_refcounted_variable_value)
+{
+  FilterXVariableHandle handles[] =
+  {
+    filterx_map_varname_to_handle("heapdict", FX_VAR_DECLARED_FLOATING),
+    filterx_map_varname_to_handle("heapstr", FX_VAR_DECLARED_FLOATING),
+  };
+  FilterXScopeVariableLayout *layout = filterx_scope_variable_layout_new_from_handles(handles, G_N_ELEMENTS(handles));
+  FilterXScope *scope = filterx_scope_new(NULL, layout);
+  set_libtest_filterx_scope(scope);
+
+  FilterXVariable *v = filterx_scope_register_variable(scope, FX_VAR_DECLARED_FLOATING, handles[0], 0);
+  FilterXObject *dict = _new_nested_dict();
+  cr_assert_not(filterx_object_is_allocator_resident(dict));
+  filterx_scope_set_variable(scope, v, &dict, TRUE);
+
+  v = filterx_scope_register_variable(scope, FX_VAR_DECLARED_FLOATING, handles[1], 1);
+  FilterXObject *str = filterx_string_new("heap-string", -1);
+  filterx_scope_set_variable(scope, v, &str, TRUE);
+
+  FilterXEvalContext *dup = filterx_eval_context_dup(filterx_eval_get_context());
+
+  FilterXObject *ddict = filterx_variable_borrow_value(filterx_scope_lookup_variable(dup->scope, handles[0], 0));
+  cr_assert_neq(ddict, dict, "the snapshot shares a heap xref with the live evaluation");
+  cr_assert_neq(filterx_ref_unwrap_ro(ddict), filterx_ref_unwrap_ro(dict),
+                "the snapshot shares a heap container with the live evaluation");
+  assert_object_json_equals(ddict, NESTED_DICT_JSON);
+
+  FilterXObject *dstr = filterx_variable_borrow_value(filterx_scope_lookup_variable(dup->scope, handles[1], 1));
+  cr_assert_neq(dstr, str, "the snapshot shares a heap string with the live evaluation");
+  assert_object_str_equals(dstr, "heap-string");
+
+  filterx_object_unref(dict);
+  filterx_object_unref(str);
+  filterx_eval_context_free_dup(dup);
+  filterx_scope_variable_layout_free(layout);
+}
+
+Test(filterx_retain, snapshot_copies_a_message_backed_variable_value)
+{
+  LogMessage *msg = filterx_eval_get_context()->msg;
+  log_msg_set_value_by_name_with_type(msg, "snapsrc", "nvtable-string-value", -1, LM_VT_STRING);
+
+  FilterXVariableHandle handle = filterx_map_varname_to_handle("msgvar", FX_VAR_DECLARED_FLOATING);
+  FilterXScopeVariableLayout *layout = filterx_scope_variable_layout_new_from_handles(&handle, 1);
+  FilterXScope *scope = filterx_scope_new(NULL, layout);
+  set_libtest_filterx_scope(scope);
+
+  FilterXVariable *v = filterx_scope_register_variable(scope, FX_VAR_DECLARED_FLOATING, handle, 0);
+  FilterXObject *value = filterx_extract_object_from_logmsg(msg, log_msg_get_value_handle("snapsrc"));
+  filterx_scope_set_variable(scope, v, &value, TRUE);
+  filterx_object_unref(value);
+  cr_assert(filterx_variable_borrow_value(v)->is_nvtable_backed, "a variable keeps a message backed value as it is");
+
+  FilterXEvalContext *dup = filterx_eval_context_dup(filterx_eval_get_context());
+
+  FilterXObject *dvalue = filterx_variable_borrow_value(filterx_scope_lookup_variable(dup->scope, handle, 0));
+  _assert_decoupled(dvalue, "snapshot");
+  assert_object_str_equals(dvalue, "nvtable-string-value");
+
+  filterx_eval_context_free_dup(dup);
+  filterx_scope_variable_layout_free(layout);
+}
+
+Test(filterx_retain, snapshot_syncs_a_whiteout_into_its_message)
+{
+  LogMessage *msg = filterx_eval_get_context()->msg;
+  log_msg_set_value_by_name_with_type(msg, "snapunset", "to-be-unset", -1, LM_VT_STRING);
+
+  FilterXVariableHandle handle = filterx_map_varname_to_handle("snapunset", FX_VAR_MESSAGE_TIED);
+  FilterXScopeVariableLayout *layout = filterx_scope_variable_layout_new_from_handles(&handle, 1);
+  FilterXScope *scope = filterx_scope_new(NULL, layout);
+  set_libtest_filterx_scope(scope);
+
+  FilterXVariable *v = filterx_scope_register_variable(scope, FX_VAR_MESSAGE_TIED, handle, 0);
+  filterx_scope_unset_variable(scope, v);
+
+  FilterXEvalContext *dup = filterx_eval_context_dup(filterx_eval_get_context());
+
+  /* log_msg_is_value_set() stays TRUE for an unset entry, so look at the
+   * value */
+  NVHandle nv_handle = filterx_variable_get_nv_handle(v);
+  LogMessageValueType type;
+  cr_assert_not_null(log_msg_get_value_if_set_with_type(msg, nv_handle, NULL, &type));
+  cr_assert_null(log_msg_get_value_if_set_with_type(dup->scope->msg, nv_handle, NULL, &type),
+                 "the snapshot did not unset the field in its message");
+
+  FilterXVariable *dv = filterx_scope_lookup_variable(dup->scope, handle, 0);
+  cr_assert_not_null(dv);
+  cr_assert_not(filterx_variable_is_assigned(dv), "the variable of the snapshot is not in sync with its message");
+
+  filterx_eval_context_free_dup(dup);
+  filterx_scope_variable_layout_free(layout);
+}
+
+Test(filterx_retain, snapshot_syncs_the_whiteout_of_an_earlier_block_into_its_message)
+{
+  LogMessage *msg = filterx_eval_get_context()->msg;
+  log_msg_set_value_by_name_with_type(msg, "snapunset", "to-be-unset", -1, LM_VT_STRING);
+
+  /* the earlier block unsets the field; filterx pipes chain their scopes,
+   * so its scope is not synced before the next block runs */
+  FilterXVariableHandle handle = filterx_map_varname_to_handle("snapunset", FX_VAR_MESSAGE_TIED);
+  FilterXScopeVariableLayout *earlier_layout = filterx_scope_variable_layout_new_from_handles(&handle, 1);
+  FilterXScope *earlier_scope = filterx_scope_new(NULL, earlier_layout);
+  filterx_scope_set_message(earlier_scope, msg);
+  FilterXVariable *v = filterx_scope_register_variable(earlier_scope, FX_VAR_MESSAGE_TIED, handle, 0);
+  filterx_scope_unset_variable(earlier_scope, v);
+
+  /* the current block never touches the variable */
+  FilterXScopeVariableLayout *layout = filterx_scope_variable_layout_new_from_handles(NULL, 0);
+  set_libtest_filterx_scope(filterx_scope_new(earlier_scope, layout));
+
+  FilterXEvalContext *dup = filterx_eval_context_dup(filterx_eval_get_context());
+
+  NVHandle nv_handle = filterx_variable_get_nv_handle(v);
+  LogMessageValueType type;
+  cr_assert_not_null(log_msg_get_value_if_set_with_type(msg, nv_handle, NULL, &type));
+  cr_assert_null(log_msg_get_value_if_set_with_type(dup->scope->msg, nv_handle, NULL, &type),
+                 "the snapshot did not unset the field of the earlier block in its message");
+
+  filterx_eval_context_free_dup(dup);
+  set_libtest_filterx_scope(filterx_scope_new(NULL, NULL));
+  filterx_scope_free(earlier_scope);
+  filterx_scope_variable_layout_free(layout);
+  filterx_scope_variable_layout_free(earlier_layout);
+}
+
+Test(filterx_retain, snapshot_syncs_an_assignment_of_an_earlier_block_into_its_message)
+{
+  LogMessage *msg = filterx_eval_get_context()->msg;
+  log_msg_set_value_by_name_with_type(msg, "snapearlier", "to-be-overwritten", -1, LM_VT_STRING);
+
+  /* filterx pipes chain their scopes, so the scope of the earlier block is
+   * not synced before the next block runs */
+  FilterXVariableHandle handle = filterx_map_varname_to_handle("snapearlier", FX_VAR_MESSAGE_TIED);
+  FilterXScopeVariableLayout *earlier_layout = filterx_scope_variable_layout_new_from_handles(&handle, 1);
+  FilterXScope *earlier_scope = filterx_scope_new(NULL, earlier_layout);
+  filterx_scope_set_message(earlier_scope, msg);
+  FilterXVariable *v = filterx_scope_register_variable(earlier_scope, FX_VAR_MESSAGE_TIED, handle, 0);
+  FilterXObject *new_value = filterx_string_new("assigned-in-an-earlier-block", -1);
+  filterx_scope_set_variable(earlier_scope, v, &new_value, TRUE);
+  filterx_object_unref(new_value);
+
+  FilterXScopeVariableLayout *layout = filterx_scope_variable_layout_new_from_handles(NULL, 0);
+  set_libtest_filterx_scope(filterx_scope_new(earlier_scope, layout));
+
+  FilterXEvalContext *dup = filterx_eval_context_dup(filterx_eval_get_context());
+
+  cr_assert_str_eq(log_msg_get_value_by_name(dup->scope->msg, "snapearlier", NULL), "assigned-in-an-earlier-block");
+  cr_assert_str_eq(log_msg_get_value_by_name(msg, "snapearlier", NULL), "to-be-overwritten");
+
+  filterx_eval_context_free_dup(dup);
+  set_libtest_filterx_scope(filterx_scope_new(NULL, NULL));
+  filterx_scope_free(earlier_scope);
+  filterx_scope_variable_layout_free(layout);
+  filterx_scope_variable_layout_free(earlier_layout);
 }
 
 static void

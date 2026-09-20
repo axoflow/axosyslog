@@ -72,6 +72,9 @@ struct _FilterXEvalContext
   FilterXObject *current_frame_meta;
   GPtrArray *weak_refs;
   FilterXAllocator *allocator;
+  /* an arena owned by this context (a snapshot, see
+   * filterx_eval_context_dup()), released along with it */
+  FilterXAllocator *private_allocator;
   FilterXAllocatorPosition allocator_position;
   FilterXEvalControl eval_control_modifier;
   FilterXEvalContext *previous_context;
@@ -111,6 +114,29 @@ void filterx_eval_end_restricted_context(FilterXEvalContext *context);
 void filterx_eval_begin_compile(FilterXEvalContext *context, GlobalConfig *cfg);
 void filterx_eval_end_compile(FilterXEvalContext *context);
 void filterx_eval_freeze_object(FilterXObject **object);
+
+/*
+ * filterx_eval_context_dup():
+ *
+ * Takes a full, self contained snapshot of @context: its scope (and the
+ * scope's entire parent chain) with all of its variables/values, and
+ * current_frame_meta.
+ *
+ * The result is a heap allocated, standalone FilterXEvalContext with no
+ * previous_context and an arena of its own.  So it can be kept around
+ * and used to resume evaluation later, potentially on a different
+ * thread, long after @context (and the thread specific allocator/stack
+ * storage it may be using) has gone away.
+ *
+ * @context must be the context that is currently active in this thread
+ * (i.e.  filterx_eval_get_context() == context): it is set back as the
+ * active context on return.
+ *
+ * The returned context must eventually be released with
+ * filterx_eval_context_free_dup().
+ */
+FilterXEvalContext *filterx_eval_context_dup(FilterXEvalContext *context);
+void filterx_eval_context_free_dup(FilterXEvalContext *context);
 
 FilterXEvalControl filterx_eval_get_control_modifier(FilterXEvalContext *context);
 void filterx_eval_set_control_modifier(FilterXEvalContext *context, FilterXEvalControl modifier);

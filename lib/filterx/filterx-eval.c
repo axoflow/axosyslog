@@ -28,6 +28,8 @@
 #include "tls-support.h"
 #include "apphook.h"
 
+#define FILTERX_EVAL_SNAPSHOT_INITIAL_AREA_SIZE 512
+
 TLS_BLOCK_START
 {
   FilterXEvalContext *eval_context;
@@ -484,6 +486,88 @@ void
 filterx_eval_set_control_modifier(FilterXEvalContext *context, FilterXEvalControl modifier)
 {
   context->eval_control_modifier = modifier;
+}
+
+/*
+ * What a snapshot holds has to stay valid regardless of which thread ends
+ * up using it, and a resumed evaluation writes through it.
+ *
+ * A hibernated object lasts as long as the process, so it is shared.
+ * Anything else is copied, with whatever allocator the snapshot context
+ * has in effect.
+ */
+static FilterXObject *
+_snapshot_value(FilterXObject *value, gpointer user_data)
+{
+  if (!value)
+    return NULL;
+
+  if (value->ref_cnt == FILTERX_OBJECT_REFCOUNT_HIBERNATED)
+    return filterx_object_ref(value);
+
+  return filterx_object_dup(value);
+}
+
+FilterXEvalContext *
+filterx_eval_context_dup(FilterXEvalContext *context)
+{
+  g_assert(context == filterx_eval_get_context());
+
+  FilterXEvalContext *new_context = g_new0(FilterXEvalContext, 1);
+
+  /* standalone context: not linked to where it was taken from */
+  new_context->weak_refs = g_ptr_array_new_full(32, (GDestroyNotify) filterx_object_unref);
+  new_context->previous_context = NULL;
+
+  /* an arena of its own, it goes with the context; small to start with,
+   * as every snapshot has one */
+  new_context->private_allocator = g_new0(FilterXAllocator, 1);
+  filterx_allocator_init_ext(new_context->private_allocator, FILTERX_ALLOCATOR_ID_PRIVATE,
+                             FILTERX_EVAL_SNAPSHOT_INITIAL_AREA_SIZE);
+  new_context->allocator = new_context->private_allocator;
+  new_context->env = context->env;
+  new_context->eval_control_modifier = FXC_UNSET;
+  new_context->allocations_shared = FALSE;
+
+  /* the clones made below store their weak refs in the current context,
+   * which has to be the new one */
+  filterx_eval_set_context(new_context);
+
+  new_context->scope = filterx_scope_dup(context->scope, _snapshot_value, NULL);
+  /* borrowed, the scope holds the reference */
+  new_context->msg = new_context->scope->msg;
+  new_context->current_frame_meta = _snapshot_value(context->current_frame_meta, NULL);
+
+  filterx_eval_set_context(context);
+
+  return new_context;
+}
+
+void
+filterx_eval_context_free_dup(FilterXEvalContext *context)
+{
+  if (!context)
+    return;
+
+  filterx_scope_free_dup(context->scope);
+
+  filterx_object_unref(context->current_frame_meta);
+  g_ptr_array_free(context->weak_refs, TRUE);
+  _clear_errors(context);
+  if (context->failure_info)
+    {
+      _clear_failure_info(context->failure_info);
+      g_array_free(context->failure_info, TRUE);
+    }
+
+  /* last: everything released above may still have touched objects living
+   * in the arena (their free_fn, the parent_container links) */
+  if (context->private_allocator)
+    {
+      filterx_allocator_clear(context->private_allocator);
+      g_free(context->private_allocator);
+    }
+  g_free(context);
 }
 
 void
