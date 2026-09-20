@@ -25,11 +25,24 @@
 
 #include "syslog-ng.h"
 
+/*
+ * Allocator identity, recorded in every object allocated (see
+ * FilterXObject.allocator_id): 0 is not an allocator at all but the heap
+ * (g_malloc(), freed by refcount), the ids up to FILTERX_ALLOCATOR_ID_THREAD_MAX
+ * name the per-thread arenas, and FILTERX_ALLOCATOR_ID_PRIVATE is shared by
+ * every private arena (e.g.  the one a context snapshot owns): those never
+ * meet each other legitimately, so telling them apart is not needed.
+ */
+#define FILTERX_ALLOCATOR_ID_BITS 11
+#define FILTERX_ALLOCATOR_ID_HEAP 0
+#define FILTERX_ALLOCATOR_ID_PRIVATE ((1 << FILTERX_ALLOCATOR_ID_BITS) - 1)
+#define FILTERX_ALLOCATOR_ID_THREAD_MAX (FILTERX_ALLOCATOR_ID_PRIVATE - 1)
 typedef struct _FilterXAllocator
 {
   GPtrArray *areas;
   gint active_area;
   gint position_index;
+  guint16 id;
 } FilterXAllocator;
 
 typedef struct _FilterXAllocatorPosition
