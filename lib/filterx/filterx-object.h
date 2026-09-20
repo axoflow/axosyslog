@@ -891,12 +891,44 @@ filterx_object_cow_fork(FilterXObject **pself)
   return filterx_object_cow_fork2(*pself, pself);
 }
 
-/* */
+/*
+ * A container's children must live where the container does, or outlive it:
+ * in the same arena, on the heap, or preserved.  Anything else dangles as
+ * soon as the child's arena is emptied while the container is still around
+ * (a context snapshot, an aggregate() group, a persisted value).  That is a
+ * contract for the code doing the store: allocate the child in the right
+ * place -- switch the allocator (filterx_eval_switch_allocator()) or copy it
+ * -- before storing it.  Checked in debug builds, at every store site.
+ */
+static inline void
+filterx_object_assert_child_storable(FilterXObject *container, FilterXObject *child)
+{
+#if SYSLOG_NG_ENABLE_DEBUG
+  if (!container)
+    return;
+
+  FilterXObject *value = filterx_ref_unwrap_ro(child);
+  g_assert(("a container must not point at a child from another allocator" &&
+            (!filterx_object_is_allocator_resident(child) || child->allocator_id == container->allocator_id)));
+  g_assert(("a container must not point at a child's value from another allocator" &&
+            (!filterx_object_is_allocator_resident(value) || value->allocator_id == container->allocator_id)));
+#endif
+}
+
+/*
+ * Store @pself into @container: prepare it for copy-on-write and hand back
+ * the (grounded) reference the container is to keep.  @container is the
+ * object that will hold the value; NULL when the holder is not an object
+ * (e.g.  a variable slot), in which case nothing is checked.
+ */
 static inline FilterXObject *
-filterx_object_cow_store(FilterXObject **pself)
+filterx_object_cow_store(FilterXObject *container, FilterXObject **pself)
 {
   filterx_object_cow_prepare(pself);
-  return filterx_ref_ground(filterx_object_ref(*pself));
+
+  FilterXObject *stored = filterx_ref_ground(filterx_object_ref(*pself));
+  filterx_object_assert_child_storable(container, stored);
+  return stored;
 }
 
 #endif

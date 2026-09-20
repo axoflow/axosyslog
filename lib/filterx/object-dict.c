@@ -636,7 +636,11 @@ _filterx_dict_set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject 
     self->table = _table_new(FILTERX_DICT_MIN_SIZE);
 
   self->table = _table_resize_if_needed(self->table);
-  _table_insert(self->table, filterx_object_vref(key), filterx_object_cow_store(new_value));
+
+  /* the key is ours to keep just like the value, the same rule applies */
+  FilterXObject *stored_key = filterx_object_vref(key);
+  filterx_object_assert_child_storable(s, stored_key);
+  _table_insert(self->table, stored_key, filterx_object_cow_store(s, new_value));
 
   return TRUE;
 }
@@ -842,7 +846,7 @@ filterx_dict_set_subscript_by_anchor(FilterXObject *s, FilterXDictAnchor anchor,
   filterx_ref_unset_parent_container(entry->value);
   filterx_object_unref(entry->value);
 
-  entry->value = filterx_object_cow_store(new_value);
+  entry->value = filterx_object_cow_store(s, new_value);
 }
 
 FilterXObject *
