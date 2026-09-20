@@ -28,4 +28,9 @@
 
 FilterXExpr *filterx_function_aggregate_new(FilterXFunctionArgs *args, GError **error);
 
+/* for tests only: synchronously runs the timeout/replay logic for @key, as
+ * if its timer had just fired. Returns FALSE if there's no pending entry
+ * for @key. */
+gboolean filterx_function_aggregate_test_expire(FilterXExpr *s, FilterXObject *key);
+
 #endif

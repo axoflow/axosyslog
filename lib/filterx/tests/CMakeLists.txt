@@ -47,3 +47,4 @@ add_unit_test(LIBTEST CRITERION TARGET test_filterx_plist DEPENDS syslogformat j
 add_unit_test(LIBTEST CRITERION TARGET test_object_tuple DEPENDS json-plugin ${JSONC_LIBRARY})
 add_unit_test(LIBTEST CRITERION TARGET test_filterx_retain DEPENDS json-plugin ${JSONC_LIBRARY})
 add_unit_test(LIBTEST CRITERION TARGET test_filterx_allocator)
+add_unit_test(LIBTEST CRITERION TARGET test_func_aggregate DEPENDS json-plugin ${JSONC_LIBRARY})

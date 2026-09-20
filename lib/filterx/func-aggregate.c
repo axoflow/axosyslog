@@ -968,6 +968,32 @@ _free(FilterXExpr *s)
   filterx_function_free_method(&self->super);
 }
 
+/* for tests only: synchronously runs the timeout/replay logic for @key, as
+ * if its timer had just fired.  Returns FALSE if there's no pending entry
+ * for @key. Must be invoked as-if on the main thread (i.e. not concurrently
+ * with real message processing for the same aggregate() instance). */
+gboolean
+filterx_function_aggregate_test_expire(FilterXExpr *s, FilterXObject *key)
+{
+  FilterXFunctionAggregate *self = (FilterXFunctionAggregate *) s;
+  FilterXObject *tuple_key = _normalize_key_as_tuple(key);
+
+  g_mutex_lock(&self->shared->lock);
+  AggregateEntry *entry = g_hash_table_lookup(self->shared->entries, tuple_key);
+  if (entry)
+    _aggregate_entry_ref(entry);
+  g_mutex_unlock(&self->shared->lock);
+
+  filterx_object_unref(tuple_key);
+
+  if (!entry)
+    return FALSE;
+
+  _expire_entry(self->shared, entry);
+  _aggregate_entry_unref(entry);
+  return TRUE;
+}
+
 FilterXExpr *
 filterx_function_aggregate_new(FilterXFunctionArgs *args, GError **error)
 {
