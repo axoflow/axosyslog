@@ -241,6 +241,18 @@ filterx_eval_switch_allocator(FilterXAllocator *new_allocator, gpointer *saved_s
   context->allocator = new_allocator;
 }
 
+/* the id an object allocated right now would carry, FILTERX_ALLOCATOR_ID_HEAP
+ * if there is no allocator to allocate from */
+static inline guint16
+filterx_eval_current_allocator_id(void)
+{
+  FilterXEvalContext *context = filterx_eval_get_context();
+
+  if (!context || !context->allocator)
+    return FILTERX_ALLOCATOR_ID_HEAP;
+  return context->allocator->id;
+}
+
 static inline void
 filterx_eval_disable_allocator(gpointer *saved_state)
 {
