@@ -239,10 +239,20 @@ if(SYSLOG_NG_ENABLE_JIT)
   find_program(LLVM_CLANG clang HINTS ${LLVM_TOOLS_BINARY_DIR} REQUIRED)
   find_program(LLVM_LINK llvm-link HINTS ${LLVM_TOOLS_BINARY_DIR} REQUIRED)
 
+  # The bitcode gets inlined into JIT compiled code, so it has to match the
+  # headers exactly (struct layouts, flag bits): track the headers each unit
+  # includes.  Ninja takes the compiler generated dependency file; the
+  # Makefile generators of the CMake versions we support cannot, so they get
+  # CMake's own include scan instead.
   set(FILTERX_BITCODE_UNITS "")
   foreach(_src IN LISTS FILTERX_BITCODE_SOURCES)
     set(_bc "${CMAKE_CURRENT_BINARY_DIR}/${_src}.bc")
     get_filename_component(_bc_dir "${_bc}" DIRECTORY)
+    if(CMAKE_GENERATOR MATCHES "Ninja")
+      set(_bc_header_deps DEPFILE "${_bc}.d")
+    else()
+      set(_bc_header_deps IMPLICIT_DEPENDS C "${CMAKE_CURRENT_SOURCE_DIR}/${_src}")
+    endif()
     add_custom_command(
       OUTPUT "${_bc}"
       COMMAND ${CMAKE_COMMAND} -E make_directory "${_bc_dir}"
@@ -250,8 +260,10 @@ if(SYSLOG_NG_ENABLE_JIT)
               -D_GNU_SOURCE=1 -D_LARGEFILE64_SOURCE=1
               "-I$<JOIN:$<TARGET_PROPERTY:syslog-ng,INCLUDE_DIRECTORIES>,;-I>"
               -emit-llvm -O3 --no-warnings -mno-outline-atomics
+              -MMD -MP -MT "${_bc}" -MF "${_bc}.d"
               -c "${CMAKE_CURRENT_SOURCE_DIR}/${_src}" -o "${_bc}"
       DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/${_src}"
+      ${_bc_header_deps}
       COMMAND_EXPAND_LISTS
       VERBATIM)
     list(APPEND FILTERX_BITCODE_UNITS "${_bc}")
