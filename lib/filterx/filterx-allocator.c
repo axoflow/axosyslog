@@ -23,6 +23,7 @@
 #include "tls-support.h"
 #include "compat/pow2.h"
 #include "messages.h"
+#include "mainloop-worker.h"
 
 /*
  * The allocator provides storage for FilterXObject instances that is:
@@ -259,18 +260,40 @@ filterx_allocator_empty(FilterXAllocator *allocator)
 #endif
 }
 
+/* worker threads have a stable index, reused across thread lifetimes, so
+ * the ids do not run out however often threads come and go; anything else
+ * (the main thread, threads not registered with the main loop) shares a
+ * single id */
+static guint16
+_thread_allocator_id(void)
+{
+  gint index = main_loop_worker_get_thread_index();
+  guint id = index < 0 ? 1 : (guint) index + 2;
+
+  G_STATIC_ASSERT(FILTERX_ALLOCATOR_ID_THREAD_MAX >= MAIN_LOOP_MAX_WORKER_THREADS);
+
+  g_assert(id <= FILTERX_ALLOCATOR_ID_THREAD_MAX);
+  return (guint16) id;
+}
+
+void
+filterx_allocator_init_ext(FilterXAllocator *allocator, guint16 id)
+{
+  g_assert(id != FILTERX_ALLOCATOR_ID_HEAP && id <= FILTERX_ALLOCATOR_ID_PRIVATE);
+
+  allocator->areas = g_ptr_array_new_full(16, (GDestroyNotify) filterx_area_free);
+  allocator->active_area = 0;
+  allocator->position_index = 0;
+  allocator->id = id;
+}
+
 void
 filterx_allocator_init(FilterXAllocator *allocator)
 {
   if (!allocator->areas)
-    {
-      allocator->areas = g_ptr_array_new_full(16, (GDestroyNotify) filterx_area_free);
-      allocator->active_area = 0;
-    }
+    filterx_allocator_init_ext(allocator, _thread_allocator_id());
   else
-    {
-      g_assert(allocator->active_area == 0);
-    }
+    g_assert(allocator->active_area == 0);
 }
 
 void
