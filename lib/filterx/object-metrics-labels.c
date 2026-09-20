@@ -159,12 +159,18 @@ _set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject **new_value)
       return TRUE;
     }
 
+  /* the label borrows key_str/value_str from the objects kept in
+   * self->objects, so those are children of ours, the same rule applies as
+   * for any container (see filterx_object_assert_child_storable()) */
+  FilterXObject *stored_key = filterx_object_ref(key);
+  filterx_object_assert_child_storable(s, stored_key);
+  filterx_object_assert_child_storable(s, value);
+
   g_array_set_size(self->labels, self->labels->len + 1);
   StatsClusterLabel *label = &g_array_index(self->labels, StatsClusterLabel, self->labels->len-1);
   *label = stats_cluster_label_len(key_str, key_len, value_str, value_len);
 
-  /* take a ref to our borrowed key argument */
-  g_ptr_array_add(self->objects, filterx_object_ref(key));
+  g_ptr_array_add(self->objects, stored_key);
 
   /* sink the ref we got from _obj_to_string */
   g_ptr_array_add(self->objects, value);
