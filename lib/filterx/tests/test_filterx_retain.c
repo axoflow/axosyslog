@@ -745,6 +745,61 @@ Test(filterx_retain, message_backed_metrics_labels_is_copied_when_retained_past_
   filterx_object_unref(expected);
 }
 
+/* end to end: filterx_eval_context_dup() is the main production user of
+ * the retain machinery (aggregate() snapshots the scope with it for a
+ * later, cross-thread replay).  Variable values allocated from the
+ * allocator must come out of it as heap copies. */
+Test(filterx_retain, context_dup_retains_allocator_allocated_variable_values)
+{
+  FilterXVariableHandle handle = filterx_map_varname_to_handle("retainvar", FX_VAR_DECLARED_FLOATING);
+  FilterXScopeVariableLayout *layout = filterx_scope_variable_layout_new_from_handles(&handle, 1);
+  FilterXScope *scope = filterx_scope_new(NULL, layout);
+  set_libtest_filterx_scope(scope);
+
+  _enable_allocator();
+  FilterXVariable *v = filterx_scope_register_variable(scope, FX_VAR_DECLARED_FLOATING, handle, 0);
+  FilterXObject *value = _new_nested_dict();
+  cr_assert(filterx_object_is_allocator_resident(value));
+  filterx_scope_set_variable(scope, v, &value, TRUE);
+  filterx_object_unref(value);
+
+  FilterXEvalContext *dup = filterx_eval_context_dup(filterx_eval_get_context());
+  cr_assert_not_null(dup);
+
+  /* drop the live scope (and with it the allocator-resident original) while
+   * the allocator's memory is still valid, then pull the rug: only the
+   * duplicate's copies remain reachable */
+  set_libtest_filterx_scope(filterx_scope_new(NULL, NULL));
+  _release_allocator_memory();
+
+  FilterXVariable *dv = filterx_scope_lookup_variable(dup->scope, handle, 0);
+  cr_assert_not_null(dv);
+  FilterXObject *dvalue = filterx_variable_borrow_value(dv);
+  _assert_decoupled(dvalue, "context_dup");
+  assert_object_json_equals(dvalue, NESTED_DICT_JSON);
+
+  /* the copies live in the snapshot's own arena ... */
+  cr_assert_eq(dvalue->allocator_id, FILTERX_ALLOCATOR_ID_PRIVATE);
+  cr_assert_eq(filterx_ref_unwrap_ro(dvalue)->allocator_id, FILTERX_ALLOCATOR_ID_PRIVATE);
+
+  /* ... and so does whatever a resumed evaluation allocates, except what
+   * is too large for an arena, which falls back to the heap as always */
+  FilterXEvalContext *standing_context = filterx_eval_get_context();
+  filterx_eval_set_context(dup);
+  FilterXObject *small = filterx_string_new("made-during-replay", -1);
+  cr_assert_eq(small->allocator_id, FILTERX_ALLOCATOR_ID_PRIVATE);
+  gchar *big_str = g_strnfill(2 * FILTERX_ALLOCATOR_MAX_ALLOC_SIZE, 'x');
+  FilterXObject *big = filterx_string_new(big_str, -1);
+  cr_assert_not(filterx_object_is_allocator_resident(big));
+  filterx_object_unref(small);
+  filterx_object_unref(big);
+  g_free(big_str);
+  filterx_eval_set_context(standing_context);
+
+  filterx_eval_context_free_dup(dup);
+  filterx_scope_variable_layout_free(layout);
+}
+
 static void
 setup(void)
 {
