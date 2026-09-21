@@ -37,12 +37,25 @@
 #define FILTERX_ALLOCATOR_ID_HEAP 0
 #define FILTERX_ALLOCATOR_ID_PRIVATE ((1 << FILTERX_ALLOCATOR_ID_BITS) - 1)
 #define FILTERX_ALLOCATOR_ID_THREAD_MAX (FILTERX_ALLOCATOR_ID_PRIVATE - 1)
+
+#define FILTERX_ALLOCATOR_DEFAULT_AREA_SIZE 65536
+#define FILTERX_ALLOCATOR_MAX_ALLOC_SIZE 4096
+
+typedef struct _FilterXArea
+{
+  gsize size, used;
+  gchar mem[] __attribute__ ((aligned (16)));
+} FilterXArea;
+
 typedef struct _FilterXAllocator
 {
   GPtrArray *areas;
   gint active_area;
   gint position_index;
   guint16 id;
+  /* the size of the next area to create: doubles with each new area, up to
+   * FILTERX_ALLOCATOR_DEFAULT_AREA_SIZE */
+  gsize next_area_size;
 } FilterXAllocator;
 
 typedef struct _FilterXAllocatorPosition
@@ -58,13 +71,19 @@ void filterx_allocator_empty(FilterXAllocator *allocator);
 
 gpointer filterx_allocator_malloc(FilterXAllocator *allocator, gsize size, gsize zero_size);
 
+/* the calling thread's arena: its id is derived from the thread, areas start
+ * at the default size.  Idempotent, like before. */
 void filterx_allocator_init(FilterXAllocator *allocator);
+/* an arena of @id with areas starting at @initial_area_size bytes (doubling
+ * from there); use FILTERX_ALLOCATOR_ID_PRIVATE for one that is not tied to a
+ * thread */
+void filterx_allocator_init_ext(FilterXAllocator *allocator, guint16 id, gsize initial_area_size);
 void filterx_allocator_clear(FilterXAllocator *allocator);
 
 static inline gboolean
 filterx_allocator_alloc_size_supported(FilterXAllocator *allocator, gsize alloc_size)
 {
-  return alloc_size <= 4096;
+  return alloc_size <= FILTERX_ALLOCATOR_MAX_ALLOC_SIZE;
 }
 
 #endif

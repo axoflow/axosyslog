@@ -61,13 +61,7 @@
  */
 
 /* one chunk of memory we allocate at once */
-#define FILTERX_AREA_SIZE 65536
 
-typedef struct _FilterXArea
-{
-  gsize size, used;
-  gchar mem[] __attribute__ ((aligned (16)));
-} FilterXArea;
 
 #define ALIGN_SIZE(x) (((x) + 0xF) & ~0xF)
 
@@ -124,11 +118,20 @@ filterx_area_free(FilterXArea *self)
 
 /* per thread state */
 
+/* the next area in the doubling sequence, but at least large enough to hold
+ * a @needed sized allocation */
 static FilterXArea *
-_create_new_area(FilterXAllocator *allocator)
+_create_new_area(FilterXAllocator *allocator, gsize needed)
 {
-  FilterXArea *area = filterx_area_new(FILTERX_AREA_SIZE);
+  gsize size = MAX(allocator->next_area_size, pow2(round_to_log2(sizeof(FilterXArea) + ALIGN_SIZE(needed))));
+
+  FilterXArea *area = filterx_area_new(size);
   g_ptr_array_add(allocator->areas, area);
+
+  if (size < FILTERX_ALLOCATOR_DEFAULT_AREA_SIZE)
+    allocator->next_area_size = MIN(size * 2, FILTERX_ALLOCATOR_DEFAULT_AREA_SIZE);
+  else
+    allocator->next_area_size = size;
   return area;
 }
 
@@ -136,24 +139,27 @@ gpointer
 filterx_allocator_malloc(FilterXAllocator *allocator, gsize size, gsize zero_size)
 {
   FilterXArea *area;
+  gpointer res = NULL;
 
   g_assert(filterx_allocator_alloc_size_supported(allocator, size));
-  if (allocator->areas->len == 0)
-    {
-      area = _create_new_area(allocator);
-      allocator->active_area = 0;
-    }
-  else
+
+  /* the active area first; then the areas kept from before a position
+   * restore, reset as we reach them (they may be smaller than @size, being
+   * from earlier in the doubling sequence, in which case we just move on);
+   * a new, large enough one only past the last */
+  if (allocator->areas->len > 0)
     {
       area = g_ptr_array_index(allocator->areas, allocator->active_area);
+      res = filterx_area_alloc(area, size);
     }
-  gpointer res = filterx_area_alloc(area, size);
-  if (!res)
+  while (!res)
     {
-      allocator->active_area++;
+      if (allocator->areas->len > 0)
+        allocator->active_area++;
+
       if (allocator->active_area == allocator->areas->len)
         {
-          area = _create_new_area(allocator);
+          area = _create_new_area(allocator, size);
         }
       else
         {
@@ -161,12 +167,6 @@ filterx_allocator_malloc(FilterXAllocator *allocator, gsize size, gsize zero_siz
           filterx_area_reset(area, 0);
         }
       res = filterx_area_alloc(area, size);
-
-      /* the allocation size MUST always fit into FILTERX_AREA_SIZE, thus we
-       * can never get NULLs from a fresh area.  Callers should always guard
-       * filterx_allocator_alloc() calls with
-       * filterx_allocator_alloc_size_supported(). */
-      g_assert(res != NULL);
     }
   memset(res, 0, ALIGN_SIZE(zero_size));
   return res;
@@ -277,21 +277,23 @@ _thread_allocator_id(void)
 }
 
 void
-filterx_allocator_init_ext(FilterXAllocator *allocator, guint16 id)
+filterx_allocator_init_ext(FilterXAllocator *allocator, guint16 id, gsize initial_area_size)
 {
   g_assert(id != FILTERX_ALLOCATOR_ID_HEAP && id <= FILTERX_ALLOCATOR_ID_PRIVATE);
+  g_assert(initial_area_size > sizeof(FilterXArea));
 
   allocator->areas = g_ptr_array_new_full(16, (GDestroyNotify) filterx_area_free);
   allocator->active_area = 0;
   allocator->position_index = 0;
   allocator->id = id;
+  allocator->next_area_size = initial_area_size;
 }
 
 void
 filterx_allocator_init(FilterXAllocator *allocator)
 {
   if (!allocator->areas)
-    filterx_allocator_init_ext(allocator, _thread_allocator_id());
+    filterx_allocator_init_ext(allocator, _thread_allocator_id(), FILTERX_ALLOCATOR_DEFAULT_AREA_SIZE);
   else
     g_assert(allocator->active_area == 0);
 }
