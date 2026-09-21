@@ -281,11 +281,16 @@ _fill_failure_info(FilterXEvalContext *context, FilterXExpr *block, FilterXObjec
       return;
     }
 
+  /* the failure info outlives the child contexts (and their allocator
+   * positions) up to the final delivery: what it retains goes on the heap */
+  gpointer allocator_state;
+  filterx_eval_disable_allocator(&allocator_state);
   for (gint i = 0; i < context->error_count; i++)
     {
       filterx_error_copy(&context->errors[i], &failure_info->errors[i]);
       filterx_eval_retain_object(&failure_info->errors[i].object);
     }
+  filterx_eval_restore_allocator(&allocator_state);
   failure_info->error_count = context->error_count;
 }
 
