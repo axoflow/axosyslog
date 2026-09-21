@@ -269,24 +269,100 @@ filterx_eval_restore_allocator(gpointer *saved_state)
   *saved_state = NULL;
 }
 
-/* unplug this object from the current context, and guarantee it remains
- * available past the end of the scope, at least until the returned
- * reference is dropped using filterx_object_unref(). */
-static inline FilterXObject *
-filterx_eval_retain_dup(FilterXObject *object)
+/*
+ * Retaining an object:
+ *
+ * Sometimes we need to retain an object for longer than what its initial
+ * allocation can warrant (e.g.  allocated from a thread specific allocator
+ * and we need to keep it until aggregation finishes).  An important
+ * constraint is that retained objects only allow read only access.
+ *
+ * The FX_RETAIN_* enums determine how long we want to make sure an object
+ * remains accessible.  A return value can refer to the same object (in case
+ * the current allocation suffices), or it can duplicate the object, in
+ * which case the caller will have its own copy.
+ *
+ * In both cases, only read only access is permitted, otherwise an object
+ * could potentially be accessed from multiple threads.
+ *
+ * An object instance can be allocated in one of the following ways:
+ *
+ * Shared access (multiple threads use the same object):
+ * -----------------------------------------------------
+ *   1) allocated early, at configuration load time and then frozen (filterx_object_is_hibernated())
+ *
+ *   2) allocated during runtime, frozen for a longer period, but then freed
+ *      asynchronously (e.g.  cache_json_file()) (filterx_object_is_frozen())
+ *
+ * Exclusive access (a single thread has access):
+ * ----------------------------------------------
+ *   3) allocated during runtime for pipeline access, using a pipeline
+ *      allocator that frees objects en-masse, the reference count exists
+ *      (for now) but does not drive the freeing of the object.  Once the
+ *      message is delivered, all objects are freed.
+ *      (filterx_object_is_refcounted() && filterx_object_is_allocator_resident())
+ *
+ *   4) allocated during runtime for a single thread access, not using a
+ *      pipeline allocator, e.g.  the reference count drives the freeing of the
+ *      object. (filterx_object_is_refcounted() && !filterx_object_is_allocator_resident())
+ *
+ *   5) allocated on the stack by the caller, not reference counted at all,
+ *      only valid until that frame returns.
+ *      (filterx_object_is_stack_allocated())
+ */
+
+typedef enum
 {
-  if (!object || filterx_object_is_preserved(object) || !filterx_object_is_allocator_resident(object))
+  /* retain this object at least up to the last delivery of the current
+   * message */
+  FX_RETAIN_UNTIL_FINAL_DELIVERY,
+} FilterXEvalRetainGoal;
+
+static inline gboolean
+filterx_eval_retain_dup_needed(FilterXObject *object, FilterXEvalRetainGoal goal)
+{
+  if (!object)
+    return FALSE;
+
+  /* at any goals, we need to get out of the allocator's purview */
+  if (filterx_object_is_allocator_resident(object))
+    return TRUE;
+
+  switch (goal)
+    {
+    case FX_RETAIN_UNTIL_FINAL_DELIVERY:
+      return FALSE;
+    default:
+      g_assert_not_reached();
+    }
+}
+
+/*
+ * Unplug this object from the current context, and guarantee it remains
+ * available for @goal, at least until the returned reference is dropped
+ * using filterx_object_unref().
+ *
+ * If a copy is what it takes, the copy is made with the allocator in effect
+ * at the time of the call: the caller decides where the retained object is
+ * to live, by switching the allocator beforehand -- to the arena of a
+ * context snapshot, or off (the heap) for something that has to outlive
+ * every arena -- see filterx_eval_switch_allocator().
+ */
+static inline FilterXObject *
+filterx_eval_retain_dup(FilterXObject *object, FilterXEvalRetainGoal goal)
+{
+  if (!filterx_eval_retain_dup_needed(object, goal))
     return filterx_object_ref(object);
 
   return filterx_object_dup(object);
 }
 
 static inline void
-filterx_eval_retain_object(FilterXObject **pobject)
+filterx_eval_retain_object(FilterXObject **pobject, FilterXEvalRetainGoal goal)
 {
   FilterXObject *object = *pobject;
 
-  *pobject = filterx_eval_retain_dup(object);
+  *pobject = filterx_eval_retain_dup(object, goal);
   filterx_object_unref(object);
 }
 
