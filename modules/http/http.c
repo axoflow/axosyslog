@@ -412,7 +412,7 @@ _is_any_header_message_dependent(HTTPDestinationDriver *self)
 {
   for (GList *l = self->headers; l; l = l->next)
     {
-      if (!log_template_is_message_independent((LogTemplate *) l->data))
+      if (!log_template_is_fixed((LogTemplate *) l->data))
         return TRUE;
     }
 
@@ -477,7 +477,7 @@ http_dd_init(LogPipe *s)
     log_threaded_dest_driver_set_flush_on_worker_key_change(&self->super.super.super, TRUE);
 
   gboolean is_body_prefix_message_dependent = self->body_prefix_template &&
-                                              !log_template_is_message_independent(self->body_prefix_template);
+                                              !log_template_is_fixed(self->body_prefix_template);
   gboolean is_batch_message_dependent = http_load_balancer_is_url_message_dependent(self->load_balancer)
                                         || is_body_prefix_message_dependent
                                         || _is_any_header_message_dependent(self);

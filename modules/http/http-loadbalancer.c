@@ -151,7 +151,7 @@ http_lb_target_is_url_templated(HTTPLoadBalancerTarget *self)
 gboolean
 http_lb_target_is_url_message_dependent(HTTPLoadBalancerTarget *self)
 {
-  return !log_template_is_message_independent(self->url_template);
+  return !log_template_is_fixed(self->url_template);
 }
 
 const gchar *
