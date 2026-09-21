@@ -282,10 +282,21 @@ filterx_eval_restore_allocator(gpointer *saved_state)
 static inline FilterXObject *
 filterx_eval_retain_dup(FilterXObject *object)
 {
-  if (!object || filterx_object_is_preserved(object) || !filterx_object_is_allocator_resident(object))
+  if (!object || filterx_object_is_preserved(object))
     return filterx_object_ref(object);
 
-  return filterx_object_dup(object);
+  if (filterx_object_is_allocator_resident(object))
+    return filterx_object_dup(object);
+
+#if SYSLOG_NG_ENABLE_DEBUG
+
+  /* filterx_object_ref() clones a stack object: a caller handing one here
+   * skipped the reference it owes */
+  g_assert(("retaining a stack allocated object; take a reference first" &&
+            !filterx_object_is_stack_allocated(object)));
+#endif
+
+  return filterx_object_ref(object);
 }
 
 static inline void
