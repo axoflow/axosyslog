@@ -283,6 +283,16 @@ log_template_format(LogTemplate *self, LogMessage *lm, LogTemplateEvalOptions *o
   log_template_format_value_and_type(self, lm, options, result, NULL);
 }
 
+void
+log_template_format_fixed(LogTemplate *self, LogTemplateEvalOptions *options, GString *result)
+{
+  g_assert(log_template_is_fixed(self));
+
+  /* no element of a fixed template resolves against a message, the NULL below
+   * is passed around but never dereferenced */
+  log_template_format(self, NULL, options, result);
+}
+
 const gchar *
 log_template_format_tmpbuf(LogTemplate *self, LogMessage *message, LogTemplateEvalOptions *options, gssize *value_len)
 {
