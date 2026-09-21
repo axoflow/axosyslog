@@ -262,7 +262,10 @@ filterx_eval_restore_allocator(gpointer *saved_state)
 
 /* unplug this object from the current context, and guarantee it remains
  * available past the end of the scope, at least until the returned
- * reference is dropped using filterx_object_unref(). */
+ * reference is dropped using filterx_object_unref().  The copy is made
+ * with the allocator in effect, so the guarantee is as good as that: a
+ * caller switches the allocator first, off for an object that has to
+ * outlive the arenas, see filterx_eval_disable_allocator(). */
 static inline void
 filterx_eval_retain_object(FilterXObject **pobject)
 {
@@ -270,12 +273,8 @@ filterx_eval_retain_object(FilterXObject **pobject)
   if (!object || filterx_object_is_preserved(object) || !filterx_object_is_allocator_resident(object))
     return;
 
-  gpointer allocator_state;
-  filterx_eval_disable_allocator(&allocator_state);
-
   *pobject = filterx_object_dup(object);
   filterx_object_unref(object);
-  filterx_eval_restore_allocator(&allocator_state);
 }
 
 void filterx_eval_global_init(void);
