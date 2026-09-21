@@ -52,3 +52,4 @@ add_unit_test(LIBTEST CRITERION TARGET test_json_repr DEPENDS json-plugin ${JSON
 add_unit_test(LIBTEST CRITERION TARGET test_filterx_script DEPENDS json-plugin ${JSONC_LIBRARY})
 add_unit_test(LIBTEST CRITERION TARGET test_filterx_plist DEPENDS syslogformat json-plugin ${JSONC_LIBRARY})
 add_unit_test(LIBTEST CRITERION TARGET test_object_tuple DEPENDS json-plugin ${JSONC_LIBRARY})
+add_unit_test(LIBTEST CRITERION TARGET test_filterx_allocator)
