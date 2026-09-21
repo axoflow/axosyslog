@@ -37,6 +37,7 @@ const gchar *log_expr_node_get_content_name(gint content);
 #define LC_FINAL          4
 #define LC_FLOW_CONTROL   8
 #define LC_NO_FLOW_CONTROL 16
+#define LC_DESTINATION_FAILOVER 32
 
 enum
 {

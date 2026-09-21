@@ -231,6 +231,7 @@ afsocket_dd_start_reconnect_timer(AFSocketDestDriver *self)
   iv_timer_register(&self->reconnect_timer);
 
   stats_counter_set(self->metrics.output_unreachable, 1);
+  self->currently_unreachable = TRUE;
 }
 
 static gboolean
@@ -273,6 +274,7 @@ afsocket_dd_connected(AFSocketDestDriver *self)
   main_loop_assert_main_thread();
 
   stats_counter_set(self->metrics.output_unreachable, 0);
+  self->currently_unreachable = FALSE;
   msg_notice("Syslog connection established",
              evt_tag_int("fd", self->fd),
              evt_tag_str("server", g_sockaddr_format(self->dest_addr, buf2, sizeof(buf2), GSA_FULL)),
@@ -819,6 +821,35 @@ afsocket_dd_free(LogPipe *s)
   log_dest_driver_free(s);
 }
 
+/* if this message arrived via a flags(destination-failover) branch and
+ * we're currently unreachable, refuse it instead of piling it up in our
+ * queue so the junction can try the next branch in the chain. Returns TRUE
+ * if the message was rejected this way (the caller must not process it any
+ * further) -- exposed so subclasses that override "queue" again (e.g.
+ * AFInetDestDriver) can still perform this check at the top of their own
+ * queue() method. */
+gboolean
+afsocket_dd_reject_if_unreachable(AFSocketDestDriver *self, LogMessage *msg, const LogPathOptions *path_options)
+{
+  if (!path_options->destination_failover || !self->currently_unreachable)
+    return FALSE;
+
+  if (path_options->matched)
+    *path_options->matched = FALSE;
+  log_msg_drop(msg, path_options, AT_PROCESSED);
+  return TRUE;
+}
+
+static void
+afsocket_dd_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_options)
+{
+  AFSocketDestDriver *self = (AFSocketDestDriver *) s;
+
+  if (afsocket_dd_reject_if_unreachable(self, msg, path_options))
+    return;
+  log_pipe_forward_msg(s, msg, path_options);
+}
+
 void
 afsocket_dd_init_instance(AFSocketDestDriver *self,
                           SocketOptions *socket_options,
@@ -831,6 +862,7 @@ afsocket_dd_init_instance(AFSocketDestDriver *self,
   log_writer_options_defaults(&self->writer_options);
   self->super.super.super.init = afsocket_dd_init;
   self->super.super.super.deinit = afsocket_dd_deinit;
+  self->super.super.super.queue = afsocket_dd_queue;
   self->super.super.super.free_fn = afsocket_dd_free;
   self->super.super.super.notify = afsocket_dd_notify;
   self->super.super.super.generate_persist_name = afsocket_dd_format_name;
