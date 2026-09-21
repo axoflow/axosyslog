@@ -408,15 +408,15 @@ _format_stats_key(LogThreadedDestDriver *s, StatsClusterKeyBuilder *kb)
 }
 
 static gboolean
-_is_any_header_message_dependent(HTTPDestinationDriver *self)
+_are_headers_fixed(HTTPDestinationDriver *self)
 {
   for (GList *l = self->headers; l; l = l->next)
     {
       if (!log_template_is_fixed((LogTemplate *) l->data))
-        return TRUE;
+        return FALSE;
     }
 
-  return FALSE;
+  return TRUE;
 }
 
 static gboolean
@@ -476,13 +476,13 @@ http_dd_init(LogPipe *s)
   if (is_batching_enabled && is_batch_templated)
     log_threaded_dest_driver_set_flush_on_worker_key_change(&self->super.super.super, TRUE);
 
-  gboolean is_body_prefix_message_dependent = self->body_prefix_template &&
-                                              !log_template_is_fixed(self->body_prefix_template);
-  gboolean is_batch_message_dependent = http_load_balancer_is_url_message_dependent(self->load_balancer)
-                                        || is_body_prefix_message_dependent
-                                        || _is_any_header_message_dependent(self);
+  gboolean is_body_prefix_fixed = !self->body_prefix_template
+                                  || log_template_is_fixed(self->body_prefix_template);
+  gboolean is_batch_fixed = http_load_balancer_is_url_fixed(self->load_balancer)
+                            && is_body_prefix_fixed
+                            && _are_headers_fixed(self);
 
-  if (is_batching_enabled && is_batch_message_dependent && !self->super.worker_partition_key)
+  if (is_batching_enabled && !is_batch_fixed && !self->super.worker_partition_key)
     {
       msg_error("http: worker-partition-key() must be set if using message-dependent templates "
                 "in the url(), headers() or body-prefix() options while batching is enabled. "
