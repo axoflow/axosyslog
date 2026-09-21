@@ -331,6 +331,14 @@ filterx_eval_retain_dup_needed(FilterXObject *object, FilterXEvalRetainGoal goal
   if (filterx_object_is_allocator_resident(object))
     return TRUE;
 
+#if SYSLOG_NG_ENABLE_DEBUG
+
+  /* filterx_object_ref() clones a stack object: a caller handing one here
+   * skipped the reference it owes */
+  g_assert(("retaining a stack allocated object; take a reference first" &&
+            !filterx_object_is_stack_allocated(object)));
+#endif
+
   switch (goal)
     {
     case FX_RETAIN_UNTIL_FINAL_DELIVERY:
