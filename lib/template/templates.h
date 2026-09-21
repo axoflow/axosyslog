@@ -76,6 +76,8 @@ void log_template_forget_template_string(LogTemplate *self);
 void log_template_compile_literal_string(LogTemplate *self, const gchar *literal);
 gboolean log_template_is_literal_string(const LogTemplate *self);
 const gchar *log_template_get_literal_value(const LogTemplate *self, gssize *value_len);
+/* a fixed template renders the same output for every message, so
+ * log_template_format_fixed() can format it without one */
 gboolean log_template_is_fixed(const LogTemplate *self);
 gboolean log_template_is_trivial(LogTemplate *self);
 NVHandle log_template_get_trivial_value_handle(LogTemplate *self);

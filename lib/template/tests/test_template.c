@@ -704,6 +704,19 @@ Test(template, test_fixed_non_simple_functions)
   log_template_unref(t);
 }
 
+Test(template, test_format_fixed_calls_template_functions_without_a_message)
+{
+  LogTemplateEvalOptions options = DEFAULT_TEMPLATE_EVAL_OPTIONS;
+  GString *result = g_string_new(NULL);
+
+  LogTemplate *t = compile_template("prefix-$(echo literal)-suffix");
+  log_template_format_fixed(t, &options, result);
+  cr_assert_str_eq(result->str, "prefix-literal-suffix");
+  log_template_unref(t);
+
+  g_string_free(result, TRUE);
+}
+
 Test(template, test_result_of_concatenation_in_templates_are_typed_as_strings)
 {
   assert_template_format_value_and_type("$HOST$PROGRAM", "bzorpsyslog-ng", LM_VT_STRING);
