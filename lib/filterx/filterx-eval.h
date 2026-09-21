@@ -267,12 +267,8 @@ filterx_eval_retain_object(FilterXObject **pobject)
   if (!object || filterx_object_is_preserved(object) || !filterx_object_is_allocator_resident(object))
     return;
 
-  gpointer allocator_state;
-  filterx_eval_disable_allocator(&allocator_state);
-
   *pobject = filterx_object_dup(object);
   filterx_object_unref(object);
-  filterx_eval_restore_allocator(&allocator_state);
 }
 
 void filterx_eval_global_init(void);
