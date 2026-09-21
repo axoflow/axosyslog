@@ -480,7 +480,7 @@ filterx_eval_freeze_object(FilterXObject **object)
    * tracked anywhere else), which just leaks it -- so this is a hard
    * requirement, not a soft/optional one. */
   g_assert(context && context->env);
-  g_assert(!(*object)->allocator_used);
+  g_assert(!filterx_object_is_allocator_resident(*object));
   filterx_env_freeze_object(context->env, object);
 }
 

@@ -25,6 +25,7 @@
 #include "logmsg/logmsg.h"
 #include "compat/json.h"
 #include "atomic.h"
+#include "filterx/filterx-allocator.h"
 
 typedef struct _FilterXType FilterXType;
 typedef struct _FilterXObject FilterXObject;
@@ -192,7 +193,9 @@ struct _FilterXObject
    *
    *     is_dirty          -- marks that the object was changed (mutable objects only)
    *
-   *     allocator_used    -- object was allocated using the FilterX allocator
+   *     allocator_id      -- the FilterXAllocator the object was allocated
+   *                          from (FILTERX_ALLOCATOR_ID_*); 0 (heap) if it was
+   *                          g_malloc()ed, or lives on the stack
    *
    *     floating_ref      -- object is a FilterXRef that is floating
    *
@@ -207,7 +210,8 @@ struct _FilterXObject
    *     flags             -- to be used by descendant types
    *
    */
-  guint weak_referenced:1, is_dirty:1, allocator_used:1, floating_ref:1, early_allocation:1, early_allocation_checked:1,
+  guint weak_referenced:1, is_dirty:1, allocator_id:FILTERX_ALLOCATOR_ID_BITS, floating_ref:1, early_allocation:1,
+        early_allocation_checked:1,
         is_nvtable_backed:1, is_hashable:1, flags:5;
   volatile guint32 hash;
   FilterXType *type;
@@ -315,10 +319,18 @@ filterx_object_is_preserved(FilterXObject *self)
 #define filterx_new_object(t) ((t *) filterx_eval_malloc_object(sizeof(t), sizeof(t)))
 #define filterx_new_object_with_extra(t, extra) ((t *) filterx_eval_malloc_object(sizeof(t), sizeof(t) + extra))
 
+/* TRUE if @self lives in a FilterXAllocator arena (whichever one): its memory
+ * is released with that arena, not by its reference count */
+static inline gboolean
+filterx_object_is_allocator_resident(FilterXObject *self)
+{
+  return self->allocator_id != FILTERX_ALLOCATOR_ID_HEAP;
+}
+
 static inline void
 filterx_free_object(FilterXObject *object)
 {
-  if (object->allocator_used)
+  if (filterx_object_is_allocator_resident(object))
     {
       /* allocated using the allocator, do nothing */
       return;

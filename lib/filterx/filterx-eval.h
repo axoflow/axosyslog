@@ -219,7 +219,7 @@ filterx_eval_malloc_object(gsize object_size, gsize alloc_size)
   else
     {
       result = (FilterXObject *) filterx_allocator_malloc(context->allocator, alloc_size, object_size);
-      result->allocator_used = TRUE;
+      result->allocator_id = context->allocator->id;
     }
   result->early_allocation = filterx_eval_context_allocations_are_shared(context);
 
@@ -264,7 +264,7 @@ static inline void
 filterx_eval_retain_object(FilterXObject **pobject)
 {
   FilterXObject *object = *pobject;
-  if (!object || filterx_object_is_preserved(object) || !object->allocator_used)
+  if (!object || filterx_object_is_preserved(object) || !filterx_object_is_allocator_resident(object))
     return;
 
   gpointer allocator_state;
