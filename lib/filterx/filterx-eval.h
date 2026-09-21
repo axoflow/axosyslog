@@ -279,14 +279,21 @@ filterx_eval_restore_allocator(gpointer *saved_state)
  * with the allocator in effect, so the guarantee is as good as that: a
  * caller switches the allocator first, off for an object that has to
  * outlive the arenas, see filterx_eval_disable_allocator(). */
+static inline FilterXObject *
+filterx_eval_retain_dup(FilterXObject *object)
+{
+  if (!object || filterx_object_is_preserved(object) || !filterx_object_is_allocator_resident(object))
+    return filterx_object_ref(object);
+
+  return filterx_object_dup(object);
+}
+
 static inline void
 filterx_eval_retain_object(FilterXObject **pobject)
 {
   FilterXObject *object = *pobject;
-  if (!object || filterx_object_is_preserved(object) || !filterx_object_is_allocator_resident(object))
-    return;
 
-  *pobject = filterx_object_dup(object);
+  *pobject = filterx_eval_retain_dup(object);
   filterx_object_unref(object);
 }
 
