@@ -53,5 +53,8 @@ class HttpDestination(DestinationDriver):
     def read_logs(self, counter):
         return self._io.read_number_of_messages(counter)
 
+    def read_requests(self, counter):
+        return self._io.read_number_of_requests(counter)
+
     def read_until_logs(self, logs):
         return self._io.read_until_messages(logs)
