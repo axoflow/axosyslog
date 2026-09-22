@@ -20,6 +20,7 @@ EXTRA_DIST					+=	\
 	modules/basicfuncs/cond-funcs.c		\
 	modules/basicfuncs/context-funcs.c		\
 	modules/basicfuncs/numeric-funcs.c		\
+	modules/basicfuncs/tf-bucket.c			\
 	modules/basicfuncs/str-funcs.c			\
 	modules/basicfuncs/fname-funcs.c		\
 	modules/basicfuncs/ip-funcs.c			\
