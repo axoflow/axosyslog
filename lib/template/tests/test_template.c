@@ -629,79 +629,92 @@ Test(template, test_compile_literal_string)
   log_template_unref(template);
 }
 
-Test(template, test_message_independence_literals)
+Test(template, test_fixed_literals)
 {
   LogTemplate *t = compile_template("");
-  cr_assert(log_template_is_message_independent(t), "Empty template is message-independent");
+  cr_assert(log_template_is_fixed(t), "Empty template is fixed");
   log_template_unref(t);
 
   t = compile_template("plain literal text");
-  cr_assert(log_template_is_message_independent(t), "Plain literal is message-independent");
+  cr_assert(log_template_is_fixed(t), "Plain literal is fixed");
   log_template_unref(t);
 
   t = compile_template("$$not a macro");
-  cr_assert(log_template_is_message_independent(t), "Escaped '$$' literal is message-independent");
+  cr_assert(log_template_is_fixed(t), "Escaped '$$' literal is fixed");
   log_template_unref(t);
 }
 
-Test(template, test_message_independence_macros_and_values)
+Test(template, test_fixed_macros_and_values)
 {
   LogTemplate *t = compile_template("$HOST");
-  cr_assert_not(log_template_is_message_independent(t), "Macros are message-dependent");
+  cr_assert_not(log_template_is_fixed(t), "Macros are not fixed");
   log_template_unref(t);
 
   t = compile_template("${MESSAGE}");
-  cr_assert_not(log_template_is_message_independent(t), "Macros are message-dependent");
+  cr_assert_not(log_template_is_fixed(t), "Macros are not fixed");
   log_template_unref(t);
 
   t = compile_template("prefix-${my_field}");
-  cr_assert_not(log_template_is_message_independent(t), "NV-pair refs are message-dependent");
+  cr_assert_not(log_template_is_fixed(t), "NV-pair refs are not fixed");
   log_template_unref(t);
 
   t = compile_template("$DATE");
-  cr_assert_not(log_template_is_message_independent(t), "Timestamp macros are message-dependent");
+  cr_assert_not(log_template_is_fixed(t), "Timestamp macros are not fixed");
   log_template_unref(t);
 }
 
-Test(template, test_message_independence_simple_functions)
+Test(template, test_fixed_simple_functions)
 {
   /* tf_echo is registered with TEMPLATE_FUNCTION_SIMPLE and only depends on its args */
   LogTemplate *t = compile_template("$(echo literal)");
-  cr_assert(log_template_is_message_independent(t),
-            "Simple func with literal arg is message-independent");
+  cr_assert(log_template_is_fixed(t),
+            "Simple func with literal arg is fixed");
   log_template_unref(t);
 
   t = compile_template("prefix-$(echo literal)-suffix");
-  cr_assert(log_template_is_message_independent(t),
-            "Literal text + simple func with literal arg is message-independent");
+  cr_assert(log_template_is_fixed(t),
+            "Literal text + simple func with literal arg is fixed");
   log_template_unref(t);
 
-  /* Nested simple funcs with literal args are still message-independent */
+  /* Nested simple funcs with literal args are still fixed */
   t = compile_template("$(echo $(echo literal))");
-  cr_assert(log_template_is_message_independent(t),
-            "Nested simple funcs with literal args are message-independent");
+  cr_assert(log_template_is_fixed(t),
+            "Nested simple funcs with literal args are fixed");
   log_template_unref(t);
 
   /* A message-dependent argument poisons the entire expression */
   t = compile_template("$(echo $HOST)");
-  cr_assert_not(log_template_is_message_independent(t),
-                "Simple func with message-dependent arg is message-dependent");
+  cr_assert_not(log_template_is_fixed(t),
+                "Simple func with message-dependent arg is not fixed");
   log_template_unref(t);
 
   t = compile_template("$(echo prefix-${MESSAGE})");
-  cr_assert_not(log_template_is_message_independent(t),
-                "Simple func with NV-pair arg is message-dependent");
+  cr_assert_not(log_template_is_fixed(t),
+                "Simple func with NV-pair arg is not fixed");
   log_template_unref(t);
 }
 
-Test(template, test_message_independence_non_simple_functions)
+Test(template, test_fixed_non_simple_functions)
 {
-  /* tf_tag uses a custom prepare() — be conservative and treat as message-dependent even with a literal tag name,
+  /* tf_tag uses a custom prepare() — be conservative and treat it as not fixed even with a literal tag name,
    * because the call() reads ambient message state (the message's tag set). */
   LogTemplate *t = compile_template("$(tag tagname)");
-  cr_assert_not(log_template_is_message_independent(t),
-                "Functions with custom prepare() are conservatively treated as message-dependent");
+  cr_assert_not(log_template_is_fixed(t),
+                "Functions with custom prepare() are conservatively treated as not fixed");
   log_template_unref(t);
+}
+
+Test(template, test_format_fixed_calls_template_functions_without_a_message)
+{
+  LogTemplateEvalOptions options = DEFAULT_TEMPLATE_EVAL_OPTIONS;
+  GString *result = g_string_new(NULL);
+
+  LogTemplate *t = compile_template("prefix-$(echo literal)-suffix");
+  log_template_format_fixed(t, &options, result);
+  cr_assert_str_eq(result->str, "prefix-literal-suffix");
+  log_template_unref(t);
+
+  g_string_free(result, TRUE);
 }
 
 Test(template, test_result_of_concatenation_in_templates_are_typed_as_strings)

@@ -43,6 +43,7 @@ typedef struct _LogTemplateEvalOptions
 #define DEFAULT_TEMPLATE_EVAL_OPTIONS ((LogTemplateEvalOptions){NULL, LTZ_LOCAL, 0, NULL, LM_VT_STRING})
 
 void log_template_format(LogTemplate *self, LogMessage *lm, LogTemplateEvalOptions *options, GString *result);
+void log_template_format_fixed(LogTemplate *self, LogTemplateEvalOptions *options, GString *result);
 void log_template_format_value_and_type(LogTemplate *self, LogMessage *lm, LogTemplateEvalOptions *options,
                                         GString *result, LogMessageValueType *type);
 void log_template_append_format(LogTemplate *self, LogMessage *lm, LogTemplateEvalOptions *options, GString *result);

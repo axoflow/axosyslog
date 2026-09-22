@@ -54,7 +54,7 @@ log_template_get_literal_value(const LogTemplate *self, gssize *value_len)
 }
 
 static gboolean
-_elem_is_message_independent(const LogTemplateElem *e)
+_elem_is_fixed(const LogTemplateElem *e)
 {
   if (log_template_elem_is_literal_string(e))
     return TRUE;
@@ -64,7 +64,7 @@ _elem_is_message_independent(const LogTemplateElem *e)
     case LTE_MACRO:
     case LTE_VALUE:
       /* Any non-literal macro (M_HOST, M_MESSAGE, M_DATE, ...) or NV-pair reference resolves against the current
-       * message and is therefore message-dependent by definition. */
+       * message, so its rendering varies with the message by definition. */
       return FALSE;
 
     case LTE_FUNC:
@@ -77,7 +77,7 @@ _elem_is_message_independent(const LogTemplateElem *e)
         const TFSimpleFuncState *state = (const TFSimpleFuncState *) e->func.state;
         for (gint i = 0; i < state->argc; i++)
           {
-            if (!log_template_is_message_independent(state->argv_templates[i]))
+            if (!log_template_is_fixed(state->argv_templates[i]))
               return FALSE;
           }
       }
@@ -89,12 +89,12 @@ _elem_is_message_independent(const LogTemplateElem *e)
 }
 
 gboolean
-log_template_is_message_independent(const LogTemplate *self)
+log_template_is_fixed(const LogTemplate *self)
 {
   /* An empty template renders to the empty string regardless of input. */
   for (GList *p = self->compiled_template; p; p = g_list_next(p))
     {
-      if (!_elem_is_message_independent((const LogTemplateElem *) p->data))
+      if (!_elem_is_fixed((const LogTemplateElem *) p->data))
         return FALSE;
     }
   return TRUE;

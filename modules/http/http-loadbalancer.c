@@ -149,9 +149,9 @@ http_lb_target_is_url_templated(HTTPLoadBalancerTarget *self)
 }
 
 gboolean
-http_lb_target_is_url_message_dependent(HTTPLoadBalancerTarget *self)
+http_lb_target_is_url_fixed(HTTPLoadBalancerTarget *self)
 {
-  return !log_template_is_message_independent(self->url_template);
+  return log_template_is_fixed(self->url_template);
 }
 
 const gchar *
@@ -412,15 +412,15 @@ http_load_balancer_is_url_templated(HTTPLoadBalancer *self)
 }
 
 gboolean
-http_load_balancer_is_url_message_dependent(HTTPLoadBalancer *self)
+http_load_balancer_is_url_fixed(HTTPLoadBalancer *self)
 {
   for (gint i = 0; i < self->num_targets; i++)
     {
-      if (http_lb_target_is_url_message_dependent(&self->targets[i]))
-        return TRUE;
+      if (!http_lb_target_is_url_fixed(&self->targets[i]))
+        return FALSE;
     }
 
-  return FALSE;
+  return TRUE;
 }
 
 void
