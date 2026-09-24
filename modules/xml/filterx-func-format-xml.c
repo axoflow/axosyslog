@@ -184,9 +184,10 @@ _append_entry(FilterXObject *key, FilterXObject *value, gpointer user_data)
       _append_attribute(key_str, key_str_len, val_buf, buffer);
       return TRUE;
     }
+
+  *is_only_attribute_present = FALSE;
   if (key_str_len && (strn_eq_strz(key_str, "#text", key_str_len)))
     {
-      *is_only_attribute_present = FALSE;
       _append_text(val_buf, buffer);
       return TRUE;
     }
