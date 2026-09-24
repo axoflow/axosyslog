@@ -574,6 +574,497 @@ Test(qdisk, get_empty_space_wrapped)
   cleanup_qdisk(filename, qdisk);
 }
 
+static DiskQueueOptions *
+_construct_diskq_options_without_prealloc(TestDiskQType dq_type, gint64 capacity_bytes)
+{
+  DiskQueueOptions *opts = construct_diskq_options(dq_type, capacity_bytes);
+  disk_queue_options_set_truncate_size_ratio(opts, 1);
+  disk_queue_options_set_prealloc(opts, FALSE);
+
+  return opts;
+}
+
+static void
+_destroy_diskq_options(DiskQueueOptions *opts)
+{
+  disk_queue_options_destroy(opts);
+  g_free(opts);
+}
+
+static QDisk *
+_start_qdisk(TestDiskQType dq_type, const gchar *filename, gint64 capacity_bytes)
+{
+  QDisk *qdisk = qdisk_new(_construct_diskq_options_without_prealloc(dq_type, capacity_bytes), "TEST", filename);
+  cr_assert(qdisk_start(qdisk, NULL, NULL));
+
+  return qdisk;
+}
+
+/* the reload step, the test frees its initial options itself */
+static void
+_update_capacity_bytes(QDisk *qdisk, gint64 capacity_bytes)
+{
+  DiskQueueOptions *opts = _construct_diskq_options_without_prealloc(qdisk_get_options(qdisk)->reliable, capacity_bytes);
+  qdisk_set_options(qdisk, opts);
+  qdisk_update_capacity_bytes_if_needed(qdisk);
+}
+
+/* a non-reliable qdisk needs a loader for its saved memory queues, the tests save none */
+static gboolean
+_no_message_was_saved(QDiskMemoryQueueType type, LogMessage *msg, gpointer user_data)
+{
+  cr_assert(FALSE, "a message was saved, the tests do not expect that");
+  return FALSE;
+}
+
+/* the start step on an existing file, the test frees its initial options itself */
+static void
+_restart_with_capacity_bytes(QDisk *qdisk, gint64 capacity_bytes)
+{
+  gboolean reliable = qdisk_get_options(qdisk)->reliable;
+
+  cr_assert(qdisk_stop(qdisk, NULL, NULL));
+  DiskQueueOptions *opts = _construct_diskq_options_without_prealloc(reliable, capacity_bytes);
+  qdisk_set_options(qdisk, opts);
+  cr_assert(qdisk_start(qdisk, reliable ? NULL : _no_message_was_saved, NULL));
+}
+
+static void
+_pop_head(QDisk *qdisk)
+{
+  GString *buffer = g_string_new(NULL);
+
+  cr_assert(qdisk_pop_head(qdisk, buffer));
+
+  g_string_free(buffer, TRUE);
+}
+
+static void
+_pop_and_maybe_ack(QDisk *qdisk)
+{
+  _pop_head(qdisk);
+  if (qdisk_get_options(qdisk)->reliable)
+    cr_assert(qdisk_ack_backlog(qdisk));
+}
+
+static void
+_assert_empty(QDisk *qdisk)
+{
+  cr_assert_eq(qdisk_get_length(qdisk), 0);
+  cr_assert_eq(qdisk_get_backlog_count(qdisk), 0);
+}
+
+/* The second record of the tail crosses the boundary.
+ * The first tail record can be consumed while the file stays wrapped, the second unwraps it.
+ */
+static void
+_wrap_qdisk(QDisk *qdisk)
+{
+  const gsize small_amount_of_data = 32;
+  const gsize useful_size = qdisk_get_maximum_size(qdisk) - QDISK_RESERVED_SPACE;
+
+  _push_data_to_qdisk(qdisk, small_amount_of_data * 2);
+  _push_data_to_qdisk(qdisk, useful_size / 2);
+  _push_data_to_qdisk(qdisk, useful_size / 2 + small_amount_of_data);
+  _pop_and_maybe_ack(qdisk);
+  _push_data_to_qdisk(qdisk, small_amount_of_data);
+  // 0   RESERVED    W   B         DBS   FS
+  // |---|--- ... ---|---|---------|-----|
+  cr_assert_lt(qdisk_get_writer_head(qdisk), qdisk_get_backlog_head(qdisk));
+}
+
+/* The record before the tail is consumed first, so the push of the record that crosses the boundary
+ * wraps the write head at once and nothing sits behind the tail.
+ */
+static void
+_wrap_qdisk_without_pushing_behind_the_tail(QDisk *qdisk)
+{
+  const gsize small_amount_of_data = 32;
+  const gsize useful_size = qdisk_get_maximum_size(qdisk) - QDISK_RESERVED_SPACE;
+
+  _push_data_to_qdisk(qdisk, small_amount_of_data * 2);
+  _push_data_to_qdisk(qdisk, useful_size / 2);
+  _pop_and_maybe_ack(qdisk);
+  _push_data_to_qdisk(qdisk, useful_size / 2 + small_amount_of_data);
+  // 0   RESERVED=W  B                  DBS   FS
+  // |---|-----------|--- ... ----------|-----|
+  cr_assert_eq(qdisk_get_writer_head(qdisk), QDISK_RESERVED_SPACE);
+  cr_assert_lt(qdisk_get_writer_head(qdisk), qdisk_get_backlog_head(qdisk));
+}
+
+Test(qdisk, grow_applies_at_start)
+{
+  const gchar *filename = "test_grow_applies_at_start.rqf";
+  QDisk *qdisk = _start_qdisk(TDISKQ_RELIABLE, filename, MiB(1));
+  DiskQueueOptions *opts = qdisk_get_options(qdisk);
+
+  cr_assert(push_dummy_record(qdisk, 100));
+
+  _restart_with_capacity_bytes(qdisk, MiB(2));
+  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(2));
+
+  GString *record = g_string_new(NULL);
+  cr_assert(qdisk_pop_head(qdisk, record));
+  assert_dummy_record(record, 100);
+
+  cr_assert(qdisk_stop(qdisk, NULL, NULL));
+  g_string_free(record, TRUE);
+  cleanup_qdisk(filename, qdisk);
+  _destroy_diskq_options(opts);
+}
+
+Test(qdisk, grow_cannot_apply_at_start_while_wrapped_then_applies_at_ack)
+{
+  const gchar *filename = "test_grow_cannot_apply_at_start_while_wrapped.rqf";
+  QDisk *qdisk = _start_qdisk(TDISKQ_RELIABLE, filename, MiB(1));
+  DiskQueueOptions *opts = qdisk_get_options(qdisk);
+
+  _wrap_qdisk(qdisk);
+
+  _restart_with_capacity_bytes(qdisk, MiB(2));
+  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(1));
+
+  _pop_and_maybe_ack(qdisk);
+  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(1));
+  _pop_and_maybe_ack(qdisk);
+  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(2));
+
+  _pop_and_maybe_ack(qdisk);
+  _assert_empty(qdisk);
+
+  cr_assert(qdisk_stop(qdisk, NULL, NULL));
+  cleanup_qdisk(filename, qdisk);
+  _destroy_diskq_options(opts);
+}
+
+Test(qdisk, grow_applies_at_update)
+{
+  const gchar *filename = "test_grow_applies_at_update.rqf";
+  QDisk *qdisk = _start_qdisk(TDISKQ_RELIABLE, filename, MiB(1));
+  DiskQueueOptions *opts = qdisk_get_options(qdisk);
+
+  cr_assert(push_dummy_record(qdisk, 100));
+
+  _update_capacity_bytes(qdisk, MiB(2));
+  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(2));
+
+  cr_assert(qdisk_stop(qdisk, NULL, NULL));
+  cleanup_qdisk(filename, qdisk);
+  _destroy_diskq_options(opts);
+}
+
+Test(qdisk, grow_applies_at_update_with_prealloc)
+{
+  const gchar *filename = "test_grow_applies_at_update_with_prealloc.rqf";
+  DiskQueueOptions *opts = construct_diskq_options(TDISKQ_RELIABLE, MiB(1));
+  disk_queue_options_set_prealloc(opts, TRUE);
+  QDisk *qdisk = qdisk_new(opts, "TEST", filename);
+  cr_assert(qdisk_start(qdisk, NULL, NULL));
+  cr_assert_eq(qdisk_get_file_size(qdisk), MiB(1));
+
+  const gsize records = 3;
+  for (gsize i = 0; i < records; i++)
+    cr_assert(push_dummy_record(qdisk, 100));
+
+  DiskQueueOptions *larger_opts = construct_diskq_options(TDISKQ_RELIABLE, MiB(2));
+  disk_queue_options_set_prealloc(larger_opts, TRUE);
+  qdisk_set_options(qdisk, larger_opts);
+  qdisk_update_capacity_bytes_if_needed(qdisk);
+  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(2));
+  cr_assert_eq(qdisk_get_file_size(qdisk), MiB(2));
+
+  struct stat file_stats;
+  cr_assert(stat(filename, &file_stats) == 0, "Stat call failed, errno: %d", errno);
+  cr_assert_eq(file_stats.st_size, MiB(2));
+
+  /* the preallocation must not touch the records */
+  GString *record = g_string_new(NULL);
+  for (gsize i = 0; i < records; i++)
+    {
+      cr_assert(qdisk_pop_head(qdisk, record));
+      assert_dummy_record(record, 100);
+    }
+  g_string_free(record, TRUE);
+
+  cr_assert(qdisk_stop(qdisk, NULL, NULL));
+  cleanup_qdisk(filename, qdisk);
+  _destroy_diskq_options(opts);
+}
+
+Test(qdisk, grow_cannot_apply_at_update_while_wrapped_then_applies_at_ack)
+{
+  const gchar *filename = "test_grow_cannot_apply_at_update_while_wrapped.rqf";
+  QDisk *qdisk = _start_qdisk(TDISKQ_RELIABLE, filename, MiB(1));
+  DiskQueueOptions *opts = qdisk_get_options(qdisk);
+
+  _wrap_qdisk(qdisk);
+
+  _update_capacity_bytes(qdisk, MiB(2));
+  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(1));
+
+  _pop_and_maybe_ack(qdisk);
+  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(1));
+  _pop_and_maybe_ack(qdisk);
+  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(2));
+
+  _pop_and_maybe_ack(qdisk);
+  _assert_empty(qdisk);
+
+  cr_assert(qdisk_stop(qdisk, NULL, NULL));
+  cleanup_qdisk(filename, qdisk);
+  _destroy_diskq_options(opts);
+}
+
+Test(qdisk, grow_cannot_apply_at_update_while_backlog_wrapped_then_applies_at_ack)
+{
+  const gchar *filename = "test_grow_cannot_apply_at_update_while_backlog_wrapped.rqf";
+  QDisk *qdisk = _start_qdisk(TDISKQ_RELIABLE, filename, MiB(1));
+  DiskQueueOptions *opts = qdisk_get_options(qdisk);
+
+  /* the unacked tail keeps the file wrapped after the reader passed the boundary */
+  _wrap_qdisk(qdisk);
+  _pop_head(qdisk);
+  _pop_head(qdisk);
+  cr_assert_lt(qdisk_get_reader_head(qdisk), qdisk_get_backlog_head(qdisk));
+
+  _update_capacity_bytes(qdisk, MiB(2));
+  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(1));
+
+  cr_assert(qdisk_ack_backlog(qdisk));
+  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(1));
+  cr_assert(qdisk_ack_backlog(qdisk));
+  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(2));
+  cr_assert_eq(qdisk_get_backlog_head(qdisk), qdisk_get_reader_head(qdisk));
+
+  _pop_and_maybe_ack(qdisk);
+  _assert_empty(qdisk);
+
+  cr_assert(qdisk_stop(qdisk, NULL, NULL));
+  cleanup_qdisk(filename, qdisk);
+  _destroy_diskq_options(opts);
+}
+
+Test(qdisk, grow_cannot_apply_at_update_while_wrapped_then_applies_at_reset)
+{
+  const gchar *filename = "test_grow_cannot_apply_at_update_while_wrapped_then_applies_at_reset.qf";
+  QDisk *qdisk = _start_qdisk(TDISKQ_NON_RELIABLE, filename, MiB(1));
+  DiskQueueOptions *opts = qdisk_get_options(qdisk);
+
+  _wrap_qdisk_without_pushing_behind_the_tail(qdisk);
+
+  _update_capacity_bytes(qdisk, MiB(2));
+  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(1));
+
+  _pop_and_maybe_ack(qdisk);
+  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(1));
+  /* the pop of the record that crosses the boundary empties the file, the reset applies the change */
+  _pop_and_maybe_ack(qdisk);
+  _assert_empty(qdisk);
+  cr_assert_eq(qdisk_get_writer_head(qdisk), QDISK_RESERVED_SPACE);
+  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(2));
+
+  cr_assert(qdisk_stop(qdisk, NULL, NULL));
+  cleanup_qdisk(filename, qdisk);
+  _destroy_diskq_options(opts);
+}
+
+Test(qdisk, grow_cannot_apply_at_update_while_wrapped_then_applies_at_pop)
+{
+  const gchar *filename = "test_grow_cannot_apply_at_update_while_wrapped.qf";
+  QDisk *qdisk = _start_qdisk(TDISKQ_NON_RELIABLE, filename, MiB(1));
+  DiskQueueOptions *opts = qdisk_get_options(qdisk);
+
+  _wrap_qdisk(qdisk);
+
+  _update_capacity_bytes(qdisk, MiB(2));
+  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(1));
+
+  _pop_and_maybe_ack(qdisk);
+  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(1));
+  _pop_and_maybe_ack(qdisk);
+  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(2));
+
+  _pop_and_maybe_ack(qdisk);
+  _assert_empty(qdisk);
+
+  cr_assert(qdisk_stop(qdisk, NULL, NULL));
+  cleanup_qdisk(filename, qdisk);
+  _destroy_diskq_options(opts);
+}
+
+Test(qdisk, shrink_applies_at_start)
+{
+  const gchar *filename = "test_shrink_applies_at_start.rqf";
+  QDisk *qdisk = _start_qdisk(TDISKQ_RELIABLE, filename, MiB(2));
+  DiskQueueOptions *opts = qdisk_get_options(qdisk);
+
+  cr_assert(push_dummy_record(qdisk, 100));
+
+  _restart_with_capacity_bytes(qdisk, MiB(1));
+  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(1));
+  /* a file below the new capacity stays as it is */
+  cr_assert_lt(qdisk_get_file_size(qdisk), MiB(1));
+
+  GString *record = g_string_new(NULL);
+  cr_assert(qdisk_pop_head(qdisk, record));
+  assert_dummy_record(record, 100);
+
+  cr_assert(qdisk_stop(qdisk, NULL, NULL));
+  g_string_free(record, TRUE);
+  cleanup_qdisk(filename, qdisk);
+  _destroy_diskq_options(opts);
+}
+
+Test(qdisk, shrink_applies_at_start_non_reliable)
+{
+  const gchar *filename = "test_shrink_applies_at_start.qf";
+  QDisk *qdisk = _start_qdisk(TDISKQ_NON_RELIABLE, filename, MiB(2));
+  DiskQueueOptions *opts = qdisk_get_options(qdisk);
+
+  /* the file once wrapped, so it is larger than the new capacity while its content is not */
+  _wrap_qdisk(qdisk);
+  _pop_and_maybe_ack(qdisk);
+  _pop_and_maybe_ack(qdisk);
+  cr_assert_lt(qdisk_get_backlog_head(qdisk), qdisk_get_writer_head(qdisk));
+  cr_assert_gt(qdisk_get_file_size(qdisk), MiB(1));
+
+  _restart_with_capacity_bytes(qdisk, MiB(1));
+  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(1));
+
+  struct stat file_stats;
+  cr_assert(stat(filename, &file_stats) == 0, "Stat call failed, errno: %d", errno);
+  cr_assert_leq(file_stats.st_size, MiB(1));
+
+  _pop_and_maybe_ack(qdisk);
+  _assert_empty(qdisk);
+
+  cr_assert(qdisk_stop(qdisk, NULL, NULL));
+  cleanup_qdisk(filename, qdisk);
+  _destroy_diskq_options(opts);
+}
+
+Test(qdisk, shrink_cannot_apply_at_start_while_content_does_not_fit_then_applies_at_reset)
+{
+  const gchar *filename = "test_shrink_cannot_apply_at_start_while_content_does_not_fit.rqf";
+  QDisk *qdisk = _start_qdisk(TDISKQ_RELIABLE, filename, MiB(2));
+  DiskQueueOptions *opts = qdisk_get_options(qdisk);
+
+  _push_data_to_qdisk(qdisk, MiB(1) + 100);
+
+  _restart_with_capacity_bytes(qdisk, MiB(1));
+  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(2));
+
+  /* the file is not wrapped, but the write head is still beyond the new boundary */
+  _pop_and_maybe_ack(qdisk);
+  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(2));
+
+  qdisk_reset_file_if_empty(qdisk);
+  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(1));
+  cr_assert_leq(qdisk_get_file_size(qdisk), MiB(1));
+
+  cr_assert(qdisk_stop(qdisk, NULL, NULL));
+  cleanup_qdisk(filename, qdisk);
+  _destroy_diskq_options(opts);
+}
+
+Test(qdisk, shrink_applies_at_update)
+{
+  const gchar *filename = "test_shrink_applies_at_update.rqf";
+  QDisk *qdisk = _start_qdisk(TDISKQ_RELIABLE, filename, MiB(2));
+  DiskQueueOptions *opts = qdisk_get_options(qdisk);
+
+  cr_assert(push_dummy_record(qdisk, 100));
+
+  _update_capacity_bytes(qdisk, MiB(1));
+  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(1));
+  /* a file below the new capacity stays as it is */
+  cr_assert_lt(qdisk_get_file_size(qdisk), MiB(1));
+
+  cr_assert(qdisk_stop(qdisk, NULL, NULL));
+  cleanup_qdisk(filename, qdisk);
+  _destroy_diskq_options(opts);
+}
+
+Test(qdisk, shrink_cannot_apply_at_update_while_content_does_not_fit_then_applies_at_reset)
+{
+  const gchar *filename = "test_shrink_cannot_apply_at_update_while_content_does_not_fit.rqf";
+  QDisk *qdisk = _start_qdisk(TDISKQ_RELIABLE, filename, MiB(2));
+  DiskQueueOptions *opts = qdisk_get_options(qdisk);
+
+  _push_data_to_qdisk(qdisk, MiB(1) + 100);
+
+  _update_capacity_bytes(qdisk, MiB(1));
+  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(2));
+
+  /* the file is not wrapped, but the write head is still beyond the new boundary */
+  _pop_and_maybe_ack(qdisk);
+  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(2));
+
+  qdisk_reset_file_if_empty(qdisk);
+  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(1));
+  cr_assert_leq(qdisk_get_file_size(qdisk), MiB(1));
+
+  struct stat file_stats;
+  cr_assert(stat(filename, &file_stats) == 0, "Stat call failed, errno: %d", errno);
+  cr_assert_leq(file_stats.st_size, MiB(1));
+
+  cr_assert(qdisk_stop(qdisk, NULL, NULL));
+  cleanup_qdisk(filename, qdisk);
+  _destroy_diskq_options(opts);
+}
+
+Test(qdisk, shrink_cannot_apply_at_update_while_wrapped_then_applies_at_ack)
+{
+  const gchar *filename = "test_shrink_cannot_apply_at_update_while_wrapped.rqf";
+  QDisk *qdisk = _start_qdisk(TDISKQ_RELIABLE, filename, MiB(2));
+  DiskQueueOptions *opts = qdisk_get_options(qdisk);
+
+  /* the unread tail reaches beyond the new boundary */
+  _wrap_qdisk(qdisk);
+
+  _update_capacity_bytes(qdisk, MiB(1));
+  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(2));
+
+  _pop_and_maybe_ack(qdisk);
+  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(2));
+  _pop_and_maybe_ack(qdisk);
+  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(1));
+  cr_assert_eq(qdisk_get_file_size(qdisk), MiB(1));
+
+  _pop_and_maybe_ack(qdisk);
+  _assert_empty(qdisk);
+
+  cr_assert(qdisk_stop(qdisk, NULL, NULL));
+  cleanup_qdisk(filename, qdisk);
+  _destroy_diskq_options(opts);
+}
+
+Test(qdisk, shrink_cannot_apply_at_update_while_wrapped_then_applies_at_pop)
+{
+  const gchar *filename = "test_shrink_cannot_apply_at_update_while_wrapped.qf";
+  QDisk *qdisk = _start_qdisk(TDISKQ_NON_RELIABLE, filename, MiB(2));
+  DiskQueueOptions *opts = qdisk_get_options(qdisk);
+
+  /* the unread tail reaches beyond the new boundary */
+  _wrap_qdisk(qdisk);
+
+  _update_capacity_bytes(qdisk, MiB(1));
+  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(2));
+
+  _pop_and_maybe_ack(qdisk);
+  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(2));
+  _pop_and_maybe_ack(qdisk);
+  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(1));
+  cr_assert_eq(qdisk_get_file_size(qdisk), MiB(1));
+
+  _pop_and_maybe_ack(qdisk);
+  _assert_empty(qdisk);
+
+  cr_assert(qdisk_stop(qdisk, NULL, NULL));
+  cleanup_qdisk(filename, qdisk);
+  _destroy_diskq_options(opts);
+}
+
 static void
 setup(void)
 {
