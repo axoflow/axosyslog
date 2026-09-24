@@ -400,15 +400,8 @@ _possible_size_reduction_reaches_truncate_threshold(QDisk *self, gint64 expected
 }
 
 static void
-_maybe_truncate_file(QDisk *self, gint64 expected_size)
+_truncate_file(QDisk *self, gint64 expected_size)
 {
-  if (_ftruncate_would_reduce_file(self, expected_size) &&
-      !_possible_size_reduction_reaches_truncate_threshold(self, expected_size) &&
-      G_LIKELY(!self->hdr->use_v1_wrap_condition))
-    {
-      return;
-    }
-
   msg_debug("Truncating queue file", evt_tag_str("filename", self->filename), evt_tag_long("new size", expected_size));
 
   if (ftruncate(self->fd, (off_t) expected_size) == 0)
@@ -433,6 +426,19 @@ _maybe_truncate_file(QDisk *self, gint64 expected_size)
             evt_tag_long("expected-size", expected_size),
             evt_tag_long("file-size", self->cached_file_size),
             evt_tag_int("fd", self->fd));
+}
+
+static void
+_maybe_truncate_file(QDisk *self, gint64 expected_size)
+{
+  if (_ftruncate_would_reduce_file(self, expected_size) &&
+      !_possible_size_reduction_reaches_truncate_threshold(self, expected_size) &&
+      G_LIKELY(!self->hdr->use_v1_wrap_condition))
+    {
+      return;
+    }
+
+  _truncate_file(self, expected_size);
 }
 
 #ifndef SYSLOG_NG_HAVE_POSIX_FALLOCATE
