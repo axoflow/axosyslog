@@ -54,8 +54,9 @@ start
 	;
 
 parser_expr_list
-        : parser_expr semicolons parser_expr_list    { $$ = log_expr_node_append_tail(log_expr_node_new_pipe($1, &@1), $3); }
-        | log_fork semicolons parser_expr_list       { $$ = log_expr_node_append_tail($1,  $3); }
+        : parser_expr ';' parser_expr_list           { $$ = log_expr_node_append_tail(log_expr_node_new_pipe($1, &@1), $3); }
+        | log_fork ';' parser_expr_list              { $$ = log_expr_node_append_tail($1,  $3); }
+        | ';' parser_expr_list                       { $$ = $2; }
         |                                            { $$ = NULL; }
         ;
 

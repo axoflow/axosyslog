@@ -1208,6 +1208,12 @@ cfg_tree_compile_junction(CfgTree *self,
         {
           /* ep is an intermediate LogPipe or a destination, we have to fork */
 
+          if (node->content == ENC_SOURCE)
+            {
+              msg_error("Error compiling source, channels embedded in a source statement must start with a source",
+                        log_expr_node_location_tag(ep));
+              goto error;
+            }
           if (!is_first_branch && !fork_mpx)
             {
               msg_error("Error compiling junction, source and non-source branches are mixed",
@@ -1219,7 +1225,7 @@ cfg_tree_compile_junction(CfgTree *self,
               fork_mpx = cfg_tree_new_mpx(self, node,
                                           node->content == ENC_DESTINATION
                                           ? "mpx(destination-junction)"
-                                          : (node->content == ENC_SOURCE ? "mpx(source-junction)" : "mpx(junction)"));
+                                          : "mpx(junction)");
 
               if (node->content == ENC_DESTINATION)
                 log_multiplexer_disable_delivery_propagation(fork_mpx);
@@ -1270,7 +1276,6 @@ cfg_tree_compile_junction(CfgTree *self,
        * PIF_JUNCTION_END on the tail of the junction.
        */
 
-      g_assert(node->content != ENC_SOURCE);
       join_pipe->flags |= PIF_JUNCTION_END;
     }
 
