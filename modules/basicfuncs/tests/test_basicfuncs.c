@@ -303,6 +303,72 @@ Test(basicfuncs, test_numeric_funcs)
   assert_template_format("$(ceil 0.2)", "1");
 }
 
+Test(basicfuncs, test_bucket)
+{
+  /* result type and range */
+  assert_template_format_value_and_type("$(bucket 1 whatever)", "0", LM_VT_INTEGER);
+  assert_template_format("$(bucket 1 anything-at-all)", "0");
+  assert_template_format("$(bucket 1 a b c)", "0");
+
+  /* deterministic: same input always maps to the same bucket */
+  assert_template_format("$(bucket 8 host-a)", "2");
+  assert_template_format("$(bucket 8 host-a)", "2");
+
+  /* different literal values, exercised against known hash results */
+  assert_template_format("$(bucket 8 host-a)", "2");
+  assert_template_format("$(bucket 8 host-b)", "0");
+  assert_template_format("$(bucket 8 host-c)", "4");
+  assert_template_format("$(bucket 8 host-d)", "0");
+
+  /* multiple value arguments are combined, not just the first one used */
+  assert_template_format("$(bucket 4 host-a prog-x)", "2");
+  assert_template_format("$(bucket 4 host-b prog-y)", "3");
+
+  /* anagrams must not collide: DJB2 alone maps these to the same bucket for
+   * bucket counts dividing 32, the finalizer is what tells them apart */
+  assert_template_format("$(bucket 8 abc-host)", "7");
+  assert_template_format("$(bucket 8 cba-host)", "1");
+  assert_template_format("$(bucket 8 host-abc)", "0");
+
+  /* bytes after an embedded NUL take part in the hash */
+  LogMessage *msg = create_sample_message();
+  log_msg_set_value_by_name(msg, "nul1", "nul\0a", 5);
+  log_msg_set_value_by_name(msg, "nul2", "nul\0b", 5);
+  assert_template_format_msg("$(bucket 8 ${nul1})", "6", msg);
+  assert_template_format_msg("$(bucket 8 ${nul2})", "4", msg);
+  log_msg_unref(msg);
+
+  /* --weights: a single non-zero weight always wins, regardless of the value */
+  assert_template_format("$(bucket --weights 0,1,0 host-a)", "1");
+  assert_template_format("$(bucket --weights 0,1,0 host-b)", "1");
+  assert_template_format("$(bucket --weights 0,1,0 anything)", "1");
+  assert_template_format("$(bucket --weights 1,0 host-a)", "0");
+  assert_template_format("$(bucket --weights 1,0 host-b)", "0");
+
+  /* --weights: proportional distribution, exercised against known hash results */
+  assert_template_format("$(bucket --weights 3,1,1 host-a)", "0");
+  assert_template_format("$(bucket --weights 3,1,1 host-b)", "1");
+  assert_template_format("$(bucket --weights 3,1,1 host-c)", "0");
+  assert_template_format("$(bucket --weights 3,1,1 host-d)", "0");
+  assert_template_format("$(bucket --weights 3,1,1 host-e)", "0");
+
+  /* compile-time errors */
+  assert_template_failure("$(bucket)", "requires a bucket count");
+  assert_template_failure("$(bucket 8)", "requires a bucket count and at least one value argument");
+  assert_template_failure("$(bucket 0 $HOST)", "bucket count must be a positive integer");
+  assert_template_failure("$(bucket notanumber $HOST)", "bucket count must be a positive integer");
+  assert_template_failure("$(bucket 4097 $HOST)", "not greater than 4096");
+  assert_template_failure("$(bucket 4294967296 $HOST)", "not greater than 4096");
+  assert_template_format_value_and_type("$(bucket 4096 host-a)", "1530", LM_VT_INTEGER);
+  assert_template_failure("$(bucket --weights 1,2,3)", "requires at least one value argument");
+  assert_template_failure("$(bucket --weights 0,0 $HOST)", "must not all be zero");
+  assert_template_failure("$(bucket --weights -1,2 $HOST)", "non-negative integers");
+  assert_template_failure("$(bucket --weights notanumber $HOST)", "non-negative integers");
+  assert_template_failure("$(bucket --weights 4097,1 $HOST)", "not greater than 4096");
+  assert_template_failure("$(bucket --weights 4294967295,2 $HOST)", "not greater than 4096");
+  assert_template_format("$(bucket --weights 4096,4096 host-a)", "1");
+}
+
 Test(basicfuncs, test_fname_funcs)
 {
   assert_template_format("$(basename foo)", "foo");

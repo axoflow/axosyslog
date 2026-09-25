@@ -56,6 +56,7 @@ _append_args_with_separator(gint argc, GString *argv[], GString *result, gchar s
  * units. (Bazsi) */
 #include "urlencode.c"
 #include "numeric-funcs.c"
+#include "tf-bucket.c"
 #include "str-funcs.c"
 #include "cond-funcs.c"
 #include "ip-funcs.c"
@@ -127,6 +128,9 @@ static Plugin basicfuncs_plugins[] =
   TEMPLATE_FUNCTION_PLUGIN(tf_num_round, "round"),
   TEMPLATE_FUNCTION_PLUGIN(tf_num_ceil, "ceil"),
   TEMPLATE_FUNCTION_PLUGIN(tf_num_floor, "floor"),
+
+  /* bucket */
+  TEMPLATE_FUNCTION_PLUGIN(tf_bucket, "bucket"),
 
   /* ip-funcs */
   TEMPLATE_FUNCTION_PLUGIN(tf_ipv4_to_int, "ipv4-to-int"),
