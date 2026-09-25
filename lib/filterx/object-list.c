@@ -147,7 +147,7 @@ _filterx_list_set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject 
   FilterXObject **slot = (FilterXObject **) &g_ptr_array_index(self->array, normalized_index);
   filterx_ref_unset_parent_container(*slot);
   filterx_object_unref(*slot);
-  *slot = filterx_object_cow_store(new_value);
+  *slot = filterx_object_cow_store(s, new_value);
   return TRUE;
 }
 
@@ -258,6 +258,11 @@ _filterx_list_clone_container(FilterXObject *s, FilterXObject *container, Filter
       g_ptr_array_add(clone->array, el);
     }
   g_assert(child_found || child_of_interest == NULL);
+
+  /* a shallow (copy-on-write) clone shares the children, so it borrows from
+   * the message just like the original; a deep one copied them */
+  if (!dup)
+    clone->super.super.is_nvtable_backed = s->is_nvtable_backed;
   return &clone->super.super;
 }
 

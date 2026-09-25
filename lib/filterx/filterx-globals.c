@@ -45,6 +45,7 @@
 #include "filterx/func-timestamp.h"
 #include "filterx/func-str.h"
 #include "filterx/func-str-transform.h"
+#include "filterx/func-aggregate.h"
 #include "filterx/func-flatten.h"
 #include "filterx/func-sdata.h"
 #include "filterx/func-repr.h"
@@ -175,6 +176,7 @@ _ctors_init(void)
   g_assert(filterx_builtin_function_ctor_register("regexp_subst", filterx_function_regexp_subst_new));
   g_assert(filterx_builtin_function_ctor_register("unset", filterx_function_unset_new));
   g_assert(filterx_builtin_function_ctor_register("move", filterx_function_move_new));
+  g_assert(filterx_builtin_function_ctor_register("aggregate", filterx_function_aggregate_new));
   g_assert(filterx_builtin_function_ctor_register("flatten", filterx_function_flatten_new));
   g_assert(filterx_builtin_function_ctor_register("is_sdata_from_enterprise",
                                                   filterx_function_is_sdata_from_enterprise_new));
