@@ -914,6 +914,79 @@ Test(lumberjack, version1_duplicate_keys_are_kept_and_strings_are_escaped)
   _connection_deinit(&conn);
 }
 
+/* Escaping makes a string up to six times longer: log-msg-size() bounds the
+ * object as delivered, not the octets on the wire, otherwise a frame of
+ * control characters would deliver six times the configured size. */
+Test(lumberjack, version1_frame_whose_escaped_form_outgrows_log_msg_size_is_dropped)
+{
+  LumberjackTestConnection conn;
+  GString *input = g_string_new("");
+  gchar control[80];
+
+  /* 81 octets of key and value on the wire, 488 once every octet is \u0001 */
+  memset(control, 0x01, sizeof(control));
+  _put_window(input, '1', 2);
+  _put_data_frame_1(input, 1, "k", control, sizeof(control));
+  _put_data_frame(input, 2, 1, "k", "v");
+
+  _connection_init(&conn);
+  options_storage.super.max_msg_size = 100;
+
+  start_grabbing_messages();
+  _inject(&conn, input);
+  cr_assert_eq(_pump_until(&conn, 0, 1), LUMBERJACK_PUMP_MESSAGES);
+  stop_grabbing_messages();
+  assert_grabbed_log_contains("Dropping a message larger than log-msg-size()");
+
+  _assert_message(&conn, 0, "{\"k\":\"v\"}", "1");
+  cr_assert_eq(conn.messages->len, 1);
+  _report_durable(&conn, 0);
+  _assert_written(&conn, _ack('1', 2));
+  _connection_deinit(&conn);
+}
+
+Test(lumberjack, version1_escaped_object_of_exactly_log_msg_size_is_accepted)
+{
+  LumberjackTestConnection conn;
+  GString *input = g_string_new("");
+  GString *expected = g_string_new("{\"k\":\"");
+  gchar value[18];
+
+  /* {"k":" is 6 octets, 15 control characters escape to 90, ab and "} make
+   * it 100 exactly; one more octet and the object is over */
+  memset(value, 0x01, 15);
+  value[15] = 'a';
+  value[16] = 'b';
+  value[17] = 'c';
+  for (gint i = 0; i < 15; i++)
+    g_string_append(expected, "\\u0001");
+  g_string_append(expected, "ab\"}");
+  cr_assert_eq(expected->len, 100);
+
+  _put_window(input, '1', 1);
+  _put_data_frame_1(input, 1, "k", value, 17);
+  _put_window(input, '1', 1);
+  _put_data_frame_1(input, 1, "k", value, 18);
+
+  _connection_init(&conn);
+  options_storage.super.max_msg_size = 100;
+  _inject(&conn, input);
+  cr_assert_eq(_pump_until(&conn, 0, 1), LUMBERJACK_PUMP_MESSAGES);
+  _assert_message(&conn, 0, expected->str, "1");
+  g_string_free(expected, TRUE);
+
+  /* the first window is acknowledged once durable, the second, all dropped,
+   * right behind it */
+  _report_durable(&conn, 0);
+  GString *acks = _ack('1', 1);
+  GString *second = _ack('1', 1);
+  g_string_append_len(acks, second->str, second->len);
+  g_string_free(second, TRUE);
+  _assert_written(&conn, acks);
+  cr_assert_eq(conn.messages->len, 1);
+  _connection_deinit(&conn);
+}
+
 /* the input buffer starts at init_buffer_size, 64 octets at the least, and
  * has to grow to hold a field that is longer than that */
 Test(lumberjack, version1_field_larger_than_the_initial_buffer_is_reassembled)
