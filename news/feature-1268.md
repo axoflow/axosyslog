@@ -13,7 +13,8 @@ A window is acknowledged once its last event was acknowledged by the pipeline: w
 `disk-buffer()` downstream the acknowledgement means stored, without flow control it means received, which is
 what Logstash does.  A slow pipeline is never a reason to drop the connection, the receiver keeps the sender
 waiting with keepalives instead.  An event larger than `log-msg-size()` is dropped and still counted toward the
-acknowledgement, so a sender does not resend the same window forever.  Sequence numbers are not enforced: a
+acknowledgement, so a sender does not resend the same window forever; the limit applies to the JSON as delivered,
+so a version 1 frame that only outgrows it once escaped is dropped as well.  Sequence numbers are not enforced: a
 sender that numbers its frames from a counter running across windows (logstash-forwarder, ferro-lumberjack)
 is acknowledged with the last sequence number it sent, which is what it expects.
 
