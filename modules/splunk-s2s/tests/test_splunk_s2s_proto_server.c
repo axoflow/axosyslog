@@ -268,10 +268,14 @@ Test(splunk_s2s_proto_server, aggregated_events_map_to_one_message_each)
   SplunkS2SEventField fields[] =
   {
     { .name = "_MetaData:Index", .value_type = SPLUNK_S2S_VALUE_STR, .str_value = "custom", .str_value_len = 6 },
-    { .name = "MetaData:Sourcetype", .value_type = SPLUNK_S2S_VALUE_STR,
-      .str_value = "sourcetype::override_st", .str_value_len = 23 },
-    { .name = "MetaData:Host", .value_type = SPLUNK_S2S_VALUE_STR,
-      .str_value = "host::other-host", .str_value_len = 16 },
+    {
+      .name = "MetaData:Sourcetype", .value_type = SPLUNK_S2S_VALUE_STR,
+      .str_value = "sourcetype::override_st", .str_value_len = 23
+    },
+    {
+      .name = "MetaData:Host", .value_type = SPLUNK_S2S_VALUE_STR,
+      .str_value = "host::other-host", .str_value_len = 16
+    },
   };
   splunk_s2s_format_event(stream, 7, AGGREGATED_FLAGS, 1782963360, 3, fields, G_N_ELEMENTS(fields),
                           "second event", 12);

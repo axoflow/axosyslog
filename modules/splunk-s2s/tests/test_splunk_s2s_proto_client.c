@@ -288,14 +288,22 @@ _expected_event(guint64 event_id, const gchar *index, const gchar *sourcetype, c
 
   SplunkS2SEventField fields[] =
   {
-    { .name = "_MetaData:Index", .value_type = SPLUNK_S2S_VALUE_STR,
-      .str_value = index, .str_value_len = strlen(index) },
-    { .name = "MetaData:Sourcetype", .value_type = SPLUNK_S2S_VALUE_STR,
-      .str_value = sourcetype_buf->str, .str_value_len = sourcetype_buf->len },
-    { .name = "MetaData:Source", .value_type = SPLUNK_S2S_VALUE_STR,
-      .str_value = source_buf->str, .str_value_len = source_buf->len },
-    { .name = "MetaData:Host", .value_type = SPLUNK_S2S_VALUE_STR,
-      .str_value = host_buf->str, .str_value_len = host_buf->len },
+    {
+      .name = "_MetaData:Index", .value_type = SPLUNK_S2S_VALUE_STR,
+      .str_value = index, .str_value_len = strlen(index)
+    },
+    {
+      .name = "MetaData:Sourcetype", .value_type = SPLUNK_S2S_VALUE_STR,
+      .str_value = sourcetype_buf->str, .str_value_len = sourcetype_buf->len
+    },
+    {
+      .name = "MetaData:Source", .value_type = SPLUNK_S2S_VALUE_STR,
+      .str_value = source_buf->str, .str_value_len = source_buf->len
+    },
+    {
+      .name = "MetaData:Host", .value_type = SPLUNK_S2S_VALUE_STR,
+      .str_value = host_buf->str, .str_value_len = host_buf->len
+    },
   };
 
   GString *expected = g_string_new(NULL);
