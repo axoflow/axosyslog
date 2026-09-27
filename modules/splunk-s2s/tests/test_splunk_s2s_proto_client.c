@@ -219,7 +219,7 @@ Test(splunk_s2s_proto_client, handshake_resumes_across_eagain)
                               LTM_INJECT_ERROR(EAGAIN),
                               SERVER_HELLO, 2,
                               LTM_INJECT_ERROR(EAGAIN),
-                              SERVER_HELLO + 2, SERVER_HELLO_LEN - 2,
+                              &SERVER_HELLO[2], SERVER_HELLO_LEN - 2,
                               LTM_EOF);
   LogProtoClient *client = _client_new(transport);
 
