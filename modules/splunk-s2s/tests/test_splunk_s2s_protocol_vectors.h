@@ -26,7 +26,7 @@ static const guint8 vector_varint_u64_max[] =
 static const guint8 vector_header1[SPLUNK_S2S_HEADER1_SIZE] =
 {
   [0x000] = '-', '-', 's', 'p', 'l', 'u', 'n', 'k', '-', 'c', 'o', 'o', 'k',
-            'e', 'd', '-', 'm', 'o', 'd', 'e', '-', 'v', '3', '-', '-',  /* magic */
+  'e', 'd', '-', 'm', 'o', 'd', 'e', '-', 'v', '3', '-', '-',  /* magic */
   [0x080] = 'a', 'x', 'o', 's', 'y', 's', 'l', 'o', 'g',  /* identifier */
   [0x180] = '0',  /* mgmt port */
 };

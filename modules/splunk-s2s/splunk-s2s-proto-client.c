@@ -556,12 +556,18 @@ _encode_event(LogProtoSplunkS2SClient *self, LogMessage *msg, guint64 event_id, 
 
   SplunkS2SEventField fields[] =
   {
-    { .name = "_MetaData:Index", .value_type = SPLUNK_S2S_VALUE_STR,
-      .str_value = index->str, .str_value_len = index->len },
-    { .name = "MetaData:Sourcetype", .value_type = SPLUNK_S2S_VALUE_STR,
-      .str_value = sourcetype->str, .str_value_len = sourcetype->len },
-    { .name = "MetaData:Source", .value_type = SPLUNK_S2S_VALUE_STR,
-      .str_value = source->str, .str_value_len = source->len },
+    {
+      .name = "_MetaData:Index", .value_type = SPLUNK_S2S_VALUE_STR,
+      .str_value = index->str, .str_value_len = index->len
+    },
+    {
+      .name = "MetaData:Sourcetype", .value_type = SPLUNK_S2S_VALUE_STR,
+      .str_value = sourcetype->str, .str_value_len = sourcetype->len
+    },
+    {
+      .name = "MetaData:Source", .value_type = SPLUNK_S2S_VALUE_STR,
+      .str_value = source->str, .str_value_len = source->len
+    },
     { .name = "MetaData:Host", .value_type = SPLUNK_S2S_VALUE_STR, .str_value = host->str, .str_value_len = host->len },
   };
   splunk_s2s_format_event(self->out_buf, DEFAULT_CHANNEL_ID, SPLUNK_S2S_EVENT_FLAGS_FULL_HEADER,
