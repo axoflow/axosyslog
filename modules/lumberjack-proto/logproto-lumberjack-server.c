@@ -43,7 +43,8 @@
  * A compressed (`C`) frame is a zlib stream of whole data frames (9).  It is
  * inflated as it arrives into a second input that the same parser reads from,
  * so a frame inside it is subject to the same limits as a plain one whatever
- * it inflates to, and the frame is never buffered whole in either form.  TLS
+ * it inflates to, and the frame is never buffered whole in either form; what
+ * it inflates to in total is bounded by max-inflated-size() (16).  TLS
  * is the transport's business: a tls() block on the driver puts a TLS factory
  * on the stack and this proto switches to it before the first byte is read
  * (15.2).
@@ -98,12 +99,13 @@ enum
   LUMBERJACK_ERR_WINDOW_SIZE,
   LUMBERJACK_ERR_LENGTH,
   LUMBERJACK_ERR_COMPRESSION,
+  LUMBERJACK_ERR_INFLATED_SIZE,
   LUMBERJACK_ERR_MAX,
 };
 
 static const gchar *LUMBERJACK_ERROR_REASONS[LUMBERJACK_ERR_MAX] =
 {
-  "version", "frame_type", "window_size", "length", "compression",
+  "version", "frame_type", "window_size", "length", "compression", "inflated_size",
 };
 
 /* the `version` label values of lumberjack_frames_total */
@@ -282,6 +284,8 @@ typedef struct _LogProtoLumberjackServer
     gsize compressed_remaining;
     /* inflate() returned Z_STREAM_END, the checksum is verified */
     gboolean stream_ended;
+    /* octets inflated from this frame so far, bounded by max-inflated-size() */
+    gsize inflated_total;
     /* kept for the life of the connection, reset for every frame */
     z_stream stream;
     gboolean stream_initialized;
@@ -890,6 +894,7 @@ _envelope_start(LogProtoLumberjackServer *self, guint32 compressed_len, LogProto
   self->envelope.active = TRUE;
   self->envelope.compressed_remaining = compressed_len;
   self->envelope.stream_ended = FALSE;
+  self->envelope.inflated_total = 0;
   self->cur = &self->inflated;
   self->state = LUMBERJACK_FRAME_HEADER;
 
@@ -929,7 +934,9 @@ _envelope_content_exhausted(LogProtoLumberjackServer *self)
  * socket input holds of the frame, reading the socket when that is empty.  The
  * output is bounded by the free space of @inflated, which the parser sizes to
  * a single frame, so a frame that inflates to gigabytes costs one frame buffer
- * and is skipped piece by piece like any oversize frame (16). */
+ * and is skipped piece by piece like any oversize frame; what it inflates to
+ * in total is bounded by max-inflated-size(), so the CPU a compressed frame
+ * can cost is bounded as well (9.4, 16). */
 static LumberjackInputResult
 _inflate_step(LogProtoLumberjackServer *self, LogProtoStatus *status)
 {
@@ -980,6 +987,7 @@ _inflate_step(LogProtoLumberjackServer *self, LogProtoStatus *status)
       _input_consume(sock, consumed);
       self->envelope.compressed_remaining -= consumed;
       in->end += produced;
+      self->envelope.inflated_total += produced;
 
       if (rc == Z_STREAM_END)
         self->envelope.stream_ended = TRUE;
@@ -987,6 +995,24 @@ _inflate_step(LogProtoLumberjackServer *self, LogProtoStatus *status)
         {
           _log_zlib_error(self, "Error inflating a Lumberjack compressed frame, the zlib stream is corrupt", rc);
           _protocol_error(self, LUMBERJACK_ERR_COMPRESSION);
+          return LUMBERJACK_INPUT_STATE_CHANGED;
+        }
+
+      if (self->options.max_inflated_size > 0
+          && self->envelope.inflated_total > (gsize) self->options.max_inflated_size)
+        {
+          /* the sender has no way to learn of the limit in-band, so the
+           * value is logged for the operator to align max-inflated-size()
+           * with, as with max-window-size() */
+          msg_error("Lumberjack compressed frame inflates beyond max-inflated-size(), closing the connection; a "
+                    "sender whose batches inflate above the receiver's limit retransmits forever, align "
+                    "max-inflated-size() with its batch size",
+                    evt_tag_long("inflated_size", self->envelope.inflated_total),
+                    evt_tag_long("max_inflated_size", self->options.max_inflated_size),
+                    evt_tag_int("frames_read", self->window.done),
+                    evt_tag_str("client", _format_peer_address(self, peer, sizeof(peer))),
+                    evt_tag_int(EVT_TAG_FD, self->super.transport_stack.fd));
+          _protocol_error(self, LUMBERJACK_ERR_INFLATED_SIZE);
           return LUMBERJACK_INPUT_STATE_CHANGED;
         }
 

@@ -14,7 +14,9 @@ A window is acknowledged once its last event was acknowledged by the pipeline: w
 what Logstash does.  A slow pipeline is never a reason to drop the connection, the receiver keeps the sender
 waiting with keepalives instead.  An event larger than `log-msg-size()` is dropped and still counted toward the
 acknowledgement, so a sender does not resend the same window forever; the limit applies to the JSON as delivered,
-so a version 1 frame that only outgrows it once escaped is dropped as well.  Sequence numbers are not enforced: a
+so a version 1 frame that only outgrows it once escaped is dropped as well.  A compressed frame that inflates
+beyond `max-inflated-size()` closes the connection, the bound the specification asks for against decompression
+bombs.  Sequence numbers are not enforced: a
 sender that numbers its frames from a counter running across windows (logstash-forwarder, ferro-lumberjack)
 is acknowledged with the last sequence number it sent, which is what it expects.
 
@@ -30,6 +32,7 @@ Options of `lumberjack()`:
   * max-window-size(10000): the largest window accepted, 0 for unlimited; align it with the sender's batch size
   * keepalive-interval(5): seconds between keepalives while a window waits for its acknowledgement, 0 disables
   * window-timeout(30): seconds a window may stall mid-way before the connection is closed, 0 disables
+  * max-inflated-size(67108864): the most bytes a single compressed frame may inflate to, 0 for unlimited
 
 Normal options of the `network()` driver also apply: `tls()` runs TLS from the first octet as the protocol has it,
 `log-msg-size()` bounds a single event, `idle-timeout()` bounds the wait for the next window.

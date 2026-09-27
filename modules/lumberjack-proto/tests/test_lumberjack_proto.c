@@ -114,6 +114,7 @@ Test(lumberjack, grammar_defaults)
   cr_assert_eq(_options()->lumberjack.max_window_size, LUMBERJACK_DEFAULT_MAX_WINDOW_SIZE);
   cr_assert_eq(_options()->lumberjack.keepalive_interval, LUMBERJACK_DEFAULT_KEEPALIVE_INTERVAL);
   cr_assert_eq(_options()->lumberjack.window_timeout, LUMBERJACK_DEFAULT_WINDOW_TIMEOUT);
+  cr_assert_eq(_options()->lumberjack.max_inflated_size, LUMBERJACK_DEFAULT_MAX_INFLATED_SIZE);
 }
 
 Test(lumberjack, grammar_empty_option_block)
@@ -125,10 +126,11 @@ Test(lumberjack, grammar_empty_option_block)
 Test(lumberjack, grammar_options)
 {
   cr_assert_not_null(_parse_lumberjack_transport("lumberjack(max-window-size(2048) keepalive-interval(3) "
-                                                 "window-timeout(0))"));
+                                                 "window-timeout(0) max-inflated-size(1048576))"));
   cr_assert_eq(_options()->lumberjack.max_window_size, 2048);
   cr_assert_eq(_options()->lumberjack.keepalive_interval, 3);
   cr_assert_eq(_options()->lumberjack.window_timeout, 0);
+  cr_assert_eq(_options()->lumberjack.max_inflated_size, 1048576);
 }
 
 Test(lumberjack, grammar_zero_disables_the_window_size_limit)
@@ -1626,6 +1628,65 @@ Test(lumberjack, oversize_frame_inside_a_compressed_frame_is_skipped_and_counted
   _assert_message(&conn, 1, "{\"n\":3}", "2");
   _report_durable(&conn, 1);
   _assert_written(&conn, _ack('2', 3));
+  _connection_deinit(&conn);
+}
+
+/* A compressed frame that inflates beyond max-inflated-size() is a
+ * decompression bomb (9.4, 16): an oversize frame inside it is skipped without
+ * a message to deliver, so nothing but this bound limits the CPU it costs. */
+static GString *
+_compressed_window_with_a_bomb(gsize bomb_len)
+{
+  GString *frames = g_string_new("");
+  GString *input = g_string_new("");
+  gchar *bomb = g_malloc0(bomb_len);
+
+  _put_json_frame_len(frames, 1, bomb, bomb_len);
+  _put_json_frame(frames, 2, "{\"n\":2}");
+  g_free(bomb);
+  _put_window(input, '2', 2);
+  _put_compressed(input, '2', frames, 9);
+  g_string_free(frames, TRUE);
+  cr_assert_lt(input->len, (gsize) 16384, "the bomb did not compress, the test is void");
+  return input;
+}
+
+Test(lumberjack, compressed_frame_inflating_beyond_max_inflated_size_is_a_protocol_error)
+{
+  LumberjackTestConnection conn;
+
+  _connection_init_with(&conn, "lumberjack(max-inflated-size(1048576))");
+  start_grabbing_messages();
+  _inject(&conn, _compressed_window_with_a_bomb(4 * 1024 * 1024));
+  cr_assert_eq(_pump(&conn), LUMBERJACK_PUMP_EOF);
+  stop_grabbing_messages();
+  assert_grabbed_log_contains("inflates beyond max-inflated-size()");
+  cr_assert_eq(conn.messages->len, 0);
+  cr_assert_eq(conn.written->len, 0);
+  _connection_deinit(&conn);
+}
+
+Test(lumberjack, compressed_frame_within_max_inflated_size_is_accepted)
+{
+  LumberjackTestConnection conn;
+
+  _connection_init_with(&conn, "lumberjack(max-inflated-size(8388608))");
+  _inject(&conn, _compressed_window_with_a_bomb(4 * 1024 * 1024));
+  cr_assert_eq(_pump_until(&conn, 0, 1), LUMBERJACK_PUMP_MESSAGES);
+  _assert_message(&conn, 0, "{\"n\":2}", "2");
+  _report_durable(&conn, 0);
+  _assert_written(&conn, _ack('2', 2));
+  _connection_deinit(&conn);
+}
+
+Test(lumberjack, max_inflated_size_zero_is_unlimited)
+{
+  LumberjackTestConnection conn;
+
+  _connection_init_with(&conn, "lumberjack(max-inflated-size(0))");
+  _inject(&conn, _compressed_window_with_a_bomb(4 * 1024 * 1024));
+  cr_assert_eq(_pump_until(&conn, 0, 1), LUMBERJACK_PUMP_MESSAGES);
+  _assert_message(&conn, 0, "{\"n\":2}", "2");
   _connection_deinit(&conn);
 }
 
