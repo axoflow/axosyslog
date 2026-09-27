@@ -1456,23 +1456,26 @@ _on_skip_payload(LogProtoLumberjackServer *self, LogProtoStatus *status)
   return LUMBERJACK_CTRL_NEXT_STATE;
 }
 
-/* append @len octets as a JSON string: quote, backslash and control
+/* Append @len octets to @json as a JSON string: quote, backslash and control
  * characters escaped, invalid UTF-8 as a visible \xNN so that the object
- * stays valid UTF-8 */
-static void
-_append_json_string(GString *json, const guchar *s, gsize len)
+ * stays valid UTF-8.  Escaping makes a string up to six times longer, so the
+ * bound of the object, @max, is checked on the escaped form: FALSE if the
+ * string does not fit, with the string appended all the same. */
+static gboolean
+_append_json_string(GString *json, const guchar *s, gsize len, gsize max)
 {
   g_string_append_c(json, '"');
   append_unsafe_utf8_as_escaped(json, (const gchar *) s, len, AUTF8_UNSAFE_QUOTE, "\\u%04x", "\\\\x%02x");
   g_string_append_c(json, '"');
+  return json->len <= max;
 }
 
 /* A version 1 `D` frame is a count of key/value string pairs (5.2), turned
  * into a flat JSON object so that $MESSAGE is JSON in either version.  Values
  * stay strings and duplicate keys are kept in order; any smarter conversion
  * belongs in a parser downstream.  The pairs are read one at a time, and a
- * frame that outgrows log-msg-size() is discarded pair by pair without being
- * buffered whole. */
+ * frame whose JSON outgrows log-msg-size(), by its raw length or once
+ * escaped, is discarded pair by pair without being buffered whole. */
 static LumberjackStepControl
 _on_data_pairs(LogProtoLumberjackServer *self, LumberjackFetchContext *ctx, LogProtoStatus *status)
 {
@@ -1512,6 +1515,25 @@ _on_data_pairs(LogProtoLumberjackServer *self, LumberjackFetchContext *ctx, LogP
 
         case LUMBERJACK_PAIR_KEY:
         case LUMBERJACK_PAIR_VALUE:
+          if (!self->data_frame.dropping)
+            {
+              if (self->data_frame.pair_state == LUMBERJACK_PAIR_KEY)
+                {
+                  if (self->data_frame.json->len > 1)
+                    g_string_append_c(self->data_frame.json, ',');
+                }
+              else
+                g_string_append_c(self->data_frame.json, ':');
+
+              /* the whole field is buffered; the closing brace needs its
+               * octet on top of the escaped string */
+              if (!_append_json_string(self->data_frame.json, _input(self), self->data_frame.field_len, max - 1))
+                {
+                  _note_oversize_frame(self, self->data_frame.json->len);
+                  self->data_frame.dropping = TRUE;
+                }
+            }
+
           if (self->data_frame.dropping)
             {
               gsize skipped = MIN(_buffered(self), self->data_frame.field_len);
@@ -1523,14 +1545,6 @@ _on_data_pairs(LogProtoLumberjackServer *self, LumberjackFetchContext *ctx, LogP
             }
           else
             {
-              if (self->data_frame.pair_state == LUMBERJACK_PAIR_KEY)
-                {
-                  if (self->data_frame.json->len > 1)
-                    g_string_append_c(self->data_frame.json, ',');
-                }
-              else
-                g_string_append_c(self->data_frame.json, ':');
-              _append_json_string(self->data_frame.json, _input(self), self->data_frame.field_len);
               _input_consume(self->cur, self->data_frame.field_len);
               self->data_frame.field_len = 0;
             }
