@@ -36,6 +36,12 @@
 #define LUMBERJACK_DEFAULT_MAX_WINDOW_SIZE 10000
 #define LUMBERJACK_DEFAULT_KEEPALIVE_INTERVAL 5
 #define LUMBERJACK_DEFAULT_WINDOW_TIMEOUT 30
+/* The most a single compressed frame may inflate to, the bound the
+ * specification requires against decompression bombs (9.4, 16).  64 MiB is the
+ * limit of ferro-lumberjack; Beats send at most bulk_max_size (2048) events in
+ * a frame, so a frame this large means events averaging 32 KiB.
+ */
+#define LUMBERJACK_DEFAULT_MAX_INFLATED_SIZE (64 * 1024 * 1024)
 
 typedef struct _LumberjackReceiverOptions
 {
@@ -45,6 +51,8 @@ typedef struct _LumberjackReceiverOptions
   gint keepalive_interval;
   /* seconds a window body may stall before the connection is closed, 0 disables (13) */
   gint window_timeout;
+  /* the most octets a compressed frame may inflate to, 0 for unlimited (16) */
+  gint64 max_inflated_size;
 } LumberjackReceiverOptions;
 
 typedef struct _LumberjackProtoServerOptions

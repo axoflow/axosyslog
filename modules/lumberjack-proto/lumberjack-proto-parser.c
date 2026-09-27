@@ -34,6 +34,7 @@ static CfgLexerKeyword lumberjack_proto_keywords[] =
   { "max_window_size",    KW_MAX_WINDOW_SIZE },
   { "keepalive_interval", KW_KEEPALIVE_INTERVAL },
   { "window_timeout",     KW_WINDOW_TIMEOUT },
+  { "max_inflated_size",  KW_MAX_INFLATED_SIZE },
   { NULL }
 };
 

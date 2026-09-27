@@ -48,6 +48,7 @@ lumberjack_proto_server_options_defaults(LogProtoServerOptions *o)
   options->lumberjack.max_window_size = LUMBERJACK_DEFAULT_MAX_WINDOW_SIZE;
   options->lumberjack.keepalive_interval = LUMBERJACK_DEFAULT_KEEPALIVE_INTERVAL;
   options->lumberjack.window_timeout = LUMBERJACK_DEFAULT_WINDOW_TIMEOUT;
+  options->lumberjack.max_inflated_size = LUMBERJACK_DEFAULT_MAX_INFLATED_SIZE;
 
   /* an ACK covers every frame of a window (8.1), which is a prefix of the
    * frames delivered on the connection: the consecutive ack tracker reports

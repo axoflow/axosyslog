@@ -55,6 +55,7 @@ static LumberjackProtoServerOptions *last_lumberjack_options;
 %token KW_MAX_WINDOW_SIZE
 %token KW_KEEPALIVE_INTERVAL
 %token KW_WINDOW_TIMEOUT
+%token KW_MAX_INFLATED_SIZE
 
 %%
 
@@ -102,6 +103,11 @@ lumberjack_option
         | KW_WINDOW_TIMEOUT '(' nonnegative_integer ')'
           {
             last_lumberjack_options->lumberjack.window_timeout = $3;
+          }
+        | KW_MAX_INFLATED_SIZE '(' nonnegative_integer64 ')'
+          {
+            /* max-inflated-size(0) is unlimited, as the canonical receiver has it */
+            last_lumberjack_options->lumberjack.max_inflated_size = $3;
           }
         ;
 
