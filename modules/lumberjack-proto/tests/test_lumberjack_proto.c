@@ -320,6 +320,20 @@ _put_data_frame(GString *s, guint32 seq, guint32 count, ...)
 }
 
 /* a `C` frame of @version carrying @frames deflated at @level (specification 9.1) */
+/* a version 1 frame of a single pair whose value may be binary */
+static void
+_put_data_frame_1(GString *s, guint32 seq, const gchar *key, const gchar *value, gsize value_len)
+{
+  g_string_append_c(s, '1');
+  g_string_append_c(s, 'D');
+  _put_u32(s, seq);
+  _put_u32(s, 1);
+  _put_u32(s, strlen(key));
+  g_string_append(s, key);
+  _put_u32(s, value_len);
+  g_string_append_len(s, value, value_len);
+}
+
 static void
 _put_compressed(GString *s, gchar version, const GString *frames, gint level)
 {
@@ -897,6 +911,55 @@ Test(lumberjack, version1_duplicate_keys_are_kept_and_strings_are_escaped)
   _inject(&conn, input);
   _pump_until(&conn, 0, 1);
   _assert_message(&conn, 0, "{\"k\":\"say \\\"hi\\\"\\\\\\n\",\"k\":\"\\u0001\xc3\xa9\\\\xff\"}", "1");
+  _connection_deinit(&conn);
+}
+
+/* the input buffer starts at init_buffer_size, 64 octets at the least, and
+ * has to grow to hold a field that is longer than that */
+Test(lumberjack, version1_field_larger_than_the_initial_buffer_is_reassembled)
+{
+  LumberjackTestConnection conn;
+  GString *input = g_string_new("");
+  GString *expected = g_string_new("{\"k\":\"");
+  gchar value[200];
+
+  memset(value, 'x', sizeof(value));
+  g_string_append_len(expected, value, sizeof(value));
+  g_string_append(expected, "\"}");
+  _put_window(input, '1', 1);
+  _put_data_frame_1(input, 1, "k", value, sizeof(value));
+
+  /* reads fill whatever room the buffer has */
+  _connection_init_stream(&conn, input);
+  options_storage.super.init_buffer_size = 16;
+  options_storage.super.max_msg_size = 1000;
+  cr_assert_eq(_pump_until(&conn, 0, 1), LUMBERJACK_PUMP_MESSAGES);
+  _assert_message(&conn, 0, expected->str, "1");
+  g_string_free(expected, TRUE);
+  _connection_deinit(&conn);
+}
+
+Test(lumberjack, json_payload_larger_than_the_initial_buffer_is_reassembled)
+{
+  LumberjackTestConnection conn;
+  GString *input = g_string_new("");
+  gchar payload[200];
+
+  memset(payload, 'y', sizeof(payload));
+  payload[0] = '{';
+  payload[sizeof(payload) - 1] = '}';
+  _put_window(input, '2', 1);
+  _put_json_frame_len(input, 1, payload, sizeof(payload));
+
+  _connection_init_stream(&conn, input);
+  options_storage.super.init_buffer_size = 16;
+  options_storage.super.max_msg_size = 1000;
+  cr_assert_eq(_pump_until(&conn, 0, 1), LUMBERJACK_PUMP_MESSAGES);
+  LogMessage *msg = (LogMessage *) g_ptr_array_index(conn.messages, 0);
+  gssize len;
+  const gchar *value = log_msg_get_value(msg, LM_V_MESSAGE, &len);
+  cr_assert_eq((gsize) len, sizeof(payload));
+  cr_assert_arr_eq(value, payload, sizeof(payload));
   _connection_deinit(&conn);
 }
 

@@ -802,7 +802,11 @@ _fetch_input(LogProtoLumberjackServer *self, LogProtoStatus *status)
   *status = LPS_SUCCESS;
 
   _input_compact(in);
-  g_assert(in->end < in->size);
+  /* every state asks for a bounded amount, at most log-msg-size() of a
+   * payload, and sizes the buffer for it before asking; should the buffer
+   * still be full, one more read's worth of room is all that is missing */
+  if (G_UNLIKELY(in->end == in->size))
+    _input_ensure_space(in, in->size + 1);
 
   log_transport_aux_data_reinit(&self->buffer_aux);
   gssize rc = log_transport_stack_read(&self->super.transport_stack,
@@ -1499,6 +1503,10 @@ _on_data_pairs(LogProtoLumberjackServer *self, LumberjackFetchContext *ctx, LogP
               _note_oversize_frame(self, needed);
               self->data_frame.dropping = TRUE;
             }
+          /* a field is escaped from the input in one piece, so the input has
+           * to be able to hold it: at most log-msg-size(), as above */
+          if (!self->data_frame.dropping)
+            _input_ensure_space(self->cur, self->data_frame.field_len);
           self->data_frame.pair_state++;
           break;
 
