@@ -269,6 +269,11 @@ def test_includes_with_various_arguments(config, syslog_ng):
     {
         result.includes_foo4 = true;
     };
+    # literal haystack, non-literal needle
+    if (includes("foobar", foo))
+    {
+        result.includes_literal_haystack = true;
+    };
     if (includes($MSG, "bAz", limit=3))
     {
         result.includes_limited3_baz = true;
@@ -291,7 +296,7 @@ def test_includes_with_various_arguments(config, syslog_ng):
     syslog_ng.start(config)
 
     assert file_final.get_stats()["processed"] == 1
-    assert file_final.read_log() == '{"includes_foo1":true,"includes_foo2":true,"includes_foo3":true,"includes_foo4":true,"includes_limited3_baz":true,"includes_limited6_bar":true}'
+    assert file_final.read_log() == '{"includes_foo1":true,"includes_foo2":true,"includes_foo3":true,"includes_foo4":true,"includes_literal_haystack":true,"includes_limited3_baz":true,"includes_limited6_bar":true}'
 
 
 def test_startswith_endswith_includes(config, syslog_ng):
