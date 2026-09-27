@@ -76,7 +76,7 @@ SYSLOG_NG_MODULES	=	\
 	mod-appmodel mod-openbsd mod-snmp mod-secure-logging \
 	mod-mqtt mod-regexp-parser mod-rate-limit-filter mod-metrics-probe \
 	mod-darwinosl \
-	mod-grpc mod-cloud-auth mod-arrow-flight \
+	mod-grpc mod-cloud-auth mod-arrow-flight mod-splunk-s2s \
 	mod-altp-proto
 
 modules modules/: ${SYSLOG_NG_MODULES}

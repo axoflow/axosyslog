@@ -30,6 +30,29 @@ modules_splunk_s2s_libsplunk_s2s_client_la_LIBADD = $(MODULE_DEPS_LIBS)
 modules_splunk_s2s_libsplunk_s2s_client_la_LDFLAGS = $(MODULE_LDFLAGS)
 EXTRA_modules_splunk_s2s_libsplunk_s2s_client_la_DEPENDENCIES = $(MODULE_DEPS_LIBS)
 
+SPLUNK_S2S_PLUGINS = \
+  $(top_builddir)/modules/splunk-s2s/libsplunk_s2s_protocol.la \
+  $(top_builddir)/modules/splunk-s2s/libsplunk_s2s_client.la
+
+module_LTLIBRARIES += modules/splunk-s2s/libsplunk-s2s.la
+
+modules_splunk_s2s_libsplunk_s2s_la_SOURCES = \
+  modules/splunk-s2s/splunk-s2s-plugin.c
+
+modules_splunk_s2s_libsplunk_s2s_la_CPPFLAGS = \
+  $(AM_CPPFLAGS) \
+  -I$(top_srcdir)/modules/splunk-s2s \
+  -I$(top_builddir)/modules/splunk-s2s
+
+modules_splunk_s2s_libsplunk_s2s_la_CFLAGS = $(AM_CFLAGS) $(MODULE_CFLAGS)
+modules_splunk_s2s_libsplunk_s2s_la_LIBADD = $(MODULE_DEPS_LIBS) $(SPLUNK_S2S_PLUGINS)
+modules_splunk_s2s_libsplunk_s2s_la_LDFLAGS = $(MODULE_LDFLAGS)
+EXTRA_modules_splunk_s2s_libsplunk_s2s_la_DEPENDENCIES = $(MODULE_DEPS_LIBS) $(SPLUNK_S2S_PLUGINS)
+
+modules/splunk-s2s modules/splunk-s2s/ mod-splunk-s2s: modules/splunk-s2s/libsplunk-s2s.la
+
 EXTRA_DIST += modules/splunk-s2s/CMakeLists.txt
+
+.PHONY: modules/splunk-s2s/ mod-splunk-s2s
 
 include modules/splunk-s2s/tests/Makefile.am
