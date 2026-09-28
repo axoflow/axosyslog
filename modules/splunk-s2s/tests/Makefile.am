@@ -1,0 +1,50 @@
+modules_splunk_s2s_tests_TESTS = \
+  modules/splunk-s2s/tests/test_splunk_s2s_protocol \
+  modules/splunk-s2s/tests/test_splunk_s2s_proto_client \
+  modules/splunk-s2s/tests/test_splunk_s2s_proto_server \
+  modules/splunk-s2s/tests/test_splunk_s2s_roundtrip
+
+check_PROGRAMS += ${modules_splunk_s2s_tests_TESTS}
+
+modules_splunk_s2s_tests_test_splunk_s2s_protocol_SOURCES = \
+  modules/splunk-s2s/tests/test_splunk_s2s_protocol.c \
+  modules/splunk-s2s/tests/test_splunk_s2s_protocol_vectors.h
+modules_splunk_s2s_tests_test_splunk_s2s_protocol_CFLAGS = \
+  $(TEST_CFLAGS) \
+  -I$(top_srcdir)/modules/splunk-s2s
+modules_splunk_s2s_tests_test_splunk_s2s_protocol_LDADD = \
+  $(top_builddir)/modules/splunk-s2s/libsplunk_s2s_protocol.la \
+  $(TEST_LDADD)
+
+modules_splunk_s2s_tests_test_splunk_s2s_proto_client_SOURCES = \
+  modules/splunk-s2s/tests/test_splunk_s2s_proto_client.c
+modules_splunk_s2s_tests_test_splunk_s2s_proto_client_CFLAGS = \
+  $(TEST_CFLAGS) \
+  -I$(top_srcdir)/modules/splunk-s2s
+modules_splunk_s2s_tests_test_splunk_s2s_proto_client_LDADD = \
+  $(top_builddir)/modules/splunk-s2s/libsplunk_s2s_client.la \
+  $(top_builddir)/modules/splunk-s2s/libsplunk_s2s_protocol.la \
+  $(TEST_LDADD)
+
+modules_splunk_s2s_tests_test_splunk_s2s_proto_server_SOURCES = \
+  modules/splunk-s2s/tests/test_splunk_s2s_proto_server.c
+modules_splunk_s2s_tests_test_splunk_s2s_proto_server_CFLAGS = \
+  $(TEST_CFLAGS) \
+  -I$(top_srcdir)/modules/splunk-s2s
+modules_splunk_s2s_tests_test_splunk_s2s_proto_server_LDADD = \
+  $(top_builddir)/modules/splunk-s2s/libsplunk_s2s_server.la \
+  $(top_builddir)/modules/splunk-s2s/libsplunk_s2s_protocol.la \
+  $(TEST_LDADD)
+
+modules_splunk_s2s_tests_test_splunk_s2s_roundtrip_SOURCES = \
+  modules/splunk-s2s/tests/test_splunk_s2s_roundtrip.c
+modules_splunk_s2s_tests_test_splunk_s2s_roundtrip_CFLAGS = \
+  $(TEST_CFLAGS) \
+  -I$(top_srcdir)/modules/splunk-s2s
+modules_splunk_s2s_tests_test_splunk_s2s_roundtrip_LDADD = \
+  $(top_builddir)/modules/splunk-s2s/libsplunk_s2s_client.la \
+  $(top_builddir)/modules/splunk-s2s/libsplunk_s2s_server.la \
+  $(top_builddir)/modules/splunk-s2s/libsplunk_s2s_protocol.la \
+  $(TEST_LDADD)
+
+EXTRA_DIST += modules/splunk-s2s/tests/CMakeLists.txt
