@@ -269,6 +269,31 @@ _suspend(LogThreadedDestWorker *self)
   self->suspended = TRUE;
 }
 
+/* NOTE: runs in the worker thread. Aggregated at the driver level so
+ * flags(destination-failover) can tell whether this destination is
+ * currently able to deliver at all, without caring which particular
+ * worker is up. */
+static void
+_mark_unreachable(LogThreadedDestWorker *self)
+{
+  if (!self->counted_as_unreachable)
+    {
+      self->counted_as_unreachable = TRUE;
+      g_atomic_int_add(&self->owner->reachable_workers, -1);
+    }
+}
+
+/* NOTE: runs in the worker thread */
+static void
+_mark_reachable(LogThreadedDestWorker *self)
+{
+  if (self->counted_as_unreachable)
+    {
+      self->counted_as_unreachable = FALSE;
+      g_atomic_int_add(&self->owner->reachable_workers, 1);
+    }
+}
+
 /* NOTE: runs in the worker thread */
 static void
 _connect(LogThreadedDestWorker *self)
@@ -280,6 +305,11 @@ _connect(LogThreadedDestWorker *self)
                 evt_tag_int("worker_index", self->worker_index),
                 log_expr_node_location_tag(self->owner->super.super.super.expr_node));
       _suspend(self);
+      _mark_unreachable(self);
+    }
+  else
+    {
+      _mark_reachable(self);
     }
 
   stats_counter_set(self->metrics.output_unreachable, !self->connected);
@@ -297,6 +327,7 @@ static void
 _disconnect_and_suspend(LogThreadedDestWorker *self)
 {
   _disconnect(self);
+  _mark_unreachable(self);
   stats_counter_set(self->metrics.output_unreachable, !self->connected);
   _suspend(self);
 }
@@ -1492,8 +1523,23 @@ log_threaded_dest_driver_queue(LogPipe *s, LogMessage *msg,
                                const LogPathOptions *path_options)
 {
   LogThreadedDestDriver *self = (LogThreadedDestDriver *)s;
-  LogThreadedDestWorker *dw = _lookup_worker(self, msg);
   LogPathOptions local_path_options;
+
+  /* this message arrived via a flags(destination-failover) branch and all
+   * of our workers are currently down: refuse it instead of piling it up
+   * in our queue, so the junction can try the next branch in the chain.
+   * Ordinary (non-failover) use of this same destination always sees
+   * destination_failover as FALSE here and keeps buffering and retrying
+   * instead -- this must never be the default behavior. */
+  if (path_options->destination_failover && g_atomic_int_get(&self->reachable_workers) == 0)
+    {
+      if (path_options->matched)
+        *path_options->matched = FALSE;
+      log_msg_drop(msg, path_options, AT_PROCESSED);
+      return;
+    }
+
+  LogThreadedDestWorker *dw = _lookup_worker(self, msg);
 
   if (!path_options->flow_control_requested)
     path_options = log_msg_break_ack(msg, path_options, &local_path_options);
@@ -1757,6 +1803,10 @@ _create_workers(LogThreadedDestDriver *self, gint stats_level, StatsClusterKeyBu
   g_free(self->workers);
   self->workers = g_new0(LogThreadedDestWorker *, self->num_workers);
 
+  /* optimistic default for flags(destination-failover): a worker that
+   * hasn't attempted to connect yet must not count as unreachable */
+  self->reachable_workers = self->num_workers;
+
   for (self->created_workers = 0; self->created_workers < self->num_workers; self->created_workers++)
     {
       LogThreadedDestWorker *dw = _construct_worker(self, self->created_workers);
@@ -1933,6 +1983,7 @@ log_threaded_dest_driver_init_instance(LogThreadedDestDriver *self, GlobalConfig
   self->batch_lines = -1;
   self->batch_timeout = -1;
   self->num_workers = 1;
+  self->reachable_workers = 1;
   self->last_worker = 0;
   self->flags = LTDF_SEQNUM;
 
