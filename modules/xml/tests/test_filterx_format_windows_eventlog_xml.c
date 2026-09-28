@@ -95,6 +95,19 @@ Test(filterx_format_windows_eventlog_xml, leaf_as_last_child_of_element_with_att
                  EVENT_HEAD "<RenderingInfo Culture='en-US'><Keywords/><Zzz>tail</Zzz></RenderingInfo></Event>");
 }
 
+Test(filterx_format_windows_eventlog_xml, eventdata_as_first_child_of_element_with_attribute)
+{
+  _assert_format("<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'>"
+                 "<EventData><Data Name='Foo'>bar</Data></EventData></Event>",
+                 "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'>"
+                 "<EventData><Data Name='Foo'>bar</Data></EventData></Event>");
+
+  _assert_format("<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'>"
+                 "<EventData></EventData></Event>",
+                 "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'>"
+                 "<EventData/></Event>");
+}
+
 Test(filterx_format_windows_eventlog_xml, schannel_36880)
 {
   _assert_format("<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'>"
