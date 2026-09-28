@@ -161,6 +161,7 @@ _append_inner_dict(FilterXObject *key, FilterXObject *dict, gpointer user_data)
 
   append_inner_dict_start_tag(key_str, key_str_len, buffer);
   gsize prev_buffer_len = buffer->len;
+  *is_only_attribute_present = FALSE;
 
   if (strn_eq_strz(key_str, "EventData", key_str_len))
     {
@@ -170,7 +171,6 @@ _append_inner_dict(FilterXObject *key, FilterXObject *dict, gpointer user_data)
     }
   else
     {
-      *is_only_attribute_present = FALSE;
       if (!filterx_object_iter(dict, append_object, user_data))
         return FALSE;
     }
