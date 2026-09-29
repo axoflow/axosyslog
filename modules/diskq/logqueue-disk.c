@@ -507,6 +507,7 @@ void
 log_queue_disk_update_capacity_bytes_if_needed(LogQueueDisk *self)
 {
   qdisk_update_capacity_bytes_if_needed(self->qdisk);
+  log_queue_disk_update_disk_related_counters(self);
 }
 
 gboolean
