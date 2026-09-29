@@ -172,6 +172,7 @@ _ack_backlog(LogQueue *s, guint num_msg_to_ack)
     }
 exit_reliable:
   qdisk_reset_file_if_empty(self->super.qdisk);
+  log_queue_disk_update_disk_related_counters(&self->super);
   g_mutex_unlock(&s->lock);
 }
 
