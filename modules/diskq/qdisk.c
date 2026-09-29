@@ -495,6 +495,73 @@ _preallocate_qdisk_file(QDisk *self, off_t size)
   return TRUE;
 }
 
+static inline gboolean
+_is_wrapped(QDisk *self)
+{
+  return self->hdr->backlog_head > self->hdr->read_head || self->hdr->read_head > self->hdr->write_head;
+}
+
+static inline gboolean
+_is_capacity_bytes_change_pending(QDisk *self)
+{
+  return !self->options->read_only
+         && self->options->capacity_bytes != -1
+         && self->options->capacity_bytes != self->hdr->capacity_bytes;
+}
+
+/* The heads wrap at hdr->capacity_bytes, so it can only change while none of
+ * them depends on the old boundary, that is while the file is not wrapped.
+ *
+ * A record may overshoot the boundary and the reader wraps only once it is
+ * past the write head, so a larger boundary is safe as is.  A smaller one
+ * must also lie at or past the write head, otherwise the reader would wrap
+ * before it reaches the records beyond it.
+ *
+ * Returns FALSE while a change stays pending.
+ */
+static gboolean
+_apply_pending_capacity_bytes_change(QDisk *self)
+{
+  if (_is_wrapped(self))
+    return FALSE;
+
+  gint64 old_capacity_bytes = self->hdr->capacity_bytes;
+  gint64 new_capacity_bytes = self->options->capacity_bytes;
+
+  if (new_capacity_bytes < old_capacity_bytes)
+    {
+      if (self->hdr->write_head > new_capacity_bytes)
+        return FALSE;
+    }
+
+  self->hdr->capacity_bytes = new_capacity_bytes;
+
+  msg_info("Changed the capacity-bytes() of disk-buffer file",
+           evt_tag_str("filename", self->filename),
+           evt_tag_long("old_capacity_bytes", old_capacity_bytes),
+           evt_tag_long("new_capacity_bytes", new_capacity_bytes));
+  return TRUE;
+}
+
+static void
+_log_pending_capacity_bytes_change(QDisk *self)
+{
+  msg_warning("capacity-bytes() changed, the new value will take effect once the disk-buffer content allows it",
+              evt_tag_str("filename", self->filename),
+              evt_tag_long("active_capacity_bytes", self->hdr->capacity_bytes),
+              evt_tag_long("pending_capacity_bytes", self->options->capacity_bytes));
+}
+
+void
+qdisk_update_capacity_bytes_if_needed(QDisk *self)
+{
+  if (_is_capacity_bytes_change_pending(self))
+    {
+      if (!_apply_pending_capacity_bytes_change(self))
+        _log_pending_capacity_bytes_change(self);
+    }
+}
+
 static inline gint64
 qdisk_get_lowest_used_queue_offset(QDisk *self)
 {
@@ -1567,14 +1634,7 @@ _ensure_capacity_bytes(QDisk *self)
   if (self->hdr->capacity_bytes == -1 && !_autodetect_capacity_bytes(self))
     return FALSE;
 
-  if (self->options->capacity_bytes != -1 && self->hdr->capacity_bytes != self->options->capacity_bytes)
-    {
-      msg_warning("WARNING: capacity-bytes() has changed since the last syslog-ng run. syslog-ng currently does "
-                  "not support changing the capacity-bytes() of existing disk-queues. Continuing with the old one",
-                  evt_tag_str("filename", self->filename),
-                  evt_tag_long("active_old_capacity_bytes", self->hdr->capacity_bytes),
-                  evt_tag_long("ignored_new_capacity_bytes", self->options->capacity_bytes));
-    }
+  qdisk_update_capacity_bytes_if_needed(self);
 
   return TRUE;
 }
