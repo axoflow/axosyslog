@@ -79,6 +79,7 @@ gboolean log_queue_disk_serialize_msg(LogQueueDisk *self, LogMessage *msg, GStri
 gboolean log_queue_disk_deserialize_msg(LogQueueDisk *self, GString *serialized, LogMessage **msg);
 QueueType log_queue_disk_get_type(void);
 void log_queue_disk_set_options(LogQueueDisk *self, DiskQueueOptions *options);
+void log_queue_disk_update_capacity_bytes_if_needed(LogQueueDisk *self);
 gboolean log_queue_disk_has_compatible_options(LogQueueDisk *self, DiskQueueOptions *options);
 
 #endif

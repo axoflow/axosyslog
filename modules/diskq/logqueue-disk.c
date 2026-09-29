@@ -503,6 +503,12 @@ log_queue_disk_set_options(LogQueueDisk *self, DiskQueueOptions *options)
   qdisk_set_options(self->qdisk, options);
 }
 
+void
+log_queue_disk_update_capacity_bytes_if_needed(LogQueueDisk *self)
+{
+  qdisk_update_capacity_bytes_if_needed(self->qdisk);
+}
+
 gboolean
 log_queue_disk_has_compatible_options(LogQueueDisk *self, DiskQueueOptions *options)
 {
