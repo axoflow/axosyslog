@@ -1022,6 +1022,8 @@ qdisk_ack_backlog(QDisk *self)
     }
 
   self->hdr->backlog_len--;
+  if (_is_capacity_bytes_change_pending(self))
+    _apply_pending_capacity_bytes_change(self);
   return TRUE;
 }
 
