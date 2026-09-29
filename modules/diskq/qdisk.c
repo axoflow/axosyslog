@@ -908,6 +908,8 @@ _maybe_apply_non_reliable_corrections(QDisk *self)
   qdisk_empty_backlog(self);
   if (!self->options->read_only)
     qdisk_reset_file_if_empty(self);
+  if (_is_capacity_bytes_change_pending(self))
+    _apply_pending_capacity_bytes_change(self);
 }
 
 
