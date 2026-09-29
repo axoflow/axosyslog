@@ -550,6 +550,7 @@ _apply_pending_capacity_bytes_change(QDisk *self)
 
   gint64 old_capacity_bytes = self->hdr->capacity_bytes;
   gint64 new_capacity_bytes = self->options->capacity_bytes;
+  EVTTAG *preallocation = NULL;
 
   if (new_capacity_bytes < old_capacity_bytes)
     {
@@ -560,13 +561,18 @@ _apply_pending_capacity_bytes_change(QDisk *self)
       if (fstat(self->fd, &st) == 0 && st.st_size > new_capacity_bytes)
         _truncate_file(self, new_capacity_bytes);
     }
+  else if (self->options->prealloc && !_preallocate_qdisk_file(self, new_capacity_bytes))
+    {
+      preallocation = evt_tag_str("preallocation", "failed");
+    }
 
   self->hdr->capacity_bytes = new_capacity_bytes;
 
   msg_info("Changed the capacity-bytes() of disk-buffer file",
            evt_tag_str("filename", self->filename),
            evt_tag_long("old_capacity_bytes", old_capacity_bytes),
-           evt_tag_long("new_capacity_bytes", new_capacity_bytes));
+           evt_tag_long("new_capacity_bytes", new_capacity_bytes),
+           preallocation);
   return TRUE;
 }
 
