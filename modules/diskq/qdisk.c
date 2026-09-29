@@ -471,16 +471,34 @@ _compat_preallocate(int fd, off_t offset, off_t len)
 static gboolean
 _preallocate_qdisk_file(QDisk *self, off_t size)
 {
+  /* a non-reliable queue leaves cached_file_size at the header size after load */
+  struct stat st;
+  if (fstat(self->fd, &st) < 0)
+    {
+      msg_error("Failed to preallocate queue file, cannot stat",
+                evt_tag_str("filename", self->filename),
+                evt_tag_error("error"));
+      return FALSE;
+    }
+
+  off_t offset = MAX((off_t) st.st_size, (off_t) QDISK_RESERVED_SPACE);
+  if (offset >= size)
+    {
+      self->cached_file_size = offset;
+      return TRUE;
+    }
+
   msg_debug("Preallocating queue file",
             evt_tag_str("filename", self->filename),
+            evt_tag_long("from", offset),
             evt_tag_long("size", size));
 
   gint result;
 
 #ifdef SYSLOG_NG_HAVE_POSIX_FALLOCATE
-  result = posix_fallocate(self->fd, QDISK_RESERVED_SPACE, size - QDISK_RESERVED_SPACE);
+  result = posix_fallocate(self->fd, offset, size - offset);
 #else
-  result = _compat_preallocate(self->fd, QDISK_RESERVED_SPACE, size - QDISK_RESERVED_SPACE);
+  result = _compat_preallocate(self->fd, offset, size - offset);
 #endif
 
   if (result < 0)
