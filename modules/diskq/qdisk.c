@@ -532,6 +532,10 @@ _apply_pending_capacity_bytes_change(QDisk *self)
     {
       if (self->hdr->write_head > new_capacity_bytes)
         return FALSE;
+
+      struct stat st;
+      if (fstat(self->fd, &st) == 0 && st.st_size > new_capacity_bytes)
+        _truncate_file(self, new_capacity_bytes);
     }
 
   self->hdr->capacity_bytes = new_capacity_bytes;
