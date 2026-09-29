@@ -1793,6 +1793,8 @@ qdisk_reset_file_if_empty(QDisk *self)
   self->hdr->backlog_head = QDISK_RESERVED_SPACE;
 
   _maybe_truncate_file(self, QDISK_RESERVED_SPACE);
+  if (_is_capacity_bytes_change_pending(self))
+    _apply_pending_capacity_bytes_change(self);
 }
 
 DiskQueueOptions *
