@@ -497,6 +497,11 @@ _preallocate_qdisk_file(QDisk *self, off_t size)
 
 #ifdef SYSLOG_NG_HAVE_POSIX_FALLOCATE
   result = posix_fallocate(self->fd, offset, size - offset);
+  if (result != 0)
+    {
+      errno = result;
+      result = -1;
+    }
 #else
   result = _compat_preallocate(self->fd, offset, size - offset);
 #endif
