@@ -20,6 +20,7 @@
 # COPYING for details.
 #
 #############################################################################
+from axosyslog_light.common.blocking import DEFAULT_TIMEOUT
 from axosyslog_light.driver_io.http.http_server_io import HttpServerIO
 from axosyslog_light.syslog_ng_config.statements.destinations.destination_driver import DestinationDriver
 from axosyslog_light.syslog_ng_ctl.legacy_stats_handler import LegacyStatsHandler
@@ -49,14 +50,17 @@ class HttpDestination(DestinationDriver):
 
         super(HttpDestination, self).__init__(stats_handler, prometheus_stats_handler, [], options)
 
+    def start_listener(self):
+        self._io.start_listener()
+
     def stop_listener(self):
         self._io.stop_listener()
 
-    def read_logs(self, counter):
-        return self._io.read_number_of_messages(counter)
+    def read_logs(self, counter, timeout=DEFAULT_TIMEOUT):
+        return self._io.read_number_of_messages(counter, timeout)
 
-    def read_requests(self, counter):
-        return self._io.read_number_of_requests(counter)
+    def read_requests(self, counter, timeout=DEFAULT_TIMEOUT):
+        return self._io.read_number_of_requests(counter, timeout)
 
-    def read_until_logs(self, logs):
-        return self._io.read_until_messages(logs)
+    def read_until_logs(self, logs, timeout=DEFAULT_TIMEOUT):
+        return self._io.read_until_messages(logs, timeout)
