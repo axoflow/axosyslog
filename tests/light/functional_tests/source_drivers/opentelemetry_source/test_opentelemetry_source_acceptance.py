@@ -481,3 +481,29 @@ def test_opentelemetry_source_filterx_dict_mode_writes(
         "resource_dict": {"key": "new_resource_value"},
         "scope_dict": {"key": "new_scope_value"},
     }
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        (639230748573493248.0, "639230748573493248.0"),
+        (0.5, "0.5"),
+        (1e21, "1e+21"),
+    ],
+    ids=["integral", "fraction", "integral_from_1e21"],
+)
+def test_opentelemetry_source_filterx_dict_mode_double_notation(
+    syslog_ng: SyslogNg,
+    config: SyslogNgConfig,
+    port_allocator,
+    value: float,
+    expected: str,
+) -> None:
+    opentelemetry_source = config.create_opentelemetry_source(port=port_allocator(), mode="filterx-dict")
+    filterx = config.create_filterx(r"""$MSG = format_json({"body": log.body});""")
+    file_destination = config.create_file_destination(file_name="output.log", template=TEMPLATE)
+    config.create_logpath(statements=[opentelemetry_source, filterx, file_destination])
+
+    syslog_ng.start(config)
+    opentelemetry_source.write_log(log=OTelLog(body=value))
+    assert file_destination.read_log() == '{"body":%s}' % expected

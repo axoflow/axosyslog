@@ -39,6 +39,7 @@
 #include "compat/cpp-end.h"
 
 #include <unistd.h>
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 #include <memory>
@@ -383,7 +384,13 @@ private:
 public:
   FilterXObject *get(Message *message, ProtoReflectors reflectors)
   {
-    return filterx_double_new(gdouble(reflectors.reflection->GetDouble(*message, reflectors.field_descriptor)));
+    gdouble value = reflectors.reflection->GetDouble(*message, reflectors.field_descriptor);
+
+    /* An integral double, such as a timestamp in ticks or nanoseconds, prints in
+     * scientific notation from 1e17 upwards. Precision 0 keeps it in fixed notation,
+     * which is exact and fits the repr buffer below 1e21. */
+    gint prec = (std::fabs(value) < 1e21 && value == std::trunc(value)) ? 0 : -1;
+    return filterx_double_new_with_prec(value, prec);
   }
 
   bool set(Message *message, ProtoReflectors reflectors, FilterXObject *object, FilterXObject **assoc_object)
