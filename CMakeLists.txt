@@ -497,7 +497,6 @@ if (ENABLE_EXTRA_WARNINGS)
     -Wdeprecated
     -Wdeprecated-declarations
     -Woverflow
-    -Wdouble-promotion
     -Wfloat-equal
     -Wpointer-arith
     $<$<COMPILE_LANGUAGE:C>:-Wpointer-sign>
