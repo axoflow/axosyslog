@@ -23,3 +23,4 @@
 
 echo from-confgen1
 echo from-confgen2
+echo ${confgen_1:+positional-$confgen_1}

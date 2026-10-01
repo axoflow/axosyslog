@@ -135,9 +135,23 @@ _validate_spurious_args(CfgArgs *self, CfgArgs *defs, const gchar *reference)
 }
 
 static gboolean
+_validate_positional_args(CfgArgs *self, const gchar *reference)
+{
+  if (cfg_args_get_positional_count(self) == 0)
+    return TRUE;
+
+  msg_error("Positional arguments are not supported by block references",
+            evt_tag_str("reference", reference));
+  return FALSE;
+}
+
+static gboolean
 _validate_args(CfgArgs *self, CfgArgs *defs, const gchar *reference)
 {
-  return defs && _validate_mandatory_options(defs, self, reference) && _validate_spurious_args(self, defs, reference);
+  return defs
+         && _validate_mandatory_options(defs, self, reference)
+         && _validate_spurious_args(self, defs, reference)
+         && _validate_positional_args(self, reference);
 }
 
 /*

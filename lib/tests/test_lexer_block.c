@@ -95,3 +95,20 @@ Test(test_block, varargs)
   cfg_args_unref(args);
   cfg_block_generator_unref(generator);
 }
+
+Test(test_block, positional_arguments_are_rejected)
+{
+  CfgArgs *arg_defs = cfg_args_new();
+  cfg_args_accept_varargs(arg_defs);
+  CfgBlockGenerator *generator = cfg_block_new(cfg_lexer_lookup_context_type_by_name("block"),
+                                               "block_rejecting_positional_args",
+                                               "`__VARARGS__`",
+                                               arg_defs, &yyloc);
+
+  CfgArgs *args = cfg_args_new();
+  cfg_args_add_positional(args, "value");
+  cr_assert_not(generator->generate(generator, configuration, args, result, ""), "positional args are rejected");
+
+  cfg_args_unref(args);
+  cfg_block_generator_unref(generator);
+}
