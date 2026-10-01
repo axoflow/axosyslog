@@ -32,9 +32,10 @@ class HttpDestination(DestinationDriver):
         stats_handler: LegacyStatsHandler,
         prometheus_stats_handler: PrometheusStatsHandler,
         port: int,
+        driver_name: str = "http",
         **options,
     ) -> None:
-        self.driver_name = "http"
+        self.driver_name = driver_name
         self._io = HttpServerIO(
             port,
             response_code=options.pop("response_code", 200),
@@ -42,7 +43,8 @@ class HttpDestination(DestinationDriver):
         )
         self._io.start_listener()
 
-        options.setdefault("url", '"http://127.0.0.1:{}"'.format(port))
+        if driver_name == "http":
+            options.setdefault("url", '"http://127.0.0.1:{}"'.format(port))
         options.setdefault("batch_lines", 1)
 
         super(HttpDestination, self).__init__(stats_handler, prometheus_stats_handler, [], options)
