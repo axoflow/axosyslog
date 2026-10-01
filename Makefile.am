@@ -95,7 +95,6 @@ AM_CFLAGS += \
 	-Wdeprecated \
 	-Wdeprecated-declarations \
 	-Woverflow \
-	-Wdouble-promotion \
 	-Wfloat-equal \
 	-Wpointer-arith \
 	-Wpointer-sign \
@@ -114,7 +113,6 @@ AM_CXXFLAGS += \
 	-Wdeprecated \
 	-Wdeprecated-declarations \
 	-Woverflow \
-	-Wdouble-promotion \
 	-Wfloat-equal \
 	-Wpointer-arith \
 	-Wmissing-format-attribute \
