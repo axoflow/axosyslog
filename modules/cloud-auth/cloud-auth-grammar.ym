@@ -31,6 +31,11 @@
 #include "cloud-auth.h"
 #include "google-auth.h"
 #include "azure-auth.h"
+#include "cfg-path.h"
+
+#include <sys/stat.h>
+#include <errno.h>
+#include <string.h>
 
 CloudAuthenticator *last_authenticator;
 }
@@ -63,6 +68,11 @@ CloudAuthenticator *last_authenticator;
 %token KW_APP_SECRET
 %token KW_SCOPE
 %token KW_AUTH_URL
+%token KW_CREDENTIALS
+%token KW_GCP_AUTH_HEADER_PARAMS
+%token KW_CA_FILE
+%token KW_CA_DIR
+%token KW_TIMEOUT
 
 %%
 
@@ -114,6 +124,20 @@ google_dest_auth_option
       google_authenticator_set_auth_mode(last_authenticator, GAAM_USER_MANAGED_SERVICE_ACCOUNT);
     }
     '(' google_dest_auth_user_managed_service_account_options ')'
+  /* alternate syntax; empty: no-op, for SCL pass-through */
+  | KW_CREDENTIALS '(' string ')'
+    {
+      if ($3[0])
+        {
+          struct stat st;
+          CHECK_ERROR(stat($3, &st) == 0, @3, "File \"%s\" not found: %s", $3, strerror(errno));
+          cfg_path_track_file(configuration, $3, "path_secret");
+          google_authenticator_set_auth_mode(last_authenticator, GAAM_SERVICE_ACCOUNT);
+          google_authenticator_set_service_account_key_path(last_authenticator, $3);
+        }
+      free($3);
+    }
+  | KW_GCP_AUTH_HEADER_PARAMS '(' google_dest_auth_gcp_auth_header_params ')'
   ;
 
 google_dest_auth_service_account_options
@@ -126,6 +150,19 @@ google_dest_auth_service_account_option
   | KW_AUDIENCE '(' string ')' { google_authenticator_set_service_account_audience(last_authenticator, $3); free($3); }
   | KW_SCOPE '(' string ')' { google_authenticator_set_service_account_scope(last_authenticator, $3); free($3); }
   | KW_TOKEN_VALIDITY_DURATION '(' nonnegative_integer64 ')' { google_authenticator_set_service_account_token_validity_duration(last_authenticator, $3); }
+  ;
+
+/* alternate syntax: gcp_auth_header() options; no effect, AxoSyslog signs the token itself */
+google_dest_auth_gcp_auth_header_params
+  : google_dest_auth_gcp_auth_header_param google_dest_auth_gcp_auth_header_params
+  |
+  ;
+
+google_dest_auth_gcp_auth_header_param
+  : KW_CA_FILE '(' string ')' { free($3); }
+  | KW_CA_DIR '(' string ')' { free($3); }
+  | KW_TIMEOUT '(' nonnegative_integer ')' {}
+  | KW_SCOPE '(' string ')' { free($3); }
   ;
 
 google_dest_auth_user_managed_service_account_options
