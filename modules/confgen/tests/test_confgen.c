@@ -85,6 +85,21 @@ Test(confgen, confgen_script_output_is_included_into_the_config)
   cfg_lexer_pop_context(parser->lexer);
 }
 
+Test(confgen, positional_arguments_are_passed_to_the_script_as_numbered_variables)
+{
+  parser->lexer->ignore_pragma = FALSE;
+  cfg_lexer_push_context(parser->lexer, main_parser.context, main_parser.keywords, main_parser.name);
+  _input(
+    "@module confgen context(root) name(confgentest) exec('"TESTDATA_DIR "/confgentest.sh')\n"
+    "confgentest(\"first\" named(value))\n"
+    "from-config\n");
+  assert_parser_identifier("from-confgen1");
+  assert_parser_identifier("from-confgen2");
+  assert_parser_identifier("positional-first");
+  assert_parser_identifier("from-config");
+  cfg_lexer_pop_context(parser->lexer);
+}
+
 Test(confgen, confgen_unknown_context_is_reported_as_an_error)
 {
   parser->lexer->ignore_pragma = FALSE;

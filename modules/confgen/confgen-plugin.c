@@ -61,6 +61,30 @@ confgen_unset_args_from_env(gpointer k, gpointer v, gpointer user_data)
   unsetenv(buf);
 }
 
+static void
+confgen_set_positional_args_as_env(CfgArgs *args)
+{
+  gchar buf[32];
+
+  for (guint i = 0; i < cfg_args_get_positional_count(args); i++)
+    {
+      g_snprintf(buf, sizeof(buf), "confgen_%u", i + 1);
+      setenv(buf, cfg_args_get_positional(args, i), 1);
+    }
+}
+
+static void
+confgen_unset_positional_args_from_env(CfgArgs *args)
+{
+  gchar buf[32];
+
+  for (guint i = 0; i < cfg_args_get_positional_count(args); i++)
+    {
+      g_snprintf(buf, sizeof(buf), "confgen_%u", i + 1);
+      unsetenv(buf);
+    }
+}
+
 typedef struct _ConfgenExec
 {
   CfgBlockGenerator super;
@@ -91,9 +115,11 @@ confgen_exec_generate(CfgBlockGenerator *s, GlobalConfig *cfg, gpointer args, GS
   g_snprintf(buf, sizeof(buf), "%s confgen %s", cfg_lexer_lookup_context_name_by_type(self->super.context),
              self->super.name);
 
+  confgen_set_positional_args_as_env(cfgargs);
   cfg_args_foreach(cfgargs, confgen_set_args_as_env, NULL);
   out = popen(self->exec, "r");
   cfg_args_foreach(cfgargs, confgen_unset_args_from_env, NULL);
+  confgen_unset_positional_args_from_env(cfgargs);
 
   if (!out)
     {

@@ -30,6 +30,9 @@ typedef struct _CfgArgs CfgArgs;
 
 /* argument list for a block generator */
 gchar *cfg_args_format_varargs(CfgArgs *self, CfgArgs *defaults);
+void cfg_args_add_positional(CfgArgs *self, const gchar *value);
+guint cfg_args_get_positional_count(CfgArgs *self);
+const gchar *cfg_args_get_positional(CfgArgs *self, guint index);
 void cfg_args_set(CfgArgs *self, const gchar *name, const gchar *value);
 const gchar *cfg_args_get(CfgArgs *self, const gchar *name);
 gboolean cfg_args_get_as_boolean(CfgArgs *self, const gchar *name, gboolean default_value);

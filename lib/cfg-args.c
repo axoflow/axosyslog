@@ -31,6 +31,7 @@ struct _CfgArgs
 {
   gint ref_cnt;
   GHashTable *args;
+  GPtrArray *positional_args;
   gboolean accept_varargs;
 };
 
@@ -50,6 +51,24 @@ void
 cfg_args_foreach(CfgArgs *self, GHFunc func, gpointer user_data)
 {
   g_hash_table_foreach(self->args, func, user_data);
+}
+
+void
+cfg_args_add_positional(CfgArgs *self, const gchar *value)
+{
+  g_ptr_array_add(self->positional_args, g_strdup(value));
+}
+
+guint
+cfg_args_get_positional_count(CfgArgs *self)
+{
+  return self->positional_args->len;
+}
+
+const gchar *
+cfg_args_get_positional(CfgArgs *self, guint index)
+{
+  return g_ptr_array_index(self->positional_args, index);
 }
 
 static void
@@ -145,6 +164,7 @@ cfg_args_new(void)
   CfgArgs *self = g_new0(CfgArgs, 1);
 
   self->args = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
+  self->positional_args = g_ptr_array_new_with_free_func(g_free);
   self->ref_cnt = 1;
   return self;
 }
@@ -163,6 +183,7 @@ cfg_args_unref(CfgArgs *self)
   if (self && --self->ref_cnt == 0)
     {
       g_hash_table_destroy(self->args);
+      g_ptr_array_free(self->positional_args, TRUE);
       g_free(self);
     }
 }
