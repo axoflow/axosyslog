@@ -941,7 +941,7 @@ _maybe_apply_non_reliable_corrections(QDisk *self)
   qdisk_empty_backlog(self);
   if (!self->options->read_only)
     qdisk_reset_file_if_empty(self);
-  if (_is_capacity_bytes_change_pending(self))
+  if (G_UNLIKELY(_is_capacity_bytes_change_pending(self)))
     _apply_pending_capacity_bytes_change(self);
 }
 
@@ -1057,7 +1057,7 @@ qdisk_ack_backlog(QDisk *self)
     }
 
   self->hdr->backlog_len--;
-  if (_is_capacity_bytes_change_pending(self))
+  if (G_UNLIKELY(_is_capacity_bytes_change_pending(self)))
     _apply_pending_capacity_bytes_change(self);
   return TRUE;
 }
@@ -1826,7 +1826,7 @@ qdisk_reset_file_if_empty(QDisk *self)
   self->hdr->backlog_head = QDISK_RESERVED_SPACE;
 
   _maybe_truncate_file(self, QDISK_RESERVED_SPACE);
-  if (_is_capacity_bytes_change_pending(self))
+  if (G_UNLIKELY(_is_capacity_bytes_change_pending(self)))
     _apply_pending_capacity_bytes_change(self);
 }
 
