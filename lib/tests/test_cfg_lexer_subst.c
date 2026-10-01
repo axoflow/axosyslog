@@ -20,6 +20,7 @@
  *
  */
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "cfg-lexer-subst.h"
 #include "apphook.h"
@@ -100,10 +101,10 @@ _assert_invoke_result(CfgLexerSubst *subst, gchar *input_dup, gssize input_len, 
   GError *error = NULL;
 
   result = cfg_lexer_subst_invoke(subst, input_dup, input_len, &result_len, &error);
-  cr_assert_null(error, "Error value is non-null while no error is expected");
-  cr_assert_not_null(result, "value substitution returned an unexpected failure");
-  cr_assert_str_eq(result, expected_output, "value substitution is broken");
-  cr_assert_eq(result_len, strlen(expected_output), "length returned by invoke_result is invalid");
+  cr_assert(zero(ptr, error), "Error value is non-null while no error is expected");
+  cr_assert(not(zero(ptr, result)), "value substitution returned an unexpected failure");
+  cr_assert(eq(str, result, expected_output), "value substitution is broken");
+  cr_assert(eq(sz, result_len, strlen(expected_output)), "length returned by invoke_result is invalid");
   g_free(result);
 }
 
@@ -143,9 +144,9 @@ assert_invoke_failure(CfgLexerSubst *subst, const gchar *input, const gchar *exp
   GError *error = NULL;
 
   result = cfg_lexer_subst_invoke(subst, input_dup, strlen(input), &result_len, &error);
-  cr_assert_null(result, "expected failure for value substitution, but success was returned");
-  cr_assert_not_null(error, "expected a non-NULL error object for failure");
-  cr_assert_str_eq(error->message, expected_error, "error message mismatch");
+  cr_assert(zero(ptr, result), "expected failure for value substitution, but success was returned");
+  cr_assert(not(zero(ptr, error)), "expected a non-NULL error object for failure");
+  cr_assert(eq(str, error->message, expected_error), "error message mismatch");
   g_clear_error(&error);
   g_free(input_dup);
 }

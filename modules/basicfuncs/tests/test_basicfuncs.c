@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/parameterized.h"
 #include "libtest/cr_template.h"
 #include "libtest/grab-logging.h"
@@ -608,15 +609,15 @@ Test(basicfuncs, test_iterate)
 
   LogTemplateEvalOptions options = {NULL, LTZ_LOCAL, 999, "", LM_VT_STRING};
   log_template_format(template, msg, &options, result);
-  cr_assert_str_eq(result->str, "Some prefix 0");
+  cr_assert(eq(str, result->str, "Some prefix 0"));
 
   g_string_assign(result, "");
   log_template_format(template, msg, &options, result);
-  cr_assert_str_eq(result->str, "Some prefix 1");
+  cr_assert(eq(str, result->str, "Some prefix 1"));
 
   g_string_assign(result, "");
   log_template_format(template, msg, &options, result);
-  cr_assert_str_eq(result->str, "Some prefix 2");
+  cr_assert(eq(str, result->str, "Some prefix 2"));
 
   g_string_free(result, TRUE);
   log_template_unref(template);

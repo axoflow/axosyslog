@@ -21,6 +21,7 @@
  *
  */
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/parameterized.h"
 #include "test_filters_common.h"
 
@@ -38,7 +39,7 @@ _compile_standalone_filter(gchar *config_snippet)
   FilterExprNode *tmp;
 
   CfgLexer *lexer = cfg_lexer_new_buffer(cfg, config_snippet, strlen(config_snippet));
-  cr_assert(lexer, "Couldn't initialize a buffer for CfgLexer");
+  cr_assert(not(zero(ptr, lexer)), "Couldn't initialize a buffer for CfgLexer");
 
   cr_assert(cfg_run_parser(cfg, lexer, &filter_expr_parser, (gpointer *) &tmp, NULL));
 

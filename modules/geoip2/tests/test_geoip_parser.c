@@ -20,6 +20,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/msg_parse_lib.h"
 
 #include "geoip-parser.h"
@@ -88,7 +89,8 @@ parse_geoip_into_log_message(const gchar *template_format)
   LogMessage *msg;
 
   msg = parse_geoip_into_log_message_no_check(template_format);
-  cr_assert_not_null(msg, "expected geoip-parser success and it returned failure, template_format=%s", template_format);
+  cr_assert(not(zero(ptr, msg)), "expected geoip-parser success and it returned failure, template_format=%s",
+            template_format);
   return msg;
 }
 
@@ -96,7 +98,7 @@ Test(geoip2, template_is_mandatory)
 {
   LogParser *geoip2_parser = maxminddb_parser_new(configuration);
 
-  cr_assert_not(log_pipe_init(&geoip2_parser->super));
+  cr_assert(not(log_pipe_init(&geoip2_parser->super)));
 
   log_pipe_unref(&geoip2_parser->super);
 }

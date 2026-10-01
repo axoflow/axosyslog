@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/filterx-lib.h"
 
 #include "filterx/func-digest.h"
@@ -38,12 +39,13 @@
 static void
 _assert_bytes_result(FilterXObject *res, const gchar *expected, gsize expected_len)
 {
-  cr_assert_not_null(res);
+  cr_assert(not(zero(ptr, res)));
   gsize len;
   const gchar *bytes = filterx_bytes_get_value_ref(res, &len);
-  cr_assert_not_null(bytes);
-  cr_assert_eq(len, expected_len);
-  cr_assert(memcmp(bytes, expected, expected_len) == 0);
+  cr_assert(not(zero(ptr, bytes)));
+  cr_assert(eq(sz, len, expected_len));
+  cr_assert(eq(mem, ((struct cr_mem){ .data = bytes, .size = expected_len }),
+               ((struct cr_mem){ .data = expected, .size = expected_len })));
 }
 
 static FilterXExpr *
@@ -54,7 +56,7 @@ _create_simple_digest_expr(FilterXObject *arg, FilterXSimpleFunctionProto fn, co
 
   GError *error = NULL;
   FilterXExpr *fn_expr = filterx_simple_function_new(fn_name, filterx_function_args_new(args, NULL), fn, &error);
-  cr_assert_null(error);
+  cr_assert(zero(ptr, error));
   return fn_expr;
 }
 
@@ -68,7 +70,7 @@ _create_digest_expr(FilterXObject *arg, const gchar *alg)
 
   GError *error = NULL;
   FilterXExpr *fn = filterx_function_digest_new(filterx_function_args_new(args, NULL), &error);
-  cr_assert_null(error);
+  cr_assert(zero(ptr, error));
   return fn;
 }
 
@@ -78,7 +80,7 @@ Test(filterx_func_digest, md5_string)
                                                filterx_simple_function_md5, "md5");
   FilterXObject *res = init_and_eval_expr(fn);
 
-  cr_assert_not_null(res);
+  cr_assert(not(zero(ptr, res)));
   assert_object_str_equals(res, "acbd18db4cc2f85cedef654fccc4a4d8");
 
   filterx_object_unref(res);
@@ -91,7 +93,7 @@ Test(filterx_func_digest, sha1_string)
                                                filterx_simple_function_sha1, "sha1");
   FilterXObject *res = init_and_eval_expr(fn);
 
-  cr_assert_not_null(res);
+  cr_assert(not(zero(ptr, res)));
   assert_object_str_equals(res, "0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33");
 
   filterx_object_unref(res);
@@ -104,7 +106,7 @@ Test(filterx_func_digest, sha256_string)
                                                filterx_simple_function_sha256, "sha256");
   FilterXObject *res = init_and_eval_expr(fn);
 
-  cr_assert_not_null(res);
+  cr_assert(not(zero(ptr, res)));
   assert_object_str_equals(res, "2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae");
 
   filterx_object_unref(res);
@@ -117,7 +119,7 @@ Test(filterx_func_digest, sha512_string)
                                                filterx_simple_function_sha512, "sha512");
   FilterXObject *res = init_and_eval_expr(fn);
 
-  cr_assert_not_null(res);
+  cr_assert(not(zero(ptr, res)));
   assert_object_str_equals(res,
                            "f7fbba6e0636f890e56fbbf3283e524c"
                            "6fa3204ae298382d624741d0dc663832"
@@ -134,7 +136,7 @@ Test(filterx_func_digest, digest_bytes_input)
                                                filterx_simple_function_md5, "md5");
   FilterXObject *res = init_and_eval_expr(fn);
 
-  cr_assert_not_null(res);
+  cr_assert(not(zero(ptr, res)));
   assert_object_str_equals(res, "37b59afd592725f9305e484a5d7f5168");
 
   filterx_object_unref(res);
@@ -147,7 +149,7 @@ Test(filterx_func_digest, wrong_arg_type)
                                                filterx_simple_function_sha256, "sha256");
   FilterXObject *res = init_and_eval_expr(fn);
 
-  cr_assert_null(res);
+  cr_assert(zero(ptr, res));
 
   filterx_expr_unref(fn);
 }
@@ -193,8 +195,8 @@ Test(filterx_func_digest, digest_unknown_alg)
   GError *error = NULL;
   FilterXExpr *fn = filterx_function_digest_new(filterx_function_args_new(args, NULL), &error);
 
-  cr_assert_null(fn);
-  cr_assert_not_null(error);
+  cr_assert(zero(ptr, fn));
+  cr_assert(not(zero(ptr, error)));
   g_error_free(error);
 }
 

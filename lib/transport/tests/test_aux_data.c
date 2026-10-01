@@ -20,6 +20,7 @@
  * COPYING for details.
  */
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "transport/transport-aux-data.h"
 #include "apphook.h"
@@ -57,7 +58,7 @@ construct_aux_with_some_data(void)
 Test(aux_data, test_aux_data_reinit_returns_aux_into_initial_state_without_leaks)
 {
   log_transport_aux_data_reinit(aux);
-  cr_assert_null(aux->peer_addr, "aux->peer_addr is not NULL after reinit");
+  cr_assert(zero(ptr, aux->peer_addr), "aux->peer_addr is not NULL after reinit");
 }
 
 static void
@@ -66,7 +67,7 @@ _concat_nvpairs_helper(const gchar *name, const gchar *value, gsize value_len, g
   GString *concatenated = (GString *) user_data;
 
   g_string_append_printf(concatenated, "%s=%s\n", name, value);
-  cr_assert_eq(value_len, strlen(value), "foreach() length mismatch");
+  cr_assert(eq(sz, value_len, strlen(value)), "foreach() length mismatch");
 }
 
 static gchar *
@@ -83,7 +84,7 @@ assert_concatenated_nvpairs(LogTransportAuxData *self, const gchar *expected)
 {
   gchar *concatenated = _concat_nvpairs(self);
 
-  cr_assert_str_eq(concatenated, expected, "foreach() didn't return all-added nvpairs");
+  cr_assert(eq(str, concatenated, expected), "foreach() didn't return all-added nvpairs");
   g_free(concatenated);
 }
 
@@ -102,7 +103,7 @@ Test(aux_data, test_aux_data_copy_creates_an_identical_copy)
 
   orig = _concat_nvpairs(aux);
   copy = _concat_nvpairs(&aux_copy);
-  cr_assert_str_eq(orig, copy, "copy incorrectly copied aux->nvpairs");
+  cr_assert(eq(str, orig, copy), "copy incorrectly copied aux->nvpairs");
   g_free(orig);
   g_free(copy);
   log_transport_aux_data_destroy(&aux_copy);
@@ -118,8 +119,8 @@ Test(aux_data, test_aux_data_copy_separates_the_copies)
 
   orig = _concat_nvpairs(aux);
   copy = _concat_nvpairs(&aux_copy);
-  cr_assert_str_neq(orig, copy,
-                    "copy incorrectly copied aux->nvpairs as change to one of them affected the other, orig=%s, copy=%s", orig, copy);
+  cr_assert(ne(str, orig, copy),
+            "copy incorrectly copied aux->nvpairs as change to one of them affected the other, orig=%s, copy=%s", orig, copy);
   g_free(orig);
   g_free(copy);
   log_transport_aux_data_destroy(&aux_copy);

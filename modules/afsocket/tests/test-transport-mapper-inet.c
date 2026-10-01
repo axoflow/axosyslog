@@ -41,7 +41,7 @@ guint SCS_SYSLOG;
 static inline void
 assert_transport_mapper_inet_server_port(TransportMapper *s, gint server_port)
 {
-  cr_assert_eq(transport_mapper_inet_get_server_port(s), server_port, "TransportMapper server_port mismatch");
+  cr_assert(eq(int, transport_mapper_inet_get_server_port(s), server_port), "TransportMapper server_port mismatch");
 }
 
 static void
@@ -104,8 +104,8 @@ assert_create_socket_fails_with_address(GSockAddr *addr)
 {
   gint sock;
 
-  cr_assert_not(create_socket_with_address(addr, &sock), "transport_mapper_open_socket() succeeded unexpectedly");
-  cr_assert_eq(sock, -1, "failed create_socket returned a non-extremal value on failure");
+  cr_assert(not(create_socket_with_address(addr, &sock)), "transport_mapper_open_socket() succeeded unexpectedly");
+  cr_assert(eq(int, sock, -1), "failed create_socket returned a non-extremal value on failure");
 }
 
 static void
@@ -113,8 +113,8 @@ assert_create_socket_fails(void)
 {
   gint sock;
 
-  cr_assert_not(create_socket(&sock), "transport_mapper_open_socket() succeeded unexpectedly");
-  cr_assert_eq(sock, -1, "failed create_socket returned a non-extremal value on failure");
+  cr_assert(not(create_socket(&sock)), "transport_mapper_open_socket() succeeded unexpectedly");
+  cr_assert(eq(int, sock, -1), "failed create_socket returned a non-extremal value on failure");
 }
 
 static void

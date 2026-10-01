@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "secret-storage/nondumpable-allocator.h"
 #include <unistd.h>
@@ -32,11 +33,11 @@ Test(nondumpableallocator, malloc_realloc_free)
   char test_string[] = "test_string";
   gpointer buffer = nondumpable_buffer_alloc(strlen(test_string) + 1);
   strcpy(buffer, test_string);
-  cr_assert_str_eq(buffer, test_string);
+  cr_assert(eq(str, buffer, test_string));
 
   const gsize pagesize = sysconf(_SC_PAGE_SIZE);
   gpointer buffer_realloc = nondumpable_buffer_realloc(buffer, 2*pagesize);
-  cr_assert_str_eq(buffer_realloc, test_string);
+  cr_assert(eq(str, buffer_realloc, test_string));
   ((gchar *)buffer_realloc)[2*pagesize] = 'a';
 
   nondumpable_buffer_free(buffer_realloc);
@@ -51,12 +52,12 @@ Test(nondumpableallocator, malloc_mem_zero)
   memset(buffer, dummy_value, buffer_len);
 
   for (gsize i = 0; i < buffer_len; ++i)
-    cr_assert_eq(buffer[i], dummy_value);
+    cr_assert(eq(u8, buffer[i], dummy_value));
 
   nondumpable_mem_zero(buffer, buffer_len);
 
   for (gsize i = 0; i < buffer_len; ++i)
-    cr_assert_eq(buffer[i], 0);
+    cr_assert(eq(u8, buffer[i], 0));
 
   nondumpable_buffer_free(buffer);
 }
@@ -71,8 +72,8 @@ Test(nondumpableallocator, two_malloc)
   gpointer buffer2 = nondumpable_buffer_alloc(strlen(test_string2) + 1);
   strcpy(buffer2, test_string2);
 
-  cr_assert_str_eq(buffer1, test_string1);
-  cr_assert_str_eq(buffer2, test_string2);
+  cr_assert(eq(str, buffer1, test_string1));
+  cr_assert(eq(str, buffer2, test_string2));
 
   nondumpable_buffer_free(buffer1);
   nondumpable_buffer_free(buffer2);

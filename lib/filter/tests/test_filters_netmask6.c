@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/parameterized.h"
 #include "test_filters_common.h"
 
@@ -126,7 +127,7 @@ StaticParameterizedTest(struct netmask6_tuple *tup, params, netmask6, test_filte
 {
   gchar *calculated_network = g_new0(char, INET6_ADDRSTRLEN);
   calculate_network6(ipv6, tup->prefix, calculated_network);
-  cr_assert_str_eq(calculated_network, tup->expected_network, "prefix: %d", tup->prefix);
+  cr_assert(eq(str, calculated_network, tup->expected_network), "prefix: %d", tup->prefix);
   g_free(calculated_network);
 }
 

@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/config_parse_lib.h"
 
 #include "app-parser-generator.h"
@@ -147,7 +148,7 @@ _assert_config_is_valid(const gchar *topic, const gchar *varargs)
 static void
 _assert_snippet_is_present(const gchar *snippet)
 {
-  cr_assert(strstr(result->str, snippet),
+  cr_assert(not(zero(ptr, strstr(result->str, snippet))),
             "Can't find config snippet in generated output: %s, config: >>>%s<<<",
             snippet, result->str);
 }
@@ -155,7 +156,7 @@ _assert_snippet_is_present(const gchar *snippet)
 static void
 _assert_snippet_is_not_present(const gchar *snippet)
 {
-  cr_assert(strstr(result->str, snippet) == NULL,
+  cr_assert(zero(ptr, strstr(result->str, snippet)),
             "Could find config snippet which shouldn't be there in generated output: %s, config: >>>%s<<<",
             snippet, result->str);
 }
@@ -166,7 +167,7 @@ _assert_application_is_present(const gchar *application)
   const gchar *settag_fmt = "set-tag('.app.%s');";
   gchar *settag_snippet = g_strdup_printf(settag_fmt, application);
 
-  cr_assert(strstr(result->str, settag_snippet),
+  cr_assert(not(zero(ptr, strstr(result->str, settag_snippet))),
             "Can't find set-tag() invocation for this application: %s, snippet: %s, config: >>>%s<<<",
             application, settag_snippet, result->str);
   g_free(settag_snippet);

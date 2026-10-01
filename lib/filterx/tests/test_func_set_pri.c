@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/filterx-lib.h"
 
 #include "filterx/func-set-pri.h"
@@ -39,11 +40,11 @@ Test(filterx_func_set_pri, null_argument_eval_does_not_crash)
   GError *err = NULL;
   GError *args_err = NULL;
   FilterXExpr *func = filterx_function_set_pri_new(filterx_function_args_new(args, &args_err), &err);
-  cr_assert_null(err);
-  cr_assert_not_null(func);
+  cr_assert(zero(ptr, err));
+  cr_assert(not(zero(ptr, func)));
 
   FilterXObject *res = init_and_eval_expr(func);
-  cr_assert_null(res);
+  cr_assert(zero(ptr, res));
 
   filterx_expr_unref(func);
 }

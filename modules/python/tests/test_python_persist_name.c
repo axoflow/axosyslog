@@ -23,6 +23,7 @@
 #include "python-module.h"
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/grab-logging.h"
 
 #include "python-helpers.h"
@@ -127,7 +128,7 @@ Test(python_persist_name, test_python_dest)
 
   cr_assert(log_pipe_init((LogPipe *)d));
 
-  cr_assert_str_eq(log_pipe_get_persist_name((LogPipe *)d), "python.value");
+  cr_assert(eq(str, log_pipe_get_persist_name((LogPipe *)d), "python.value"));
 
   main_loop_sync_worker_startup_and_teardown();
   log_pipe_deinit((LogPipe *)d);
@@ -154,7 +155,7 @@ Test(python_persist_name, test_python_fetcher)
 
   cr_assert(log_pipe_init((LogPipe *)d));
 
-  cr_assert_str_eq(log_pipe_get_persist_name((LogPipe *)d), "python-fetcher.value");
+  cr_assert(eq(str, log_pipe_get_persist_name((LogPipe *)d), "python-fetcher.value"));
 
   main_loop_sync_worker_startup_and_teardown();
   log_pipe_deinit((LogPipe *)d);
@@ -183,7 +184,7 @@ Test(python_persist_name, test_python_source)
 
   cr_assert(log_pipe_init((LogPipe *)d));
 
-  cr_assert_str_eq(log_pipe_get_persist_name((LogPipe *)d), "python-source.value");
+  cr_assert(eq(str, log_pipe_get_persist_name((LogPipe *)d), "python-source.value"));
 
   main_loop_sync_worker_startup_and_teardown();
   log_pipe_deinit((LogPipe *)d);
@@ -219,7 +220,7 @@ Test(python_persist_name, test_python_exception_in_generate_persist_name)
   };
 
   StatsClusterKeyBuilder *kb = stats_cluster_key_builder_new();
-  cr_assert_str_eq(python_format_stats_key(p, kb, "module", &options_stats), "module,class");
+  cr_assert(eq(str, python_format_stats_key(p, kb, "module", &options_stats), "module,class"));
   stats_cluster_key_builder_free(kb);
 
   PythonPersistMembers options_persist =
@@ -227,7 +228,7 @@ Test(python_persist_name, test_python_exception_in_generate_persist_name)
     .generate_persist_name_method = persist_generator_persist,
     .class = "class",
   };
-  cr_assert_str_eq(python_format_persist_name(p, "module", &options_persist), "module(class)");
+  cr_assert(eq(str, python_format_persist_name(p, "module", &options_persist), "module(class)"));
 
   stop_grabbing_messages();
 
@@ -258,7 +259,7 @@ Test(python_persist_name, test_python_fetcher_no_generate_persist_name)
   log_pipe_set_persist_name((LogPipe *)d, "test_persist_name");
   cr_assert(log_pipe_init((LogPipe *)d));
 
-  cr_assert_str_eq(log_pipe_get_persist_name((LogPipe *)d), "python-fetcher.test_persist_name");
+  cr_assert(eq(str, log_pipe_get_persist_name((LogPipe *)d), "python-fetcher.test_persist_name"));
 
   main_loop_sync_worker_startup_and_teardown();
   log_pipe_deinit((LogPipe *)d);
@@ -285,7 +286,7 @@ Test(python_persist_name, test_python_source_no_generate_persist_name)
   log_pipe_set_persist_name((LogPipe *)d, "test_persist_name");
   cr_assert(log_pipe_init((LogPipe *)d));
 
-  cr_assert_str_eq(log_pipe_get_persist_name((LogPipe *)d), "python-source.test_persist_name");
+  cr_assert(eq(str, log_pipe_get_persist_name((LogPipe *)d), "python-source.test_persist_name"));
 
   main_loop_sync_worker_startup_and_teardown();
   log_pipe_deinit((LogPipe *)d);
@@ -313,7 +314,7 @@ Test(python_persist_name, test_python_source_readonly)
   LogDriver *d = python_sd_new(empty_cfg);
   python_binding_set_class(python_sd_get_binding(d), "Source");
   start_grabbing_messages();
-  cr_assert_eq(log_pipe_init((LogPipe *)d), 0);
+  cr_assert(not(log_pipe_init((LogPipe *)d)));
   stop_grabbing_messages();
 
   // Python2: TypeError: readonly attribute
@@ -345,7 +346,7 @@ Test(python_persist_name, test_python_fetcher_readonly)
   python_binding_set_class(python_fetcher_get_binding(d), "Fetcher");
 
   start_grabbing_messages();
-  cr_assert_eq(log_pipe_init((LogPipe *)d), 0);
+  cr_assert(not(log_pipe_init((LogPipe *)d)));
   stop_grabbing_messages();
 
   // Python2: TypeError: readonly attribute
@@ -370,7 +371,7 @@ Test(python_persist_name, test_python_fetcher_persist_preference)
 
   cr_assert(log_pipe_init((LogPipe *)d));
 
-  cr_assert_str_eq(log_pipe_get_persist_name((LogPipe *)d), "python-fetcher.test_persist_name");
+  cr_assert(eq(str, log_pipe_get_persist_name((LogPipe *)d), "python-fetcher.test_persist_name"));
 
   main_loop_sync_worker_startup_and_teardown();
   log_pipe_deinit((LogPipe *)d);
@@ -390,7 +391,7 @@ Test(python_persist_name, test_python_source_persist_preference)
 
   cr_assert(log_pipe_init((LogPipe *)d));
 
-  cr_assert_str_eq(log_pipe_get_persist_name((LogPipe *)d), "python-source.test_persist_name");
+  cr_assert(eq(str, log_pipe_get_persist_name((LogPipe *)d), "python-source.test_persist_name"));
 
   main_loop_sync_worker_startup_and_teardown();
   log_pipe_deinit((LogPipe *)d);

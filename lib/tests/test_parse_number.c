@@ -22,6 +22,7 @@
  *
  */
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "parse-number.h"
 #include <stdlib.h>
@@ -34,8 +35,8 @@ assert_parse_with_suffix(const gchar *str, gint64 expected)
 
   res = parse_int64_with_suffix(str, &n);
 
-  cr_assert_eq(res, TRUE, "Parsing (w/ suffix) %s failed", str);
-  cr_assert_eq(n, expected, "Parsing (w/ suffix) %s failed", str);
+  cr_assert(res, "Parsing (w/ suffix) %s failed", str);
+  cr_assert(eq(i64, n, expected), "Parsing (w/ suffix) %s failed", str);
 }
 
 static void
@@ -45,7 +46,7 @@ assert_parse_with_suffix_fails(const gchar *str)
   gboolean res;
 
   res = parse_int64_with_suffix(str, &n);
-  cr_assert_eq(res, FALSE, "Parsing (w/ suffix) %s succeeded, while expecting failure", str);
+  cr_assert(not(res), "Parsing (w/ suffix) %s succeeded, while expecting failure", str);
 }
 
 static void
@@ -56,8 +57,8 @@ assert_parse(const gchar *str, gint64 expected)
 
   res = parse_int64_base_any(str, &n);
 
-  cr_assert_eq(res, TRUE, "Parsing (w/o suffix) %s failed", str);
-  cr_assert_eq(n, expected, "Parsing (w/o suffix) %s failed", str);
+  cr_assert(res, "Parsing (w/o suffix) %s failed", str);
+  cr_assert(eq(i64, n, expected), "Parsing (w/o suffix) %s failed", str);
 }
 
 static void
@@ -68,7 +69,7 @@ assert_parse_fails(const gchar *str)
 
   res = parse_int64_base_any(str, &n);
 
-  cr_assert_eq(res, FALSE, "Parsing (w/o suffix) %s succeeded, while expecting failure", str);
+  cr_assert(not(res), "Parsing (w/o suffix) %s succeeded, while expecting failure", str);
 }
 
 static void
@@ -79,8 +80,8 @@ assert_parse_dec(const gchar *str, gint64 expected)
 
   res = parse_int64(str, &n);
 
-  cr_assert_eq(res, TRUE, "Parsing (w/o suffix) %s failed", str);
-  cr_assert_eq(n, expected, "Parsing (w/o suffix) %s failed", str);
+  cr_assert(res, "Parsing (w/o suffix) %s failed", str);
+  cr_assert(eq(i64, n, expected), "Parsing (w/o suffix) %s failed", str);
 }
 
 static void
@@ -91,7 +92,7 @@ assert_parse_dec_fails(const gchar *str)
 
   res = parse_int64(str, &n);
 
-  cr_assert_eq(res, FALSE, "Parsing (w/o suffix) %s succeeded, while expecting failure", str);
+  cr_assert(not(res), "Parsing (w/o suffix) %s succeeded, while expecting failure", str);
 }
 
 Test(parse_number, test_simple_numbers_are_parsed_properly)
@@ -204,23 +205,23 @@ Test(parse_generic_number, test_string_is_properly_represented_as_a_generic_numb
   GenericNumber gn;
 
   parse_generic_number("123", &gn);
-  cr_assert(gn.type == GN_INT64);
-  cr_assert(gn.value.raw_int64 == 123);
+  cr_assert(eq(u8, gn.type, GN_INT64));
+  cr_assert(eq(i64, gn.value.raw_int64, 123));
   parse_generic_number("-123", &gn);
-  cr_assert(gn.type == GN_INT64);
-  cr_assert(gn.value.raw_int64 == -123);
+  cr_assert(eq(u8, gn.type, GN_INT64));
+  cr_assert(eq(i64, gn.value.raw_int64, -123));
 
   parse_generic_number("-123.0", &gn);
-  cr_assert(gn.type == GN_DOUBLE);
-  cr_assert(gn.precision == 1);
-  cr_assert_float_eq(gn.value.raw_double, -123.0, DBL_EPSILON);
+  cr_assert(eq(u8, gn.type, GN_DOUBLE));
+  cr_assert(eq(i8, gn.precision, 1));
+  cr_assert(epsilon_eq(dbl, gn.value.raw_double, -123.0, DBL_EPSILON));
 
   parse_generic_number("1.1", &gn);
-  cr_assert(gn.type == GN_DOUBLE);
-  cr_assert(gn.precision == 1);
-  cr_assert_float_eq(gn.value.raw_double, 1.1, DBL_EPSILON);
+  cr_assert(eq(u8, gn.type, GN_DOUBLE));
+  cr_assert(eq(i8, gn.precision, 1));
+  cr_assert(epsilon_eq(dbl, gn.value.raw_double, 1.1, DBL_EPSILON));
 
   parse_generic_number("9223372036854775808", &gn);
-  cr_assert(gn.type == GN_DOUBLE);
-  cr_assert_float_eq(gn.value.raw_double, 9223372036854775808.0, DBL_EPSILON);
+  cr_assert(eq(u8, gn.type, GN_DOUBLE));
+  cr_assert(epsilon_eq(dbl, gn.value.raw_double, 9223372036854775808.0, DBL_EPSILON));
 }

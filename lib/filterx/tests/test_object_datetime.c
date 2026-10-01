@@ -20,6 +20,7 @@
  *
  */
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/filterx-lib.h"
 #include "libtest/fake-time.h"
 
@@ -73,7 +74,7 @@ Test(filterx_datetime, test_filterx_object_datetime_repr_yields_datetime_constru
 Test(filterx_datetime, test_filterx_datetime_typecast_null_args)
 {
   FilterXObject *obj = filterx_typecast_datetime(NULL, NULL, 0);
-  cr_assert_null(obj);
+  cr_assert(zero(ptr, obj));
 }
 
 Test(filterx_datetime, test_filterx_datetime_typecast_empty_args)
@@ -81,7 +82,7 @@ Test(filterx_datetime, test_filterx_datetime_typecast_empty_args)
   FilterXObject *args[] = { NULL };
 
   FilterXObject *obj = filterx_typecast_datetime(NULL, args, 0);
-  cr_assert_null(obj);
+  cr_assert(zero(ptr, obj));
 }
 
 Test(filterx_datetime, test_filterx_datetime_typecast_null_arg)
@@ -89,7 +90,7 @@ Test(filterx_datetime, test_filterx_datetime_typecast_null_arg)
   FilterXObject  *args[] = { NULL };
 
   FilterXObject *obj = filterx_typecast_datetime(NULL, args, G_N_ELEMENTS(args));
-  cr_assert_null(obj);
+  cr_assert(zero(ptr, obj));
 }
 
 Test(filterx_datetime, test_filterx_datetime_typecast_null_object_arg)
@@ -97,7 +98,7 @@ Test(filterx_datetime, test_filterx_datetime_typecast_null_object_arg)
   FilterXObject *args[] = { filterx_null_new() };
 
   FilterXObject *obj = filterx_typecast_datetime(NULL, args, G_N_ELEMENTS(args));
-  cr_assert_null(obj);
+  cr_assert(zero(ptr, obj));
   filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
 }
 
@@ -107,13 +108,14 @@ Test(filterx_datetime, test_filterx_datetime_typecast_from_int)
   FilterXObject *args[] = { filterx_integer_new(1710762325395194) };
 
   FilterXObject *obj = filterx_typecast_datetime(NULL, args, G_N_ELEMENTS(args));
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(datetime)));
 
   UnixTime ut_expected = { .ut_sec = 1710762325, .ut_usec = 395194, .ut_gmtoff = 0 };
 
   UnixTime ut = filterx_datetime_get_value(obj);
-  cr_assert(memcmp(&ut_expected, &ut, sizeof(UnixTime)) == 0);
+  cr_assert(eq(mem, ((struct cr_mem){ .data = &ut_expected, .size = sizeof(UnixTime) }),
+               ((struct cr_mem){ .data = &ut, .size = sizeof(UnixTime) })));
   filterx_object_unref(obj);
   filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
 }
@@ -124,13 +126,14 @@ Test(filterx_datetime, test_filterx_datetime_typecast_from_double)
   FilterXObject *args[] = { filterx_double_new(1710762325.395194) };
 
   FilterXObject *obj = filterx_typecast_datetime(NULL, args, G_N_ELEMENTS(args));
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(datetime)));
 
   UnixTime ut_expected = { .ut_sec = 1710762325, .ut_usec = 395194, .ut_gmtoff = 0 };
 
   UnixTime ut = filterx_datetime_get_value(obj);
-  cr_assert(memcmp(&ut_expected, &ut, sizeof(UnixTime)) == 0);
+  cr_assert(eq(mem, ((struct cr_mem){ .data = &ut_expected, .size = sizeof(UnixTime) }),
+               ((struct cr_mem){ .data = &ut, .size = sizeof(UnixTime) })));
 
   filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
   filterx_object_unref(obj);
@@ -144,7 +147,7 @@ Test(filterx_datetime, test_filterx_datetime_typecast_from_out_of_range_double)
     {
       FilterXObject *args[] = { filterx_double_new(bad_values[i]) };
       FilterXObject *obj = filterx_typecast_datetime(NULL, args, G_N_ELEMENTS(args));
-      cr_assert_null(obj, "expected out-of-range double %g to be rejected", bad_values[i]);
+      cr_assert(zero(ptr, obj), "expected out-of-range double %g to be rejected", bad_values[i]);
       filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
     }
 }
@@ -155,13 +158,14 @@ Test(filterx_datetime, test_filterx_datetime_typecast_from_string)
   FilterXObject *args[] = { filterx_string_new("2024-03-18T12:34:00Z", -1) };
 
   FilterXObject *obj = filterx_typecast_datetime(NULL, args, G_N_ELEMENTS(args));
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(datetime)));
 
   UnixTime ut_expected = { .ut_sec = 1710765240, .ut_usec = 0, .ut_gmtoff = 0, .ut_tz_source = UNIX_TIME_TZ_PARSED };
 
   UnixTime ut = filterx_datetime_get_value(obj);
-  cr_assert(memcmp(&ut_expected, &ut, sizeof(UnixTime)) == 0);
+  cr_assert(eq(mem, ((struct cr_mem){ .data = &ut_expected, .size = sizeof(UnixTime) }),
+               ((struct cr_mem){ .data = &ut, .size = sizeof(UnixTime) })));
 
   filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
   filterx_object_unref(obj);
@@ -174,7 +178,7 @@ Test(filterx_datetime, test_filterx_datetime_typecast_from_datetime)
 
   FilterXObject *obj = filterx_typecast_datetime(NULL, args, G_N_ELEMENTS(args));
 
-  cr_assert_eq(args[0], obj);
+  cr_assert(eq(ptr, args[0], obj));
 
   filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
   filterx_object_unref(obj);
@@ -183,24 +187,24 @@ Test(filterx_datetime, test_filterx_datetime_typecast_from_datetime)
 Test(filterx_datetime, test_filterx_datetime_repr_method)
 {
   UnixTime ut = unix_time_from_unix_epoch_usec(3600000000);
-  cr_assert(ut.ut_gmtoff == 0);
-  cr_assert(ut.ut_usec == 0);
-  cr_assert(ut.ut_sec == 3600);
+  cr_assert(eq(i32, ut.ut_gmtoff, 0));
+  cr_assert(eq(u32, ut.ut_usec, 0));
+  cr_assert(eq(i64, ut.ut_sec, 3600));
   GString *repr = scratch_buffers_alloc();
   cr_assert(datetime_repr(&ut, repr));
-  cr_assert_str_eq(repr->str, "datetime(3600.000000)");
+  cr_assert(eq(str, repr->str, "datetime(3600.000000)"));
 }
 
 Test(filterx_datetime, test_filterx_datetime_marshal)
 {
   UnixTime ut = { .ut_sec = 1701350398, .ut_usec = 123000, .ut_gmtoff = 3600 };
   FilterXObject *obj = filterx_datetime_new(&ut);
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
 
   LogMessageValueType lmvt;
   GString *repr = scratch_buffers_alloc();
   cr_assert(filterx_object_marshal(obj, repr, &lmvt));
-  cr_assert_str_eq(repr->str, "1701350398.123000+01:00");
+  cr_assert(eq(str, repr->str, "1701350398.123000+01:00"));
 
   filterx_object_unref(obj);
 }
@@ -209,12 +213,12 @@ Test(filterx_datetime, test_filterx_datetime_marshal_negative_offset)
 {
   UnixTime ut = { .ut_sec = 1701350398, .ut_usec = 123000, .ut_gmtoff = -10800 };
   FilterXObject *obj = filterx_datetime_new(&ut);
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
 
   LogMessageValueType lmvt;
   GString *repr = scratch_buffers_alloc();
   cr_assert(filterx_object_marshal(obj, repr, &lmvt));
-  cr_assert_str_eq(repr->str, "1701350398.123000-3:00");
+  cr_assert(eq(str, repr->str, "1701350398.123000-3:00"));
 
   filterx_object_unref(obj);
 }
@@ -224,7 +228,7 @@ Test(filterx_datetime, test_filterx_datetime_repr)
   FilterXObject *args[] = { filterx_string_new("2024-03-18T12:34:13+0900", -1) };
 
   FilterXObject *obj = filterx_typecast_datetime(NULL, args, G_N_ELEMENTS(args));
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(datetime)));
 
   assert_object_repr_equals(obj, "datetime(1710732853.000000)");
@@ -239,7 +243,7 @@ Test(filterx_datetime, test_filterx_datetime_repr_isodate_Z)
   FilterXObject *args[] = { filterx_string_new(test_time_str, -1) };
 
   FilterXObject *obj = filterx_typecast_datetime(NULL, args, G_N_ELEMENTS(args));
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(datetime)));
 
   assert_object_str_equals(args[0], test_time_str);
@@ -252,7 +256,7 @@ Test(filterx_datetime, test_filterx_datetime_strptime_with_null_args)
 {
   GError *error = NULL;
   FilterXExpr *func_expr = filterx_function_strptime_new(filterx_function_args_new(NULL, &error), NULL);
-  cr_assert_null(func_expr);
+  cr_assert(zero(ptr, func_expr));
 }
 
 Test(filterx_datetime, test_filterx_datetime_strptime_without_args)
@@ -262,7 +266,7 @@ Test(filterx_datetime, test_filterx_datetime_strptime_without_args)
   args = g_list_append(args, filterx_function_arg_new(NULL, NULL));
 
   FilterXExpr *func_expr = filterx_function_strptime_new(filterx_function_args_new(args, NULL), NULL);
-  cr_assert_null(func_expr);
+  cr_assert(zero(ptr, func_expr));
 }
 
 Test(filterx_datetime, test_filterx_datetime_strptime_without_timefmt)
@@ -272,7 +276,7 @@ Test(filterx_datetime, test_filterx_datetime_strptime_without_timefmt)
   args = g_list_append(args, filterx_function_arg_new(NULL, filterx_literal_new(filterx_string_new(test_time_str, -1))));
 
   FilterXExpr *func_expr = filterx_function_strptime_new(filterx_function_args_new(args, NULL), NULL);
-  cr_assert_null(func_expr);
+  cr_assert(zero(ptr, func_expr));
 }
 
 Test(filterx_datetime, test_filterx_datetime_strptime_non_matching_timefmt)
@@ -284,10 +288,10 @@ Test(filterx_datetime, test_filterx_datetime_strptime_non_matching_timefmt)
                                                       -1))));
 
   FilterXExpr *func_expr = filterx_function_strptime_new(filterx_function_args_new(args, NULL), NULL);
-  cr_assert(func_expr);
+  cr_assert(not(zero(ptr, func_expr)));
 
   FilterXObject *obj = init_and_eval_expr(func_expr);
-  cr_assert(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(null)));
 
   filterx_object_unref(obj);
@@ -303,10 +307,10 @@ Test(filterx_datetime, test_filterx_datetime_strptime_matching_timefmt)
                                                       -1))));
 
   FilterXExpr *func_expr = filterx_function_strptime_new(filterx_function_args_new(args, NULL), NULL);
-  cr_assert(func_expr);
+  cr_assert(not(zero(ptr, func_expr)));
 
   FilterXObject *obj = init_and_eval_expr(func_expr);
-  cr_assert(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(datetime)));
 
   assert_object_repr_equals(obj, "datetime(1712571072.567000)");
@@ -326,10 +330,10 @@ Test(filterx_datetime, test_filterx_datetime_strptime_matching_nth_timefmt)
                                                       -1))));
 
   FilterXExpr *func_expr = filterx_function_strptime_new(filterx_function_args_new(args, NULL), NULL);
-  cr_assert(func_expr);
+  cr_assert(not(zero(ptr, func_expr)));
 
   FilterXObject *obj = init_and_eval_expr(func_expr);
-  cr_assert(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(datetime)));
 
   assert_object_repr_equals(obj, "datetime(1712567472.000000)");
@@ -354,10 +358,10 @@ Test(filterx_datetime, test_filterx_datetime_strptime_partially_matching_timefmt
                                                       -1))));
 
   FilterXExpr *func_expr = filterx_function_strptime_new(filterx_function_args_new(args, NULL), NULL);
-  cr_assert(func_expr);
+  cr_assert(not(zero(ptr, func_expr)));
 
   FilterXObject *obj = init_and_eval_expr(func_expr);
-  cr_assert(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(datetime)));
 
   /* the year is guessed from the faked current time, not left behind by the failed format */
@@ -378,10 +382,10 @@ Test(filterx_datetime, test_filterx_datetime_strptime_non_matching_nth_timefmt)
                                                       -1))));
 
   FilterXExpr *func_expr = filterx_function_strptime_new(filterx_function_args_new(args, NULL), NULL);
-  cr_assert(func_expr);
+  cr_assert(not(zero(ptr, func_expr)));
 
   FilterXObject *obj = init_and_eval_expr(func_expr);
-  cr_assert(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(null)));
 
   filterx_object_unref(obj);
@@ -398,7 +402,7 @@ Test(filterx_datetime, test_filterx_datetime_strptime_invalid_arg_type)
                                                       -1))));
 
   FilterXExpr *func_expr = filterx_function_strptime_new(filterx_function_args_new(args, NULL), NULL);
-  cr_assert_null(func_expr);
+  cr_assert(zero(ptr, func_expr));
 }
 
 
@@ -417,7 +421,7 @@ Test(filterx_datetime, test_filterx_datetime_strptime_with_non_literal_format)
   args = g_list_append(args, filterx_function_arg_new(NULL, format_expr));
 
   FilterXExpr *func_expr = filterx_function_strptime_new(filterx_function_args_new(args, NULL), NULL);
-  cr_assert_null(func_expr, "%p", func_expr);
+  cr_assert(zero(ptr, func_expr), "%p", func_expr);
 }
 
 static void
