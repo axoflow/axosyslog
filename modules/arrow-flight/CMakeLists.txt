@@ -15,6 +15,13 @@ if (NOT DEFINED ENABLE_ARROW_FLIGHT OR ENABLE_ARROW_FLIGHT)
       add_library(zstd::libzstd ALIAS zstd::libzstd_static)
     endif ()
 
+    if (NOT crypto_INCLUDE_DIR)
+      set(crypto_INCLUDE_DIR "${OPENSSL_INCLUDE_DIR}")
+    endif ()
+    if (NOT crypto_LIBRARY)
+      set(crypto_LIBRARY "${OPENSSL_CRYPTO_LIBRARY}")
+    endif ()
+
     find_package(Arrow QUIET CONFIG)
     if (Arrow_FOUND)
       find_package(ArrowFlight QUIET CONFIG)
