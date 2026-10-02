@@ -27,6 +27,7 @@
 #include "mainloop-control.h"
 #include "apphook.h"
 #include "cfg.h"
+#include "cfg-path.h"
 #include "stats/stats-registry.h"
 #include "stats/stats-counter.h"
 #include "stats/stats-cluster-single.h"
@@ -736,6 +737,14 @@ main_loop_read_and_init_config(MainLoop *self)
       cfg_format_id(self->current_configuration, config_id);
       fprintf(stdout, "%s\n", config_id->str);
       g_string_free(config_id, TRUE);
+      return 0;
+    }
+
+  if (options->list_files)
+    {
+      GString *file_list = cfg_path_format_file_list(self->current_configuration);
+      fputs(file_list->str, stdout);
+      g_string_free(file_list, TRUE);
       return 0;
     }
 
