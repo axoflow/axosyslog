@@ -66,7 +66,7 @@ filterx_list_set_subscript(FilterXObject *s, gint64 index, FilterXObject **new_v
   FilterXObject **slot = (FilterXObject **) &g_ptr_array_index(self->array, index);
   filterx_ref_unset_parent_container(*slot);
   filterx_object_unref(*slot);
-  *slot = filterx_object_cow_store(new_value);
+  *slot = filterx_object_cow_store(s, new_value);
 }
 
 

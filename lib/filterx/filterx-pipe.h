@@ -24,8 +24,14 @@
 #define FILTERX_PIPE_H_INCLUDED
 
 #include "filterx/filterx-expr.h"
+#include "filterx/filterx-eval.h"
 #include "logpipe.h"
 
 LogPipe *log_filterx_pipe_new(FilterXExpr *expr, GlobalConfig *cfg);
+
+void log_filterx_pipe_resume_and_forward(LogPipe *s,
+                                         FilterXEvalContext *saved_context,
+                                         FilterXEvalContinuation *continuation,
+                                         FilterXObject *resume_value);
 
 #endif
