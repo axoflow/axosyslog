@@ -23,6 +23,8 @@ endif
 
 if ENABLE_CPP
 EXAMPLE_PLUGINS += $(top_builddir)/modules/examples/sources/librandom_choice_generator.la
+# The C++ in LIBADD needs the C++ linker, see configure.ac.
+modules_examples_libexamples_la_LIBTOOLFLAGS = --tag=CXX
 endif
 
 module_LTLIBRARIES += modules/examples/libexamples.la

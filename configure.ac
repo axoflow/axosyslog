@@ -2256,11 +2256,12 @@ if test "$enable_jit" = "yes" -a "x$linking_mode" = "xmonolithic"; then
 fi
 
 #
-# C++ objects reach C links in two ways.
+# C++ objects reach C links in three ways.
 #
-#   1) The C++ modules (grpc, cloud-auth, examples) keep their C++ in a
-#      noinst convenience library and link it into a module whose own sources are
-#      C, so automake would pick the C driver for a library full of C++.
+#   1) The C++ modules (grpc, cloud-auth, examples, arrow-flight) keep their
+#      C++ in a noinst convenience library and link it into a module whose own
+#      sources are C, so automake would pick the C driver for a library full
+#      of C++.
 #
 #   2) LLVM linked statically into libsyslog-ng, then libsyslog-ng needs to
 #      link using the C++ linker.
@@ -2268,15 +2269,31 @@ fi
 #   3) the previous point combined with monolithic builds: every program
 #      that links to libsyslog-ng needs to be linked using the C++ linker.
 #
-# We need to turn these cases into using the C++ linker, which is done by
-# setting CCLD to $(CXX) below, otherwise we would miss C++ related symbols
-# in the final link.
+# Programs are covered by setting CCLD to $(CXX) below. Shared libraries are
+# not: automake links them with libtool --tag=CC, and libtool builds a shared
+# library with that tag's own compiler, the C one, whatever CCLD says. Such a
+# link names no C++ runtime, so the C++ symbols stay undefined and
+# unversioned, and only bind if the process happens to load a libstdc++ that
+# has them; gcc-toolset's libstdc++_nonshared.a is never consulted.
+#
+# Shared libraries therefore link under --tag=CXX. A C++ module lists a
+# nodist_EXTRA force-cpp-linker-with-default-stdlib.cpp, which makes automake
+# pick that tag. automake picks one linker for all conditions, so a library
+# with C++ only in some builds sets --tag=CXX in its LIBTOOLFLAGS instead;
+# libtool takes the last --tag. libsyslog-ng gets it from CORE_LIBTOOLFLAGS
+# below, libexamples under ENABLE_CPP.
 #
 CCLD='$(CC)'
 if test "$enable_cpp" = "yes" -o \( "$enable_jit" = "yes" -a "$llvm_static" = "yes" \); then
   CCLD='$(CXX)'
 fi
 AC_SUBST([CCLD])
+
+CORE_LIBTOOLFLAGS=
+if test "$llvm_static" = "yes"; then
+  CORE_LIBTOOLFLAGS="--tag=CXX"
+fi
+AC_SUBST([CORE_LIBTOOLFLAGS])
 
 if test "x$linking_mode" = "xdynamic"; then
 	SYSLOGNG_DEPS_LIBS="$LIBS $BASE_LIBS $GLIB_LIBS $EVTLOG_LIBS $SECRETSTORAGE_LIBS $RESOLV_LIBS $LIBCAP_LIBS $PCRE2_LIBS $REGEX_LIBS $LLVM_LIBS $DL_LIBS $LIBUNWIND_LIBS $JSON_LIBS $OPENSSL_LIBS $ZLIB_LIBS"
