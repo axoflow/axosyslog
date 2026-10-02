@@ -28,14 +28,25 @@ filterx_bitcode_compile = \
 	$(filter-out -fsanitize=%,$(AM_CFLAGS) $(CFLAGS)) \
 	-emit-llvm -O3 --no-warnings -mno-outline-atomics
 
+# The bitcode gets inlined into JIT compiled code, so it has to match the
+# headers exactly (struct layouts, flag bits): track the headers each unit
+# includes, the way automake does for objects, via compiler generated
+# dependency files.  A unit built before this tracking existed has no
+# dependency file yet and is not rebuilt for a header change until its
+# source changes or the tree is cleaned once.
+filterx_bitcode_deps = $(filterx_bitcode_units:.bc=.bc.d)
+
 $(filterx_bitcode_units): %.bc: %.c
-	$(AM_V_GEN)$(filterx_bitcode_compile) -c $< -o $@
+	$(AM_V_GEN)$(filterx_bitcode_compile) -MMD -MP -MT $@ -MF $@.d -c $< -o $@
+
+-include $(filterx_bitcode_deps)
 
 lib/filterx/jit/libfilterx.bc: $(filterx_bitcode_units)
 	$(AM_V_GEN)$(LLVM_LINK) -o $@ $^
 
 CLEANFILES += \
 	$(filterx_bitcode_units) \
+	$(filterx_bitcode_deps) \
 	lib/filterx/jit/libfilterx.bc
 
 endif
