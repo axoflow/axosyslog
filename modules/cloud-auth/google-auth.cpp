@@ -39,6 +39,9 @@ ServiceAccountAuthenticator::ServiceAccountAuthenticator(const char *key_path, c
 {
   picojson::value key_json;
 
+  if (!key_path)
+    throw std::runtime_error(std::string("key() or credentials() is mandatory"));
+
   try
     {
       std::ifstream key_file(key_path);
