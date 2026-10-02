@@ -2272,6 +2272,7 @@ fi
 # setting CCLD to $(CXX) below, otherwise we would miss C++ related symbols
 # in the final link.
 #
+CCLD='$(CC)'
 if test "$enable_cpp" = "yes" -o \( "$enable_jit" = "yes" -a "$llvm_static" = "yes" \); then
   CCLD='$(CXX)'
 fi
