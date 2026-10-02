@@ -33,4 +33,5 @@ typedef struct _CfgFilePath
 } CfgFilePath;
 
 void cfg_path_track_file(GlobalConfig *cfg, const gchar *file_path, const gchar *path_type);
+GString *cfg_path_format_file_list(GlobalConfig *cfg);
 #endif
