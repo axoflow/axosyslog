@@ -496,37 +496,14 @@ _rewind_backlog_all(LogQueue *s)
 }
 
 static inline LogMessage *
-_pop_head_front_cache_queues(LogQueueDiskNonReliable *self, LogPathOptions *path_options,
-                             LogQueueDiskMemoryQueue *queue)
+_pop_head_memory_queue(LogQueueDiskNonReliable *self, LogQueueDiskMemoryQueue *queue, LogMessageQueueNode **node,
+                       LogPathOptions *path_options)
 {
   LogMessage *msg;
 
-  if (!_pop_from_memory_queue_head(queue, &msg, path_options))
+  if (!_pop_node_from_memory_queue_head(queue, node))
     return NULL;
-  log_queue_memory_usage_sub(&self->super.super, log_msg_get_size(msg));
-
-  return msg;
-}
-
-static inline LogMessage *
-_pop_head_front_cache(LogQueueDiskNonReliable *self, LogPathOptions *path_options)
-{
-  return _pop_head_front_cache_queues(self, path_options, &self->front_cache);
-}
-
-static inline LogMessage *
-_pop_head_front_cache_output(LogQueueDiskNonReliable *self, LogPathOptions *path_options)
-{
-  return _pop_head_front_cache_queues(self, path_options, &self->front_cache_output);
-}
-
-static inline LogMessage *
-_pop_head_flow_control_window(LogQueueDiskNonReliable *self, LogPathOptions *path_options)
-{
-  LogMessage *msg;
-
-  if (!_pop_from_memory_queue_head(&self->flow_control_window, &msg, path_options))
-    return NULL;
+  _extract_queue_node(*node, &msg, path_options);
   log_queue_memory_usage_sub(&self->super.super, log_msg_get_size(msg));
 
   return msg;
@@ -571,9 +548,10 @@ _pop_head(LogQueue *s, LogPathOptions *path_options)
 {
   LogQueueDiskNonReliable *self = (LogQueueDiskNonReliable *)s;
   LogMessage *msg = NULL;
+  LogMessageQueueNode *node = NULL;
   gboolean stats_update = TRUE;
 
-  msg = _pop_head_front_cache_output(self, path_options);
+  msg = _pop_head_memory_queue(self, &self->front_cache_output, &node, path_options);
   if (msg && self->front_cache_output.len != 0)
     {
       /*
@@ -593,7 +571,7 @@ _pop_head(LogQueue *s, LogPathOptions *path_options)
   if (msg)
     goto slow_success;
 
-  msg = _pop_head_front_cache(self, path_options);
+  msg = _pop_head_memory_queue(self, &self->front_cache, &node, path_options);
   if (msg)
     goto slow_success;
 
@@ -602,7 +580,7 @@ _pop_head(LogQueue *s, LogPathOptions *path_options)
     goto slow_success;
 
   if (self->flow_control_window.len > 0 && qdisk_is_read_only(self->super.qdisk))
-    msg = _pop_head_flow_control_window(self, path_options);
+    msg = _pop_head_memory_queue(self, &self->flow_control_window, &node, path_options);
 
   if (!msg)
     {
@@ -620,7 +598,14 @@ slow_success:
   g_mutex_unlock(&s->lock);
 
 fast_success:
-  _push_tail_backlog(self, msg, path_options);
+  if (node)
+    {
+      /* a message's node counter never decreases, so a retried message must not allocate a new node */
+      _push_node_to_memory_queue_tail(&self->backlog, node);
+      log_queue_memory_usage_add(&self->super.super, log_msg_get_size(msg));
+    }
+  else
+    _push_tail_backlog(self, msg, path_options);
 
   if (stats_update)
     log_queue_queued_messages_dec(s);
