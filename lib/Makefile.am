@@ -58,6 +58,7 @@ lib_libsyslog_ng_la_CFLAGS		= $(AM_CFLAGS) $(CORE_CFLAGS)
 lib_libsyslog_ng_la_LIBADD		= @CORE_DEPS_LIBS@ $(libsystemd_LIBS) $(LIBWRAP_LIBS) lib/http/libllhttp.la $(top_builddir)/lib/secret-storage/libsecret-storage.la $(top_builddir)/lib/filterx/libfilterx.la
 lib_libsyslog_ng_la_LDFLAGS		= @CORE_LDFLAGS@ -no-undefined -release ${LSNG_RELEASE} \
 					  -version-info ${LSNG_CURRENT}:${LSNG_REVISION}:${LSNG_AGE}
+lib_libsyslog_ng_la_LIBTOOLFLAGS	= @CORE_LIBTOOLFLAGS@
 
 lib_test_subdirs			= lib_filter lib_filterx lib_logproto lib_parser lib_rewrite lib_template lib_stats lib_control
 
@@ -66,8 +67,6 @@ EXTRA_lib_libsyslog_ng_la_DEPENDENCIES       = lib/eventlog/src/libevtlog.la lib
 if ENABLE_JIT
 lib_libsyslog_ng_la_LDFLAGS += -Wl,--format=binary,lib/filterx/jit/libfilterx.bc,--format=default
 EXTRA_lib_libsyslog_ng_la_DEPENDENCIES += lib/filterx/jit/libfilterx.bc
-# The C++ runtime a statically linked LLVM needs comes from configure setting
-# CCLD to the C++ driver when LLVM is linked that way; see configure.ac.
 endif
 
 if IVYKIS_INTERNAL

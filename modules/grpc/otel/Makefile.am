@@ -63,6 +63,8 @@ modules_grpc_otel_libotel_la_LIBADD = \
   $(top_builddir)/modules/grpc/otel/libotel_cpp.la \
   $(top_builddir)/modules/grpc/otel/filterx/libfilterx.la
 
+# The C++ in LIBADD needs the C++ linker, see configure.ac.
+nodist_EXTRA_modules_grpc_otel_libotel_la_SOURCES = force-cpp-linker-with-default-stdlib.cpp
 modules_grpc_otel_libotel_la_LDFLAGS = $(MODULE_LDFLAGS)
 
 EXTRA_modules_grpc_otel_libotel_la_DEPENDENCIES = \
