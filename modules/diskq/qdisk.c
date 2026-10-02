@@ -545,7 +545,7 @@ _is_capacity_bytes_change_pending(QDisk *self)
 static gboolean
 _apply_pending_capacity_bytes_change(QDisk *self)
 {
-  if (_is_wrapped(self))
+  if (self->hdr->use_v1_wrap_condition || _is_wrapped(self))
     return FALSE;
 
   gint64 old_capacity_bytes = self->hdr->capacity_bytes;
