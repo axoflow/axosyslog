@@ -31,3 +31,20 @@ cfg_path_track_file(GlobalConfig *cfg, const gchar *file_path, const gchar *path
   cfg_file_path->file_path = g_strdup(file_path);
   cfg->file_list = g_list_append(cfg->file_list, cfg_file_path);
 }
+
+GString *
+cfg_path_format_file_list(GlobalConfig *cfg)
+{
+  GString *result = g_string_new("");
+
+  for (GList *v = cfg->file_list; v; v = v->next)
+    {
+      CfgFilePath *cfg_file_path = (CfgFilePath *) v->data;
+      g_string_append_printf(result, "%s: %s\n", cfg_file_path->path_type, cfg_file_path->file_path);
+    }
+
+  if (result->len == 0)
+    g_string_assign(result, "No files available\n");
+
+  return result;
+}

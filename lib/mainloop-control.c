@@ -425,16 +425,7 @@ control_connection_list_files(ControlConnection *cc, GString *command, gpointer 
 {
   MainLoop *main_loop = (MainLoop *) user_data;
   GlobalConfig *config = main_loop_get_current_config(main_loop);
-  GString *result = g_string_new("");
-
-  for (GList *v = config->file_list; v; v = v->next)
-    {
-      CfgFilePath *cfg_file_path = (CfgFilePath *) v->data;
-      g_string_append_printf(result, "%s: %s\n", cfg_file_path->path_type, cfg_file_path->file_path);
-    }
-
-  if (result->len == 0)
-    g_string_assign(result, "No files available\n");
+  GString *result = cfg_path_format_file_list(config);
 
   control_connection_send_reply(cc, result);
 }
