@@ -41,14 +41,34 @@ BufferParams = namedtuple(
         "count_flow_control_window",
     ],
 )
+
+
+def count_qdisk_for_capacity(capacity_bytes):
+    # we can write 1 partial message past the end of capacity
+    return (capacity_bytes - SIZE_OF_DISKQ_HEADER) // SIZE_OF_MESSAGE_IN_DISKQ + 1
+
+
 buffer_params = BufferParams(
     message_size_in_diskq=SIZE_OF_MESSAGE_IN_DISKQ,
     message_size_in_memory=SIZE_OF_MESSAGE_IN_MEMORY,
     count_front_cache=500,
-    # we can write 1 partial message past the end of capacity
-    count_qdisk=(SIZE_OF_DISKQ - SIZE_OF_DISKQ_HEADER) // SIZE_OF_MESSAGE_IN_DISKQ + 1,
+    count_qdisk=count_qdisk_for_capacity(SIZE_OF_DISKQ),
     count_flow_control_window=100,
 )
+
+
+def set_config_with_disk_buffer_values(config, port_allocator, reliable, capacity_bytes, front_cache_size):
+    """An http() destination acks a message only on the response, so the test decides how many messages
+    leave the disk-buffer by serving requests. The server starts stopped, the test serves when it drains."""
+    config.update_global_options(stats_level=2)
+    network_source = config.create_network_source(ip="localhost", port=port_allocator())
+    disk_buffer = {"reliable": "yes" if reliable else "no", "dir": "'.'", "capacity-bytes": str(capacity_bytes), "front-cache-size": front_cache_size}
+    if reliable:
+        disk_buffer["flow-control-window-bytes"] = 0
+    http_destination = config.create_http_destination(port=port_allocator(), body=config.stringify("${MSG}"), time_reopen=1, disk_buffer=disk_buffer)
+    http_destination.stop_listener()
+    config.create_logpath(statements=[network_source, http_destination], flags="")
+    return config, network_source, http_destination
 
 
 def set_config_with_default_non_reliable_disk_buffer_values(config, port_allocator, flow_control=True):

@@ -11,6 +11,7 @@ EXTRA_DIST += \
 	tests/light/functional_tests/destination_drivers/bigquery_destination/test_bigquery_destination.py \
 	tests/light/functional_tests/destination_drivers/example_destination/test_example_destination.py \
 	tests/light/functional_tests/destination_drivers/google_destination/test_google_destination.py \
+	tests/light/functional_tests/destination_drivers/network_destination/disk_buffer/test_disk_buffer_capacity_change.py \
 	tests/light/functional_tests/destination_drivers/network_destination/test_altp_destination.py \
 	tests/light/functional_tests/destination_drivers/network_destination/test_kept_alive_tls_connection_doing_handshake_after_reload.py \
 	tests/light/functional_tests/destination_drivers/network_destination/test_network_destination_transport.py \

@@ -92,7 +92,6 @@ log_queue_disk_start(LogQueue *s)
     {
       log_queue_queued_messages_add(s, log_queue_get_length(s));
       log_queue_disk_update_disk_related_counters(self);
-      stats_counter_set(self->metrics.capacity, B_TO_KiB(qdisk_get_max_useful_space(self->qdisk)));
       return TRUE;
     }
 
@@ -152,6 +151,7 @@ log_queue_disk_free_method(LogQueueDisk *self)
 void
 log_queue_disk_update_disk_related_counters(LogQueueDisk *self)
 {
+  stats_counter_set(self->metrics.capacity, B_TO_KiB(qdisk_get_max_useful_space(self->qdisk)));
   stats_counter_set(self->metrics.disk_usage, B_TO_KiB(qdisk_get_used_useful_space(self->qdisk)));
   stats_counter_set(self->metrics.disk_allocated, B_TO_KiB(qdisk_get_file_size(self->qdisk)));
 }
@@ -371,7 +371,6 @@ log_queue_disk_restart_corrupted(LogQueueDisk *self)
   _restart_diskq(self);
   log_queue_queued_messages_reset(&self->super);
   log_queue_disk_update_disk_related_counters(self);
-  stats_counter_set(self->metrics.capacity, B_TO_KiB(qdisk_get_max_useful_space(self->qdisk)));
 }
 
 static void
@@ -502,6 +501,13 @@ void
 log_queue_disk_set_options(LogQueueDisk *self, DiskQueueOptions *options)
 {
   qdisk_set_options(self->qdisk, options);
+}
+
+void
+log_queue_disk_update_capacity_bytes_if_needed(LogQueueDisk *self)
+{
+  qdisk_update_capacity_bytes_if_needed(self->qdisk);
+  log_queue_disk_update_disk_related_counters(self);
 }
 
 gboolean
