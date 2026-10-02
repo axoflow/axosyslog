@@ -44,6 +44,7 @@ static CfgLexerKeyword cloud_auth_keywords[] =
   { "app_id",                        KW_APP_ID },
   { "app_secret",                    KW_APP_SECRET },
   { "scope",                         KW_SCOPE },
+  { "auth_url",                      KW_AUTH_URL },
   { NULL }
 };
 

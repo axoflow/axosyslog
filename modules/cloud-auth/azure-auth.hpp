@@ -37,8 +37,8 @@ namespace azure {
 class AzureMonitorAuthenticator: public syslogng::cloud_auth::Authenticator
 {
 public:
-  AzureMonitorAuthenticator(const char *tenant_id, const char *app_id,
-                            const char *app_secret, const char *scope);
+  AzureMonitorAuthenticator(const char *auth_url_base, const char *tenant_id,
+                            const char *app_id, const char *app_secret, const char *scope);
   ~AzureMonitorAuthenticator() {};
 
   void handle_http_header_request(HttpRequestSignalData *data);

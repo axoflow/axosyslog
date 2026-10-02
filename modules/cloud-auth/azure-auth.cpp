@@ -30,12 +30,15 @@
 
 using namespace syslogng::cloud_auth::azure;
 
-AzureMonitorAuthenticator::AzureMonitorAuthenticator(const char *tenant_id,
+AzureMonitorAuthenticator::AzureMonitorAuthenticator(const char *auth_url_base,
+                                                     const char *tenant_id,
                                                      const char *app_id,
                                                      const char *app_secret,
                                                      const char *scope)
 {
-  auth_url = "https://login.microsoftonline.com/";
+  auth_url = auth_url_base;
+  if (!auth_url.empty() && auth_url.back() != '/')
+    auth_url.append("/");
   auth_url.append(tenant_id);
   auth_url.append("/oauth2/v2.0/token");
 
@@ -215,6 +218,7 @@ typedef struct AzureAuthenticator
   gchar *app_id;
   gchar *scope;
   gchar *app_secret;
+  gchar *auth_url;
 } _AzureAuthenticator;
 
 void
@@ -261,6 +265,15 @@ azure_authenticator_set_app_secret(CloudAuthenticator *s, const gchar *app_secre
   self->app_secret = g_strdup(app_secret);
 }
 
+void
+azure_authenticator_set_auth_url(CloudAuthenticator *s, const gchar *auth_url)
+{
+  AzureAuthenticator *self = (AzureAuthenticator *) s;
+
+  g_free(self->auth_url);
+  self->auth_url = g_strdup(auth_url);
+}
+
 static gboolean
 _init(CloudAuthenticator *s)
 {
@@ -271,7 +284,8 @@ _init(CloudAuthenticator *s)
     case AAAM_MONITOR:
       try
         {
-          self->super.cpp = new AzureMonitorAuthenticator(self->tenant_id,
+          self->super.cpp = new AzureMonitorAuthenticator(self->auth_url,
+                                                          self->tenant_id,
                                                           self->app_id,
                                                           self->app_secret,
                                                           self->scope);
@@ -303,12 +317,14 @@ _free(CloudAuthenticator *s)
   g_free(self->app_id);
   g_free(self->scope);
   g_free(self->app_secret);
+  g_free(self->auth_url);
 }
 
 static void
 _set_default_options(AzureAuthenticator *self)
 {
   self->scope = g_strdup("https://monitor.azure.com//.default");
+  self->auth_url = g_strdup("https://login.microsoftonline.com");
 }
 
 CloudAuthenticator *
