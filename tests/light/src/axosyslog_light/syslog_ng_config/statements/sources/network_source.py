@@ -38,9 +38,11 @@ def map_transport(transport):
         "proxied-tls": NetworkIO.Transport.PROXIED_TLS,
         "proxied-tls-passthrough": NetworkIO.Transport.PROXIED_TLS_PASSTHROUGH,
         "altp": NetworkIO.Transport.TCP,
+        "lumberjack": NetworkIO.Transport.TCP,
     }
     transport = transport.replace("_", "-").replace("'", "").replace('"', "").lower()
     # a transport may carry its own option block, e.g. altp(tls-policy(optional))
+    # or lumberjack(max-window-size(2048))
     transport = transport.split("(", 1)[0].strip()
 
     return mapping[transport]
