@@ -46,6 +46,8 @@ modules_grpc_pubsub_libpubsub_la_LIBADD = \
   $(top_builddir)/modules/grpc/pubsub/libpubsub_cpp.la \
   $(top_builddir)/modules/grpc/pubsub/filterx/libfilterx.la
 
+nodist_EXTRA_modules_grpc_pubsub_libpubsub_la_SOURCES = force-cpp-linker-with-default-stdlib.cpp
+
 modules_grpc_pubsub_libpubsub_la_LDFLAGS = $(MODULE_LDFLAGS)
 EXTRA_modules_grpc_pubsub_libpubsub_la_DEPENDENCIES = \
   $(MODULE_DEPS_LIBS) \

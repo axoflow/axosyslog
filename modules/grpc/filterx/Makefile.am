@@ -37,6 +37,8 @@ modules_grpc_filterx_libgrpc_filterx_la_LIBADD = \
   $(top_builddir)/modules/grpc/protos/libgrpc-protos.la \
   $(top_builddir)/modules/grpc/filterx/libgrpc-filterx-cpp.la
 
+nodist_EXTRA_modules_grpc_filterx_libgrpc_filterx_la_SOURCES = force-cpp-linker-with-default-stdlib.cpp
+
 modules_grpc_filterx_libgrpc_filterx_la_LDFLAGS = $(MODULE_LDFLAGS)
 
 modules_grpc_filterx_libgrpc_filterx_la_DEPENDENCIES = \

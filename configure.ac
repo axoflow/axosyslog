@@ -438,9 +438,6 @@ AC_ARG_ENABLE(jit,
 AC_ARG_WITH(llvm-config,
               [  --with-llvm-config=path      Specify llvm-config location],
               ,,with_llvm_config="")
-AC_ARG_WITH(llvm-linking,
-              [  --with-llvm-linking=shared|static  Link the JIT against the shared libLLVM or the static component archives (default: whatever llvm-config reports)]
-              ,,with_llvm_linking="auto")
 
 AC_ARG_ENABLE(all-modules,
               [  --enable-all-modules    Forcibly enable all modules. (default: auto)]
@@ -1903,33 +1900,13 @@ else
   AC_MSG_RESULT(no)
 fi
 
-llvm_static="no"
 if test "$enable_jit" = "yes"; then
   LLVM_CFLAGS="`$LLVM_CONFIG --cflags`"
   LLVM_CXXFLAGS="`$LLVM_CONFIG --cxxflags`"
-
-  # --link-static/--link-shared apply to the three queries that make up the
-  # link line; llvm-config's default is the shared libLLVM when there is one.
-  case "$with_llvm_linking" in
-    static) llvm__linkflag="--link-static" ;;
-    shared) llvm__linkflag="--link-shared" ;;
-    auto)   llvm__linkflag="" ;;
-    *)      AC_MSG_ERROR([--with-llvm-linking takes shared or static, not '$with_llvm_linking']) ;;
-  esac
-  llvm__ldflags="`$LLVM_CONFIG $llvm__linkflag --ldflags`"
-  llvm__libs="`$LLVM_CONFIG $llvm__linkflag --libs`"
-  llvm__syslibs="`$LLVM_CONFIG $llvm__linkflag --system-libs`"
+  llvm__ldflags="`$LLVM_CONFIG --ldflags`"
+  llvm__libs="`$LLVM_CONFIG --libs`"
+  llvm__syslibs="`$LLVM_CONFIG --system-libs`"
   LLVM_LIBS="$llvm__ldflags $llvm__libs $llvm__syslibs "
-
-  # Whether LLVM ends up as static archives in our link: asked for above, or
-  # llvm-config's own default on an installation without the libLLVM dylib.
-  # Either way --libs is then the component list (-lLLVMCore -lLLVMSupport ...)
-  # rather than the single -lLLVM-N token. This decides CCLD below.
-  AC_MSG_CHECKING([how LLVM is linked])
-  case " $llvm__libs " in
-    *" -lLLVM-"[[0-9]]*|*" -lLLVM "*) AC_MSG_RESULT([shared libLLVM]) ;;
-    *)                                llvm_static="yes"; AC_MSG_RESULT([static archives]) ;;
-  esac
 
   CPPFLAGS_SAVE="$CPPFLAGS"
   CPPFLAGS="$CPPFLAGS $LLVM_CFLAGS"
@@ -2250,32 +2227,17 @@ fi
 LOGGENPLUGIN_LDFLAGS=$MODULE_LDFLAGS
 MODULE_DEPS_LIBS="\$(top_builddir)/lib/libsyslog-ng.la"
 
-SYSLOGNG_LINK='$(LINK)'
+# syslog-ng binary is linked with the default link command (e.g. libtool)
+
+if test "$enable_cpp" = "yes"; then
+  SYSLOGNG_LINK='$(CXXLINK)'
+else
+  SYSLOGNG_LINK='$(LINK)'
+fi
+
 if test "$enable_jit" = "yes" -a "x$linking_mode" = "xmonolithic"; then
   SYSLOGNG_LINK="$SYSLOGNG_LINK -Wl,--format=binary,lib/filterx/jit/libfilterx.bc,--format=default -Wl,--export-dynamic"
 fi
-
-#
-# C++ objects reach C links in two ways.
-#
-#   1) The C++ modules (grpc, cloud-auth, examples) keep their C++ in a
-#      noinst convenience library and link it into a module whose own sources are
-#      C, so automake would pick the C driver for a library full of C++.
-#
-#   2) LLVM linked statically into libsyslog-ng, then libsyslog-ng needs to
-#      link using the C++ linker.
-#
-#   3) the previous point combined with monolithic builds: every program
-#      that links to libsyslog-ng needs to be linked using the C++ linker.
-#
-# We need to turn these cases into using the C++ linker, which is done by
-# setting CCLD to $(CXX) below, otherwise we would miss C++ related symbols
-# in the final link.
-#
-if test "$enable_cpp" = "yes" -o \( "$enable_jit" = "yes" -a "$llvm_static" = "yes" \); then
-  CCLD='$(CXX)'
-fi
-AC_SUBST([CCLD])
 
 if test "x$linking_mode" = "xdynamic"; then
 	SYSLOGNG_DEPS_LIBS="$LIBS $BASE_LIBS $GLIB_LIBS $EVTLOG_LIBS $SECRETSTORAGE_LIBS $RESOLV_LIBS $LIBCAP_LIBS $PCRE2_LIBS $REGEX_LIBS $LLVM_LIBS $DL_LIBS $LIBUNWIND_LIBS $JSON_LIBS $OPENSSL_LIBS $ZLIB_LIBS"

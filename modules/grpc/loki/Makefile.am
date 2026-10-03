@@ -45,6 +45,8 @@ modules_grpc_loki_libloki_la_LIBADD = \
   $(top_builddir)/modules/grpc/protos/libgrpc-protos.la \
   $(top_builddir)/modules/grpc/loki/libloki_cpp.la
 
+nodist_EXTRA_modules_grpc_loki_libloki_la_SOURCES = force-cpp-linker-with-default-stdlib.cpp
+
 modules_grpc_loki_libloki_la_LDFLAGS = $(MODULE_LDFLAGS)
 EXTRA_modules_grpc_loki_libloki_la_DEPENDENCIES = \
   $(MODULE_DEPS_LIBS) \

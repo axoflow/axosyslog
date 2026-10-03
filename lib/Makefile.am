@@ -66,8 +66,6 @@ EXTRA_lib_libsyslog_ng_la_DEPENDENCIES       = lib/eventlog/src/libevtlog.la lib
 if ENABLE_JIT
 lib_libsyslog_ng_la_LDFLAGS += -Wl,--format=binary,lib/filterx/jit/libfilterx.bc,--format=default
 EXTRA_lib_libsyslog_ng_la_DEPENDENCIES += lib/filterx/jit/libfilterx.bc
-# The C++ runtime a statically linked LLVM needs comes from configure setting
-# CCLD to the C++ driver when LLVM is linked that way; see configure.ac.
 endif
 
 if IVYKIS_INTERNAL
