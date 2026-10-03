@@ -447,7 +447,7 @@ set_target_properties(check-copyright PROPERTIES
 
 option(BUILD_TESTING "Enable unit tests" ON)
 if (BUILD_TESTING)
-  find_package (criterion)
+  find_package (criterion 2.5.0)
 endif()
 
 include(add_tests)
