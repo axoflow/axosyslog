@@ -11,6 +11,8 @@ ca-certificates       	        [almalinux, fedora, debian, ubuntu]
 # criterion compilation
 cmake                           [almalinux, fedora, debian, ubuntu]
 gcc-c++				[almalinux, fedora]
+libffi-devel                    [almalinux, fedora]
+libffi-dev                      [debian, ubuntu]
 
 # to unpack gradle binary package (zip file)
 unzip                           [almalinux, fedora, debian, ubuntu]
