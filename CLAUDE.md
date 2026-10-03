@@ -33,3 +33,9 @@ axosyslog-build autotools  # release/packaging build instead
   `ignore = dirty`); the tell-tale is `lib/ivykis/configure~` and
   `config.h.in~` backup files. Switching modes needs `--clean`, which also
   runs the ivykis recovery.
+- **Switching flavors needs `--clean` too** (e.g. `--monolithic`, `--no-cpp`,
+  `--llvm-static`, a different dbld `--image`): the wrapper reuses an existing
+  configure result otherwise. In dbld mode `--clean` also empties
+  `dbld/install/`, which `dbld/rules clean` leaves alone; a monolithic binary
+  would otherwise dlopen the shared modules a previous dynamic build left
+  there and abort on doubly registered protobuf extensions.
