@@ -68,6 +68,11 @@ lib_libsyslog_ng_la_LDFLAGS += -Wl,--format=binary,lib/filterx/jit/libfilterx.bc
 EXTRA_lib_libsyslog_ng_la_DEPENDENCIES += lib/filterx/jit/libfilterx.bc
 endif
 
+if ENABLE_LLVM_STATIC
+# The static LLVM archives in LIBADD need the C++ linker, see configure.ac.
+lib_libsyslog_ng_la_LIBTOOLFLAGS = --tag=CXX
+endif
+
 if IVYKIS_INTERNAL
 EXTRA_lib_libsyslog_ng_la_DEPENDENCIES	+= lib/ivykis/src/libivykis.la
 

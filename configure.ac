@@ -438,6 +438,9 @@ AC_ARG_ENABLE(jit,
 AC_ARG_WITH(llvm-config,
               [  --with-llvm-config=path      Specify llvm-config location],
               ,,with_llvm_config="")
+AC_ARG_WITH(llvm-linking,
+              [  --with-llvm-linking=shared|static  Link the JIT against the shared libLLVM or the static component archives (default: whatever llvm-config reports)]
+              ,,with_llvm_linking="auto")
 
 AC_ARG_ENABLE(all-modules,
               [  --enable-all-modules    Forcibly enable all modules. (default: auto)]
@@ -1900,13 +1903,33 @@ else
   AC_MSG_RESULT(no)
 fi
 
+llvm_static="no"
 if test "$enable_jit" = "yes"; then
   LLVM_CFLAGS="`$LLVM_CONFIG --cflags`"
   LLVM_CXXFLAGS="`$LLVM_CONFIG --cxxflags`"
-  llvm__ldflags="`$LLVM_CONFIG --ldflags`"
-  llvm__libs="`$LLVM_CONFIG --libs`"
-  llvm__syslibs="`$LLVM_CONFIG --system-libs`"
+
+  # --link-static/--link-shared apply to the three queries that make up the
+  # link line; llvm-config's default is the shared libLLVM when there is one.
+  case "$with_llvm_linking" in
+    static) llvm__linkflag="--link-static" ;;
+    shared) llvm__linkflag="--link-shared" ;;
+    auto)   llvm__linkflag="" ;;
+    *)      AC_MSG_ERROR([--with-llvm-linking takes shared or static, not '$with_llvm_linking']) ;;
+  esac
+  llvm__ldflags="`$LLVM_CONFIG $llvm__linkflag --ldflags`"
+  llvm__libs="`$LLVM_CONFIG $llvm__linkflag --libs`"
+  llvm__syslibs="`$LLVM_CONFIG $llvm__linkflag --system-libs`"
   LLVM_LIBS="$llvm__ldflags $llvm__libs $llvm__syslibs "
+
+  # Whether LLVM ends up as static archives in our link: asked for above, or
+  # llvm-config's own default on an installation without the libLLVM dylib.
+  # Either way --libs is then the component list (-lLLVMCore -lLLVMSupport ...)
+  # rather than the single -lLLVM-N token. This decides the C++ linking below.
+  AC_MSG_CHECKING([how LLVM is linked])
+  case " $llvm__libs " in
+    *" -lLLVM-"[[0-9]]*|*" -lLLVM "*) AC_MSG_RESULT([shared libLLVM]) ;;
+    *)                                llvm_static="yes"; AC_MSG_RESULT([static archives]) ;;
+  esac
 
   CPPFLAGS_SAVE="$CPPFLAGS"
   CPPFLAGS="$CPPFLAGS $LLVM_CFLAGS"
@@ -2248,8 +2271,13 @@ fi
 # libstdc++ dependency. In a monolithic build the modules are linked into
 # the syslog-ng binary itself, so CCLD is the C++ driver there.
 #
+# A statically linked LLVM is the other way C++ reaches a C link:
+# libsyslog-ng then sets --tag=CXX under ENABLE_LLVM_STATIC, and in a
+# monolithic build its static libsyslog-ng.la goes into every program, so
+# CCLD is the C++ driver for that reason too.
+#
 CCLD='$(CC)'
-if test "x$linking_mode" = "xmonolithic" -a "$enable_cpp" = "yes"; then
+if test "x$linking_mode" = "xmonolithic" -a \( "$enable_cpp" = "yes" -o "$llvm_static" = "yes" \); then
   CCLD='$(CXX)'
 fi
 AC_SUBST([CCLD])
@@ -2380,6 +2408,7 @@ AM_CONDITIONAL(ENABLE_MONGODB, [test "$enable_mongodb" = "yes"])
 AM_CONDITIONAL(ENABLE_SMTP, [test "$enable_smtp" = "yes"])
 AM_CONDITIONAL(ENABLE_MQTT, [test "$enable_mqtt" = "yes"])
 AM_CONDITIONAL(ENABLE_CPP, [test "$enable_cpp" = "yes"])
+AM_CONDITIONAL(ENABLE_LLVM_STATIC, [test "$llvm_static" = "yes"])
 AM_CONDITIONAL(ENABLE_GRPC, [test "$enable_grpc" = "yes"])
 AM_CONDITIONAL(ENABLE_CLOUD_AUTH, [test "$enable_cloud_auth" = "yes"])
 AM_CONDITIONAL(ENABLE_HTTP, [test "$enable_http" = "yes"])
