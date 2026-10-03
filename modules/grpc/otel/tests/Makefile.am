@@ -28,7 +28,9 @@ modules_grpc_otel_tests_test_otel_protobuf_parser_CXXFLAGS = \
 modules_grpc_otel_tests_test_otel_protobuf_parser_LDADD = \
   $(TEST_LDADD) \
   $(top_builddir)/modules/grpc/otel/libotel_cpp.la \
-  $(top_builddir)/modules/grpc/protos/libgrpc-protos.la
+  $(top_builddir)/modules/grpc/protos/libgrpc-protos.la \
+  $(top_builddir)/modules/grpc/otel/filterx/libfilterx.la \
+  $(GRPC_COMMON_LIBS)
 
 modules_grpc_otel_tests_test_otel_protobuf_formatter_SOURCES = \
   modules/grpc/otel/tests/test-otel-protobuf-formatter.cpp
@@ -48,7 +50,9 @@ modules_grpc_otel_tests_test_otel_protobuf_formatter_CXXFLAGS = \
 modules_grpc_otel_tests_test_otel_protobuf_formatter_LDADD = \
   $(TEST_LDADD) \
   $(top_builddir)/modules/grpc/otel/libotel_cpp.la \
-  $(top_builddir)/modules/grpc/protos/libgrpc-protos.la
+  $(top_builddir)/modules/grpc/protos/libgrpc-protos.la \
+  $(top_builddir)/modules/grpc/otel/filterx/libfilterx.la \
+  $(GRPC_COMMON_LIBS)
 
 modules_grpc_otel_tests_test_syslog_ng_otlp_SOURCES = \
   modules/grpc/otel/tests/test-syslog-ng-otlp.cpp
@@ -68,7 +72,9 @@ modules_grpc_otel_tests_test_syslog_ng_otlp_CXXFLAGS = \
 modules_grpc_otel_tests_test_syslog_ng_otlp_LDADD = \
   $(TEST_LDADD) \
   $(top_builddir)/modules/grpc/otel/libotel_cpp.la \
-  $(top_builddir)/modules/grpc/protos/libgrpc-protos.la
+  $(top_builddir)/modules/grpc/protos/libgrpc-protos.la \
+  $(top_builddir)/modules/grpc/otel/filterx/libfilterx.la \
+  $(GRPC_COMMON_LIBS)
 
 modules_grpc_otel_tests_test_otel_filterx_SOURCES = \
   modules/grpc/otel/tests/test-otel-filterx.cpp
@@ -89,7 +95,8 @@ modules_grpc_otel_tests_test_otel_filterx_LDADD = \
   $(TEST_LDADD) \
   $(top_builddir)/modules/grpc/otel/libotel_cpp.la \
   $(top_builddir)/modules/grpc/protos/libgrpc-protos.la \
-  $(top_builddir)/modules/grpc/otel/filterx/libfilterx.la
+  $(top_builddir)/modules/grpc/otel/filterx/libfilterx.la \
+  $(GRPC_COMMON_LIBS)
 
 endif
 
