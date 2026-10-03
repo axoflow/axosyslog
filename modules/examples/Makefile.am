@@ -23,6 +23,7 @@ endif
 
 if ENABLE_CPP
 EXAMPLE_PLUGINS += $(top_builddir)/modules/examples/sources/librandom_choice_generator.la
+modules_examples_libexamples_la_LIBTOOLFLAGS = --tag=CXX
 endif
 
 module_LTLIBRARIES += modules/examples/libexamples.la
@@ -33,10 +34,6 @@ modules_examples_libexamples_la_SOURCES = \
 modules_examples_libexamples_la_LIBADD = $(MODULE_DEPS_LIBS) $(EXAMPLE_PLUGINS)
 EXTRA_modules_examples_libexamples_la_DEPENDENCIES = $(MODULE_DEPS_LIBS) $(EXAMPLE_PLUGINS)
 modules_examples_libexamples_la_LDFLAGS = $(MODULE_LDFLAGS)
-
-if ENABLE_CPP
-nodist_EXTRA_modules_examples_libexamples_la_SOURCES = force-cpp-linker-with-default-stdlib.cpp
-endif
 
 EXTRA_DIST += modules/examples/CMakeLists.txt
 

@@ -44,8 +44,7 @@ modules_cloud_auth_libcloud_auth_la_LIBADD = \
   $(MODULE_DEPS_LIBS) \
   $(top_builddir)/modules/cloud-auth/libcloud_auth_cpp.la
 
-nodist_EXTRA_modules_cloud_auth_libcloud_auth_la_SOURCES = force-cpp-linker-with-default-stdlib.cpp
-
+modules_cloud_auth_libcloud_auth_la_LIBTOOLFLAGS = --tag=CXX
 modules_cloud_auth_libcloud_auth_la_LDFLAGS = \
   $(MODULE_LDFLAGS)
 

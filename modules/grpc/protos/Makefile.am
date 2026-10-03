@@ -162,8 +162,6 @@ endif
 
 if ENABLE_BUILTIN_MODULES
 modules_grpc_protos_libgrpc_protos_la_LDFLAGS = -static
-else
-nodist_EXTRA_modules_grpc_protos_libgrpc_protos_la_SOURCES = force-cpp-linker-with-default-stdlib.cpp
 endif
 
 modules_grpc_protos_libgrpc_protos_la_LIBADD = $(MODULE_DEPS_LIBS) $(PROTOBUF_LIBS) $(GRPCPP_LIBS)

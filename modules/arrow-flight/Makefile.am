@@ -36,9 +36,9 @@ modules_arrow_flight_libarrow_flight_la_CPPFLAGS = \
 
 modules_arrow_flight_libarrow_flight_la_LIBADD = \
   $(MODULE_DEPS_LIBS) \
-  $(top_builddir)/modules/arrow-flight/libarrow_flight_cpp.la \
-  -lstdc++
+  $(top_builddir)/modules/arrow-flight/libarrow_flight_cpp.la
 
+modules_arrow_flight_libarrow_flight_la_LIBTOOLFLAGS = --tag=CXX
 modules_arrow_flight_libarrow_flight_la_LDFLAGS = $(MODULE_LDFLAGS)
 modules_arrow_flight_libarrow_flight_la_DEPENDENCIES = \
   $(MODULE_DEPS_LIBS) \
