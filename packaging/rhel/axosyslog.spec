@@ -659,15 +659,8 @@ fi
 %{_libdir}/libsyslog-ng-native-connector.a
 %{_libdir}/libloggen_helper.so
 %{_libdir}/libloggen_plugin.so
-
-%if 0%{?_dbld}
-
-# without criterion we don't have the test lib.  On dbld we do have it, on
-# upstream Fedora we don't.
-
-%{_libdir}/syslog-ng/libtest/libsyslog-ng-test.a
-%{_libdir}/pkgconfig/syslog-ng-test.pc
-%endif
+%exclude %{_libdir}/syslog-ng/libtest/libsyslog-ng-test.a
+%exclude %{_libdir}/pkgconfig/syslog-ng-test.pc
 
 %{_includedir}/syslog-ng/
 %{_libdir}/pkgconfig/syslog-ng.pc
