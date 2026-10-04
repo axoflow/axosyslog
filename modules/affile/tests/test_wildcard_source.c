@@ -76,12 +76,14 @@ Test(wildcard_source, initial_test)
                                                              "filename-pattern(*.log)"
                                                              "recursive(yes)"
                                                              "max-files(100)"
-                                                             "monitor-method(poll)");
+                                                             "monitor-method(poll)"
+                                                             "monitor-freq(5)");
   cr_assert_str_eq(driver->base_dir, "/test_non_existent_dir");
   cr_assert_str_eq(driver->filename_pattern, "*.log");
   cr_assert_eq(driver->max_files, 100);
   cr_assert_eq(driver->recursive, TRUE);
   cr_assert_eq(driver->monitor_method, MM_POLL);
+  cr_assert_eq(driver->monitor_freq, 5000);
 }
 
 Test(wildcard_source, test_option_inheritance_multiline)
