@@ -18,7 +18,7 @@ RUN /dbld/builddeps add_copr_repo
 RUN /dbld/builddeps install_yum_packages
 RUN /dbld/builddeps install_rpm_build_deps
 
-RUN /dbld/builddeps install_criterion_latest
+RUN /dbld/builddeps install_criterion
 
 VOLUME /build
 

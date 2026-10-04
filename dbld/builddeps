@@ -70,21 +70,7 @@ function install_cmake() {
 }
 
 function install_criterion() {
-    CRITERION_VERSION=2.3.3
-
-    download_target "https://github.com/Snaipe/Criterion/releases/download/v${CRITERION_VERSION}/criterion-v${CRITERION_VERSION}.tar.bz2" /tmp/criterion.tar.bz2
-    cd /tmp/
-    tar xvf /tmp/criterion.tar.bz2
-    cd /tmp/criterion-v${CRITERION_VERSION}
-    cmake -DCMAKE_INSTALL_PREFIX=/usr .
-    make install
-    ldconfig
-    rm -rf /tmp/criterion.tar.bz2 /tmp/criterion-v${CRITERION_VERSION}
-
-}
-
-function install_criterion_latest() {
-    CRITERION_VERSION=2.4.3
+    CRITERION_VERSION=2.5.0
     CRITERION_URL="https://github.com/Snaipe/Criterion/releases/download/v${CRITERION_VERSION}"
     LIBDIR=$([ -f /etc/debian_version ] && echo lib || echo lib64)
 
@@ -92,6 +78,7 @@ function install_criterion_latest() {
         x86_64)
             download_target "${CRITERION_URL}/criterion-${CRITERION_VERSION}-linux-x86_64.tar.xz" /tmp/criterion.tar.xz
             tar -C /usr --strip-components=1 --transform="s,/lib/,/${LIBDIR}/," -xvf /tmp/criterion.tar.xz
+            sed -i -e "s,^prefix=.*,prefix=/usr," -e "s,^libdir=.*,libdir=\${prefix}/${LIBDIR}," /usr/${LIBDIR}/pkgconfig/criterion.pc
             ;;
         *)
             # upstream ships prebuilt binaries for x86_64 only; the source tarball
