@@ -532,6 +532,8 @@ main_location_print (FILE *yyo, YYLTYPE const * const yylocp)
 %type	<cptr> path_no_check
 %type	<cptr> path_secret
 %type	<cptr> path_check
+%type	<cptr> path_dir_no_check
+%type	<cptr> path_dir_check
 %type	<cptr> path
 
 /* END_DECLS */
@@ -1321,6 +1323,14 @@ path_secret
 
 path_no_check
     : string { cfg_path_track_file(configuration, $1, "path_no_check"); }
+    ;
+
+path_dir_check
+    : path { cfg_path_track_dir(configuration, $1, "path_check"); }
+    ;
+
+path_dir_no_check
+    : string { cfg_path_track_dir(configuration, $1, "path_no_check"); }
     ;
 
 normalized_flag

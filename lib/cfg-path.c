@@ -23,13 +23,26 @@
 
 #include "cfg-path.h"
 
-void
-cfg_path_track_file(GlobalConfig *cfg, const gchar *file_path, const gchar *path_type)
+static void
+_track_path(GlobalConfig *cfg, const gchar *path, const gchar *path_type, CfgPathKind kind)
 {
   CfgFilePath *cfg_file_path = g_new0(CfgFilePath, 1);
   cfg_file_path->path_type = g_strdup(path_type);
-  cfg_file_path->file_path = g_strdup(file_path);
+  cfg_file_path->file_path = g_strdup(path);
+  cfg_file_path->kind = kind;
   cfg->file_list = g_list_append(cfg->file_list, cfg_file_path);
+}
+
+void
+cfg_path_track_file(GlobalConfig *cfg, const gchar *file_path, const gchar *path_type)
+{
+  _track_path(cfg, file_path, path_type, CFG_PATH_FILE);
+}
+
+void
+cfg_path_track_dir(GlobalConfig *cfg, const gchar *dir_path, const gchar *path_type)
+{
+  _track_path(cfg, dir_path, path_type, CFG_PATH_DIRECTORY);
 }
 
 GString *

@@ -26,13 +26,21 @@
 
 #include "cfg.h"
 
+typedef enum
+{
+  CFG_PATH_FILE,
+  CFG_PATH_DIRECTORY,
+} CfgPathKind;
+
 typedef struct _CfgFilePath
 {
   gchar *path_type;
   gchar *file_path;
+  CfgPathKind kind;
 } CfgFilePath;
 
 void cfg_path_track_file(GlobalConfig *cfg, const gchar *file_path, const gchar *path_type);
+void cfg_path_track_dir(GlobalConfig *cfg, const gchar *dir_path, const gchar *path_type);
 GString *cfg_path_format_file_list(GlobalConfig *cfg);
 
 #endif
