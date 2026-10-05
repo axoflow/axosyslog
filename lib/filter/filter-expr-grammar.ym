@@ -156,7 +156,7 @@ filter_simple_expr
                                          free($3);
                                        }
         | KW_TAGS '(' string_list ')'           { $$ = filter_tags_new($3); }
-        | KW_IN_LIST '(' string string ')'
+        | KW_IN_LIST '(' path_no_check string ')'
           {
             const gchar *p = $4;
             if (p[0] == '$')
@@ -170,7 +170,7 @@ filter_simple_expr
             free($3);
             free($4);
           }
-        | KW_IN_LIST '(' string KW_VALUE '(' string ')' ')'
+        | KW_IN_LIST '(' path_no_check KW_VALUE '(' string ')' ')'
           {
             const gchar *p = $6;
             if (p[0] == '$')
