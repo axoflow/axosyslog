@@ -530,6 +530,7 @@ main_location_print (FILE *yyo, YYLTYPE const * const yylocp)
 %type   <fnum> positive_float
 %type   <fnum> nonnegative_float
 %type	<cptr> path_no_check
+%type	<cptr> path_secret_no_check
 %type	<cptr> path_secret
 %type	<cptr> path_check
 %type	<cptr> path_dir_no_check
@@ -1319,6 +1320,10 @@ path_check
 
 path_secret
     : path { cfg_path_track_file(configuration, $1, "path_secret"); }
+    ;
+
+path_secret_no_check
+    : string { cfg_path_track_file(configuration, $1, "path_secret"); }
     ;
 
 path_no_check
