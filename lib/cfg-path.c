@@ -46,13 +46,15 @@ cfg_path_track_dir(GlobalConfig *cfg, const gchar *dir_path, const gchar *path_t
 }
 
 GString *
-cfg_path_format_file_list(GlobalConfig *cfg)
+cfg_path_format_file_list(GlobalConfig *cfg, gboolean include_directories)
 {
   GString *result = g_string_new("");
 
   for (GList *v = cfg->file_list; v; v = v->next)
     {
       CfgFilePath *cfg_file_path = (CfgFilePath *) v->data;
+      if (cfg_file_path->kind == CFG_PATH_DIRECTORY && !include_directories)
+        continue;
       g_string_append_printf(result, "%s: %s\n", cfg_file_path->path_type, cfg_file_path->file_path);
     }
 

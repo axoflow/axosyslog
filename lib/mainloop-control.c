@@ -425,7 +425,7 @@ control_connection_list_files(ControlConnection *cc, GString *command, gpointer 
 {
   MainLoop *main_loop = (MainLoop *) user_data;
   GlobalConfig *config = main_loop_get_current_config(main_loop);
-  GString *result = cfg_path_format_file_list(config);
+  GString *result = cfg_path_format_file_list(config, FALSE);
 
   control_connection_send_reply(cc, result);
 }
