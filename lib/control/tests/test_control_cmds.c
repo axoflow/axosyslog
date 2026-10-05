@@ -112,6 +112,16 @@ Test(control_cmds, test_listfiles)
   g_string_free(expected, TRUE);
 }
 
+Test(control_cmds, test_listfiles_skips_directories)
+{
+  const gchar *response;
+
+  cfg_path_track_dir(main_loop_get_current_config(main_loop), "/etc/ssl/certs", "path_check");
+
+  _run_command("LISTFILES", &response);
+  cr_assert(first_line_eq(response, "No files available"), "Bad reply: [%s]", response);
+}
+
 Test(control_cmds, test_log)
 {
   const gchar *response;
