@@ -143,6 +143,10 @@ altp_option
           {
             last_altp_options->altp.tls_policy = $3 ? ALTP_TLS_POLICY_REQUIRED : ALTP_TLS_POLICY_NONE;
           }
+        | KW_TLS_REQUIRED '(' KW_OPTIONAL ')'
+          {
+            last_altp_options->altp.tls_policy = ALTP_TLS_POLICY_AUTO;
+          }
         | KW_SERIALIZATION '(' yesno ')'
           {
             msg_notice("serialization() has no effect on an ALTP receiver, "
