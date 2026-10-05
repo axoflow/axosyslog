@@ -2227,17 +2227,32 @@ fi
 LOGGENPLUGIN_LDFLAGS=$MODULE_LDFLAGS
 MODULE_DEPS_LIBS="\$(top_builddir)/lib/libsyslog-ng.la"
 
-# syslog-ng binary is linked with the default link command (e.g. libtool)
-
-if test "$enable_cpp" = "yes"; then
-  SYSLOGNG_LINK='$(CXXLINK)'
-else
-  SYSLOGNG_LINK='$(LINK)'
-fi
-
+SYSLOGNG_LINK='$(LINK)'
 if test "$enable_jit" = "yes" -a "x$linking_mode" = "xmonolithic"; then
   SYSLOGNG_LINK="$SYSLOGNG_LINK -Wl,--format=binary,lib/filterx/jit/libfilterx.bc,--format=default -Wl,--export-dynamic"
 fi
+
+#
+# How C++ objects get linked
+#
+# libtool links a shared library and a program differently, so the two need
+# different handling.
+#
+# A shared library is built by the archive recipe of the libtool tag the
+# link runs under (e.g.  the --tag command line option for libtool), instead
+# of the driver command passed to libtool.
+#
+# A program is linked by the driver on the command line, CCLD, and the tag
+# adds no runtime. In a dynamic build no program contains C++ objects: they
+# link libsyslog-ng.so and dlopen the modules, which carry their own
+# libstdc++ dependency. In a monolithic build the modules are linked into
+# the syslog-ng binary itself, so CCLD is the C++ driver there.
+#
+CCLD='$(CC)'
+if test "x$linking_mode" = "xmonolithic" -a "$enable_cpp" = "yes"; then
+  CCLD='$(CXX)'
+fi
+AC_SUBST([CCLD])
 
 if test "x$linking_mode" = "xdynamic"; then
 	SYSLOGNG_DEPS_LIBS="$LIBS $BASE_LIBS $GLIB_LIBS $EVTLOG_LIBS $SECRETSTORAGE_LIBS $RESOLV_LIBS $LIBCAP_LIBS $PCRE2_LIBS $REGEX_LIBS $LLVM_LIBS $DL_LIBS $LIBUNWIND_LIBS $JSON_LIBS $OPENSSL_LIBS $ZLIB_LIBS"
