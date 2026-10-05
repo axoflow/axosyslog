@@ -1209,7 +1209,7 @@ dns_cache_option
 	| KW_DNS_CACHE_EXPIRE '(' positive_integer ')'	{ last_dns_cache_options->expire = $3; }
 	| KW_DNS_CACHE_EXPIRE_FAILED '(' positive_integer ')'
 	                                        { last_dns_cache_options->expire_failed = $3; }
-	| KW_DNS_CACHE_HOSTS '(' string ')'     { last_dns_cache_options->hosts = g_strdup($3); free($3); }
+	| KW_DNS_CACHE_HOSTS '(' path_no_check ')' { last_dns_cache_options->hosts = g_strdup($3); free($3); }
         ;
 
 
