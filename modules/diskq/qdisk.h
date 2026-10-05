@@ -98,6 +98,7 @@ void qdisk_reset_file_if_empty(QDisk *self);
 gboolean qdisk_started(QDisk *self);
 void qdisk_free(QDisk *self);
 void qdisk_set_options(QDisk *self, DiskQueueOptions *options);
+void qdisk_update_capacity_bytes_if_needed(QDisk *self);
 gboolean qdisk_is_compatible(QDisk *self, DiskQueueOptions *options);
 
 DiskQueueOptions *qdisk_get_options(QDisk *self);

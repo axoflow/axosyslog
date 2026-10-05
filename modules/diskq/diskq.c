@@ -156,7 +156,10 @@ _acquire_queue(LogDestDriver *dd, const gchar *persist_name, gint stats_level,
   persist_qfile_name = persist_state_lookup_string(cfg->state, persist_name, NULL, NULL);
 
   if (queue)
-    log_queue_disk_set_options((LogQueueDisk *)queue, &self->options);
+    {
+      log_queue_disk_set_options((LogQueueDisk *)queue, &self->options);
+      log_queue_disk_update_capacity_bytes_if_needed((LogQueueDisk *)queue);
+    }
   else
     queue = _create_and_start_disk_queue_with_filename_from_persist(
               self, persist_qfile_name, persist_name, stats_level, driver_sck_builder, queue_sck_builder);

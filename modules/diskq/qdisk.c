@@ -400,15 +400,8 @@ _possible_size_reduction_reaches_truncate_threshold(QDisk *self, gint64 expected
 }
 
 static void
-_maybe_truncate_file(QDisk *self, gint64 expected_size)
+_truncate_file(QDisk *self, gint64 expected_size)
 {
-  if (_ftruncate_would_reduce_file(self, expected_size) &&
-      !_possible_size_reduction_reaches_truncate_threshold(self, expected_size) &&
-      G_LIKELY(!self->hdr->use_v1_wrap_condition))
-    {
-      return;
-    }
-
   msg_debug("Truncating queue file", evt_tag_str("filename", self->filename), evt_tag_long("new size", expected_size));
 
   if (ftruncate(self->fd, (off_t) expected_size) == 0)
@@ -433,6 +426,19 @@ _maybe_truncate_file(QDisk *self, gint64 expected_size)
             evt_tag_long("expected-size", expected_size),
             evt_tag_long("file-size", self->cached_file_size),
             evt_tag_int("fd", self->fd));
+}
+
+static void
+_maybe_truncate_file(QDisk *self, gint64 expected_size)
+{
+  if (_ftruncate_would_reduce_file(self, expected_size) &&
+      !_possible_size_reduction_reaches_truncate_threshold(self, expected_size) &&
+      G_LIKELY(!self->hdr->use_v1_wrap_condition))
+    {
+      return;
+    }
+
+  _truncate_file(self, expected_size);
 }
 
 #ifndef SYSLOG_NG_HAVE_POSIX_FALLOCATE
@@ -465,16 +471,39 @@ _compat_preallocate(int fd, off_t offset, off_t len)
 static gboolean
 _preallocate_qdisk_file(QDisk *self, off_t size)
 {
+  /* a non-reliable queue leaves cached_file_size at the header size after load */
+  struct stat st;
+  if (fstat(self->fd, &st) < 0)
+    {
+      msg_error("Failed to preallocate queue file, cannot stat",
+                evt_tag_str("filename", self->filename),
+                evt_tag_error("error"));
+      return FALSE;
+    }
+
+  off_t offset = MAX((off_t) st.st_size, (off_t) QDISK_RESERVED_SPACE);
+  if (offset >= size)
+    {
+      self->cached_file_size = offset;
+      return TRUE;
+    }
+
   msg_debug("Preallocating queue file",
             evt_tag_str("filename", self->filename),
+            evt_tag_long("from", offset),
             evt_tag_long("size", size));
 
   gint result;
 
 #ifdef SYSLOG_NG_HAVE_POSIX_FALLOCATE
-  result = posix_fallocate(self->fd, QDISK_RESERVED_SPACE, size - QDISK_RESERVED_SPACE);
+  result = posix_fallocate(self->fd, offset, size - offset);
+  if (result != 0)
+    {
+      errno = result;
+      result = -1;
+    }
 #else
-  result = _compat_preallocate(self->fd, QDISK_RESERVED_SPACE, size - QDISK_RESERVED_SPACE);
+  result = _compat_preallocate(self->fd, offset, size - offset);
 #endif
 
   if (result < 0)
@@ -487,6 +516,83 @@ _preallocate_qdisk_file(QDisk *self, off_t size)
 
   self->cached_file_size = size;
   return TRUE;
+}
+
+static inline gboolean
+_is_wrapped(QDisk *self)
+{
+  return self->hdr->backlog_head > self->hdr->read_head || self->hdr->read_head > self->hdr->write_head;
+}
+
+static inline gboolean
+_is_capacity_bytes_change_pending(QDisk *self)
+{
+  return !self->options->read_only
+         && self->options->capacity_bytes != -1
+         && self->options->capacity_bytes != self->hdr->capacity_bytes;
+}
+
+/* The heads wrap at hdr->capacity_bytes, so it can only change while none of
+ * them depends on the old boundary, that is while the file is not wrapped.
+ *
+ * A record may overshoot the boundary and the reader wraps only once it is
+ * past the write head, so a larger boundary is safe as is.  A smaller one
+ * must also lie at or past the write head, otherwise the reader would wrap
+ * before it reaches the records beyond it.
+ *
+ * Returns FALSE while a change stays pending.
+ */
+static gboolean
+_apply_pending_capacity_bytes_change(QDisk *self)
+{
+  if (self->hdr->use_v1_wrap_condition || _is_wrapped(self))
+    return FALSE;
+
+  gint64 old_capacity_bytes = self->hdr->capacity_bytes;
+  gint64 new_capacity_bytes = self->options->capacity_bytes;
+  EVTTAG *preallocation = NULL;
+
+  if (new_capacity_bytes < old_capacity_bytes)
+    {
+      if (self->hdr->write_head > new_capacity_bytes)
+        return FALSE;
+
+      struct stat st;
+      if (fstat(self->fd, &st) == 0 && st.st_size > new_capacity_bytes)
+        _truncate_file(self, new_capacity_bytes);
+    }
+  else if (self->options->prealloc && !_preallocate_qdisk_file(self, new_capacity_bytes))
+    {
+      preallocation = evt_tag_str("preallocation", "failed");
+    }
+
+  self->hdr->capacity_bytes = new_capacity_bytes;
+
+  msg_info("Changed the capacity-bytes() of disk-buffer file",
+           evt_tag_str("filename", self->filename),
+           evt_tag_long("old_capacity_bytes", old_capacity_bytes),
+           evt_tag_long("new_capacity_bytes", new_capacity_bytes),
+           preallocation);
+  return TRUE;
+}
+
+static void
+_log_pending_capacity_bytes_change(QDisk *self)
+{
+  msg_warning("capacity-bytes() changed, the new value will take effect once the disk-buffer content allows it",
+              evt_tag_str("filename", self->filename),
+              evt_tag_long("active_capacity_bytes", self->hdr->capacity_bytes),
+              evt_tag_long("pending_capacity_bytes", self->options->capacity_bytes));
+}
+
+void
+qdisk_update_capacity_bytes_if_needed(QDisk *self)
+{
+  if (_is_capacity_bytes_change_pending(self))
+    {
+      if (!_apply_pending_capacity_bytes_change(self))
+        _log_pending_capacity_bytes_change(self);
+    }
 }
 
 static inline gint64
@@ -835,6 +941,8 @@ _maybe_apply_non_reliable_corrections(QDisk *self)
   qdisk_empty_backlog(self);
   if (!self->options->read_only)
     qdisk_reset_file_if_empty(self);
+  if (G_UNLIKELY(_is_capacity_bytes_change_pending(self)))
+    _apply_pending_capacity_bytes_change(self);
 }
 
 
@@ -949,6 +1057,8 @@ qdisk_ack_backlog(QDisk *self)
     }
 
   self->hdr->backlog_len--;
+  if (G_UNLIKELY(_is_capacity_bytes_change_pending(self)))
+    _apply_pending_capacity_bytes_change(self);
   return TRUE;
 }
 
@@ -1561,14 +1671,7 @@ _ensure_capacity_bytes(QDisk *self)
   if (self->hdr->capacity_bytes == -1 && !_autodetect_capacity_bytes(self))
     return FALSE;
 
-  if (self->options->capacity_bytes != -1 && self->hdr->capacity_bytes != self->options->capacity_bytes)
-    {
-      msg_warning("WARNING: capacity-bytes() has changed since the last syslog-ng run. syslog-ng currently does "
-                  "not support changing the capacity-bytes() of existing disk-queues. Continuing with the old one",
-                  evt_tag_str("filename", self->filename),
-                  evt_tag_long("active_old_capacity_bytes", self->hdr->capacity_bytes),
-                  evt_tag_long("ignored_new_capacity_bytes", self->options->capacity_bytes));
-    }
+  qdisk_update_capacity_bytes_if_needed(self);
 
   return TRUE;
 }
@@ -1723,6 +1826,9 @@ qdisk_reset_file_if_empty(QDisk *self)
   self->hdr->backlog_head = QDISK_RESERVED_SPACE;
 
   _maybe_truncate_file(self, QDISK_RESERVED_SPACE);
+  self->hdr->use_v1_wrap_condition = FALSE;
+  if (G_UNLIKELY(_is_capacity_bytes_change_pending(self)))
+    _apply_pending_capacity_bytes_change(self);
 }
 
 DiskQueueOptions *
