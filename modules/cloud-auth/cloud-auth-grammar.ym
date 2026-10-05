@@ -130,7 +130,7 @@ google_dest_auth_option
       if ($3[0])
         {
           struct stat st;
-          CHECK_ERROR(stat($3, &st) == 0, @3, "File \"%s\" not found: %s", $3, strerror(errno));
+          CHECK_ERROR(stat($3, &st) == 0 || cfg_is_listing_files(configuration), @3, "File \"%s\" not found: %s", $3, strerror(errno));
           cfg_path_track_file(configuration, $3, "path_secret");
           google_authenticator_set_auth_mode(last_authenticator, GAAM_SERVICE_ACCOUNT);
           google_authenticator_set_service_account_key_path(last_authenticator, $3);
