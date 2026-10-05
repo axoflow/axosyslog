@@ -272,6 +272,13 @@ cfg_is_dry_run(GlobalConfig *cfg)
 }
 
 gboolean
+cfg_is_listing_files(GlobalConfig *cfg)
+{
+  MainLoopOptions *main_loop_options = main_loop_get_options();
+  return main_loop_options && main_loop_options->list_files;
+}
+
+gboolean
 cfg_is_shutting_down(GlobalConfig *cfg)
 {
   MainLoop *main_loop = main_loop_get_instance();
