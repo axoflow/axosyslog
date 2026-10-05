@@ -164,7 +164,7 @@ gboolean cfg_run_parser_with_main_context(GlobalConfig *self, CfgLexer *lexer, C
 gboolean cfg_read_config(GlobalConfig *cfg, const gchar *fname, gchar *preprocess_into);
 void cfg_shutdown(GlobalConfig *self);
 gboolean cfg_is_shutting_down(GlobalConfig *cfg);
-gboolean cfg_is_listing_files(GlobalConfig *cfg);
+gboolean cfg_is_listing_paths(GlobalConfig *cfg);
 void cfg_free(GlobalConfig *self);
 gboolean cfg_init(GlobalConfig *cfg);
 gboolean cfg_deinit(GlobalConfig *cfg);

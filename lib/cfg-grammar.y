@@ -1308,8 +1308,8 @@ path
 	  {
             struct stat buffer;
             int ret = stat($1, &buffer);
-            /* --list-files reports every referenced file, so a missing one is not an error there */
-            CHECK_ERROR((ret == 0 || cfg_is_listing_files(configuration)), @1, "File \"%s\" not found: %s", $1, strerror(errno));
+            /* --list-paths reports every referenced path, so a missing one is not an error there */
+            CHECK_ERROR((ret == 0 || cfg_is_listing_paths(configuration)), @1, "File \"%s\" not found: %s", $1, strerror(errno));
             $$ = $1;
 	  }
 	;

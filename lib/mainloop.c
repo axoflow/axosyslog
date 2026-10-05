@@ -740,7 +740,7 @@ main_loop_read_and_init_config(MainLoop *self)
       return 0;
     }
 
-  if (options->list_files)
+  if (options->list_paths)
     {
       GString *file_list = cfg_path_format_file_list(self->current_configuration, TRUE);
       fputs(file_list->str, stdout);

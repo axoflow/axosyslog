@@ -36,7 +36,7 @@ typedef struct _MainLoopOptions
   gboolean syntax_only;
   gboolean check_startup;
   gboolean config_id;
-  gboolean list_files;
+  gboolean list_paths;
   gboolean interactive_mode;
   gboolean disable_module_discovery;
 } MainLoopOptions;
@@ -47,7 +47,7 @@ main_loop_is_dry_run(const MainLoopOptions *options)
   if (!options)
     return FALSE;
 
-  return options->syntax_only || options->preprocess_into || options->config_id || options->list_files
+  return options->syntax_only || options->preprocess_into || options->config_id || options->list_paths
          || options->check_startup;
 }
 
