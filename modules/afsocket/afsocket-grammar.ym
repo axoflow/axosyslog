@@ -840,17 +840,17 @@ tls_option
             tls_context_set_dhparam_file(last_tls_context, $3);
             free($3);
           }
-        | KW_PKCS12_FILE '(' path_check ')'
+        | KW_PKCS12_FILE '(' path_secret ')'
           {
             tls_context_set_pkcs12_file(last_tls_context, $3);
             free($3);
           }
-	| KW_CA_DIR '(' string ')'
+	| KW_CA_DIR '(' path_dir_no_check ')'
 	  {
 	    tls_context_set_ca_dir(last_tls_context, $3);
             free($3);
           }
-	| KW_CRL_DIR '(' string ')'
+	| KW_CRL_DIR '(' path_dir_no_check ')'
 	  {
 	    tls_context_set_crl_dir(last_tls_context, $3);
             free($3);

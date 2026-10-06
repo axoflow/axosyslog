@@ -530,8 +530,11 @@ main_location_print (FILE *yyo, YYLTYPE const * const yylocp)
 %type   <fnum> positive_float
 %type   <fnum> nonnegative_float
 %type	<cptr> path_no_check
+%type	<cptr> path_secret_no_check
 %type	<cptr> path_secret
 %type	<cptr> path_check
+%type	<cptr> path_dir_no_check
+%type	<cptr> path_dir_check
 %type	<cptr> path
 
 /* END_DECLS */
@@ -1206,7 +1209,7 @@ dns_cache_option
 	| KW_DNS_CACHE_EXPIRE '(' positive_integer ')'	{ last_dns_cache_options->expire = $3; }
 	| KW_DNS_CACHE_EXPIRE_FAILED '(' positive_integer ')'
 	                                        { last_dns_cache_options->expire_failed = $3; }
-	| KW_DNS_CACHE_HOSTS '(' string ')'     { last_dns_cache_options->hosts = g_strdup($3); free($3); }
+	| KW_DNS_CACHE_HOSTS '(' path_no_check ')' { last_dns_cache_options->hosts = g_strdup($3); free($3); }
         ;
 
 
@@ -1305,8 +1308,8 @@ path
 	  {
             struct stat buffer;
             int ret = stat($1, &buffer);
-            /* --list-files reports every referenced file, so a missing one is not an error there */
-            CHECK_ERROR((ret == 0 || cfg_is_listing_files(configuration)), @1, "File \"%s\" not found: %s", $1, strerror(errno));
+            /* --list-paths reports every referenced path, so a missing one is not an error there */
+            CHECK_ERROR((ret == 0 || cfg_is_listing_paths(configuration)), @1, "File \"%s\" not found: %s", $1, strerror(errno));
             $$ = $1;
 	  }
 	;
@@ -1319,8 +1322,20 @@ path_secret
     : path { cfg_path_track_file(configuration, $1, "path_secret"); }
     ;
 
+path_secret_no_check
+    : string { cfg_path_track_file(configuration, $1, "path_secret"); }
+    ;
+
 path_no_check
     : string { cfg_path_track_file(configuration, $1, "path_no_check"); }
+    ;
+
+path_dir_check
+    : path { cfg_path_track_dir(configuration, $1, "path_check"); }
+    ;
+
+path_dir_no_check
+    : string { cfg_path_track_dir(configuration, $1, "path_no_check"); }
     ;
 
 normalized_flag

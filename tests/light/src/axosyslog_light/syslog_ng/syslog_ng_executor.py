@@ -41,7 +41,7 @@ class SyslogNgStartParams:
     startup_debug: bool = True
     no_caps: bool = True
     syntax_only: bool = False
-    list_files: bool = False
+    list_paths: bool = False
     version: bool = False
     config_path: typing.Optional[Path] = None
     persist_path: typing.Optional[Path] = None
@@ -69,8 +69,8 @@ class SyslogNgStartParams:
             params += ["--no-caps"]
         if self.syntax_only:
             params += ["--syntax-only"]
-        if self.list_files:
-            params += ["--list-files"]
+        if self.list_paths:
+            params += ["--list-paths"]
         if self.version:
             params += ["--version"]
         if self.config_path is not None:

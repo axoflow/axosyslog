@@ -78,6 +78,13 @@ class SyslogNgCtl(object):
             command=ctl_query_command,
         )
 
+    def list_files(self):
+        return self.__syslog_ng_ctl_executor.run_command(
+            self.__instance_name,
+            command_short_name="list-files",
+            command=["list-files"],
+        )
+
     def credentials_add(self, credential, secret):
         ctl_credentials_command = self.__syslog_ng_ctl_executor.construct_ctl_credentials_command(credential, secret)
         return self.__syslog_ng_ctl_executor.run_command(

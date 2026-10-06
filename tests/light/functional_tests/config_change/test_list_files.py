@@ -23,7 +23,7 @@
 from pathlib import Path
 
 
-def test_list_files_prints_tracked_files_without_initializing(config, syslog_ng, port_allocator, tmp_path):
+def test_list_paths_prints_tracked_files_without_initializing(config, syslog_ng, port_allocator, tmp_path):
     config.add_include("scl.conf")
     credentials = tmp_path / "service-account.json"
     credentials.write_text("{}")
@@ -38,20 +38,20 @@ def test_list_files_prints_tracked_files_without_initializing(config, syslog_ng,
     )
     config.create_logpath(statements=[config.create_example_msg_generator_source(num=1), pubsub_destination])
 
-    output = syslog_ng.list_files(config)
+    output = syslog_ng.list_paths(config)
 
     assert output == "path_secret: {}\n".format(credentials)
     assert not Path(syslog_ng.instance_paths.get_control_socket_path()).exists()
     assert not Path(syslog_ng.instance_paths.get_persist_path()).exists()
 
 
-def test_list_files_without_tracked_files(config, syslog_ng):
+def test_list_paths_without_tracked_files(config, syslog_ng):
     config.create_logpath(statements=[config.create_example_msg_generator_source(num=1)])
 
-    assert syslog_ng.list_files(config) == "No files available\n"
+    assert syslog_ng.list_paths(config) == "No files available\n"
 
 
-def test_list_files_reports_missing_files(config, syslog_ng, port_allocator, tmp_path):
+def test_list_paths_reports_missing_files(config, syslog_ng, port_allocator, tmp_path):
     config.add_include("scl.conf")
     credentials = tmp_path / "missing-service-account.json"
     port = port_allocator()
@@ -65,4 +65,54 @@ def test_list_files_reports_missing_files(config, syslog_ng, port_allocator, tmp
     )
     config.create_logpath(statements=[config.create_example_msg_generator_source(num=1), pubsub_destination])
 
-    assert syslog_ng.list_files(config) == "path_secret: {}\n".format(credentials)
+    assert syslog_ng.list_paths(config) == "path_secret: {}\n".format(credentials)
+
+
+def test_list_paths_lists_directories_but_syslog_ng_ctl_list_files_does_not(config, syslog_ng, syslog_ng_ctl, port_allocator, tmp_path):
+    list_file = tmp_path / "programs.list"
+    list_file.write_text("example\n")
+    disk_buffer_dir = tmp_path / "disk-buffer"
+    config.set_raw_config(
+        f"""
+@version: {config.get_version()}
+
+filter f_list {{ in-list("{list_file}", value("PROGRAM")); }};
+
+destination d_network {{
+    network("127.0.0.1" port({port_allocator()}) disk-buffer(dir("{disk_buffer_dir}") reliable(no)));
+}};
+
+log {{
+    source {{ example-msg-generator(num(1)); }};
+    filter(f_list);
+    destination(d_network);
+}};
+""",
+    )
+
+    assert syslog_ng.list_paths(config) == "path_no_check: {}\npath_no_check: {}\n".format(list_file, disk_buffer_dir)
+
+    syslog_ng.start(config)
+    assert syslog_ng_ctl.list_files()["stdout"] == "path_no_check: {}\n".format(list_file)
+
+
+def test_tracked_paths_are_not_checked_where_they_were_plain_strings(config, syslog_ng, port_allocator, tmp_path):
+    missing_ca_dir = tmp_path / "missing-ca.d"
+    config.set_raw_config(
+        f"""
+@version: {config.get_version()}
+
+destination d_http {{
+    http(url("https://127.0.0.1:{port_allocator()}/") tls(ca-dir("{missing_ca_dir}")));
+}};
+
+log {{
+    source {{ example-msg-generator(num(1)); }};
+    destination(d_http);
+}};
+""",
+    )
+
+    assert syslog_ng.list_paths(config) == "path_no_check: {}\n".format(missing_ca_dir)
+
+    syslog_ng.start(config)

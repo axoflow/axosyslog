@@ -85,14 +85,14 @@ class SyslogNg(object):
 
         return self._process
 
-    def list_files(self, config: SyslogNgConfig) -> str:
+    def list_paths(self, config: SyslogNgConfig) -> str:
         config.write_config(self.instance_paths.get_config_path())
 
-        stdout_path = Path(f"syslog_ng_{self.instance_paths.get_instance_name()}_list_files_stdout")
-        stderr_path = Path(f"syslog_ng_{self.instance_paths.get_instance_name()}_list_files_stderr")
+        stdout_path = Path(f"syslog_ng_{self.instance_paths.get_instance_name()}_list_paths_stdout")
+        stderr_path = Path(f"syslog_ng_{self.instance_paths.get_instance_name()}_list_paths_stderr")
 
         start_params = copy(self.start_params)
-        start_params.list_files = True
+        start_params.list_paths = True
 
         process = self._syslog_ng_executor.run_process(
             start_params=start_params,
@@ -101,7 +101,7 @@ class SyslogNg(object):
         )
         returncode = process.wait()
         if returncode != 0:
-            raise Exception(f"syslog-ng --list-files returned with {returncode}. See {stderr_path.absolute()} for details")
+            raise Exception(f"syslog-ng --list-paths returned with {returncode}. See {stderr_path.absolute()} for details")
 
         return stdout_path.read_text()
 

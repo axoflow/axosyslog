@@ -272,10 +272,10 @@ cfg_is_dry_run(GlobalConfig *cfg)
 }
 
 gboolean
-cfg_is_listing_files(GlobalConfig *cfg)
+cfg_is_listing_paths(GlobalConfig *cfg)
 {
   MainLoopOptions *main_loop_options = main_loop_get_options();
-  return main_loop_options && main_loop_options->list_files;
+  return main_loop_options && main_loop_options->list_paths;
 }
 
 gboolean
