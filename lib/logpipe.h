@@ -76,6 +76,11 @@
 
 #define PIF_BREAKPOINT        0x0800
 
+/* LogMultiplexer whose next_hops are the alternatives of
+ * flags(destination-failover).  Not a branch property, so it is not copied
+ * to the head of a branch. */
+#define PIF_DESTINATION_FAILOVER  0x1000
+
 /* private flags range, to be used by other LogPipe instances for their own purposes */
 
 #define PIF_PRIVATE(x)       ((x) << 16)
@@ -210,8 +215,14 @@ struct _LogPathOptions
    * log-flow-control option and can be set to TRUE/FALSE anywhere
    * _before_ the destination driver, which will actually carry out the
    * required action.
+   *
+   * destination_failover: set to TRUE while this message is in a
+   * flags(destination-failover) alternative that is followed by another
+   * one.  Sticky for the rest of this path.  A destination driver can check
+   * this to decide whether to refuse (instead of buffer) new messages while
+   * it considers itself unreachable.
    */
-  guint ack_needed:1, flow_control_requested:1;
+  guint ack_needed:1, flow_control_requested:1, destination_failover:1;
 
   gboolean *matched;
   const LogPathOptions *lpo_parent_junction;
@@ -226,8 +237,8 @@ typedef enum
 
 typedef gboolean (*LogPathWalkFunc)(LogPipe *from, LogPathConnectionType type, LogPipe *to, gpointer user_data);
 
-#define LOG_PATH_OPTIONS_INIT { TRUE, FALSE, NULL, NULL, NULL}
-#define LOG_PATH_OPTIONS_INIT_NOACK { FALSE, FALSE, NULL, NULL, NULL }
+#define LOG_PATH_OPTIONS_INIT { TRUE, FALSE, FALSE, NULL, NULL, NULL}
+#define LOG_PATH_OPTIONS_INIT_NOACK { FALSE, FALSE, FALSE, NULL, NULL, NULL }
 
 /*
  * Embed a step in our LogPathOptions chain.

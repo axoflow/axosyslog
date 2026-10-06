@@ -942,6 +942,42 @@ cfg_tree_propagate_expr_node_properties_to_pipe(LogExprNode *node, LogPipe *pipe
 }
 
 static gboolean
+_is_junction_or_conditional(LogExprNode *node)
+{
+  if (node->layout == ENL_CONDITIONAL)
+    return TRUE;
+
+  /* embedded log {} statements, but not the drivers of a destination */
+  if (node->layout == ENL_JUNCTION)
+    return node->content == ENC_PIPE;
+
+  return FALSE;
+}
+
+/* mark the multiplexer whose next_hops are the alternatives of
+ * flags(destination-failover): that of a junction or conditional of the
+ * flagged log statement.  An elif chain is a nested conditional in the else
+ * branch, which continues the same set of alternatives, so its multiplexer
+ * is marked as well. */
+static void
+cfg_tree_mark_destination_failover_mpx(LogExprNode *node, LogPipe *pipe)
+{
+  if (!_is_junction_or_conditional(node))
+    return;
+
+  pipe->flags |= PIF_DESTINATION_FAILOVER;
+
+  if (node->layout == ENL_CONDITIONAL)
+    {
+      LogExprNode *false_branch = log_expr_node_conditional_get_false_branch(node);
+      LogMultiplexer *mpx = (LogMultiplexer *) pipe;
+
+      if (false_branch->children && false_branch->children->layout == ENL_CONDITIONAL)
+        cfg_tree_mark_destination_failover_mpx(false_branch->children, g_ptr_array_index(mpx->next_hops, 1));
+    }
+}
+
+static gboolean
 _is_log_path_name_unique(CfgTree *self, const LogExprNode *node)
 {
   if (g_hash_table_contains(self->log_path_names, node->name))
@@ -1033,6 +1069,9 @@ cfg_tree_compile_sequence(CfgTree *self, LogExprNode *node,
 
       if (!cfg_tree_compile_node(self, ep, &sub_pipe_head, &sub_pipe_tail))
         goto error;
+
+      if ((node->flags & LC_DESTINATION_FAILOVER) && sub_pipe_head)
+        cfg_tree_mark_destination_failover_mpx(ep, sub_pipe_head);
 
       /* add pipe to the current pipe_line, e.g. after last_pipe, update last_pipe & first_pipe */
       if (sub_pipe_head)
