@@ -56,7 +56,8 @@
 /* log statement flags that are copied to the head of a branch */
 #define PIF_BRANCH_FINAL      0x0008
 #define PIF_BRANCH_FALLBACK   0x0010
-#define PIF_BRANCH_PROPERTIES (PIF_BRANCH_FINAL + PIF_BRANCH_FALLBACK)
+#define PIF_BRANCH_DESTINATION_FAILOVER 0x1000
+#define PIF_BRANCH_PROPERTIES (PIF_BRANCH_FINAL + PIF_BRANCH_FALLBACK + PIF_BRANCH_DESTINATION_FAILOVER)
 
 /* branch starting with this pipe wants to enable/disable hard flow control */
 #define PIF_HARD_FLOW_CONTROL 0x0020
@@ -210,8 +211,14 @@ struct _LogPathOptions
    * log-flow-control option and can be set to TRUE/FALSE anywhere
    * _before_ the destination driver, which will actually carry out the
    * required action.
+   *
+   * destination_failover: set to TRUE once this message passes through a
+   * branch flagged PIF_BRANCH_DESTINATION_FAILOVER.  Sticky for the rest of
+   * this path.  A destination driver can check this to decide whether to
+   * refuse (instead of buffer) new messages while it considers itself
+   * unreachable.
    */
-  guint ack_needed:1, flow_control_requested:1;
+  guint ack_needed:1, flow_control_requested:1, destination_failover:1;
 
   gboolean *matched;
   const LogPathOptions *lpo_parent_junction;
@@ -226,8 +233,8 @@ typedef enum
 
 typedef gboolean (*LogPathWalkFunc)(LogPipe *from, LogPathConnectionType type, LogPipe *to, gpointer user_data);
 
-#define LOG_PATH_OPTIONS_INIT { TRUE, FALSE, NULL, NULL, NULL}
-#define LOG_PATH_OPTIONS_INIT_NOACK { FALSE, FALSE, NULL, NULL, NULL }
+#define LOG_PATH_OPTIONS_INIT { TRUE, FALSE, FALSE, NULL, NULL, NULL}
+#define LOG_PATH_OPTIONS_INIT_NOACK { FALSE, FALSE, FALSE, NULL, NULL, NULL }
 
 /*
  * Embed a step in our LogPathOptions chain.

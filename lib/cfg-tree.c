@@ -932,6 +932,11 @@ cfg_tree_propagate_expr_node_properties_to_pipe(LogExprNode *node, LogPipe *pipe
   if (node->flags & LC_FINAL)
     pipe->flags |= PIF_BRANCH_FINAL;
 
+  if (node->flags & LC_DESTINATION_FAILOVER)
+    {
+      pipe->flags |= PIF_BRANCH_FINAL | PIF_BRANCH_DESTINATION_FAILOVER;
+    }
+
   if (_is_log_path(node))
     {
       if (node->flags & LC_FLOW_CONTROL)
