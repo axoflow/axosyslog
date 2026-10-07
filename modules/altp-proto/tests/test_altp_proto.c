@@ -722,6 +722,13 @@ Test(altp, tls_required_no_means_the_none_policy)
   cr_assert_eq(_get_altp_options()->altp.tls_policy, ALTP_TLS_POLICY_NONE);
 }
 
+Test(altp, tls_required_optional_means_the_auto_policy)
+{
+  _parse_altp_transport("altp(tls_required(optional))");
+
+  cr_assert_eq(_get_altp_options()->altp.tls_policy, ALTP_TLS_POLICY_AUTO);
+}
+
 Test(altp, allow_plain_compress_and_compress_level_are_accepted)
 {
   _parse_altp_transport("altp(allow_plain_compress(yes) compress_level(6))");

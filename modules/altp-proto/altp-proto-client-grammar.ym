@@ -138,6 +138,10 @@ altp_client_option
           {
             last_altp_client_options->altp.tls_policy = $3 ? ALTP_TLS_POLICY_REQUIRED : ALTP_TLS_POLICY_NONE;
           }
+        | KW_TLS_REQUIRED '(' KW_OPTIONAL ')'
+          {
+            last_altp_client_options->altp.tls_policy = ALTP_TLS_POLICY_AUTO;
+          }
         /* accepted so that a legacy configuration parses; the lexer warns */
         | KW_FLUSH_TIMEOUT '(' nonnegative_integer ')'
         ;
