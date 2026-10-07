@@ -17,7 +17,7 @@
 EL_FC=
 EL_TE=
 OS_VERSION=
-INSTALL_PATH="/opt/syslog-ng"
+INSTALL_PATH="/opt/axosyslog"
 # RHEL8 note: ports 10514/tcp, 10514/udp, 20514/tcp and 20514/udp have been
 #  allowed by default
 #
@@ -39,7 +39,7 @@ get_console_tty() {
 
 
 query_install_path() {
-	echo -n "Please enter your installation path for Syslog-ng PE: [${INSTALL_PATH}] "
+	echo -n "Please enter your installation path for AxoSyslog: [${INSTALL_PATH}] "
 	read INPUT <"${CONSOLE_TTY}"
 }
 
@@ -165,7 +165,7 @@ setup_vars() {
 			# 601/tcp and 601/udp are allowed by default on RHEL8, so there is no need to enable them
 			omit_allowed_ports
 			;;
-		9.*)
+		9.*|10.*)
 			EL_FC="syslog_ng.el789.fc.in"
 			EL_TE="syslog_ng.el9.te.in"
 
@@ -195,11 +195,11 @@ prepare_files() {
 	echo "Using '${INSTALL_PATH}'..." 
 	if [ "${INSTALL_PATH}" != "/" ]; then
 		
-		substitute_install_path > "syslog_ng.fc"
+		substitute_install_path > "axosyslog.fc"
 	else
-		omit_install_path > "syslog_ng.fc"
+		omit_install_path > "axosyslog.fc"
 	fi
-	cat "src/syslog_ng.module.version" "src/${EL_TE}" > "syslog_ng.te"
+	cat "src/syslog_ng.module.version" "src/${EL_TE}" > "axosyslog.te"
 }
 
 
@@ -218,7 +218,7 @@ filter_bogus_build_output() {
 
 build_module() {
 	echo "Building and Loading Policy"
-	build_output=$( make -f /usr/share/selinux/devel/Makefile syslog_ng.pp 2>&1 )
+	build_output=$( make -f /usr/share/selinux/devel/Makefile axosyslog.pp 2>&1 )
 	retval=${?}
 	filter_bogus_build_output <<<"${build_output}"
 	[ ${retval} -eq 0 ] || exit 252
@@ -236,11 +236,11 @@ add_ports() {
 
 
 install_module() {
-	if /usr/sbin/semodule -l | grep -qw syslog_ng; then
+	if /usr/sbin/semodule -l | grep -qw axosyslog; then
 		echo "The Syslog-ng SELinux policy module is already installed. Nothing to do..."
 		echo "If it belongs to a previous version, then you will have to remove it first."
 	else
-		/usr/sbin/semodule -i syslog_ng.pp -v || exit 251
+		/usr/sbin/semodule -i axosyslog.pp -v || exit 251
 
 		# set up syslog-ng specific ports
 		PORTS=
@@ -250,8 +250,6 @@ install_module() {
 
 		# Fixing the file context
 		/sbin/restorecon -F -Rv "${INSTALL_PATH}"
-		[ -f /etc/init.d/syslog-ng ] && /sbin/restorecon -F -v /etc/init.d/syslog-ng
-		[ -f /etc/rc.d/init.d/syslog-ng ] && /sbin/restorecon -F -v /etc/rc.d/init.d/syslog-ng
 		/sbin/restorecon -F -Rv /dev/log
 
 		echo -e "\nInstallation of the Syslog-ng SELinux policy module finished.\nPlease restart syslog-ng. You can find more information about this in the README file."
@@ -267,10 +265,10 @@ remove_ports() {
 }
 
 remove_module() {
-	if /usr/sbin/semodule -l | grep -q syslog_ng; then
+	if /usr/sbin/semodule -l | grep -q axosyslog; then
 		echo -n "Removing Syslog-ng SELinux policy module... "
 		
-		/usr/sbin/semodule --remove=syslog_ng
+		/usr/sbin/semodule --remove=axosyslog
 		
 		# unconfigure syslog-ng specific ports
 		PORTS=
@@ -278,10 +276,10 @@ remove_module() {
 		for port in ${SYSLOG_NG_UDP_PORTS}; do PORTS="${PORTS} ${port}/udp"; done
 		remove_ports "${PORTS}"
 		
-		[ -f syslog_ng.pp ] && rm -f syslog_ng.pp
-		[ -f syslog_ng.te ] && rm -f syslog_ng.te
-		[ -f syslog_ng.fc ] && rm -f syslog_ng.fc
-		[ -f syslog_ng.if ] && rm -f syslog_ng.if
+		[ -f axosyslog.pp ] && rm -f axosyslog.pp
+		[ -f axosyslog.te ] && rm -f axosyslog.te
+		[ -f axosyslog.fc ] && rm -f axosyslog.fc
+		[ -f axosyslog.if ] && rm -f axosyslog.if
 		[ -d tmp ] && rm -Rf tmp
 		
 		echo "done."

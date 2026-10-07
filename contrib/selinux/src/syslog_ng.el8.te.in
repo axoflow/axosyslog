@@ -4,3 +4,5 @@ require {
 
 allow syslogd_t syslogd_exec_t:file execute_no_trans;
 
+allow syslogd_t self:process { execmem execstack };
+

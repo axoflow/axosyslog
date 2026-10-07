@@ -1,2 +1,2 @@
-policy_module(syslog_ng, 1.0.10)
+policy_module(axosyslog, 1.0.10)
 
