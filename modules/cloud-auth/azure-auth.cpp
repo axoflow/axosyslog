@@ -67,7 +67,8 @@ _certificate_thumbprint(const std::string &cert_pem)
 
   unsigned char digest[EVP_MAX_MD_SIZE];
   unsigned int digest_len;
-  X509_digest(cert.get(), EVP_sha256(), digest, &digest_len);
+  if (!X509_digest(cert.get(), EVP_sha256(), digest, &digest_len))
+    throw std::runtime_error("Failed to compute the certificate thumbprint");
 
   std::string encoded = jwt::base::encode<jwt::alphabet::base64url>(std::string((const char *) digest, digest_len));
   return jwt::base::trim<jwt::alphabet::base64url>(encoded);
@@ -290,7 +291,8 @@ AzureMonitorAuthenticator::parse_token_and_expiry_from_response(const std::strin
       return false;
     }
 
-  if (!json.is<picojson::object>() || !json.contains("access_token") || !json.contains("expires_in"))
+  if (!json.is<picojson::object>() || !json.contains("access_token") || !json.contains("expires_in")
+      || !json.get("access_token").is<std::string>() || !json.get("expires_in").is<double>())
     {
       msg_error("cloud_auth::azure::AzureMonitorAuthenticator: "
                 "unexpected response JSON",
