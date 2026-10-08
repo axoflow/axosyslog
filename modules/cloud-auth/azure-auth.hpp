@@ -53,6 +53,18 @@ private:
   std::string secret;
 };
 
+class ClientCertificate: public ClientCredential
+{
+public:
+  ClientCertificate(const char *cert_path, const char *key_path);
+
+  std::string form_fields(const std::string &client_id, const std::string &token_url);
+
+private:
+  std::string thumbprint;
+  jwt::algorithm::ps256 signer;
+};
+
 class AzureMonitorAuthenticator: public syslogng::cloud_auth::Authenticator
 {
 public:

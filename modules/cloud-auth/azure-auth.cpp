@@ -24,9 +24,13 @@
 
 #include "compat/cpp-start.h"
 #include "scratch-buffers.h"
+#include "uuid.h"
 #include "compat/cpp-end.h"
 
 #include <fstream>
+#include <sstream>
+#include <openssl/pem.h>
+#include <openssl/x509.h>
 
 using namespace syslogng::cloud_auth::azure;
 
@@ -39,6 +43,65 @@ std::string
 ClientSecret::form_fields(const std::string &, const std::string &)
 {
   return "client_secret=" + secret;
+}
+
+static std::string
+_read_file(const char *path)
+{
+  std::ifstream file(path);
+  if (!file)
+    throw std::runtime_error(std::string("Failed to open ") + path);
+
+  std::stringstream content;
+  content << file.rdbuf();
+  return content.str();
+}
+
+static std::string
+_certificate_thumbprint(const std::string &cert_pem)
+{
+  std::unique_ptr<BIO, decltype(&BIO_free_all)> bio(BIO_new_mem_buf(cert_pem.data(), cert_pem.size()), BIO_free_all);
+  std::unique_ptr<X509, decltype(&X509_free)> cert(PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr), X509_free);
+  if (!cert)
+    throw std::runtime_error("Failed to parse the certificate");
+
+  unsigned char digest[EVP_MAX_MD_SIZE];
+  unsigned int digest_len;
+  X509_digest(cert.get(), EVP_sha256(), digest, &digest_len);
+
+  std::string encoded = jwt::base::encode<jwt::alphabet::base64url>(std::string((const char *) digest, digest_len));
+  return jwt::base::trim<jwt::alphabet::base64url>(encoded);
+}
+
+static std::string
+_uuid()
+{
+  gchar buf[37];
+  uuid_gen_random(buf, sizeof(buf));
+  return buf;
+}
+
+ClientCertificate::ClientCertificate(const char *cert_path, const char *key_path)
+  : thumbprint(_certificate_thumbprint(_read_file(cert_path))), signer("", _read_file(key_path), "", "")
+{
+}
+
+std::string
+ClientCertificate::form_fields(const std::string &client_id, const std::string &token_url)
+{
+  std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
+  std::string assertion = jwt::create()
+                          .set_type("JWT")
+                          .set_header_claim("x5t#S256", jwt::claim(thumbprint))
+                          .set_issuer(client_id)
+                          .set_subject(client_id)
+                          .set_audience(token_url)
+                          .set_id(_uuid())
+                          .set_not_before(now)
+                          .set_expires_at(now + std::chrono::minutes{5})
+                          .sign(signer);
+
+  return "client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer&client_assertion=" + assertion;
 }
 
 AzureMonitorAuthenticator::AzureMonitorAuthenticator(const char *auth_url_base,
@@ -120,9 +183,23 @@ bool
 AzureMonitorAuthenticator::send_token_post_request(std::string &response_payload_buffer)
 {
   CURLcode ret;
-  std::string body = auth_body();
-  CURL *hnd = curl_easy_init();
+  std::string body;
+  CURL *hnd = NULL;
 
+  try
+    {
+      body = auth_body();
+    }
+  catch (const std::exception &e)
+    {
+      msg_error("cloud_auth::azure::AzureMonitorAuthenticator: "
+                "failed to build the token request",
+                evt_tag_str("url", auth_url.c_str()),
+                evt_tag_str("error", e.what()));
+      return false;
+    }
+
+  hnd = curl_easy_init();
   if (!hnd)
     {
       msg_error("cloud_auth::azure::AzureMonitorAuthenticator: "
@@ -231,6 +308,8 @@ typedef struct AzureAuthenticator
   gchar *app_id;
   gchar *scope;
   gchar *app_secret;
+  gchar *cert_file;
+  gchar *key_file;
   gchar *auth_url;
 } _AzureAuthenticator;
 
@@ -279,12 +358,47 @@ azure_authenticator_set_app_secret(CloudAuthenticator *s, const gchar *app_secre
 }
 
 void
+azure_authenticator_set_cert_file(CloudAuthenticator *s, const gchar *cert_file)
+{
+  AzureAuthenticator *self = (AzureAuthenticator *) s;
+
+  g_free(self->cert_file);
+  self->cert_file = g_strdup(cert_file);
+}
+
+void
+azure_authenticator_set_key_file(CloudAuthenticator *s, const gchar *key_file)
+{
+  AzureAuthenticator *self = (AzureAuthenticator *) s;
+
+  g_free(self->key_file);
+  self->key_file = g_strdup(key_file);
+}
+
+void
 azure_authenticator_set_auth_url(CloudAuthenticator *s, const gchar *auth_url)
 {
   AzureAuthenticator *self = (AzureAuthenticator *) s;
 
   g_free(self->auth_url);
   self->auth_url = g_strdup(auth_url);
+}
+
+static std::unique_ptr<ClientCredential>
+_create_credential(AzureAuthenticator *self)
+{
+  if (self->cert_file || self->key_file)
+    {
+      if (!self->cert_file || !self->key_file)
+        throw std::runtime_error("cert_file() and key_file() must be set together");
+      if (self->app_secret && self->app_secret[0])
+        throw std::runtime_error("app_secret() cannot be set together with cert_file() and key_file()");
+      return std::unique_ptr<ClientCredential>(new ClientCertificate(self->cert_file, self->key_file));
+    }
+
+  if (!self->app_secret)
+    throw std::runtime_error("app_secret() or cert_file() with key_file() is mandatory");
+  return std::unique_ptr<ClientCredential>(new ClientSecret(self->app_secret));
 }
 
 static gboolean
@@ -297,12 +411,11 @@ _init(CloudAuthenticator *s)
     case AAAM_MONITOR:
       try
         {
-          std::unique_ptr<ClientCredential> credential(new ClientSecret(self->app_secret));
           self->super.cpp = new AzureMonitorAuthenticator(self->auth_url,
                                                           self->tenant_id,
                                                           self->app_id,
                                                           self->scope,
-                                                          std::move(credential));
+                                                          _create_credential(self));
         }
       catch (const std::runtime_error &e)
         {
@@ -331,6 +444,8 @@ _free(CloudAuthenticator *s)
   g_free(self->app_id);
   g_free(self->scope);
   g_free(self->app_secret);
+  g_free(self->cert_file);
+  g_free(self->key_file);
   g_free(self->auth_url);
 }
 

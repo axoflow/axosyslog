@@ -66,6 +66,8 @@ CloudAuthenticator *last_authenticator;
 %token KW_TENANT_ID
 %token KW_APP_ID
 %token KW_APP_SECRET
+%token KW_CERT_FILE
+%token KW_KEY_FILE
 %token KW_SCOPE
 %token KW_AUTH_URL
 %token KW_CREDENTIALS
@@ -197,6 +199,8 @@ azure_dest_monitor_option
   : KW_TENANT_ID '(' string ')' {azure_authenticator_set_tenant_id(last_authenticator, $3); free($3);}
   | KW_APP_ID '(' string ')' {azure_authenticator_set_app_id(last_authenticator, $3); free($3);}
   | KW_APP_SECRET '(' string ')' {azure_authenticator_set_app_secret(last_authenticator, $3); free($3);}
+  | KW_CERT_FILE '(' path_check ')' {azure_authenticator_set_cert_file(last_authenticator, $3); free($3);}
+  | KW_KEY_FILE '(' path_secret ')' {azure_authenticator_set_key_file(last_authenticator, $3); free($3);}
   | KW_SCOPE '(' string ')' {azure_authenticator_set_scope(last_authenticator, $3); free($3);}
   | KW_AUTH_URL '(' string ')' {azure_authenticator_set_auth_url(last_authenticator, $3); free($3);}
   ;
