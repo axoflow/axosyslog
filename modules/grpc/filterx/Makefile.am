@@ -37,6 +37,7 @@ modules_grpc_filterx_libgrpc_filterx_la_LIBADD = \
   $(top_builddir)/modules/grpc/protos/libgrpc-protos.la \
   $(top_builddir)/modules/grpc/filterx/libgrpc-filterx-cpp.la
 
+modules_grpc_filterx_libgrpc_filterx_la_LIBTOOLFLAGS = --tag=CXX
 modules_grpc_filterx_libgrpc_filterx_la_LDFLAGS = $(MODULE_LDFLAGS)
 
 modules_grpc_filterx_libgrpc_filterx_la_DEPENDENCIES = \

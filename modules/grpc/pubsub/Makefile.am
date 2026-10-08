@@ -46,6 +46,7 @@ modules_grpc_pubsub_libpubsub_la_LIBADD = \
   $(top_builddir)/modules/grpc/pubsub/libpubsub_cpp.la \
   $(top_builddir)/modules/grpc/pubsub/filterx/libfilterx.la
 
+modules_grpc_pubsub_libpubsub_la_LIBTOOLFLAGS = --tag=CXX
 modules_grpc_pubsub_libpubsub_la_LDFLAGS = $(MODULE_LDFLAGS)
 EXTRA_modules_grpc_pubsub_libpubsub_la_DEPENDENCIES = \
   $(MODULE_DEPS_LIBS) \

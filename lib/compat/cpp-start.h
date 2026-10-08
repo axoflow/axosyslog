@@ -47,11 +47,13 @@
  *     something as C code, do so, for example boilerplates: parser.{c,h}
  *     and plugin.c.  This minimizes the chance of including an incompatible
  *     C header.
- *   - Build/link the C++ code as C++ separately and link to that from your
- *     C lib. In case your C++ library is static, add the following to the
- *     the C lib to force linking against the appropriate C++ standard
- *     library (libc++, libstdc++):
- *       nodist_EXTRA_*_SOURCES = force-cpp-linker-with-default-stdlib.cpp
+ *   - Build/link the C++ code as C++ separately, as a noinst convenience
+ *     library, and link to that from your C module.  The module then has
+ *     to be linked under libtool's C++ tag, so that it is built by the C++
+ *     driver and depends on the C++ standard library (libc++, libstdc++);
+ *     add to its Makefile.am:
+ *       <target>_la_LIBTOOLFLAGS = --tag=CXX
+ *     See the "How C++ objects get linked" comment in configure.ac.
  *   - In your C++ code it is not possible to derive from a C class in the
  *     usual C way by adding a super field and filling its free_fn, because
  *     we do our own reference counting and freeing logic and we cannot rely

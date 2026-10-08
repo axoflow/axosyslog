@@ -1924,7 +1924,7 @@ if test "$enable_jit" = "yes"; then
   # Whether LLVM ends up as static archives in our link: asked for above, or
   # llvm-config's own default on an installation without the libLLVM dylib.
   # Either way --libs is then the component list (-lLLVMCore -lLLVMSupport ...)
-  # rather than the single -lLLVM-N token. This decides CCLD below.
+  # rather than the single -lLLVM-N token. This decides the C++ linking below.
   AC_MSG_CHECKING([how LLVM is linked])
   case " $llvm__libs " in
     *" -lLLVM-"[[0-9]]*|*" -lLLVM "*) AC_MSG_RESULT([shared libLLVM]) ;;
@@ -2256,23 +2256,28 @@ if test "$enable_jit" = "yes" -a "x$linking_mode" = "xmonolithic"; then
 fi
 
 #
-# C++ objects reach C links in two ways.
+# How C++ objects get linked
 #
-#   1) The C++ modules (grpc, cloud-auth, examples) keep their C++ in a
-#      noinst convenience library and link it into a module whose own sources are
-#      C, so automake would pick the C driver for a library full of C++.
+# libtool links a shared library and a program differently, so the two need
+# different handling.
 #
-#   2) LLVM linked statically into libsyslog-ng, then libsyslog-ng needs to
-#      link using the C++ linker.
+# A shared library is built by the archive recipe of the libtool tag the
+# link runs under (e.g.  the --tag command line option for libtool), instead
+# of the driver command passed to libtool.
 #
-#   3) the previous point combined with monolithic builds: every program
-#      that links to libsyslog-ng needs to be linked using the C++ linker.
+# A program is linked by the driver on the command line, CCLD, and the tag
+# adds no runtime. In a dynamic build no program contains C++ objects: they
+# link libsyslog-ng.so and dlopen the modules, which carry their own
+# libstdc++ dependency. In a monolithic build the modules are linked into
+# the syslog-ng binary itself, so CCLD is the C++ driver there.
 #
-# We need to turn these cases into using the C++ linker, which is done by
-# setting CCLD to $(CXX) below, otherwise we would miss C++ related symbols
-# in the final link.
+# A statically linked LLVM is the other way C++ reaches a C link:
+# libsyslog-ng then sets --tag=CXX under ENABLE_LLVM_STATIC, and in a
+# monolithic build its static libsyslog-ng.la goes into every program, so
+# CCLD is the C++ driver for that reason too.
 #
-if test "$enable_cpp" = "yes" -o \( "$enable_jit" = "yes" -a "$llvm_static" = "yes" \); then
+CCLD='$(CC)'
+if test "x$linking_mode" = "xmonolithic" -a \( "$enable_cpp" = "yes" -o "$llvm_static" = "yes" \); then
   CCLD='$(CXX)'
 fi
 AC_SUBST([CCLD])
@@ -2403,6 +2408,7 @@ AM_CONDITIONAL(ENABLE_MONGODB, [test "$enable_mongodb" = "yes"])
 AM_CONDITIONAL(ENABLE_SMTP, [test "$enable_smtp" = "yes"])
 AM_CONDITIONAL(ENABLE_MQTT, [test "$enable_mqtt" = "yes"])
 AM_CONDITIONAL(ENABLE_CPP, [test "$enable_cpp" = "yes"])
+AM_CONDITIONAL(ENABLE_LLVM_STATIC, [test "$llvm_static" = "yes"])
 AM_CONDITIONAL(ENABLE_GRPC, [test "$enable_grpc" = "yes"])
 AM_CONDITIONAL(ENABLE_CLOUD_AUTH, [test "$enable_cloud_auth" = "yes"])
 AM_CONDITIONAL(ENABLE_HTTP, [test "$enable_http" = "yes"])

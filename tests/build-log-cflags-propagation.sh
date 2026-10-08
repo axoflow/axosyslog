@@ -110,6 +110,6 @@ gcc( -std=gnu99)? -DHAVE_CONFIG_H -I\. -I(\.\./)+lib/ivykis/contrib/kojines \
 
 ignore_trampoline_S() {
   grep -vE -- "\<(\
-gcc( -std=gnu99)? -DHAVE_CONFIG_H.*lib/perf/trampoline.S \
+gcc( -std=gnu99)? -DHAVE_CONFIG_H.*lib/perf/trampoline.S( |$)\
 )" "$@"
 }

@@ -35,8 +35,18 @@
 #            --clangd              refresh the clangd compile DB (autotools, via
 #                                  bear)
 #            --no-jit              disable the filterx LLVM JIT (default: on)
-#            --no-lld              link with the default linker instead of lld
+#            --llvm-static         link the JIT against LLVM's static component
+#                                  archives instead of the shared libLLVM
+#                                  (autotools/dbld only; --with-llvm-linking=static).
+#                                  Default: whatever llvm-config reports.
+#            --no-cpp              build without C++ (--disable-cpp / -DENABLE_CPP=OFF);
+#                                  drops the grpc, cloud-auth and arrow-flight
+#                                  modules and the C++ examples. Default: on.
+#            --no-lld             link with the default linker instead of lld
 #                                  (cmake only; lld is on by default)
+#            --image=NAME          dbld only: build in the axosyslog-dbld-NAME container
+#                                  (e.g. almalinux-8) instead of dbld's DEFAULT_IMAGE.
+#                                  A tree bootstrapped in another image needs --clean.
 #            --build-dir=NAME      build in NAME/ instead of build/ (cmake/autotools
 #                                  only; a single dir name at the checkout root, so
 #                                  a JIT and a --no-jit tree can live side by side).
@@ -67,8 +77,11 @@ MONOLITHIC=0
 DO_INSTALL=1
 DO_CLANGD=0
 NO_JIT=0
+LLVM_STATIC=0
+NO_CPP=0
 NO_LLD=0
 BUILD_SUBDIR=""
+DBLD_IMAGE=""
 DO_CHECK=0
 DO_LIGHT=0
 EXTRA_ARGS=()
@@ -131,9 +144,13 @@ while [ $# -gt 0 ]; do
     --no-install)   DO_INSTALL=0 ;;
     --clangd)       DO_CLANGD=1 ;;
     --no-jit)       NO_JIT=1 ;;
+    --llvm-static)  LLVM_STATIC=1 ;;
+    --no-cpp)       NO_CPP=1 ;;
     --no-lld)       NO_LLD=1 ;;
     --build-dir=*)  BUILD_SUBDIR="${1#*=}"; [ -n "$BUILD_SUBDIR" ] || fail "--build-dir= needs a value" ;;
     --build-dir)    shift; [ $# -gt 0 ] || fail "--build-dir needs a value"; BUILD_SUBDIR="$1" ;;
+    --image=*)      DBLD_IMAGE="${1#*=}"; [ -n "$DBLD_IMAGE" ] || fail "--image= needs a value" ;;
+    --image)        shift; [ $# -gt 0 ] || fail "--image needs a value"; DBLD_IMAGE="$1" ;;
     --check)        DO_CHECK=1 ;;
     --light)        DO_LIGHT=1 ;;
     --)             shift; EXTRA_ARGS=("$@"); break ;;
@@ -181,6 +198,11 @@ if [ "$NO_LLD" -eq 1 ] && [ "$MODE" != cmake ]; then
   fail "--no-lld is cmake-only; only the cmake build links with lld"
 fi
 
+if [ "$LLVM_STATIC" -eq 1 ]; then
+  [ "$MODE" = autotools ] || [ "$MODE" = dbld ] || fail "--llvm-static is autotools/dbld only ($MODE has no --with-llvm-linking switch)"
+  [ "$NO_JIT" -eq 0 ] || fail "--llvm-static selects how the JIT links LLVM; drop --no-jit"
+fi
+
 # --build-dir is a plain name at the checkout root: the autotools branch configures
 # with ../configure, and it keeps the --clean `rm -rf` off a stray path.
 if [ -n "$BUILD_SUBDIR" ]; then
@@ -190,6 +212,13 @@ if [ -n "$BUILD_SUBDIR" ]; then
   esac
   case "$BUILD_SUBDIR" in
     */*|.|..|-*) fail "invalid --build-dir '$BUILD_SUBDIR'  (want a single dir name at the checkout root, e.g. build-nojit)" ;;
+  esac
+fi
+
+if [ -n "$DBLD_IMAGE" ]; then
+  [ "$MODE" = dbld ] || fail "--image is dbld-only ($MODE does not build in a container)"
+  case "$DBLD_IMAGE" in
+    */*|*:*|-*) fail "invalid --image '$DBLD_IMAGE'  (want a dbld image name, e.g. almalinux-8)" ;;
   esac
 fi
 
@@ -203,6 +232,7 @@ fi
 
 # alpine is a fixed production image build and takes no build flavor at all.
 if [ "$MODE" = alpine ] && { [ -n "$SANITIZER" ] || [ "$CLEAN" -eq 1 ] || [ "$NO_JIT" -eq 1 ] \
+     || [ "$LLVM_STATIC" -eq 1 ] || [ "$NO_CPP" -eq 1 ] \
      || [ "$DO_INSTALL" -eq 0 ] || [ -n "$JOBS" ]; }; then
   fail "alpine is a fixed production build; it takes no build flavors, only --check/--light"
 fi
@@ -338,6 +368,8 @@ build_autotools() {
   [ "$SANITIZER" != none ] && extra+=(--with-sanitizer="$SANITIZER")
   [ "$MONOLITHIC" -eq 1 ] && extra+=(--with-linking-mode=monolithic)
   [ "$NO_JIT" -eq 1 ] && extra+=(--disable-jit)
+  [ "$LLVM_STATIC" -eq 1 ] && extra+=(--with-llvm-linking=static)
+  [ "$NO_CPP" -eq 1 ] && extra+=(--disable-cpp)
 
   if [ "$CLEAN" -eq 1 ]; then
     say "clean: wiping ${BUILD#"$ROOT"/}/"
@@ -386,6 +418,7 @@ build_cmake() {
   [ "$san" = none ] && san=OFF
   local jitflag=()
   [ "$NO_JIT" -eq 1 ] && jitflag=(-DENABLE_JIT=OFF)
+  [ "$NO_CPP" -eq 1 ] && jitflag+=(-DENABLE_CPP=OFF)
   local lldflag=()
   if [ "$NO_LLD" -eq 0 ]; then
     local kind
@@ -428,15 +461,28 @@ build_cmake() {
 }
 
 build_dbld() {
+  # every dbld/rules target takes DEFAULT_IMAGE on its command line
+  local img=()
+  [ -n "$DBLD_IMAGE" ] && img=(DEFAULT_IMAGE="$DBLD_IMAGE")
   local extra=""
   [ "$SANITIZER" != none ] && extra="$extra --with-sanitizer=$SANITIZER"
   [ "$MONOLITHIC" -eq 1 ] && extra="$extra --with-linking-mode=monolithic"
   [ "$NO_JIT" -eq 1 ] && extra="$extra --disable-jit"
+  [ "$LLVM_STATIC" -eq 1 ] && extra="$extra --with-llvm-linking=static"
+  [ "$NO_CPP" -eq 1 ] && extra="$extra --disable-cpp"
   extra="${extra# }"
 
   if [ "$CLEAN" -eq 1 ]; then
     say "clean: ./dbld/rules clean"
-    ( cd "$ROOT" && ./dbld/rules clean ) || true
+    ( cd "$ROOT" && ./dbld/rules clean "${img[@]}" ) || true
+    # dbld/rules clean leaves the install prefix alone, but a flavor switch
+    # must not inherit it: shared modules left there by a dynamic build get
+    # dlopened by a later monolithic binary on top of its built-in copies
+    # (protobuf then aborts on a doubly registered extension)
+    say "clean: wiping dbld/install/"
+    find "$ROOT/dbld/install" -mindepth 1 -maxdepth 1 ! -name .gitignore -exec rm -rf {} + 2>/dev/null || true
+    # dbld/rules clean takes the tracked dbld/build/.gitignore with it; put it back
+    git -C "$ROOT" checkout -q -- dbld/build/.gitignore dbld/install/.gitignore 2>/dev/null || true
     # drop the native build/ marker too, or detect_mode keeps refusing the
     # switched tree
     rm -rf "$BUILD"
@@ -446,10 +492,10 @@ build_dbld() {
   # the $CLEAN term: a failed (swallowed) clean must not skip the re-bootstrap
   if [ "$CLEAN" -eq 1 ] || [ ! -f "$ROOT/dbld/build/config.status" ]; then
     say "dbld bootstrap${extra:+ (CONFIGURE_ADD=$extra)}"
-    ( cd "$ROOT" && ./dbld/rules bootstrap CONFIGURE_ADD="$extra" )
+    ( cd "$ROOT" && ./dbld/rules bootstrap "${img[@]}" CONFIGURE_ADD="$extra" )
   fi
   say "dbld make-install (-j$JOBS)"
-  ( cd "$ROOT" && ./dbld/rules make-install MAKE_ARGS="-j$JOBS" )
+  ( cd "$ROOT" && ./dbld/rules make-install "${img[@]}" MAKE_ARGS="-j$JOBS" )
   BIN="$ROOT/dbld/install/sbin/syslog-ng"
 }
 
@@ -467,7 +513,7 @@ run_check() {
       ctest --test-dir "$BUILD" --parallel "$JOBS" --output-on-failure "${EXTRA_ARGS[@]}" ;;
     dbld)
       say "unit tests: dbld make-check${EXTRA_ARGS[*]:+  MAKE_ARGS=${EXTRA_ARGS[*]}}"
-      ( cd "$ROOT" && ./dbld/rules make-check MAKE_ARGS="-j$JOBS ${EXTRA_ARGS[*]}" ) ;;
+      ( cd "$ROOT" && ./dbld/rules make-check ${DBLD_IMAGE:+DEFAULT_IMAGE="$DBLD_IMAGE"} MAKE_ARGS="-j$JOBS ${EXTRA_ARGS[*]}" ) ;;
   esac
 }
 
@@ -482,7 +528,7 @@ run_light() {
       cmake --build "$BUILD" --target light-check ;;
     dbld)
       say "light/e2e: dbld make-light-check${EXTRA_ARGS[*]:+  PYTEST_OPTS=${EXTRA_ARGS[*]}}"
-      ( cd "$ROOT" && PYTEST_OPTS="${EXTRA_ARGS[*]}" ./dbld/rules make-light-check ) ;;
+      ( cd "$ROOT" && PYTEST_OPTS="${EXTRA_ARGS[*]}" ./dbld/rules make-light-check ${DBLD_IMAGE:+DEFAULT_IMAGE="$DBLD_IMAGE"} ) ;;
   esac
 }
 
@@ -501,7 +547,7 @@ if [ -n "$BIN" ] && [ "$DO_INSTALL" -eq 1 ] && [ -x "$BIN" ]; then
   if [ "$MODE" = dbld ]; then
     # the dbld binary is linked against its container prefix (/install), so it
     # only runs in there; the entrypoint chatter precedes the version line
-    ver="$(cd "$ROOT" && ./dbld/rules run RUN_COMMAND="set -o pipefail; /install/sbin/syslog-ng -V | head -1")" \
+    ver="$(cd "$ROOT" && ./dbld/rules run ${DBLD_IMAGE:+DEFAULT_IMAGE="$DBLD_IMAGE"} RUN_COMMAND="set -o pipefail; /install/sbin/syslog-ng -V | head -1")" \
       || fail "installed binary does not run in the dbld container: $BIN"
     printf '%s\n' "${ver##*$'\n'}"
   else

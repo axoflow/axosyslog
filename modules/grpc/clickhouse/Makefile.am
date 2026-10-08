@@ -47,6 +47,7 @@ modules_grpc_clickhouse_libclickhouse_la_LIBADD = \
   $(top_builddir)/modules/grpc/protos/libgrpc-protos.la \
   $(top_builddir)/modules/grpc/clickhouse/libclickhouse_cpp.la
 
+modules_grpc_clickhouse_libclickhouse_la_LIBTOOLFLAGS = --tag=CXX
 modules_grpc_clickhouse_libclickhouse_la_LDFLAGS = $(MODULE_LDFLAGS)
 EXTRA_modules_grpc_clickhouse_libclickhouse_la_DEPENDENCIES = \
   $(MODULE_DEPS_LIBS) \
