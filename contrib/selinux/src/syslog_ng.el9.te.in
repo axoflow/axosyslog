@@ -1,6 +1,11 @@
 require {
         type syslogd_t, syslogd_exec_t;
+        attribute non_security_file_type;
 }
 
 allow syslogd_t syslogd_exec_t:file execute_no_trans;
+
+allow syslogd_t self:process { execmem execstack };
+
+allow syslogd_t non_security_file_type:dir watch;
 
