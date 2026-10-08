@@ -108,8 +108,11 @@ AzureMonitorAuthenticator::AzureMonitorAuthenticator(const char *auth_url_base,
                                                      const char *tenant_id,
                                                      const char *app_id_,
                                                      const char *scope_,
+                                                     const char *ca_file_,
+                                                     const char *ca_dir_,
                                                      std::unique_ptr<ClientCredential> credential_)
-  : app_id(app_id_), scope(scope_), credential(std::move(credential_))
+  : app_id(app_id_), scope(scope_), ca_file(ca_file_ ? ca_file_ : ""), ca_dir(ca_dir_ ? ca_dir_ : ""),
+    credential(std::move(credential_))
 {
   auth_url = auth_url_base;
   if (!auth_url.empty() && auth_url.back() != '/')
@@ -213,6 +216,10 @@ AzureMonitorAuthenticator::send_token_post_request(std::string &response_payload
   curl_easy_setopt(hnd, CURLOPT_POSTFIELDS, body.c_str());
   curl_easy_setopt(hnd, CURLOPT_WRITEFUNCTION, curl_write_callback);
   curl_easy_setopt(hnd, CURLOPT_WRITEDATA, (void *) &response_payload_buffer);
+  if (!ca_file.empty())
+    curl_easy_setopt(hnd, CURLOPT_CAINFO, ca_file.c_str());
+  if (!ca_dir.empty())
+    curl_easy_setopt(hnd, CURLOPT_CAPATH, ca_dir.c_str());
 
   ret = curl_easy_perform(hnd);
   if (ret != CURLE_OK)
@@ -311,6 +318,8 @@ typedef struct AzureAuthenticator
   gchar *cert_file;
   gchar *key_file;
   gchar *auth_url;
+  gchar *ca_file;
+  gchar *ca_dir;
 } _AzureAuthenticator;
 
 void
@@ -384,6 +393,24 @@ azure_authenticator_set_auth_url(CloudAuthenticator *s, const gchar *auth_url)
   self->auth_url = g_strdup(auth_url);
 }
 
+void
+azure_authenticator_set_ca_file(CloudAuthenticator *s, const gchar *ca_file)
+{
+  AzureAuthenticator *self = (AzureAuthenticator *) s;
+
+  g_free(self->ca_file);
+  self->ca_file = g_strdup(ca_file);
+}
+
+void
+azure_authenticator_set_ca_dir(CloudAuthenticator *s, const gchar *ca_dir)
+{
+  AzureAuthenticator *self = (AzureAuthenticator *) s;
+
+  g_free(self->ca_dir);
+  self->ca_dir = g_strdup(ca_dir);
+}
+
 static std::unique_ptr<ClientCredential>
 _create_credential(AzureAuthenticator *self)
 {
@@ -415,6 +442,8 @@ _init(CloudAuthenticator *s)
                                                           self->tenant_id,
                                                           self->app_id,
                                                           self->scope,
+                                                          self->ca_file,
+                                                          self->ca_dir,
                                                           _create_credential(self));
         }
       catch (const std::runtime_error &e)
@@ -447,6 +476,8 @@ _free(CloudAuthenticator *s)
   g_free(self->cert_file);
   g_free(self->key_file);
   g_free(self->auth_url);
+  g_free(self->ca_file);
+  g_free(self->ca_dir);
 }
 
 static void

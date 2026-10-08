@@ -69,7 +69,8 @@ class AzureMonitorAuthenticator: public syslogng::cloud_auth::Authenticator
 {
 public:
   AzureMonitorAuthenticator(const char *auth_url_base, const char *tenant_id, const char *app_id,
-                            const char *scope, std::unique_ptr<ClientCredential> credential);
+                            const char *scope, const char *ca_file, const char *ca_dir,
+                            std::unique_ptr<ClientCredential> credential);
   ~AzureMonitorAuthenticator() {};
 
   void handle_http_header_request(HttpRequestSignalData *data);
@@ -78,6 +79,8 @@ private:
   std::string auth_url;
   std::string app_id;
   std::string scope;
+  std::string ca_file;
+  std::string ca_dir;
   std::unique_ptr<ClientCredential> credential;
 
   std::mutex lock;

@@ -47,6 +47,8 @@ void azure_authenticator_set_app_secret(CloudAuthenticator *s, const gchar *app_
 void azure_authenticator_set_cert_file(CloudAuthenticator *s, const gchar *cert_file);
 void azure_authenticator_set_key_file(CloudAuthenticator *s, const gchar *key_file);
 void azure_authenticator_set_auth_url(CloudAuthenticator *s, const gchar *auth_url);
+void azure_authenticator_set_ca_file(CloudAuthenticator *s, const gchar *ca_file);
+void azure_authenticator_set_ca_dir(CloudAuthenticator *s, const gchar *ca_dir);
 
 #include "compat/cpp-end.h"
 
