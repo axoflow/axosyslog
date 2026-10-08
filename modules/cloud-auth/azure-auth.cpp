@@ -30,24 +30,36 @@
 
 using namespace syslogng::cloud_auth::azure;
 
+ClientSecret::ClientSecret(const char *secret_)
+  : secret(secret_)
+{
+}
+
+std::string
+ClientSecret::form_fields(const std::string &, const std::string &)
+{
+  return "client_secret=" + secret;
+}
+
 AzureMonitorAuthenticator::AzureMonitorAuthenticator(const char *auth_url_base,
                                                      const char *tenant_id,
-                                                     const char *app_id,
-                                                     const char *app_secret,
-                                                     const char *scope)
+                                                     const char *app_id_,
+                                                     const char *scope_,
+                                                     std::unique_ptr<ClientCredential> credential_)
+  : app_id(app_id_), scope(scope_), credential(std::move(credential_))
 {
   auth_url = auth_url_base;
   if (!auth_url.empty() && auth_url.back() != '/')
     auth_url.append("/");
   auth_url.append(tenant_id);
   auth_url.append("/oauth2/v2.0/token");
+}
 
-  auth_body = "grant_type=client_credentials&client_id=";
-  auth_body.append(app_id);
-  auth_body.append("&client_secret=");
-  auth_body.append(app_secret);
-  auth_body.append("&scope=");
-  auth_body.append(scope);
+std::string
+AzureMonitorAuthenticator::auth_body()
+{
+  return "grant_type=client_credentials&client_id=" + app_id + "&scope=" + scope + "&"
+         + credential->form_fields(app_id, auth_url);
 }
 
 void AzureMonitorAuthenticator::handle_http_header_request(HttpRequestSignalData *data)
@@ -108,6 +120,7 @@ bool
 AzureMonitorAuthenticator::send_token_post_request(std::string &response_payload_buffer)
 {
   CURLcode ret;
+  std::string body = auth_body();
   CURL *hnd = curl_easy_init();
 
   if (!hnd)
@@ -120,7 +133,7 @@ AzureMonitorAuthenticator::send_token_post_request(std::string &response_payload
 
   curl_easy_setopt(hnd, CURLOPT_URL, auth_url.c_str());
   curl_easy_setopt(hnd, CURLOPT_CUSTOMREQUEST, "POST");
-  curl_easy_setopt(hnd, CURLOPT_POSTFIELDS, auth_body.c_str());
+  curl_easy_setopt(hnd, CURLOPT_POSTFIELDS, body.c_str());
   curl_easy_setopt(hnd, CURLOPT_WRITEFUNCTION, curl_write_callback);
   curl_easy_setopt(hnd, CURLOPT_WRITEDATA, (void *) &response_payload_buffer);
 
@@ -284,11 +297,12 @@ _init(CloudAuthenticator *s)
     case AAAM_MONITOR:
       try
         {
+          std::unique_ptr<ClientCredential> credential(new ClientSecret(self->app_secret));
           self->super.cpp = new AzureMonitorAuthenticator(self->auth_url,
                                                           self->tenant_id,
                                                           self->app_id,
-                                                          self->app_secret,
-                                                          self->scope);
+                                                          self->scope,
+                                                          std::move(credential));
         }
       catch (const std::runtime_error &e)
         {
