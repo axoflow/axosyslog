@@ -172,6 +172,19 @@ void AzureMonitorAuthenticator::handle_http_header_request(HttpRequestSignalData
 }
 
 void
+AzureMonitorAuthenticator::handle_http_response(HttpResponseSignalData *data)
+{
+  if (data->http_code != 401)
+    return;
+
+  lock.lock();
+  cached_token.clear();
+  lock.unlock();
+
+  data->result = HTTP_SLOT_RESOLVED;
+}
+
+void
 AzureMonitorAuthenticator::add_token_to_header(HttpRequestSignalData *data)
 {
   /* Scratch Buffers are marked at this point in http-worker.c */

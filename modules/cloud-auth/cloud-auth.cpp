@@ -60,3 +60,9 @@ cloud_authenticator_handle_http_header_request(CloudAuthenticator *s, HttpReques
 {
   s->cpp->handle_http_header_request(data);
 }
+
+void
+cloud_authenticator_handle_http_response(CloudAuthenticator *s, HttpResponseSignalData *data)
+{
+  s->cpp->handle_http_response(data);
+}

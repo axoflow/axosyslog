@@ -74,6 +74,7 @@ public:
   ~AzureMonitorAuthenticator() {};
 
   void handle_http_header_request(HttpRequestSignalData *data);
+  void handle_http_response(HttpResponseSignalData *data);
 
 private:
   std::string auth_url;
