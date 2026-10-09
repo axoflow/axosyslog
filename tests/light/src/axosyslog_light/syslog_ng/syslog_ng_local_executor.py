@@ -146,6 +146,9 @@ class SyslogNgLocalExecutor(SyslogNgExecutor):
             stderr_path=stderr_path,
         )
 
+    def kill_process(self, process: Popen) -> None:
+        process.kill()
+
     def get_backtrace_from_core(
         self,
         core_file_path: Path,

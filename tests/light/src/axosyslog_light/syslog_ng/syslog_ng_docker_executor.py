@@ -112,6 +112,9 @@ class SyslogNgDockerExecutor(SyslogNgExecutor):
     ) -> Popen:
         raise NotImplementedError()
 
+    def kill_process(self, process: Popen) -> None:
+        Popen(["docker", "kill", "--signal=KILL", self.__container_name], stdout=DEVNULL, stderr=DEVNULL).wait()
+
     def get_backtrace_from_core(
         self,
         core_file_path: Path,

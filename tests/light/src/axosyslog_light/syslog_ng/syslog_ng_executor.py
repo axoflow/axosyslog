@@ -126,6 +126,11 @@ class SyslogNgExecutor(ABC):
         pass
 
     @abstractmethod
+    def kill_process(self, process: Popen) -> None:
+        """SIGKILL the syslog-ng started by run_process(): no shutdown, nothing saved, as in a crash."""
+        pass
+
+    @abstractmethod
     def get_backtrace_from_core(
         self,
         core_file_path: Path,
