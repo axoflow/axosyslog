@@ -55,6 +55,30 @@ _is_valid_topic_name_pattern(const gchar *name)
 }
 
 gboolean
+kafka_validate_topic_pattern(const char *topic, GError **error)
+{
+  if (topic == NULL || *topic == 0)
+    {
+      if (error)
+        g_set_error(error, TOPIC_NAME_ERROR, TOPIC_LENGTH_ZERO,
+                    "kafka: topic pattern is illegal, it can't be empty");
+      return FALSE;
+    }
+
+  regex_t re;
+  int ret = regcomp(&re, topic, REG_EXTENDED | REG_NOSUB);
+  if (ret == 0)
+    {
+      regfree(&re);
+      return TRUE;
+    }
+  if (error)
+    g_set_error(error, TOPIC_NAME_ERROR, TOPIC_INVALID_PATTERN,
+                "kafka: topic name %s is illegal as it contains a badly formatted regex pattern", topic);
+  return FALSE;
+}
+
+gboolean
 kafka_validate_topic_name(const gchar *name, GError **error)
 {
   gint len = strlen(name);
