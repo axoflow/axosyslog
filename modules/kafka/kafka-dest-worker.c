@@ -23,7 +23,7 @@
  *
  */
 #include "kafka-dest-worker.h"
-#include "kafka-dest-driver.h"
+#include "kafka-internal.h"
 #include "str-utils.h"
 #include "timeutils/misc.h"
 #include <zlib.h>

@@ -30,8 +30,6 @@
 #include "kafka-dest-driver.h"
 #include "kafka-internal.h"
 #include "apphook.h"
-#include <librdkafka/rdkafka.h>
-
 
 #define STRING_250_LEN "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" \
                        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" \
@@ -53,7 +51,7 @@ struct valid_topic_test_params
 struct invalid_topic_test_params
 {
   gchar *topic_name;
-  enum KafkaTopicError type;
+  KafkaTopicError type;
 };
 
 static void

@@ -23,12 +23,10 @@
  *
  */
 
-
 #include "kafka-dest-driver.h"
+#include "kafka-internal.h"
 #include "kafka-props.h"
-#include "kafka-dest-worker.h"
 
-#include <librdkafka/rdkafka.h>
 #include <stdlib.h>
 
 /*
