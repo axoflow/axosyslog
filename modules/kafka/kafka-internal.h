@@ -38,6 +38,7 @@
 #include <librdkafka/rdkafka.h>
 #pragma GCC diagnostic pop
 #include "kafka-source-driver.h"
+#include "kafka-source-worker.h"
 #include "kafka-dest-driver.h"
 #include "kafka-dest-worker.h"
 
@@ -150,6 +151,14 @@ struct _KafkaSourceOptions
 
   gint time_reopen;
 };
+
+struct _KafkaSourceWorker
+{
+  LogThreadedSourceWorker super;
+  gchar name[32]; /* see kafka_src_worker_new why a fixed size name buffer */
+};
+
+const gchar *kafka_src_worker_get_name(LogThreadedSourceWorker *worker);
 
 struct _KafkaSourceDriver
 {

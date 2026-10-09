@@ -26,6 +26,7 @@
  */
 
 #include "kafka-source-driver.h"
+#include "kafka-source-worker.h"
 #include "kafka-internal.h"
 
 static void
@@ -106,6 +107,8 @@ kafka_sd_new(GlobalConfig *cfg)
   self->super.super.super.super.deinit = kafka_sd_deinit;
   self->super.super.super.super.free_fn = kafka_sd_free;
   self->super.super.super.super.generate_persist_name = _format_persist_name;
+
+  self->super.worker_construct = kafka_src_worker_new;
 
   self->super.format_stats_key = _format_stats_key;
 

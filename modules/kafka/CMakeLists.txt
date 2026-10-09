@@ -28,6 +28,8 @@ set(KAFKA_SOURCES
   kafka-dest-worker.c
   kafka-source-driver.h
   kafka-source-driver.c
+  kafka-source-worker.h
+  kafka-source-worker.c
   kafka-props.h
   kafka-props.c
   kafka-internal.h
