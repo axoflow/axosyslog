@@ -37,6 +37,23 @@
 #include <librdkafka/rdkafka.h>
 #pragma GCC diagnostic pop
 
+#ifndef KAFKA_DEEP_TRACE
+#define KAFKA_DEEP_TRACE 0
+#endif
+#if SYSLOG_NG_ENABLE_DEBUG
+# define kafka_msg_debug msg_verbose
+# define kafka_msg_trace msg_verbose
+# if KAFKA_DEEP_TRACE
+#  define kafka_msg_deep_trace msg_verbose
+# else
+#  define kafka_msg_deep_trace(msg, ...)
+# endif
+#else
+# define kafka_msg_debug msg_debug
+# define kafka_msg_trace msg_trace
+# define kafka_msg_deep_trace(msg, ...)
+#endif
+
 #define TOPIC_NAME_ERROR topic_name_error_quark()
 
 typedef enum _KafkaTopicError
