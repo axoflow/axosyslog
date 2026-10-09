@@ -29,6 +29,50 @@
 #include "kafka-source-worker.h"
 #include "kafka-internal.h"
 
+// TODO: Move these to a common lib place
+GList *
+g_list_remove_duplicates(GList *list, GEqualFunc compare_func, GDestroyNotify free_func)
+{
+  g_assert(list && compare_func);
+
+  for (GList *outer = list; outer != NULL; outer = outer->next)
+    {
+      GList *inner = g_list_last(list);
+
+      while (inner != NULL && inner != outer)
+        {
+          GList *prev = inner->prev;
+
+          if (compare_func(outer->data, inner->data))
+            {
+              if (free_func)
+                free_func(inner->data);
+              list = g_list_delete_link(list, inner);
+            }
+
+          inner = prev;
+        }
+    }
+  return list;
+}
+
+gboolean
+g_int32_equal(gconstpointer  v1, gconstpointer  v2)
+{
+  return (int32_t)GPOINTER_TO_INT(v1) == (int32_t)GPOINTER_TO_INT(v2);
+}
+
+gboolean
+g_int32_compare(gconstpointer  v1, gconstpointer  v2)
+{
+  if ((int32_t)GPOINTER_TO_INT(v1) < (int32_t)GPOINTER_TO_INT(v2))
+    return -1;
+  else if ((int32_t)GPOINTER_TO_INT(v1) > (int32_t)GPOINTER_TO_INT(v2))
+    return 1;
+  else
+    return 0;
+}
+
 static void
 _format_stats_key(LogThreadedSourceDriver *d, StatsClusterKeyBuilder *kb)
 {
