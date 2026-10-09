@@ -150,9 +150,15 @@ def check_disk_buffer_metrics_after_reload(config, dqtool, expected_metrics):
 
 
 def validate_disk_buffer(dqtool, expected_message_count, disk_buffer_file="syslog-ng-00000.qf"):
-    dqtool_info_output = dqtool.info(disk_buffer_file=disk_buffer_file)
-    stderr_content = dqtool_info_output["stderr"]
-    assert f"number_of_messages='{expected_message_count}'" in stderr_content, f"Expected {expected_message_count} messages in disk buffer, but got:\n{stderr_content}"
+    # live header: the queue->backlog move is two stores, a single read can be one short, so poll
+    stderr_content = ""
+
+    def message_count_matches():
+        nonlocal stderr_content
+        stderr_content = dqtool.info(disk_buffer_file=disk_buffer_file)["stderr"]
+        return f"number_of_messages='{expected_message_count}'" in stderr_content
+
+    assert wait_until_true(message_count_matches), f"Expected {expected_message_count} messages in disk buffer, but got:\n{stderr_content}"
 
 
 def check_disk_buffer_files(dqtool, expected_files_and_message_counts):
