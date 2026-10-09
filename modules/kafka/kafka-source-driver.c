@@ -676,6 +676,33 @@ kafka_sd_set_time_reopen(LogDriver *d, gint time_reopen)
 }
 
 void
+kafka_sd_set_log_fetch_delay(LogDriver *s, guint new_value)
+{
+  KafkaSourceDriver *self = (KafkaSourceDriver *)s;
+  self->options.fetch_delay = new_value;
+}
+
+void kafka_sd_set_log_fetch_retry_delay(LogDriver *s, guint new_value)
+{
+  KafkaSourceDriver *self = (KafkaSourceDriver *)s;
+  self->options.fetch_retry_delay = new_value;
+}
+
+void
+kafka_sd_set_log_fetch_limit(LogDriver *s, guint new_value)
+{
+  KafkaSourceDriver *self = (KafkaSourceDriver *)s;
+  self->options.fetch_limit = new_value;
+}
+
+void
+kafka_sd_set_log_fetch_queue_full_delay(LogDriver *s, guint new_value)
+{
+  KafkaSourceDriver *self = (KafkaSourceDriver *)s;
+  self->options.fetch_queue_full_delay = new_value;
+}
+
+void
 kafka_sd_options_defaults(KafkaSourceOptions *self,
                           LogThreadedSourceWorkerOptions *worker_options)
 {
@@ -690,6 +717,10 @@ kafka_sd_options_defaults(KafkaSourceOptions *self,
   self->strategy_hint = KSCS_ASSIGN;
 
   self->persist_store = KSPS_LOCAL;
+  self->fetch_queue_full_delay = 1000; /* fetch_queue_full_delay milliseconds = 1 second */
+  self->fetch_delay = 1000; /* 1 second / fetch_delay = 1 millisecond */
+  self->fetch_retry_delay = 10000; /* 1 second / fetch_retry_delay = 0.1 millisecond */
+  self->fetch_limit = 10000;
   self->time_reopen = 60; /* time_reopen seconds */
 }
 

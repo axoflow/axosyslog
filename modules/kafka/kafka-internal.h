@@ -170,6 +170,10 @@ struct _KafkaSourceOptions
   gint time_reopen;
 
   KafkaSrcPersistStore persist_store;
+  guint fetch_delay;
+  guint fetch_retry_delay;
+  guint fetch_limit; // TODO: use together with "queued.max.messages.kbytes", if 0 kafka's own setting is used automatically
+  guint fetch_queue_full_delay;
 };
 
 struct _KafkaSourceWorker
@@ -205,6 +209,12 @@ void kafka_sd_options_defaults(KafkaSourceOptions *self,
 void kafka_sd_options_destroy(KafkaSourceOptions *self);
 
 void kafka_sd_wakeup_kafka_queues(KafkaSourceDriver *self);
+
+static inline gdouble
+_mainloop_sleep_time(const gdouble delay)
+{
+  return delay > 0 ? 1.0 / delay : 0.0;
+}
 
 /* Kafka Destination */
 
