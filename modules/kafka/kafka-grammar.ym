@@ -56,6 +56,7 @@
 %type <ptr> kafka_property
 
 %token KW_KAFKA
+%token KW_KAFKA_C
 %token KW_TOPIC
 %token KW_FALLBACK_TOPIC
 %token KW_CONFIG
@@ -68,11 +69,16 @@
 %%
 
 start
-        : LL_CONTEXT_DESTINATION KW_KAFKA
-          {
+        : LL_CONTEXT_DESTINATION kafka_keyword
+        {
             last_driver = *instance = kafka_dd_new(configuration);
-          }
-          '(' _inner_dest_context_push kafka_options _inner_dest_context_pop ')' { YYACCEPT; }
+        }
+        '(' _inner_dest_context_push kafka_options _inner_dest_context_pop ')' { YYACCEPT; }
+        ;
+
+kafka_keyword
+        : KW_KAFKA
+        | KW_KAFKA_C
         ;
 
 kafka_options
