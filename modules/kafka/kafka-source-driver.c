@@ -1967,6 +1967,12 @@ void kafka_sd_set_separate_worker_queues(LogDriver *s, gboolean new_value)
   self->options.separated_worker_queues = new_value;
 }
 
+void kafka_sd_set_store_kafka_metadata(LogDriver *s, gboolean new_value)
+{
+  KafkaSourceDriver *self = (KafkaSourceDriver *)s;
+  self->options.store_kafka_metadata = new_value;
+}
+
 void
 kafka_sd_options_defaults(KafkaSourceOptions *self,
                           LogThreadedSourceWorkerOptions *worker_options)
@@ -1984,6 +1990,7 @@ kafka_sd_options_defaults(KafkaSourceOptions *self,
   self->ignore_saved_bookmarks = FALSE;
   self->disable_bookmarks = FALSE;
   self->persist_store = KSPS_LOCAL;
+  self->store_kafka_metadata = TRUE;
   self->separated_worker_queues = FALSE;
   self->fetch_queue_full_delay = 1000; /* fetch_queue_full_delay milliseconds = 1 second */
   self->fetch_delay = 1000; /* 1 second / fetch_delay = 1 millisecond */
