@@ -30,6 +30,9 @@
 
 #include "kafka-internal.h"
 #include "kafka-props.h"
+#include "messages.h"
+
+#include <regex.h>
 
 GQuark
 topic_name_error_quark(void)
@@ -52,6 +55,35 @@ _is_valid_topic_name_pattern(const gchar *name)
         }
     }
   return TRUE;
+}
+
+gboolean
+kafka_validate_topic_pattern(const char *topic, GError **error)
+{
+  if (topic == NULL || *topic == 0)
+    {
+      if (error)
+        g_set_error(error, TOPIC_NAME_ERROR, TOPIC_LENGTH_ZERO,
+                    "kafka: topic pattern is illegal, it can't be empty");
+      return FALSE;
+    }
+
+  /* the same engine and flags rd_kafka_subscribe() compiles '^' topics with */
+  regex_t re;
+  int ret = regcomp(&re, topic, REG_EXTENDED | REG_NOSUB);
+  if (ret == 0)
+    {
+      regfree(&re);
+      return TRUE;
+    }
+  if (error)
+    {
+      gchar reason[256];
+      regerror(ret, &re, reason, sizeof(reason));
+      g_set_error(error, TOPIC_NAME_ERROR, TOPIC_INVALID_PATTERN,
+                  "kafka: topic name %s is illegal as it contains a badly formatted regex pattern: %s", topic, reason);
+    }
+  return FALSE;
 }
 
 gboolean

@@ -31,7 +31,8 @@
 #ifndef KAFKA_INTERNAL_H_INCLUDED
 #define KAFKA_INTERNAL_H_INCLUDED
 
-#include "logthrdest/logthrdestdrv.h"
+#include "syslog-ng.h"
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wignored-qualifiers"
 #include <librdkafka/rdkafka.h>
@@ -51,6 +52,9 @@
 # define kafka_msg_trace msg_trace
 # define kafka_msg_deep_trace(msg, ...)
 #endif
+
+#define MAX_KAFKA_TOPIC_NAME_LEN 249 // TODO: get from librdkafka?
+#define MAX_KAFKA_PARTITION_KEY_NAME_LEN (MAX_KAFKA_TOPIC_NAME_LEN + 1 + 32) /* extra for partition number */
 
 #define TOPIC_NAME_ERROR topic_name_error_quark()
 
@@ -73,6 +77,7 @@ typedef enum _KafkaTopicError
 
 GQuark topic_name_error_quark(void);
 
+gboolean kafka_validate_topic_pattern(const char *topic, GError **error);
 gboolean kafka_validate_topic_name(const gchar *name, GError **error);
 gboolean kafka_conf_set_prop(rd_kafka_conf_t *conf, const gchar *name, const gchar *value);
 gboolean kafka_apply_config_props(rd_kafka_conf_t *conf, GList *props, gchar **protected_properties,
