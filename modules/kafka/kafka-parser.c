@@ -27,6 +27,7 @@
 #include "kafka-grammar.h"
 
 extern int kafka_debug;
+
 int kafka_parse(CfgLexer *lexer, LogDriver **instance, gpointer arg);
 
 static CfgLexerKeyword kafka_keywords[] =
@@ -48,6 +49,7 @@ static CfgLexerKeyword kafka_keywords[] =
   { "sync_send",      KW_SYNC_SEND},
   { "bootstrap_servers", KW_BOOTSTRAP_SERVERS },
   { "poll_timeout",   KW_POLL_TIMEOUT },
+  { "state_update_timeout",   KW_STATE_UPDATE_TIMEOUT },
 
   { NULL }
 };

@@ -34,7 +34,9 @@
 
 #include "cfg-grammar-internal.h"
 #include "plugin.h"
-#include "kafka-dest-driver.h"
+#include "syslog-names.h"
+#include "messages.h"
+#include "kafka-internal.h"
 #include "kafka-props.h"
 
 }
@@ -64,13 +66,22 @@
 %token KW_FLUSH_TIMEOUT_ON_SHUTDOWN
 %token KW_FLUSH_TIMEOUT_ON_RELOAD
 %token KW_POLL_TIMEOUT
+%token KW_STATE_UPDATE_TIMEOUT
 %token KW_BOOTSTRAP_SERVERS
 %token KW_SYNC_SEND
 
 %%
 
 start
-        : LL_CONTEXT_DESTINATION kafka_keyword
+        : LL_CONTEXT_SOURCE KW_KAFKA
+        {
+            last_driver = *instance = kafka_sd_new(configuration);
+        }
+        '(' _inner_src_context_push kafka_src_options _inner_src_context_pop ')'
+        {
+            YYACCEPT;
+        }
+        | LL_CONTEXT_DESTINATION kafka_keyword
         {
             last_driver = *instance = kafka_dd_new(configuration);
         }
@@ -83,6 +94,23 @@ start
 kafka_keyword
         : KW_KAFKA
         | KW_KAFKA_C
+        ;
+
+kafka_src_options
+        : kafka_src_option kafka_src_options
+        |
+        ;
+
+/* via threaded_source_driver_option this implies msg_format_option, source_driver_option, source_option, inner_source and driver_option */
+kafka_src_option
+        : KW_BOOTSTRAP_SERVERS '(' string ')'                   { kafka_sd_set_bootstrap_servers(last_driver, $3); free($3); }
+        | KW_CONFIG '(' kafka_properties ')'                    { kafka_sd_merge_config(last_driver, $3);  }
+        | KV_KAFKA_LOGGING '(' string ')'                       { CHECK_ERROR(kafka_sd_set_logging(last_driver, $3), @3, "Error parsing logging option %s", $3); free($3); }
+        | KW_POLL_TIMEOUT '(' positive_integer ')'              { kafka_sd_set_poll_timeout(last_driver, $3); }
+        | KW_STATE_UPDATE_TIMEOUT '(' positive_integer ')'      { kafka_sd_set_state_update_timeout(last_driver, $3); }
+        | KW_TIME_REOPEN '(' positive_integer ')'               { kafka_sd_set_time_reopen(last_driver, $3); }
+        | threaded_source_driver_option
+        | threaded_source_driver_workers_option
         ;
 
 kafka_dest_options

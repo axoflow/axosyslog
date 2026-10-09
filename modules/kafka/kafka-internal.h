@@ -31,11 +31,13 @@
 #ifndef KAFKA_INTERNAL_H_INCLUDED
 #define KAFKA_INTERNAL_H_INCLUDED
 
+#include "logthrsource/logthrfetcherdrv.h"
 #include "logthrdest/logthrdestdrv.h"
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wignored-qualifiers"
 #include <librdkafka/rdkafka.h>
 #pragma GCC diagnostic pop
+#include "kafka-source-driver.h"
 #include "kafka-dest-driver.h"
 #include "kafka-dest-worker.h"
 
@@ -135,6 +137,37 @@ KafkaConnectedState kafka_opaque_state_get(KafkaOpaque *self);
 void kafka_opaque_state_set(KafkaOpaque *self, KafkaConnectedState state);
 gint kafka_opaque_state_get_last_error(KafkaOpaque *self);
 void kafka_opaque_state_set_last_error(KafkaOpaque *self, gint error);
+
+/* Kafka Source */
+
+struct _KafkaSourceOptions
+{
+  KafkaOptions super;
+  /* WARNING: multiple inheritance! */
+  LogThreadedSourceWorkerOptions *worker_options;
+
+  MsgFormatOptions *format_options;
+
+  gint time_reopen;
+};
+
+struct _KafkaSourceDriver
+{
+  LogThreadedSourceDriver super;
+
+  KafkaSourceOptions options;
+  KafkaOpaque opaque;
+
+  rd_kafka_t *kafka;
+
+  gchar *group_id;
+  const gchar *persist_name;
+
+};
+
+void kafka_sd_options_defaults(KafkaSourceOptions *self,
+                               LogThreadedSourceWorkerOptions *worker_options);
+void kafka_sd_options_destroy(KafkaSourceOptions *self);
 
 /* Kafka Destination */
 
