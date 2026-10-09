@@ -98,6 +98,11 @@ gboolean kafka_apply_config_props(rd_kafka_conf_t *conf, GList *props, gchar **p
 gchar *kafka_format_partition_key(const gchar *topic, int32_t partition, gchar *key, gsize key_size);
 void kafka_log_callback(const rd_kafka_t *rkt, int level, const char *fac, const char *msg);
 
+void kafka_register_counters(KafkaSourceDriver *self, GHashTable *stats_table, const gchar *label,
+                             const gchar *label_value, const gchar **counter_names, gint level);
+void kafka_unregister_counters(KafkaSourceDriver *self, const gchar *label, const gchar *label_value,
+                               StatsCounterItem *counter, const gchar **counter_names);
+
 rd_kafka_resp_err_t kafka_update_state(KafkaSourceDriver *self, gboolean lock);
 
 typedef struct _KafkaOptions
@@ -204,11 +209,19 @@ struct _KafkaSourceDriver
   GCond *queue_conds;
   GMutex *queue_cond_mutexes;
   guint allocated_queue_num;
+  gchar single_queue_name[64];
 
   GAtomicCounter running_thread_num;
   GAtomicCounter sleeping_thread_num;
 
   const gchar *persist_name;
+
+  const gchar *stat_persist_name;
+  GHashTable *stats_topics;
+  GHashTable *stats_workers;
+  StatsAggregator *max_message_size;
+  StatsAggregator *average_messages_size;
+  StatsAggregator *CPS;
 
 };
 
@@ -230,6 +243,10 @@ void kafka_sd_wait_for_queue_processors_to_exit(KafkaSourceDriver *self, const g
 void kafka_sd_drop_queued_messages(KafkaSourceDriver *self);
 void kafka_sd_wakeup_kafka_queues(KafkaSourceDriver *self);
 gboolean kafka_sd_parallel_processing(KafkaSourceDriver *self);
+
+void kafka_sd_update_msg_length_stats(KafkaSourceDriver *self, gsize len);
+void kafka_sd_inc_msg_topic_stats(KafkaSourceDriver *self, const gchar *topic);
+void kafka_sd_update_msg_worker_stats(KafkaSourceDriver *self, gint worker_ndx);
 
 static inline gdouble
 _mainloop_sleep_time(const gdouble delay)

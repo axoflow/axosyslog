@@ -30,6 +30,8 @@
 #include "kafka-internal.h"
 #include "kafka-props.h"
 #include "kafka-topic-parts.h"
+#include "stats/stats-cluster-single.h"
+#include "stats/aggregator/stats-aggregator-registry.h"
 #include "host-id.h"
 
 // TODO: Move these to a common lib place
@@ -205,6 +207,146 @@ _format_persist_name(const LogPipe *d)
   else
     g_snprintf(persist_name, sizeof(persist_name), "kafka(%s)", self->super.super.super.id);
   return persist_name;
+}
+
+void
+kafka_sd_update_msg_length_stats(KafkaSourceDriver *self, gsize len)
+{
+  stats_aggregator_add_data_point(self->max_message_size, len);
+  stats_aggregator_add_data_point(self->average_messages_size, len);
+}
+
+void
+kafka_sd_inc_msg_topic_stats(KafkaSourceDriver *self, const gchar *topic)
+{
+  StatsCounterItem *counter = g_hash_table_lookup(self->stats_topics, topic);
+  stats_counter_inc(counter);
+}
+
+static inline const gchar *
+_worker_get_name(KafkaSourceDriver *self, gint index)
+{
+  if (FALSE == self->options.separated_worker_queues && kafka_sd_parallel_processing(self))
+    return self->single_queue_name;
+  else
+    return kafka_src_worker_get_name(self->super.workers[index]);
+}
+
+void
+kafka_sd_update_msg_worker_stats(KafkaSourceDriver *self, gint worker_ndx)
+{
+  StatsCounterItem *counter = g_hash_table_lookup(self->stats_workers, _worker_get_name(self, worker_ndx));
+  guint msg_queue_len = g_async_queue_length(self->msg_queues[self->options.separated_worker_queues ? worker_ndx : 1]);
+  stats_counter_set(counter, msg_queue_len);
+}
+
+static void
+_register_worker_stats(KafkaSourceDriver *self)
+{
+  const gchar *counter_names[] = { "queued", NULL };
+
+  /* Intentionally not using the 0 index slot */
+  for (int i = 1 ; i < self->allocated_queue_num; i++)
+    {
+      const gchar *label_value_ptr = _worker_get_name(self, i);
+      if (FALSE == self->options.separated_worker_queues && kafka_sd_parallel_processing(self))
+        {
+          g_snprintf(self->single_queue_name, sizeof(self->single_queue_name), "%s-%d",
+                     kafka_src_worker_get_name(self->super.workers[1]),
+                     self->super.num_workers - 1);
+          label_value_ptr = self->single_queue_name;
+        }
+      if (FALSE == g_hash_table_contains(self->stats_workers, label_value_ptr))
+        kafka_register_counters(self, self->stats_workers, "worker", label_value_ptr, counter_names, STATS_LEVEL2);
+    }
+}
+
+static void
+_unregister_worker_counters(gpointer key, gpointer value, gpointer user_data)
+{
+  KafkaSourceDriver *self = (KafkaSourceDriver *)user_data;
+  const gchar *worker_id = (const gchar *)key;
+  StatsCounterItem *counter = (StatsCounterItem *)value;
+  const gchar *counter_names[] = { "queued", NULL };
+
+  kafka_unregister_counters(self, "worker", worker_id, counter, counter_names);
+}
+
+static void
+_unregister_worker_stats(KafkaSourceDriver *self)
+{
+  g_hash_table_foreach(self->stats_workers, _unregister_worker_counters, self);
+}
+
+static void
+_unregister_topic_counters(gpointer key, gpointer value, gpointer user_data)
+{
+  KafkaSourceDriver *self = (KafkaSourceDriver *)user_data;
+  const gchar *topic = (const gchar *)key;
+  StatsCounterItem *counter = (StatsCounterItem *)value;
+  const gchar *counter_names[] = { "processed", NULL };
+
+  kafka_unregister_counters(self, "topic", topic, counter, counter_names);
+}
+
+static inline void
+_unregister_topic_stats(KafkaSourceDriver *self)
+{
+  g_hash_table_foreach(self->stats_topics, _unregister_topic_counters, self);
+}
+
+static void
+_register_aggregated_stats(KafkaSourceDriver *self)
+{
+  LogThreadedSourceWorker *worker = self->super.workers[0];
+  StatsClusterKeyBuilder *kb = worker->super.metrics.stats_kb;
+  stats_cluster_key_builder_push(kb);
+  {
+    LogSourceOptions *super_options = &self->options.worker_options->super;
+    gchar *stats_id = worker->super.stats_id;
+    gchar stats_instance[1024];
+    const gchar *instance_name = stats_cluster_key_builder_format_legacy_stats_instance(kb, stats_instance,
+                                 sizeof(stats_instance));
+    stats_aggregator_lock();
+    StatsClusterKey sc_key;
+
+    stats_cluster_single_key_legacy_set_with_name(&sc_key,
+                                                  super_options->stats_source | SCS_SOURCE,
+                                                  stats_id,
+                                                  instance_name, "msg_size_max");
+    stats_register_aggregator_maximum(super_options->stats_level, &sc_key,
+                                      &self->max_message_size);
+
+    stats_cluster_single_key_legacy_set_with_name(&sc_key,
+                                                  super_options->stats_source | SCS_SOURCE,
+                                                  stats_id,
+                                                  instance_name, "msg_size_avg");
+    stats_register_aggregator_average(super_options->stats_level, &sc_key,
+                                      &self->average_messages_size);
+
+    stats_cluster_single_key_legacy_set_with_name(&sc_key,
+                                                  super_options->stats_source | SCS_SOURCE,
+                                                  stats_id,
+                                                  instance_name, "eps");
+    stats_register_aggregator_cps(super_options->stats_level, &sc_key,
+                                  worker->super.metrics.recvd_messages_key,
+                                  SC_TYPE_SINGLE_VALUE,
+                                  &self->CPS);
+    stats_aggregator_unlock();
+  }
+  stats_cluster_key_builder_pop(kb);
+}
+
+static void
+_unregister_aggregated_stats(KafkaSourceDriver *self)
+{
+  stats_aggregator_lock();
+
+  stats_unregister_aggregator(&self->max_message_size);
+  stats_unregister_aggregator(&self->average_messages_size);
+  stats_unregister_aggregator(&self->CPS);
+
+  stats_aggregator_unlock();
 }
 
 static gboolean
@@ -507,6 +649,7 @@ kafka_sd_drop_queued_messages(KafkaSourceDriver *self)
       GAsyncQueue *msg_queue = self->msg_queues[i];
       while ((msg = g_async_queue_try_pop(msg_queue)) != NULL)
         rd_kafka_message_destroy(msg);
+      kafka_sd_update_msg_worker_stats(self, i);
     }
   g_assert(kafka_sd_worker_queues_len(self) == 0);
 }
@@ -713,10 +856,15 @@ kafka_sd_init(LogPipe *s)
   _decide_strategy(self);
 
   _alloc_msg_queues(self);
+  self->stats_topics = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
+  self->stats_workers = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
   kafka_opaque_init(&self->opaque, &self->super.super.super, &self->options.super);
 
   if (FALSE == log_threaded_source_driver_init_method(s))
     return FALSE;
+
+  _register_worker_stats(self);
+  _register_aggregated_stats(self);
 
   msg_verbose("kafka: Kafka source initialized",
               evt_tag_str("group_id", self->group_id),
@@ -737,6 +885,12 @@ kafka_sd_deinit(LogPipe *s)
 
   kafka_opaque_deinit(&self->opaque);
   _destroy_msg_queues(self);
+
+  _unregister_aggregated_stats(self);
+  _unregister_worker_stats(self);
+  _unregister_topic_stats(self);
+  g_hash_table_destroy(self->stats_topics);
+  g_hash_table_destroy(self->stats_workers);
 
   return log_threaded_source_driver_deinit_method(s);
 }
