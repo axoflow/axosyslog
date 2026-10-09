@@ -56,6 +56,14 @@
 
 #define TOPIC_NAME_ERROR topic_name_error_quark()
 
+typedef enum _KafkaConnectedState
+{
+  KFS_CONNECTED,
+  KFS_DISCONNECTED,
+
+  KFS_UNKNOWN
+} KafkaConnectedState;
+
 typedef enum _KafkaTopicError
 {
   TOPIC_LENGTH_ZERO,
@@ -86,6 +94,29 @@ void kafka_options_merge_config(KafkaOptions *self, GList *props);
 void kafka_options_set_bootstrap_servers(KafkaOptions *self, const gchar *bootstrap_servers);
 void kafka_options_set_poll_timeout(KafkaOptions *self, gint poll_timeout);
 
+typedef struct _KafkaState
+{
+  GMutex mutex;
+  KafkaConnectedState state;
+  gint last_error;
+} KafkaState;
+
+typedef struct _KafkaOpaque
+{
+  LogDriver *driver;
+  KafkaOptions *options;
+  KafkaState state;
+} KafkaOpaque;
+
+void kafka_opaque_init(KafkaOpaque *self, LogDriver *driver, KafkaOptions *options);
+void kafka_opaque_deinit(KafkaOpaque *self);
+LogDriver *kafka_opaque_driver(KafkaOpaque *self);
+void kafka_opaque_state_lock(KafkaOpaque *self);
+void kafka_opaque_state_unlock(KafkaOpaque *self);
+KafkaConnectedState kafka_opaque_state_get(KafkaOpaque *self);
+void kafka_opaque_state_set(KafkaOpaque *self, KafkaConnectedState state);
+gint kafka_opaque_state_get_last_error(KafkaOpaque *self);
+void kafka_opaque_state_set_last_error(KafkaOpaque *self, gint error);
 
 /* Kafka Destination */
 
@@ -119,6 +150,7 @@ struct _KafkaDestDriver
 {
   LogThreadedDestDriver super;
   KafkaDestinationOptions options;
+  KafkaOpaque opaque;
 
   rd_kafka_topic_t *topic;
   rd_kafka_t *kafka;

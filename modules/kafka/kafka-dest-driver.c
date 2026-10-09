@@ -211,7 +211,7 @@ _kafka_delivery_report_cb(rd_kafka_t *rk,
                           rd_kafka_resp_err_t err,
                           void *opaque, void *msg_opaque)
 {
-  KafkaDestDriver *self = (KafkaDestDriver *) opaque;
+  KafkaDestDriver *self = (KafkaDestDriver *) kafka_opaque_driver((KafkaOpaque *)opaque);
 
   /* delivery callback will be called from the the thread where rd_kafka_poll is called,
    * which could be any worker and not just worker#0 due to the kafka_dd_shutdown in thread_init
@@ -271,7 +271,7 @@ _construct_client(KafkaDestDriver *self)
 
   rd_kafka_conf_set_log_cb(conf, kafka_log_callback);
   rd_kafka_conf_set_dr_cb(conf, _kafka_delivery_report_cb);
-  rd_kafka_conf_set_opaque(conf, self);
+  rd_kafka_conf_set_opaque(conf, &self->opaque);
 
   client = rd_kafka_new(RD_KAFKA_PRODUCER, conf, errbuf, sizeof(errbuf));
   if (!client)
@@ -475,6 +475,7 @@ kafka_dd_init(LogPipe *s)
       return FALSE;
     }
 
+  kafka_opaque_init(&self->opaque, &self->super.super.super, &self->options.super);
   if (!kafka_dd_reopen(&self->super.super.super))
     {
       return FALSE;
@@ -554,6 +555,7 @@ kafka_dd_deinit(LogPipe *s)
 
   kafka_dd_shutdown(&self->super);
   _check_for_remaining_messages(self);
+  kafka_opaque_deinit(&self->opaque);
 
   return log_threaded_dest_driver_deinit_method(s);
 }
