@@ -31,8 +31,11 @@
 
 #include "apphook.h"
 #include "cfg.h"
+#include "reloc.h"
 
 #include <string.h>
+#include <iv.h>
+#include <unistd.h>
 
 #define AGGREGATED_FLAGS SPLUNK_S2S_EVENT_FLAGS_FULL_HEADER
 /* what universal forwarders send on raw file chunks, the aggregated bit clear */
@@ -732,9 +735,434 @@ Test(splunk_s2s_proto_server, eof_during_the_handshake)
   log_proto_server_free(proto);
 }
 
+/****************************************************************************
+ * Multi-line events
+ ****************************************************************************/
+
+static MultiLineOptions multi_line_options;
+static gboolean multi_line_options_set;
+
+static LogProtoServer *
+_server_new_multi_line(LogTransport *transport, const gchar *mode, const gchar *prefix, const gchar *garbage,
+                       gint timeout_msec)
+{
+  GError *error = NULL;
+
+  if (multi_line_options_set)
+    multi_line_options_destroy(&multi_line_options);
+  multi_line_options_defaults(&multi_line_options);
+  multi_line_options_set = TRUE;
+
+  cr_assert(multi_line_options_set_mode(&multi_line_options, mode), "invalid multi-line mode %s", mode);
+  if (prefix)
+    cr_assert(multi_line_options_set_prefix(&multi_line_options, prefix, &error), "invalid prefix %s", prefix);
+  if (garbage)
+    cr_assert(multi_line_options_set_garbage(&multi_line_options, garbage, &error), "invalid garbage %s", garbage);
+  cr_assert(multi_line_options_validate(&multi_line_options));
+
+  LogProtoServer *proto = _server_new(transport);
+  log_proto_splunk_s2s_server_set_multi_line(proto, &multi_line_options, timeout_msec);
+  return proto;
+}
+
+/* the handshake up to the first channel, so the tests below read as the data */
+static void
+_append_preamble_with_channel(GString *stream, guint64 channel_id, const gchar *source)
+{
+  _append_signature(stream, SPLUNK_S2S_CAPABILITIES_SIGNATURE);
+  _append_forwarder_info(stream);
+  splunk_s2s_format_open_channel(stream, channel_id, source, "forwarder", "java_app");
+}
+
+static void
+_assert_forwarder_info(LogProtoServer *proto)
+{
+  FetchedMessage message;
+
+  _assert_fetch(proto, &message, "ForwarderInfo build=test version=10.2.2");
+  _fetched_message_clear(&message);
+}
+
+/* a single fetch(), for streams that never reach EOF */
+static gboolean
+_fetch_once(LogProtoServer *proto, FetchedMessage *message)
+{
+  Bookmark bookmark;
+  LogTransportAuxData aux;
+  gboolean may_read = TRUE;
+  const guchar *msg = NULL;
+  gsize msg_len = 0;
+
+  memset(message, 0, sizeof(*message));
+  log_transport_aux_data_init(&aux);
+  LogProtoStatus status = log_proto_server_fetch(proto, &msg, &msg_len, &may_read, &aux, &bookmark);
+  cr_assert_eq(status, LPS_SUCCESS);
+  if (msg)
+    {
+      message->raw = g_string_new_len((const gchar *) msg, msg_len);
+      log_transport_aux_data_foreach(&aux, _collect_aux_nv_pair, message);
+    }
+  log_transport_aux_data_destroy(&aux);
+  return msg != NULL;
+}
+
+Test(splunk_s2s_proto_server, prefix_mode_merges_continuation_lines_across_chunks)
+{
+  GString *stream = g_string_new(NULL);
+  _append_preamble_with_channel(stream, 1, "/var/log/app.log");
+
+  /* the second event is cut in two by the chunk boundary, the third is only
+   * complete at EOF; empty lines vanish as they do without merging */
+  _append_event(stream, 1, CHUNK_FLAGS, 2, "2026-10-09 15:31:50 ERROR failed\n\n"
+                                           "com.example.Exception: boom\n\tat com.example.A(A.java:1)\n2026-10-09 15:31:51 INFO sec");
+  _append_event(stream, 1, CHUNK_FLAGS, 3, "ond\n\tat com.example.B(B.java:2)\n2026-10-09 15:31:52 INFO third\n");
+
+  LogTransport *transport = log_transport_mock_stream_new(stream->str, stream->len, LTM_EOF);
+  LogProtoServer *proto = _server_new_multi_line(transport, "prefix-garbage", "^[0-9]{4}-[0-9]{2}-[0-9]{2} ", NULL, 0);
+
+  _assert_forwarder_info(proto);
+
+  FetchedMessage message;
+  _assert_fetch(proto, &message,
+                "2026-10-09 15:31:50 ERROR failed\ncom.example.Exception: boom\n\tat com.example.A(A.java:1)");
+  cr_assert_str_eq(message.source, "/var/log/app.log");
+  cr_assert_str_eq(message.sourcetype, "java_app");
+  cr_assert_str_eq(message.host, "forwarder");
+  _fetched_message_clear(&message);
+
+  _assert_fetch(proto, &message, "2026-10-09 15:31:51 INFO second\n\tat com.example.B(B.java:2)");
+  _fetched_message_clear(&message);
+
+  _assert_fetch(proto, &message, "2026-10-09 15:31:52 INFO third");
+  _fetched_message_clear(&message);
+
+  _assert_no_more_messages(proto);
+
+  g_string_free(stream, TRUE);
+  log_proto_server_free(proto);
+}
+
+/* every line of an event ends in a newline, so dropping the garbage line
+ * leaves the newline of the line before it in place */
+Test(splunk_s2s_proto_server, a_dropped_garbage_line_leaves_the_newline_of_the_line_before_it)
+{
+  GString *stream = g_string_new(NULL);
+  _append_preamble_with_channel(stream, 1, "/var/log/app.log");
+  _append_event(stream, 1, CHUNK_FLAGS, 2, "2026-10-09 first\n\tat A\n--END--\n2026-10-09 second\n");
+
+  LogTransport *transport = log_transport_mock_stream_new(stream->str, stream->len, LTM_EOF);
+  LogProtoServer *proto = _server_new_multi_line(transport, "prefix-garbage", "^[0-9]{4}-", "--END--", 0);
+
+  _assert_forwarder_info(proto);
+
+  FetchedMessage message;
+  _assert_fetch(proto, &message, "2026-10-09 first\n\tat A\n");
+  _fetched_message_clear(&message);
+  _assert_fetch(proto, &message, "2026-10-09 second");
+  _fetched_message_clear(&message);
+
+  _assert_no_more_messages(proto);
+
+  g_string_free(stream, TRUE);
+  log_proto_server_free(proto);
+}
+
+Test(splunk_s2s_proto_server, indented_mode_merges_indented_continuation_lines)
+{
+  GString *stream = g_string_new(NULL);
+  _append_preamble_with_channel(stream, 1, "/var/log/app.log");
+  _append_event(stream, 1, CHUNK_FLAGS, 2, "first\n  continued\n\tand again\nsecond\n  continued\n");
+
+  LogTransport *transport = log_transport_mock_stream_new(stream->str, stream->len, LTM_EOF);
+  LogProtoServer *proto = _server_new_multi_line(transport, "indented", NULL, NULL, 0);
+
+  _assert_forwarder_info(proto);
+
+  FetchedMessage message;
+  _assert_fetch(proto, &message, "first\n  continued\n\tand again");
+  _fetched_message_clear(&message);
+  _assert_fetch(proto, &message, "second\n  continued");
+  _fetched_message_clear(&message);
+
+  _assert_no_more_messages(proto);
+
+  g_string_free(stream, TRUE);
+  log_proto_server_free(proto);
+}
+
+Test(splunk_s2s_proto_server, close_channel_completes_the_pending_multi_line_event)
+{
+  GString *stream = g_string_new(NULL);
+  _append_preamble_with_channel(stream, 1, "/var/log/app.log");
+  /* the unterminated tail is the last line of the event */
+  _append_event(stream, 1, CHUNK_FLAGS, 2, "2026-10-09 first\n\tat A\n\tat B");
+  splunk_s2s_format_close_channel(stream, 1);
+  splunk_s2s_format_open_channel(stream, 2, "/var/log/other.log", "forwarder", "java_app");
+  _append_event(stream, 2, CHUNK_FLAGS, 3, "2026-10-09 other\n");
+
+  LogTransport *transport = log_transport_mock_stream_new(stream->str, stream->len, LTM_EOF);
+  LogProtoServer *proto = _server_new_multi_line(transport, "prefix-garbage", "^[0-9]{4}-", NULL, 0);
+
+  _assert_forwarder_info(proto);
+
+  FetchedMessage message;
+  _assert_fetch(proto, &message, "2026-10-09 first\n\tat A\n\tat B");
+  cr_assert_str_eq(message.source, "/var/log/app.log");
+  _fetched_message_clear(&message);
+  _assert_fetch(proto, &message, "2026-10-09 other");
+  cr_assert_str_eq(message.source, "/var/log/other.log");
+  _fetched_message_clear(&message);
+
+  _assert_no_more_messages(proto);
+
+  g_string_free(stream, TRUE);
+  log_proto_server_free(proto);
+}
+
+Test(splunk_s2s_proto_server, channels_accumulate_independently)
+{
+  GString *stream = g_string_new(NULL);
+  _append_preamble_with_channel(stream, 1, "/var/log/a.log");
+  splunk_s2s_format_open_channel(stream, 2, "/var/log/b.log", "forwarder", "java_app");
+
+  /* chunks of the two channels interleave on the connection */
+  _append_event(stream, 1, CHUNK_FLAGS, 2, "2026-10-09 a1\n\tat A\n");
+  _append_event(stream, 2, CHUNK_FLAGS, 3, "2026-10-09 b1\n\tat B\n");
+  _append_event(stream, 1, CHUNK_FLAGS, 4, "\tat A2\n2026-10-09 a2\n");
+  _append_event(stream, 2, CHUNK_FLAGS, 5, "2026-10-09 b2\n");
+
+  LogTransport *transport = log_transport_mock_stream_new(stream->str, stream->len, LTM_EOF);
+  LogProtoServer *proto = _server_new_multi_line(transport, "prefix-garbage", "^[0-9]{4}-", NULL, 0);
+
+  _assert_forwarder_info(proto);
+
+  FetchedMessage message;
+  _assert_fetch(proto, &message, "2026-10-09 a1\n\tat A\n\tat A2");
+  cr_assert_str_eq(message.source, "/var/log/a.log");
+  _fetched_message_clear(&message);
+  _assert_fetch(proto, &message, "2026-10-09 b1\n\tat B");
+  cr_assert_str_eq(message.source, "/var/log/b.log");
+  _fetched_message_clear(&message);
+
+  /* the pending last events are completed at EOF, in channel order */
+  _assert_fetch(proto, &message, "2026-10-09 a2");
+  _fetched_message_clear(&message);
+  _assert_fetch(proto, &message, "2026-10-09 b2");
+  _fetched_message_clear(&message);
+
+  _assert_no_more_messages(proto);
+
+  g_string_free(stream, TRUE);
+  log_proto_server_free(proto);
+}
+
+Test(splunk_s2s_proto_server, a_metadata_change_on_the_channel_completes_the_pending_event)
+{
+  GString *stream = g_string_new(NULL);
+  _append_preamble_with_channel(stream, 1, "/var/log/app.log");
+  _append_event(stream, 1, CHUNK_FLAGS, 2, "2026-10-09 first\n\tat A\n");
+
+  SplunkS2SEventField fields[] =
+  {
+    {
+      .name = "MetaData:Source", .value_type = SPLUNK_S2S_VALUE_STR,
+      .str_value = "source::/var/log/other.log", .str_value_len = 26
+    },
+  };
+  splunk_s2s_format_event(stream, 1, CHUNK_FLAGS, 1700000000, 3, fields, G_N_ELEMENTS(fields),
+                          "\tat B\n", 6);
+
+  LogTransport *transport = log_transport_mock_stream_new(stream->str, stream->len, LTM_EOF);
+  LogProtoServer *proto = _server_new_multi_line(transport, "prefix-garbage", "^[0-9]{4}-", NULL, 0);
+
+  _assert_forwarder_info(proto);
+
+  FetchedMessage message;
+  _assert_fetch(proto, &message, "2026-10-09 first\n\tat A");
+  cr_assert_str_eq(message.source, "/var/log/app.log");
+  _fetched_message_clear(&message);
+
+  /* the continuation line of another source starts an event of its own */
+  _assert_fetch(proto, &message, "\tat B");
+  cr_assert_str_eq(message.source, "/var/log/other.log");
+  _fetched_message_clear(&message);
+
+  _assert_no_more_messages(proto);
+
+  g_string_free(stream, TRUE);
+  log_proto_server_free(proto);
+}
+
+Test(splunk_s2s_proto_server, aggregated_events_bypass_the_accumulator)
+{
+  GString *stream = g_string_new(NULL);
+  _append_preamble_with_channel(stream, 1, "/var/log/app.log");
+  _append_event(stream, 1, CHUNK_FLAGS, 2, "2026-10-09 first\n\tat A\n");
+  /* a heavy forwarder merged this one already, it does not join the pending event */
+  _append_event(stream, 1, AGGREGATED_FLAGS, 3, "\tnot a continuation\n\tof anything");
+  _append_event(stream, 1, CHUNK_FLAGS, 4, "\tat B\n");
+
+  LogTransport *transport = log_transport_mock_stream_new(stream->str, stream->len, LTM_EOF);
+  LogProtoServer *proto = _server_new_multi_line(transport, "prefix-garbage", "^[0-9]{4}-", NULL, 0);
+
+  _assert_forwarder_info(proto);
+
+  FetchedMessage message;
+  _assert_fetch(proto, &message, "\tnot a continuation\n\tof anything");
+  _fetched_message_clear(&message);
+  _assert_fetch(proto, &message, "2026-10-09 first\n\tat A\n\tat B");
+  _fetched_message_clear(&message);
+
+  _assert_no_more_messages(proto);
+
+  g_string_free(stream, TRUE);
+  log_proto_server_free(proto);
+}
+
+/* iv_now is read once per loop iteration, and there is no loop here */
+static void
+_sleep_msec(gint msec)
+{
+  usleep(msec * 1000);
+  iv_invalidate_now();
+}
+
+Test(splunk_s2s_proto_server, the_pending_event_is_completed_when_the_timeout_fires)
+{
+  GString *stream = g_string_new(NULL);
+  _append_preamble_with_channel(stream, 1, "/var/log/app.log");
+  _append_event(stream, 1, CHUNK_FLAGS, 2, "2026-10-09 first\n\tat A\n");
+
+  /* no EOF: the stream goes quiet after the chunk; the records mock hands
+   * the whole buffer to a single read, so one fetch() sees all of it */
+  LogTransport *transport = log_transport_mock_endless_records_new(stream->str, stream->len, LTM_EOF);
+  LogProtoServer *proto = _server_new_multi_line(transport, "prefix-garbage", "^[0-9]{4}-", NULL, 100);
+
+  _assert_forwarder_info(proto);
+
+  FetchedMessage message;
+  cr_assert_not(_fetch_once(proto, &message), "the event must wait for its next line");
+
+  /* the timer firing alone does not complete an event whose timeout is still running */
+  log_proto_splunk_s2s_server_fire_multi_line_timeout(proto);
+  cr_assert_not(_fetch_once(proto, &message), "the event must be held until its timeout passes");
+
+  _sleep_msec(200);
+  log_proto_splunk_s2s_server_fire_multi_line_timeout(proto);
+  cr_assert(_fetch_once(proto, &message));
+  cr_assert_str_eq(message.raw->str, "2026-10-09 first\n\tat A");
+  cr_assert_str_eq(message.source, "/var/log/app.log");
+  _fetched_message_clear(&message);
+
+  cr_assert_not(_fetch_once(proto, &message));
+
+  g_string_free(stream, TRUE);
+  log_proto_server_free(proto);
+}
+
+Test(splunk_s2s_proto_server, the_timeout_expires_per_channel_counted_from_its_last_line)
+{
+  GString *stream = g_string_new(NULL);
+  _append_preamble_with_channel(stream, 1, "/var/log/quiet.log");
+  splunk_s2s_format_open_channel(stream, 2, "/var/log/busy.log", "forwarder", "java_app");
+  _append_event(stream, 1, CHUNK_FLAGS, 2, "2026-10-09 quiet\n\tat A\n");
+  _append_event(stream, 2, CHUNK_FLAGS, 3, "2026-10-09 busy\n\tat B\n");
+
+  LogTransport *transport = log_transport_mock_endless_records_new(stream->str, stream->len, LTM_EOF);
+  LogProtoServer *proto = _server_new_multi_line(transport, "prefix-garbage", "^[0-9]{4}-", NULL, 100);
+
+  _assert_forwarder_info(proto);
+
+  FetchedMessage message;
+  cr_assert_not(_fetch_once(proto, &message));
+
+  /* the busy channel gets another line just before the deadline */
+  _sleep_msec(150);
+  GString *next_chunk = g_string_new(NULL);
+  _append_event(next_chunk, 2, CHUNK_FLAGS, 4, "\tat C\n");
+  log_transport_mock_inject_data((LogTransportMock *) transport, next_chunk->str, next_chunk->len);
+  cr_assert_not(_fetch_once(proto, &message));
+
+  /* only the quiet channel has expired */
+  log_proto_splunk_s2s_server_fire_multi_line_timeout(proto);
+  cr_assert(_fetch_once(proto, &message));
+  cr_assert_str_eq(message.raw->str, "2026-10-09 quiet\n\tat A");
+  cr_assert_str_eq(message.source, "/var/log/quiet.log");
+  _fetched_message_clear(&message);
+  cr_assert_not(_fetch_once(proto, &message), "the busy channel's event must wait for its own timeout");
+
+  _sleep_msec(150);
+  log_proto_splunk_s2s_server_fire_multi_line_timeout(proto);
+  cr_assert(_fetch_once(proto, &message));
+  cr_assert_str_eq(message.raw->str, "2026-10-09 busy\n\tat B\n\tat C");
+  cr_assert_str_eq(message.source, "/var/log/busy.log");
+  _fetched_message_clear(&message);
+
+  g_string_free(next_chunk, TRUE);
+  g_string_free(stream, TRUE);
+  log_proto_server_free(proto);
+}
+
+Test(splunk_s2s_proto_server, without_a_timeout_the_pending_event_waits_for_the_next_line)
+{
+  GString *stream = g_string_new(NULL);
+  _append_preamble_with_channel(stream, 1, "/var/log/app.log");
+  _append_event(stream, 1, CHUNK_FLAGS, 2, "2026-10-09 first\n\tat A\n");
+
+  LogTransport *transport = log_transport_mock_endless_records_new(stream->str, stream->len, LTM_EOF);
+  LogProtoServer *proto = _server_new_multi_line(transport, "prefix-garbage", "^[0-9]{4}-", NULL, 0);
+
+  _assert_forwarder_info(proto);
+
+  FetchedMessage message;
+  cr_assert_not(_fetch_once(proto, &message));
+  log_proto_splunk_s2s_server_fire_multi_line_timeout(proto);
+  cr_assert_not(_fetch_once(proto, &message));
+
+  /* the next chunk arrives: its first line completes the pending event */
+  GString *next_chunk = g_string_new(NULL);
+  _append_event(next_chunk, 1, CHUNK_FLAGS, 3, "2026-10-09 second\n");
+  log_transport_mock_inject_data((LogTransportMock *) transport, next_chunk->str, next_chunk->len);
+  cr_assert(_fetch_once(proto, &message));
+  cr_assert_str_eq(message.raw->str, "2026-10-09 first\n\tat A");
+  _fetched_message_clear(&message);
+
+  g_string_free(next_chunk, TRUE);
+  g_string_free(stream, TRUE);
+  log_proto_server_free(proto);
+}
+
+Test(splunk_s2s_proto_server, mode_none_leaves_lines_unmerged)
+{
+  GString *stream = g_string_new(NULL);
+  _append_preamble_with_channel(stream, 1, "/var/log/app.log");
+  _append_event(stream, 1, CHUNK_FLAGS, 2, "2026-10-09 first\n\tat A\n");
+
+  LogTransport *transport = log_transport_mock_stream_new(stream->str, stream->len, LTM_EOF);
+  LogProtoServer *proto = _server_new_multi_line(transport, "none", NULL, NULL, 0);
+
+  _assert_forwarder_info(proto);
+
+  FetchedMessage message;
+  _assert_fetch(proto, &message, "2026-10-09 first");
+  _fetched_message_clear(&message);
+  _assert_fetch(proto, &message, "\tat A");
+  _fetched_message_clear(&message);
+
+  _assert_no_more_messages(proto);
+
+  g_string_free(stream, TRUE);
+  log_proto_server_free(proto);
+}
+
 static void
 setup(void)
 {
+  /* the smart mode needs its state machine, which is not installed yet when
+   * the tests run from the build tree */
+  override_installation_path_for("${pkgdatadir}/smart-multi-line.fsm", TOP_SRCDIR "/lib/multi-line/smart-multi-line.fsm");
+  override_installation_path_for("${pkgdatadir}/timestamp-multi-line.formats",
+                                 TOP_SRCDIR "/lib/multi-line/timestamp-multi-line.formats");
   app_startup();
   init_proto_tests();
 }
@@ -742,6 +1170,11 @@ setup(void)
 static void
 teardown(void)
 {
+  if (multi_line_options_set)
+    {
+      multi_line_options_destroy(&multi_line_options);
+      multi_line_options_set = FALSE;
+    }
   deinit_proto_tests();
   app_shutdown();
 }
