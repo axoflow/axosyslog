@@ -175,6 +175,8 @@ struct _KafkaSourceOptions
   KafkaSrcConsumerStrategy strategy_hint;
   gint time_reopen;
 
+  gboolean ignore_saved_bookmarks;
+  gboolean disable_bookmarks;
   KafkaSrcPersistStore persist_store;
   guint fetch_delay;
   guint fetch_retry_delay;

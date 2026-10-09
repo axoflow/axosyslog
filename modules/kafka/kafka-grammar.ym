@@ -75,6 +75,8 @@
 %token KW_SYNC_SEND
 %token KW_LOG_FETCH_DELAY
 %token KW_LOG_FETCH_RETRY_DELAY
+%token KW_IGNORE_SAVED_BOOKMARKS
+%token KW_DISABLE_BOOKMARKS
 %token KW_PERSIST_STORE
 
 %%
@@ -122,6 +124,8 @@ kafka_src_option
         | KW_POLL_TIMEOUT '(' positive_integer ')'              { kafka_sd_set_poll_timeout(last_driver, $3); }
         | KW_STATE_UPDATE_TIMEOUT '(' positive_integer ')'      { kafka_sd_set_state_update_timeout(last_driver, $3); }
         | KW_TIME_REOPEN '(' positive_integer ')'               { kafka_sd_set_time_reopen(last_driver, $3); }
+        | KW_IGNORE_SAVED_BOOKMARKS '(' yesno ')'               { kafka_sd_set_ignore_saved_bookmarks(last_driver, $3); }
+        | KW_DISABLE_BOOKMARKS '(' yesno ')'                    { kafka_sd_set_disable_bookmarks(last_driver, $3); }
         | KW_SEPARATE_WORKER_QUEUES '(' yesno ')'               { kafka_sd_set_separate_worker_queues(last_driver, $3); }
         | KW_PERSIST_STORE '(' string ')'                       { CHECK_ERROR(kafka_sd_set_persis_store(last_driver, $3), @3, "Persist store must be either `local` or `remote`, received: %s", $3); free($3); }
         | threaded_source_driver_option

@@ -31,6 +31,7 @@
 #include "kafka-internal.h"
 #include "kafka-props.h"
 #include "kafka-topic-parts.h"
+#include "ack-tracker/ack_tracker_factory.h"
 #include "stats/stats-cluster-single.h"
 #include "stats/aggregator/stats-aggregator-registry.h"
 #include "host-id.h"
@@ -953,6 +954,10 @@ kafka_sd_init(LogPipe *s)
   self->stats_workers = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
   kafka_opaque_init(&self->opaque, &self->super.super.super, &self->options.super);
 
+  /* TODO: Add batched_ack_tracker_factory_new support */
+  self->super.worker_options.ack_tracker_factory = self->options.disable_bookmarks ?
+                                                   instant_ack_tracker_bookmarkless_factory_new() :
+                                                   consecutive_ack_tracker_factory_new();
   if (FALSE == log_threaded_source_driver_init_method(s))
     return FALSE;
 
@@ -1120,6 +1125,20 @@ kafka_sd_set_time_reopen(LogDriver *d, gint time_reopen)
 }
 
 void
+kafka_sd_set_ignore_saved_bookmarks(LogDriver *s, gboolean new_value)
+{
+  KafkaSourceDriver *self = (KafkaSourceDriver *)s;
+  self->options.ignore_saved_bookmarks = new_value;
+}
+
+void
+kafka_sd_set_disable_bookmarks(LogDriver *s, gboolean new_value)
+{
+  KafkaSourceDriver *self = (KafkaSourceDriver *)s;
+  self->options.disable_bookmarks = new_value;
+}
+
+void
 kafka_sd_set_log_fetch_delay(LogDriver *s, guint new_value)
 {
   KafkaSourceDriver *self = (KafkaSourceDriver *)s;
@@ -1166,6 +1185,8 @@ kafka_sd_options_defaults(KafkaSourceOptions *self,
   kafka_options_defaults(&self->super);
   self->strategy_hint = KSCS_ASSIGN;
 
+  self->ignore_saved_bookmarks = FALSE;
+  self->disable_bookmarks = FALSE;
   self->persist_store = KSPS_LOCAL;
   self->separated_worker_queues = FALSE;
   self->fetch_queue_full_delay = 1000; /* fetch_queue_full_delay milliseconds = 1 second */
