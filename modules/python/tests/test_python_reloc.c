@@ -31,6 +31,7 @@
 #include "reloc.h"
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 static PyObject *_python_main;
 static PyObject *_python_main_dict;
@@ -83,7 +84,7 @@ Test(python_reloc, test_get_installation_path_for)
     if (!PyRun_String(script, Py_file_input, _python_main_dict, _python_main_dict))
       {
         PyErr_Print();
-        cr_assert(FALSE, "Error running Python script >>>%s<<<", script);
+        cr_fatal("Error running Python script >>>%s<<<", script);
       }
   }
   PyGILState_Release(gstate);

@@ -20,6 +20,7 @@
  *
  */
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/filterx-lib.h"
 
 #include "filterx/filterx-mapping.h"
@@ -55,14 +56,14 @@ static void
 _assert_key_value(FilterXObject *dict, const gchar *key, const gchar *value)
 {
   FilterXObject *v = _get_key(dict, key);
-  cr_assert_str_eq(filterx_string_get_value_as_cstr(v), value);
+  cr_assert(eq(str, filterx_string_get_value_as_cstr(v), value));
   filterx_object_unref(v);
 }
 
 Test(filterx_mapping, test_add_and_lookup_keys)
 {
   FilterXObject *dict = filterx_object_from_json("{}", -1, NULL);
-  cr_assert_not_null(dict);
+  cr_assert(not(zero(ptr, dict)));
 
   _set_key(dict, "foo", "bar");
   _set_key(dict, "foo2", "bar2");
@@ -75,7 +76,7 @@ Test(filterx_mapping, test_add_and_lookup_keys)
 Test(filterx_mapping, test_add_and_overwrite_keys)
 {
   FilterXObject *dict = filterx_object_from_json("{}", -1, NULL);
-  cr_assert_not_null(dict);
+  cr_assert(not(zero(ptr, dict)));
 
   _set_key(dict, "foo", "bar");
   _assert_key_value(dict, "foo", "bar");
@@ -89,7 +90,7 @@ Test(filterx_mapping, test_add_and_overwrite_keys)
 Test(filterx_mapping, test_add_and_lookup_lots_of_keys_to_test_hash_table_resize)
 {
   FilterXObject *dict = filterx_object_from_json("{}", -1, NULL);
-  cr_assert_not_null(dict);
+  cr_assert(not(zero(ptr, dict)));
 
   for (gint i = 0; i < 256; i++)
     {
@@ -106,14 +107,14 @@ Test(filterx_mapping, test_add_and_lookup_lots_of_keys_to_test_hash_table_resize
 Test(filterx_mapping, test_keys_empty)
 {
   FilterXObject *dict = filterx_object_from_json("{}", -1, NULL);
-  cr_assert_not_null(dict);
+  cr_assert(not(zero(ptr, dict)));
 
   FilterXObject *keys = filterx_list_new();
-  cr_assert_not_null(keys);
+  cr_assert(not(zero(ptr, keys)));
 
   gboolean ok = filterx_mapping_keys(dict, &keys);
   cr_assert(ok);
-  cr_assert_not_null(keys);
+  cr_assert(not(zero(ptr, keys)));
 
   assert_object_repr_equals(keys, "[]");
 
@@ -123,14 +124,14 @@ Test(filterx_mapping, test_keys_empty)
 Test(filterx_mapping, test_keys_single)
 {
   FilterXObject *dict = filterx_object_from_json("{\"foo\":\"bar\"}", -1, NULL);
-  cr_assert_not_null(dict);
+  cr_assert(not(zero(ptr, dict)));
 
   FilterXObject *keys = filterx_list_new();
-  cr_assert_not_null(keys);
+  cr_assert(not(zero(ptr, keys)));
 
   gboolean ok = filterx_mapping_keys(dict, &keys);
   cr_assert(ok);
-  cr_assert_not_null(keys);
+  cr_assert(not(zero(ptr, keys)));
 
   assert_object_repr_equals(keys, "[\"foo\"]");
 
@@ -141,14 +142,14 @@ Test(filterx_mapping, test_keys_single)
 Test(filterx_mapping, test_keys_multi)
 {
   FilterXObject *dict = filterx_object_from_json("{\"foo\":\"bar\", \"bar\": \"baz\"}", -1, NULL);
-  cr_assert_not_null(dict);
+  cr_assert(not(zero(ptr, dict)));
 
   FilterXObject *keys = filterx_list_new();
-  cr_assert_not_null(keys);
+  cr_assert(not(zero(ptr, keys)));
 
   gboolean ok = filterx_mapping_keys(dict, &keys);
   cr_assert(ok);
-  cr_assert_not_null(keys);
+  cr_assert(not(zero(ptr, keys)));
 
   assert_object_repr_equals(keys, "[\"foo\",\"bar\"]");
 
@@ -158,14 +159,14 @@ Test(filterx_mapping, test_keys_multi)
 Test(filterx_mapping, test_keys_nested)
 {
   FilterXObject *dict = filterx_object_from_json("{\"foo\":{\"bar\":\"baz\"}, \"bar\":{\"baz\": null}}", -1, NULL);
-  cr_assert_not_null(dict);
+  cr_assert(not(zero(ptr, dict)));
 
   FilterXObject *keys = filterx_list_new();
-  cr_assert_not_null(keys);
+  cr_assert(not(zero(ptr, keys)));
 
   gboolean ok = filterx_mapping_keys(dict, &keys);
   cr_assert(ok);
-  cr_assert_not_null(keys);
+  cr_assert(not(zero(ptr, keys)));
 
   assert_object_repr_equals(keys, "[\"foo\",\"bar\"]");
 
@@ -175,12 +176,12 @@ Test(filterx_mapping, test_keys_nested)
 Test(filterx_mapping, test_keys_key_type_is_not_list)
 {
   FilterXObject *dict = filterx_object_from_json("{\"foo\":{\"bar\":\"baz\"}, \"bar\":{\"baz\": null}}", -1, NULL);
-  cr_assert_not_null(dict);
+  cr_assert(not(zero(ptr, dict)));
 
   FilterXObject *keys = filterx_string_new("this is string", -1);
-  cr_assert_not_null(keys);
+  cr_assert(not(zero(ptr, keys)));
 
-  cr_assert_not(filterx_mapping_keys(dict, &keys));
+  cr_assert(not(filterx_mapping_keys(dict, &keys)));
 
   filterx_object_unref(keys);
 }
@@ -188,16 +189,16 @@ Test(filterx_mapping, test_keys_key_type_is_not_list)
 Test(filterx_mapping, test_keys_object_is_not_dict)
 {
   FilterXObject *dict = filterx_string_new("{\"foo\":\"bar\", \"bar\": \"baz\"}", -1);
-  cr_assert_not_null(dict);
+  cr_assert(not(zero(ptr, dict)));
 
   FilterXObject *keys = filterx_list_new();
-  cr_assert_not_null(keys);
+  cr_assert(not(zero(ptr, keys)));
 
   gboolean ok = filterx_mapping_keys(dict, &keys);
-  cr_assert(!ok);
+  cr_assert(not(ok));
   guint64 len = G_MAXUINT64;
   cr_assert(filterx_object_len(keys, &len));
-  cr_assert_eq(0, len);
+  cr_assert(eq(u64, 0, len));
   filterx_object_unref(keys);
 }
 

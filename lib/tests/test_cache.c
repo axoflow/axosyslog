@@ -20,6 +20,7 @@
  *
  */
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "cache.h"
 
@@ -58,8 +59,8 @@ assert_cache_resolve(Cache *c, const gchar *key)
   gchar *expected_value = g_strdup_printf("almafa_%s", key);
 
   value = cache_resolve(c, key);
-  cr_assert_str_eq(value, expected_value, "Lookup key: %s, Expected value: %s, Actual value: %s",
-                   key, value, expected_value);
+  cr_assert(eq(str, value, expected_value), "Lookup key: %s, Expected value: %s, Actual value: %s",
+            key, value, expected_value);
 
   g_free(value);
   g_free(expected_value);
@@ -72,8 +73,8 @@ assert_cache_lookup(Cache *c, const gchar *key)
   gchar *expected_value = g_strdup_printf("almafa_%s", key);
 
   value = cache_lookup(c, key);
-  cr_assert_str_eq(value, expected_value, "Lookup key: %s, Expected value: %s, Actual value: %s",
-                   key, value, expected_value);
+  cr_assert(eq(str, value, expected_value), "Lookup key: %s, Expected value: %s, Actual value: %s",
+            key, value, expected_value);
 
   g_free(expected_value);
 }
@@ -83,8 +84,8 @@ assert_cache_lookup_uncached(Cache *c, const gchar *key)
 {
   fetch_count = 0;
   assert_cache_lookup(c, key);
-  cr_assert_eq(fetch_count, 1,
-               "Cache lookup expected when looking up uncached elements, but one didn't arrive key=\"%s\"", key);
+  cr_assert(eq(int, fetch_count, 1),
+            "Cache lookup expected when looking up uncached elements, but one didn't arrive key=\"%s\"", key);
 }
 
 static void
@@ -92,8 +93,8 @@ assert_cache_lookup_cached(Cache *c, const gchar *key)
 {
   fetch_count = 0;
   assert_cache_lookup(c, key);
-  cr_assert_eq(fetch_count, 0, "Cache lookup unexpected when looking up cached elements, but one did arrive key=\"%s\"",
-               key);
+  cr_assert(eq(int, fetch_count, 0),
+            "Cache lookup unexpected when looking up cached elements, but one did arrive key=\"%s\"", key);
 }
 
 Test(cache, test_write_and_read)
@@ -153,5 +154,5 @@ Test(cache, test_free_calls_resolver_free_fn)
   free_fn_count = 0;
   c = cache_new(dummy_cache_resolver());
   cache_free(c);
-  cr_assert_eq(free_fn_count, 1, "cache_free call the free_fn %d times", free_fn_count);
+  cr_assert(eq(int, free_fn_count, 1), "cache_free call the free_fn %d times", free_fn_count);
 }

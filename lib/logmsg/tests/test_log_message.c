@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/msg_parse_lib.h"
 #include "libtest/persist_lib.h"
 
@@ -83,19 +84,19 @@ assert_log_msg_clear_clears_all_properties(LogMessage **message, NVHandle nv_han
   LogMessage *msg = *message;
   log_msg_clear(msg);
 
-  cr_assert_str_empty(log_msg_get_value(msg, nv_handle, NULL),
-                      "Message still contains value after log_msg_clear");
+  cr_assert(zero(str, log_msg_get_value(msg, nv_handle, NULL)),
+            "Message still contains value after log_msg_clear");
 
-  cr_assert_str_empty(log_msg_get_value(msg, sd_handle, NULL),
-                      "Message still contains sdata value after log_msg_clear");
+  cr_assert(zero(str, log_msg_get_value(msg, sd_handle, NULL)),
+            "Message still contains sdata value after log_msg_clear");
 
-  cr_assert_null(msg->saddr, "Message still contains an saddr after log_msg_clear");
-  cr_assert_not(log_msg_is_tag_by_name(msg, tag_name),
-                "Message still contains a valid tag after log_msg_clear");
-  cr_assert((msg->flags & LF_LOCAL) == 0, "Message still contains the 'local' flag after log_msg_clear");
-  cr_assert((msg->flags & LF_UTF8) == 0, "Message still contains the 'utf8' flag after log_msg_clear");
-  cr_assert((msg->flags & LF_MARK) == 0, "Message still contains the 'mark' flag after log_msg_clear");
-  cr_assert((msg->flags & LF_INTERNAL) == 0, "Message still contains the 'internal' flag after log_msg_clear");
+  cr_assert(zero(ptr, msg->saddr), "Message still contains an saddr after log_msg_clear");
+  cr_assert(not(log_msg_is_tag_by_name(msg, tag_name)),
+            "Message still contains a valid tag after log_msg_clear");
+  cr_assert(zero(u32, msg->flags & LF_LOCAL), "Message still contains the 'local' flag after log_msg_clear");
+  cr_assert(zero(u32, msg->flags & LF_UTF8), "Message still contains the 'utf8' flag after log_msg_clear");
+  cr_assert(zero(u32, msg->flags & LF_MARK), "Message still contains the 'mark' flag after log_msg_clear");
+  cr_assert(zero(u32, msg->flags & LF_INTERNAL), "Message still contains the 'internal' flag after log_msg_clear");
 }
 
 static void
@@ -104,7 +105,7 @@ assert_sdata_value_with_seqnum_equals(LogMessage *msg, guint32 seq_num, const gc
   GString *result = g_string_sized_new(0);
 
   log_msg_append_format_sdata(msg, result, seq_num);
-  cr_assert_str_eq(result->str, expected, "SDATA value does not match, '%s' vs '%s'", expected, result->str);
+  cr_assert(eq(str, result->str, expected), "SDATA value does not match, '%s' vs '%s'", expected, result->str);
   g_string_free(result, TRUE);
 }
 
@@ -196,9 +197,9 @@ Test(log_message, test_log_message_clear_sdata_unsets_all_sdata)
 
   log_msg_clear_sdata(params->message);
 
-  cr_assert(params->message->num_sdata == 0);
-  cr_assert_str_empty(log_msg_get_value(params->message, params->sd_handle, NULL),
-                      "Message still contains sdata value after log_msg_clear_sdata");
+  cr_assert(eq(u8, params->message->num_sdata, 0));
+  cr_assert(zero(str, log_msg_get_value(params->message, params->sd_handle, NULL)),
+            "Message still contains sdata value after log_msg_clear_sdata");
 
   log_message_test_params_free(params);
 }
@@ -225,7 +226,7 @@ Test(log_message, test_log_msg_clear_handles_cloned_noninline_tags_properly)
       gchar tag_name[32];
 
       g_snprintf(tag_name, sizeof(tag_name), "tag%d", i);
-      cr_assert(log_msg_is_tag_by_name(cloned, tag_name) == FALSE);
+      cr_assert(not(log_msg_is_tag_by_name(cloned, tag_name)));
     }
   log_msg_unref(cloned);
   log_msg_unref(msg);
@@ -239,7 +240,7 @@ Test(log_message, test_rcptid_is_automatically_assigned_to_a_newly_created_log_m
   rcptid_init(state, TRUE);
 
   msg = log_msg_new_empty();
-  cr_assert_eq(msg->rcptid, 1, "rcptid is not automatically set");
+  cr_assert(eq(u64, msg->rcptid, 1), "rcptid is not automatically set");
   log_msg_unref(msg);
 
   commit_and_destroy_persist_state(state);
@@ -347,8 +348,8 @@ Test(log_message, test_log_msg_set_value_indirect_with_self_referencing_handle_r
   gssize value_len;
 
   log_msg_set_value_indirect(params->message, params->nv_handle, params->nv_handle, 0, 5);
-  cr_assert_str_eq(log_msg_get_value(params->message, params->nv_handle, &value_len), "value",
-                   "indirect self-reference value doesn't match");
+  cr_assert(eq(str, log_msg_get_value(params->message, params->nv_handle, &value_len), "value"),
+            "indirect self-reference value doesn't match");
 
   log_message_test_params_free(params);
 }
@@ -366,7 +367,8 @@ Test(log_message, test_log_msg_get_value_with_time_related_macro)
 
   handle = log_msg_get_value_handle("ISODATE");
   date_value = log_msg_get_value(msg, handle, &value_len);
-  cr_assert_str_eq(date_value, "2014-01-15T11:57:24+01:00", "ISODATE macro value does not match! value=%s", date_value);
+  cr_assert(eq(str, date_value, "2014-01-15T11:57:24+01:00"),
+            "ISODATE macro value does not match! value=%s", date_value);
 
   log_msg_unref(msg);
 }
@@ -377,7 +379,8 @@ Test(log_message, test_local_logmsg_created_with_the_right_flags_and_timestamps)
 
   gboolean are_equals = unix_time_eq(&msg->timestamps[LM_TS_STAMP], &msg->timestamps[LM_TS_RECVD]);
 
-  cr_assert_neq((msg->flags & LF_LOCAL), 0, "LogMessage created by log_msg_new_local() should have LF_LOCAL flag set");
+  cr_assert(ne(u32, (msg->flags & LF_LOCAL), 0),
+            "LogMessage created by log_msg_new_local() should have LF_LOCAL flag set");
   cr_assert(are_equals, "The timestamps in a LogMessage created by log_msg_new_local() should be equals");
 
   log_msg_unref(msg);
@@ -488,26 +491,26 @@ Test(log_message, test_value_retains_type_information)
 
   /* unset */
   value = log_msg_get_value_by_name_with_type(msg, "nvpair", NULL, &type);
-  cr_assert_str_empty(value);
-  cr_assert(type == LM_VT_NULL);
+  cr_assert(zero(str, value));
+  cr_assert(eq(u8, type, LM_VT_NULL));
 
   /* set with a specific type */
   log_msg_set_value_by_name_with_type(msg, "nvpair", "value", -1, LM_VT_JSON);
   value = log_msg_get_value_by_name_with_type(msg, "nvpair", NULL, &type);
-  cr_assert_str_eq(value, "value");
-  cr_assert(type == LM_VT_JSON);
+  cr_assert(eq(str, value, "value"));
+  cr_assert(eq(u8, type, LM_VT_JSON));
 
   /* changed with a specific type */
   log_msg_set_value_by_name_with_type(msg, "nvpair", "123", -1, LM_VT_INTEGER);
   value = log_msg_get_value_by_name_with_type(msg, "nvpair", NULL, &type);
-  cr_assert_str_eq(value, "123");
-  cr_assert(type == LM_VT_INTEGER);
+  cr_assert(eq(str, value, "123"));
+  cr_assert(eq(u8, type, LM_VT_INTEGER));
 
   /* unset becomes string again */
   log_msg_unset_value_by_name(msg, "nvpair");
   value = log_msg_get_value_by_name_with_type(msg, "nvpair", NULL, &type);
-  cr_assert_str_empty(value, "value");
-  cr_assert(type == LM_VT_NULL);
+  cr_assert(zero(str, value), "value");
+  cr_assert(eq(u8, type, LM_VT_NULL));
 
   log_msg_unref(msg);
 }
@@ -520,8 +523,8 @@ Test(log_message, test_macro_is_always_a_string)
 
   msg = log_msg_new_empty();
   value = log_msg_get_value_by_name_with_type(msg, "FACILITY", NULL, &type);
-  cr_assert_str_eq(value, "user");
-  cr_assert(type == LM_VT_STRING);
+  cr_assert(eq(str, value, "user"));
+  cr_assert(eq(u8, type, LM_VT_STRING));
 
   log_msg_unref(msg);
 }
@@ -534,8 +537,8 @@ Test(log_message, test_macro_value_is_set_and_is_a_string)
 
   msg = log_msg_new_empty();
   value = log_msg_get_value_if_set_with_type(msg, log_msg_get_value_handle("FACILITY"), NULL, &type);
-  cr_assert_str_eq(value, "user");
-  cr_assert(type == LM_VT_STRING);
+  cr_assert(eq(str, value, "user"));
+  cr_assert(eq(u8, type, LM_VT_STRING));
 
   log_msg_unref(msg);
 }
@@ -558,17 +561,17 @@ Test(log_message, test_unset_match_returns_null)
 
   /* initially, it is unset */
   const gchar *value = log_msg_get_match_if_set_with_type(msg, 0, NULL, NULL);
-  cr_assert(value == NULL);
+  cr_assert(zero(ptr, value));
 
   /* after setting it, it is set */
   log_msg_set_match(msg, 0, "match0", -1);
   value = log_msg_get_match_if_set_with_type(msg, 0, NULL, NULL);
-  cr_assert_str_eq(value, "match0");
+  cr_assert(eq(str, value, "match0"));
 
   /* after unset()-ing, it is unset */
   log_msg_unset_match(msg, 0);
   value = log_msg_get_match_if_set_with_type(msg, 0, NULL, NULL);
-  cr_assert(value == NULL);
+  cr_assert(zero(ptr, value));
 
   log_msg_unref(msg);
 }
@@ -658,13 +661,13 @@ Test(log_message, test_log_message_updates_num_matches_according_to_matches_bein
   LogMessage *msg;
 
   msg = log_msg_new_empty();
-  cr_assert(msg->num_matches == 0);
+  cr_assert(eq(u8, msg->num_matches, 0));
   log_msg_set_match(msg, 1, "match1", -1);
-  cr_assert(msg->num_matches == 2);
+  cr_assert(eq(u8, msg->num_matches, 2));
   log_msg_set_match(msg, 2, "match2", -1);
-  cr_assert(msg->num_matches == 3);
+  cr_assert(eq(u8, msg->num_matches, 3));
   log_msg_set_match(msg, 3, "match3", -1);
-  cr_assert(msg->num_matches == 4);
+  cr_assert(eq(u8, msg->num_matches, 4));
 
   log_msg_unref(msg);
 }
@@ -680,12 +683,12 @@ Test(log_message, test_format_matches_produces_a_list_of_matches_even_if_populat
   log_msg_set_match(msg, 3, "match3", -1);
 
   log_msg_format_matches(msg, result);
-  cr_assert_str_eq(result->str, "match1,match2,match3");
+  cr_assert(eq(str, result->str, "match1,match2,match3"));
 
   log_msg_set_match(msg, 4, "match4", -1);
   g_string_truncate(result, 0);
   log_msg_format_matches(msg, result);
-  cr_assert_str_eq(result->str, "match1,match2,match3,match4");
+  cr_assert(eq(str, result->str, "match1,match2,match3,match4"));
 
   g_string_free(result, TRUE);
   log_msg_unref(msg);
@@ -705,7 +708,7 @@ Test(log_message, test_format_matches_resets_match_values_if_an_out_of_range_ele
 
   log_msg_format_matches(msg, result);
   /* $4 missing due to num_matches changed */
-  cr_assert_str_eq(result->str, "match1,match2,match3");
+  cr_assert(eq(str, result->str, "match1,match2,match3"));
 
   /* $4 was set but was not part of the array, setting $7  */
   log_msg_set_match(msg, 7, "match7", -1);
@@ -713,14 +716,14 @@ Test(log_message, test_format_matches_resets_match_values_if_an_out_of_range_ele
   g_string_truncate(result, 0);
   log_msg_format_matches(msg, result);
   /* match 4 is unset even though it did hold a value before, the other in-between elements are similarly empty */
-  cr_assert_str_eq(result->str, "match1,match2,match3,\"\",\"\",\"\",match7");
+  cr_assert(eq(str, result->str, "match1,match2,match3,\"\",\"\",\"\",match7"));
 
   /* fill the whole */
   log_msg_set_match(msg, 4, "updated-match4", -1);
   g_string_truncate(result, 0);
   log_msg_format_matches(msg, result);
   /* match 5 still missing as the "whole" was just filled, but that does not include match 5 */
-  cr_assert_str_eq(result->str, "match1,match2,match3,updated-match4,\"\",\"\",match7");
+  cr_assert(eq(str, result->str, "match1,match2,match3,updated-match4,\"\",\"\",match7"));
 
   g_string_free(result, TRUE);
   log_msg_unref(msg);
@@ -736,13 +739,13 @@ Test(log_message, test_changing_num_matches_causes_numbered_matches_to_become_un
   log_msg_set_match(msg, 2, "match2", -1);
   log_msg_set_match(msg, 3, "match3", -1);
 
-  cr_assert_eq(msg->num_matches, 4);
+  cr_assert(eq(u8, msg->num_matches, 4));
   assert_log_message_match_value(msg, 3, "match3");
   log_msg_truncate_matches(msg, 3);
   assert_log_message_match_value(msg, 3, "");
 
   log_msg_format_matches(msg, result);
-  cr_assert_str_eq(result->str, "match1,match2");
+  cr_assert(eq(str, result->str, "match1,match2"));
 
   g_string_free(result, TRUE);
   log_msg_unref(msg);
@@ -758,9 +761,9 @@ Test(log_message, test_clear_matches_call_resets_all_matches_to_unset)
   log_msg_set_match(msg, 2, "match2", -1);
   log_msg_set_match(msg, 3, "match3", -1);
 
-  cr_assert_eq(msg->num_matches, 4);
+  cr_assert(eq(u8, msg->num_matches, 4));
   log_msg_clear_matches(msg);
-  cr_assert_eq(msg->num_matches, 0);
+  cr_assert(eq(u8, msg->num_matches, 0));
 
   assert_log_message_match_value(msg, 0, "");
   assert_log_message_match_value(msg, 1, "");
@@ -792,14 +795,14 @@ Test(log_message, test_cow_writing_cloned_message)
   log_msg_set_value_by_name(cloned, "cloned_name", "cloned_value", -1);
   log_msg_set_value_by_name(cloned, "orig_name", "modified_value", -1);
 
-  cr_assert_str_eq(log_msg_get_value_by_name(msg, "orig_name", NULL), "orig_value",
-                   "Modifications on a COW-cloned message should not leak into the original message; actual: %s, expected: %s",
-                   log_msg_get_value_by_name(msg, "orig_name", NULL), "orig_value");
+  cr_assert(eq(str, log_msg_get_value_by_name(msg, "orig_name", NULL), "orig_value"),
+            "Modifications on a COW-cloned message should not leak into the original message; actual: %s, expected: %s",
+            log_msg_get_value_by_name(msg, "orig_name", NULL), "orig_value");
 
   NVHandle cloned_name = log_msg_get_value_handle("cloned_name");
   gssize value_length;
-  cr_assert_null(log_msg_get_value_if_set(msg, cloned_name, &value_length),
-                 "Modifications on a COW-cloned message should not leak into the original message");
+  cr_assert(zero(ptr, log_msg_get_value_if_set(msg, cloned_name, &value_length)),
+            "Modifications on a COW-cloned message should not leak into the original message");
 
   log_msg_unref(cloned);
   log_msg_unref(msg);
@@ -823,8 +826,8 @@ Test(log_message, test_cow_make_writable)
 
   NVHandle orig_name2 = log_msg_get_value_handle("orig_name2");
   gssize value_length;
-  cr_assert_null(log_msg_get_value_if_set(orig_msg, orig_name2, &value_length),
-                 "Modifications on a COW-cloned message should not leak into the original message");
+  cr_assert(zero(ptr, log_msg_get_value_if_set(orig_msg, orig_name2, &value_length)),
+            "Modifications on a COW-cloned message should not leak into the original message");
 
   log_msg_unref(orig_msg);
   log_msg_unref(msg);
@@ -843,9 +846,9 @@ Test(log_message, test_cow_unset_value)
 
   log_msg_unset_value_by_name(msg, "orig_name");
 
-  cr_assert_str_eq(log_msg_get_value_by_name(orig_msg, "orig_name", NULL), "orig_value",
-                   "Unsetting a value in a COW-cloned message should not unset the value in the original message; actual: %s, expected: %s",
-                   log_msg_get_value_by_name(orig_msg, "orig_name", NULL), "orig_value");
+  cr_assert(eq(str, log_msg_get_value_by_name(orig_msg, "orig_name", NULL), "orig_value"),
+            "Unsetting a value in a COW-cloned message should not unset the value in the original message; actual: %s, expected: %s",
+            log_msg_get_value_by_name(orig_msg, "orig_name", NULL), "orig_value");
 
   log_msg_unref(orig_msg);
   log_msg_unref(msg);

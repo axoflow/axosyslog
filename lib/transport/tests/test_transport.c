@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/mock-transport.h"
 
 #include "transport/logtransport.h"
@@ -41,20 +42,20 @@ Test(transport, test_read_ahead_invokes_only_one_read_operation)
     {
       memset(buf, 0, sizeof(buf));
       rc = log_transport_read_ahead(t, buf, 9, &moved_forward);
-      cr_assert(moved_forward == TRUE);
-      cr_assert(rc == i, "unexpected rc = %d", rc);
-      cr_assert(strncmp(buf, "readahead", i) == 0);
+      cr_assert(moved_forward);
+      cr_assert(eq(int, rc, i), "unexpected rc = %d", rc);
+      cr_assert(eq(int, strncmp(buf, "readahead", i), 0));
     }
   rc = log_transport_read_ahead(t, buf, 10, &moved_forward);
-  cr_assert(rc == 9, "unexpected rc = %d", rc);
-  cr_assert(moved_forward == FALSE);
+  cr_assert(eq(int, rc, 9), "unexpected rc = %d", rc);
+  cr_assert(not(moved_forward));
 
   /* the read() returns the bytes that were read in advance */
 
   memset(buf, 0, sizeof(buf));
   rc = log_transport_read(t, buf, 9, NULL);
-  cr_assert(rc == 9, "unexpected rc = %d", rc);
-  cr_assert_str_eq(buf, "readahead");
+  cr_assert(eq(int, rc, 9), "unexpected rc = %d", rc);
+  cr_assert(eq(str, buf, "readahead"));
 
   log_transport_free(t);
 }
@@ -67,15 +68,15 @@ Test(transport, test_read_ahead_bytes_get_shifted_into_the_actual_read)
   gboolean moved_forward;
   memset(buf, 0, sizeof(buf));
   gint rc = log_transport_read_ahead(t, buf, 4, &moved_forward);
-  cr_assert(rc == 4, "unexpected rc = %d", rc);
-  cr_assert_str_eq(buf, "read");
+  cr_assert(eq(int, rc, 4), "unexpected rc = %d", rc);
+  cr_assert(eq(str, buf, "read"));
 
   /* the read() returns the bytes that were read in advance */
 
   memset(buf, 0, sizeof(buf));
   rc = log_transport_read(t, buf, 4, NULL);
-  cr_assert(rc == 4, "unexpected rc = %d", rc);
-  cr_assert_str_eq(buf, "read");
+  cr_assert(eq(int, rc, 4), "unexpected rc = %d", rc);
+  cr_assert(eq(str, buf, "read"));
 
   log_transport_free(t);
 }
@@ -88,16 +89,16 @@ Test(transport, test_read_ahead_bytes_and_new_read_is_combined)
   gchar buf[12] = {0};
   memset(buf, 0, sizeof(buf));
   gint rc = log_transport_read_ahead(t, buf, 4, &moved_forward);
-  cr_assert(rc == 4, "unexpected rc = %d", rc);
-  cr_assert_str_eq(buf, "read");
+  cr_assert(eq(int, rc, 4), "unexpected rc = %d", rc);
+  cr_assert(eq(str, buf, "read"));
 
   /* NOTE: the mock will return only a single byte for every read to
    * exercise retry mechanisms, so only read a single character here */
 
   memset(buf, 0, sizeof(buf));
   rc = log_transport_read(t, buf, 5, NULL);
-  cr_assert(rc == 5, "unexpected rc = %d", rc);
-  cr_assert_str_eq(buf, "reada");
+  cr_assert(eq(int, rc, 5), "unexpected rc = %d", rc);
+  cr_assert(eq(str, buf, "reada"));
 
   log_transport_free(t);
 }
@@ -110,21 +111,21 @@ Test(transport, test_read_ahead_returns_the_same_buffer_any_number_of_times)
   gchar buf[12];
 
   memset(buf, 0, sizeof(buf));
-  cr_assert(log_transport_read_ahead(t, buf, 1, &moved_forward) == 1);
-  cr_assert_str_eq(buf, "r");
+  cr_assert(eq(i64, log_transport_read_ahead(t, buf, 1, &moved_forward), 1));
+  cr_assert(eq(str, buf, "r"));
   memset(buf, 0, sizeof(buf));
-  cr_assert(log_transport_read_ahead(t, buf, 2, &moved_forward) == 2);
-  cr_assert_str_eq(buf, "re");
+  cr_assert(eq(i64, log_transport_read_ahead(t, buf, 2, &moved_forward), 2));
+  cr_assert(eq(str, buf, "re"));
   memset(buf, 0, sizeof(buf));
-  cr_assert(log_transport_read_ahead(t, buf, 8, &moved_forward) == 8);
-  cr_assert_str_eq(buf, "readahea");
+  cr_assert(eq(i64, log_transport_read_ahead(t, buf, 8, &moved_forward), 8));
+  cr_assert(eq(str, buf, "readahea"));
   memset(buf, 0, sizeof(buf));
-  cr_assert(log_transport_read_ahead(t, buf, 4, &moved_forward) == 4);
-  cr_assert_str_eq(buf, "read");
+  cr_assert(eq(i64, log_transport_read_ahead(t, buf, 4, &moved_forward), 4));
+  cr_assert(eq(str, buf, "read"));
 
   /* the read() returns the bytes that were read in advance */
-  cr_assert(log_transport_read(t, buf, 9, NULL) == 9);
-  cr_assert_str_eq(buf, "readahead");
+  cr_assert(eq(i64, log_transport_read(t, buf, 9, NULL), 9));
+  cr_assert(eq(str, buf, "readahead"));
 
   log_transport_free(t);
 }
@@ -135,12 +136,12 @@ Test(transport, test_read_ahead_more_than_the_internal_buffer, .signal = SIGABRT
   gboolean moved_forward;
 
   /* 20 bytes, the internal look ahead buffer in LogTransport is 16 bytes which we are overflowing here */
-  cr_assert(sizeof(t->ra.buf) == 16);
+  cr_assert(eq(sz, sizeof(t->ra.buf), 16));
 
   gchar buf[32];
 
   memset(buf, 0, sizeof(buf));
-  cr_assert(log_transport_read_ahead(t, buf, 20, &moved_forward) == 20);
+  cr_assert(eq(i64, log_transport_read_ahead(t, buf, 20, &moved_forward), 20));
 
   log_transport_free(t);
 }
@@ -153,13 +154,13 @@ Test(transport, test_read_ahead_with_packets_split_in_half)
   gchar buf[32];
   memset(buf, 0, sizeof(buf));
   gint rc = log_transport_read_ahead(t, buf, 8, &moved_forward);
-  cr_assert(rc == 4, "unexpected rc = %d", rc);
-  cr_assert_str_eq(buf, "1234");
+  cr_assert(eq(int, rc, 4), "unexpected rc = %d", rc);
+  cr_assert(eq(str, buf, "1234"));
 
   memset(buf, 0, sizeof(buf));
   rc = log_transport_read_ahead(t, buf, 8, &moved_forward);
-  cr_assert(rc == 8, "unexpected rc = %d", rc);
-  cr_assert_str_eq(buf, "12345678");
+  cr_assert(eq(int, rc, 8), "unexpected rc = %d", rc);
+  cr_assert(eq(str, buf, "12345678"));
 
   log_transport_free(t);
 }

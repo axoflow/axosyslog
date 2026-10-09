@@ -23,6 +23,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/persist_lib.h"
 
 #include "lib/run-id.h"
@@ -66,7 +67,7 @@ Test(test_run_id, first_run__run_id_is_one)
 
   run_id_init(state);
 
-  cr_assert_eq(run_id_get(), RUN_ID_FIRST, "Newly initialized run id is not the first id!");
+  cr_assert(eq(int, run_id_get(), RUN_ID_FIRST), "Newly initialized run id is not the first id!");
 
   destroy_persist_state(state);
 };
@@ -82,7 +83,7 @@ Test(test_run_id, second_run__run_id_is_two)
   state = restart_persist_state(state);
 
   run_id_init(state);
-  cr_assert_eq(run_id_get(), RUN_ID_FIRST + 1, "Running run_id_init twice is not the second id!");
+  cr_assert(eq(int, run_id_get(), RUN_ID_FIRST + 1), "Running run_id_init twice is not the second id!");
 
   destroy_persist_state(state);
 };
@@ -97,7 +98,7 @@ Test(test_run_id,  second_run_but_with_non_commit__run_id_is_one)
 
   state = restart_persist_state_with_cancel(state, "test_run_id__second_run_but_with_non_commit__run_id_is_one");
   run_id_init(state);
-  cr_assert_eq(run_id_get(), RUN_ID_FIRST, "Not committing persist state still increases run_id");
+  cr_assert(eq(int, run_id_get(), RUN_ID_FIRST), "Not committing persist state still increases run_id");
 
   destroy_persist_state(state);
 };
@@ -115,7 +116,7 @@ Test(test_run_id, is_same_run__differs_when_not_same_run)
 
   run_id_init(state);
 
-  cr_assert_not(run_id_is_same_run(prev_run_id), "Run_id_is_same_run returned true when the run differs");
+  cr_assert(not(run_id_is_same_run(prev_run_id)), "Run_id_is_same_run returned true when the run differs");
 
   destroy_persist_state(state);
 };
@@ -129,7 +130,7 @@ Test(test_run_id, macro_has_the_same_value_as_run_id)
   run_id_init(state);
 
   run_id_append_formatted_id(res);
-  cr_assert_str_eq(res->str, "1", "Run id is formatted incorrectly: %s", res->str);
+  cr_assert(eq(str, res->str, "1"), "Run id is formatted incorrectly: %s", res->str);
 
   destroy_persist_state(state);
   g_string_free(res, TRUE);
@@ -142,7 +143,7 @@ Test(test_run_id, macro_is_empty_if_run_id_is_not_inited)
   run_id_deinit();
 
   run_id_append_formatted_id(res);
-  cr_assert_str_eq(res->str, "", "Run id is not empty if it is not inited");
+  cr_assert(eq(str, res->str, ""), "Run id is not empty if it is not inited");
 
   g_string_free(res, TRUE);
 };

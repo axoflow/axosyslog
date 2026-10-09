@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "stats/stats-cluster-single.h"
 #include "stats/stats-registry.h"
 
@@ -59,7 +60,7 @@ metrics_probe_test_get_stats_counter_value(const gchar *key, StatsClusterLabel *
   }
   stats_unlock();
 
-  cr_assert(cluster, "Cluster does not exist, probably we have reached max-stats-dynamics().");
+  cr_assert(not(zero(ptr, cluster)), "Cluster does not exist, probably we have reached max-stats-dynamics().");
   value = stats_counter_get(counter);
 
   stats_lock();
@@ -95,7 +96,7 @@ metrics_probe_test_assert_counter_value(const gchar *key, StatsClusterLabel *lab
       g_string_append_c(formatted_labels, ')');
     }
 
-  cr_assert(expected_value == actual_value,
+  cr_assert(eq(sz, expected_value, actual_value),
             "Unexpected counter value. key: %s labels: %s expected: %lu actual: %lu",
             key, formatted_labels->str, expected_value, actual_value);
 

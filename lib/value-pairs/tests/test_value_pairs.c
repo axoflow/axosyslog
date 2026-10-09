@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/parameterized.h"
 
 #include "value-pairs/value-pairs.h"
@@ -98,12 +99,12 @@ assert_keys_match_expected(const gchar *scope, GList *vp_keys_list, const gchar 
 
   for (i = 0; l && expected_list[i]; l = l->next, i++)
     {
-      cr_assert_str_eq((const gchar *) l->data, expected_list[i],
-                       "Expected element at index %d mismatch %s <> %s, scope=%s",
-                       i, (const gchar *) l->data, expected_list[i], scope);
+      cr_assert(eq(str, (const gchar *) l->data, expected_list[i]),
+                "Expected element at index %d mismatch %s <> %s, scope=%s",
+                i, (const gchar *) l->data, expected_list[i], scope);
     }
 
-  cr_assert(l == NULL && expected_list[i] == NULL);
+  cr_assert(all(zero(ptr, l), zero(ptr, expected_list[i])));
   g_strfreev(expected_list);
 
 }
@@ -332,17 +333,17 @@ asserts_for_no_include_bytes_v4(const gchar *name, LogMessageValueType type, con
 {
   if (strcmp(name, "custom_bytes") == 0)
     {
-      cr_assert_eq(type, LM_VT_NULL);
-      cr_assert_eq(value_len, 0);
+      cr_assert(eq(int, type, LM_VT_NULL));
+      cr_assert(eq(sz, value_len, 0));
     }
   else if (strcmp(name, "custom_protobuf") == 0)
     {
-      cr_assert_eq(type, LM_VT_NULL);
-      cr_assert_eq(value_len, 0);
+      cr_assert(eq(int, type, LM_VT_NULL));
+      cr_assert(eq(sz, value_len, 0));
     }
   else
     {
-      cr_assert(FALSE, "%s not expected", name);
+      cr_fatal("%s not expected", name);
     }
 
   return FALSE;
@@ -354,41 +355,41 @@ asserts_for_include_bytes_v4(const gchar *name, LogMessageValueType type, const 
 {
   if (strcmp(name, "bytes") == 0)
     {
-      cr_assert_eq(type, LM_VT_BYTES);
-      cr_assert_eq(value_len, 4);
-      cr_assert_eq(memcmp(value, "\0\1\2\3", 4), 0);
+      cr_assert(eq(int, type, LM_VT_BYTES));
+      cr_assert(eq(sz, value_len, 4));
+      cr_assert(eq(int, memcmp(value, "\0\1\2\3", 4), 0));
     }
   else if (strcmp(name, "protobuf") == 0)
     {
-      cr_assert_eq(type, LM_VT_PROTOBUF);
-      cr_assert_eq(value_len, 4);
-      cr_assert_eq(memcmp(value, "\4\5\6\7", 4), 0);
+      cr_assert(eq(int, type, LM_VT_PROTOBUF));
+      cr_assert(eq(sz, value_len, 4));
+      cr_assert(eq(int, memcmp(value, "\4\5\6\7", 4), 0));
     }
   else if (strcmp(name, "custom_bytes") == 0)
     {
-      cr_assert_eq(type, LM_VT_NULL);
-      cr_assert_eq(value_len, 0);
+      cr_assert(eq(int, type, LM_VT_NULL));
+      cr_assert(eq(sz, value_len, 0));
     }
   else if (strcmp(name, "custom_protobuf") == 0)
     {
-      cr_assert_eq(type, LM_VT_NULL);
-      cr_assert_eq(value_len, 0);
+      cr_assert(eq(int, type, LM_VT_NULL));
+      cr_assert(eq(sz, value_len, 0));
     }
   else if (strcmp(name, "custom_explicit_bytes") == 0)
     {
-      cr_assert_eq(type, LM_VT_BYTES);
-      cr_assert_eq(value_len, 4);
-      cr_assert_eq(memcmp(value, "\0\1\2\3", 4), 0);
+      cr_assert(eq(int, type, LM_VT_BYTES));
+      cr_assert(eq(sz, value_len, 4));
+      cr_assert(eq(int, memcmp(value, "\0\1\2\3", 4), 0));
     }
   else if (strcmp(name, "custom_explicit_protobuf") == 0)
     {
-      cr_assert_eq(type, LM_VT_PROTOBUF);
-      cr_assert_eq(value_len, 4);
-      cr_assert_eq(memcmp(value, "\4\5\6\7", 4), 0);
+      cr_assert(eq(int, type, LM_VT_PROTOBUF));
+      cr_assert(eq(sz, value_len, 4));
+      cr_assert(eq(int, memcmp(value, "\4\5\6\7", 4), 0));
     }
   else
     {
-      cr_assert(FALSE, "%s not expected", name);
+      cr_fatal("%s not expected", name);
     }
 
   return FALSE;
@@ -421,17 +422,17 @@ asserts_for_no_include_bytes_v3(const gchar *name, LogMessageValueType type, con
 {
   if (strcmp(name, "custom_bytes") == 0)
     {
-      cr_assert_eq(type, LM_VT_STRING);
-      cr_assert_eq(value_len, 0);
+      cr_assert(eq(int, type, LM_VT_STRING));
+      cr_assert(eq(sz, value_len, 0));
     }
   else if (strcmp(name, "custom_protobuf") == 0)
     {
-      cr_assert_eq(type, LM_VT_STRING);
-      cr_assert_eq(value_len, 0);
+      cr_assert(eq(int, type, LM_VT_STRING));
+      cr_assert(eq(sz, value_len, 0));
     }
   else
     {
-      cr_assert(FALSE, "%s not expected", name);
+      cr_fatal("%s not expected", name);
     }
 
   return FALSE;
@@ -443,41 +444,41 @@ asserts_for_include_bytes_v3(const gchar *name, LogMessageValueType type, const 
 {
   if (strcmp(name, "bytes") == 0)
     {
-      cr_assert_eq(type, LM_VT_STRING);
-      cr_assert_eq(value_len, 4);
-      cr_assert_eq(memcmp(value, "\0\1\2\3", 4), 0);
+      cr_assert(eq(int, type, LM_VT_STRING));
+      cr_assert(eq(sz, value_len, 4));
+      cr_assert(eq(int, memcmp(value, "\0\1\2\3", 4), 0));
     }
   else if (strcmp(name, "protobuf") == 0)
     {
-      cr_assert_eq(type, LM_VT_STRING);
-      cr_assert_eq(value_len, 4);
-      cr_assert_eq(memcmp(value, "\4\5\6\7", 4), 0);
+      cr_assert(eq(int, type, LM_VT_STRING));
+      cr_assert(eq(sz, value_len, 4));
+      cr_assert(eq(int, memcmp(value, "\4\5\6\7", 4), 0));
     }
   else if (strcmp(name, "custom_bytes") == 0)
     {
-      cr_assert_eq(type, LM_VT_STRING);
-      cr_assert_eq(value_len, 0);
+      cr_assert(eq(int, type, LM_VT_STRING));
+      cr_assert(eq(sz, value_len, 0));
     }
   else if (strcmp(name, "custom_protobuf") == 0)
     {
-      cr_assert_eq(type, LM_VT_STRING);
-      cr_assert_eq(value_len, 0);
+      cr_assert(eq(int, type, LM_VT_STRING));
+      cr_assert(eq(sz, value_len, 0));
     }
   else if (strcmp(name, "custom_explicit_bytes") == 0)
     {
-      cr_assert_eq(type, LM_VT_BYTES);
-      cr_assert_eq(value_len, 4);
-      cr_assert_eq(memcmp(value, "\0\1\2\3", 4), 0);
+      cr_assert(eq(int, type, LM_VT_BYTES));
+      cr_assert(eq(sz, value_len, 4));
+      cr_assert(eq(int, memcmp(value, "\0\1\2\3", 4), 0));
     }
   else if (strcmp(name, "custom_explicit_protobuf") == 0)
     {
-      cr_assert_eq(type, LM_VT_PROTOBUF);
-      cr_assert_eq(value_len, 4);
-      cr_assert_eq(memcmp(value, "\4\5\6\7", 4), 0);
+      cr_assert(eq(int, type, LM_VT_PROTOBUF));
+      cr_assert(eq(sz, value_len, 4));
+      cr_assert(eq(int, memcmp(value, "\4\5\6\7", 4), 0));
     }
   else
     {
-      cr_assert(FALSE, "%s not expected", name);
+      cr_fatal("%s not expected", name);
     }
 
   return FALSE;

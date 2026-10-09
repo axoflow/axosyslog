@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "syslog-ng.h"
 #include "host-id.h"
@@ -61,7 +62,7 @@ _load_hostid_from_persist(const gchar *persist_file)
   guint8 version;
   PersistEntryHandle handle = persist_state_lookup_entry(state, HOST_ID_PERSIST_KEY, &size, &version);
 
-  cr_assert_neq(handle, 0, "cannot find hostid in persist file");
+  cr_assert(ne(u32, handle, 0), "cannot find hostid in persist file");
 
   HostIdState *host_id_state = persist_state_map_entry(state, handle);
   guint32 result = host_id_state->host_id;
@@ -118,9 +119,9 @@ Test(hostid, test_if_hostid_generated_when_persist_file_not_exists)
 
   hostid = _load_hostid_from_persist(persist_file);
 
-  cr_assert_eq(hostid, host_id_get(),
-               "read hostid(%u) differs from the newly generated hostid(%u)",
-               hostid, host_id_get());
+  cr_assert(eq(u32, hostid, host_id_get()),
+            "read hostid(%u) differs from the newly generated hostid(%u)",
+            hostid, host_id_get());
 
   unlink(persist_file);
 }
@@ -133,9 +134,9 @@ Test(hostid, test_if_hostid_remain_unchanged_when_persist_file_exists)
 
   _init_mainloop_with_persist_file(persist_file);
 
-  cr_assert_eq(host_id_get(), hostid,
-               "loaded hostid(%d) differs from expected (%d)",
-               host_id_get(), hostid);
+  cr_assert(eq(i64, host_id_get(), hostid),
+            "loaded hostid(%d) differs from expected (%d)",
+            host_id_get(), hostid);
 
   unlink(persist_file);
 }

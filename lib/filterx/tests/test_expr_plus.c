@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/cr_template.h"
 #include "libtest/filterx-lib.h"
 
@@ -54,15 +55,15 @@ Test(expr_plus, test_string_success)
 
 
   FilterXExpr *expr = filterx_operator_plus_new(lhs, rhs);
-  cr_assert_not_null(expr);
+  cr_assert(not(zero(ptr, expr)));
 
   FilterXObject *obj = init_and_eval_expr(expr);
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(string)));
 
   const gchar *res = filterx_string_get_value_as_cstr(obj);
 
-  cr_assert_str_eq(res, "foobar");
+  cr_assert(eq(str, res, "foobar"));
 
   filterx_object_unref(obj);
   filterx_expr_unref(expr);
@@ -74,10 +75,10 @@ Test(expr_plus, test_string_add_wrong_type)
   FilterXExpr *rhs = filterx_literal_new(filterx_null_new());
 
   FilterXExpr *expr = filterx_operator_plus_new(lhs, rhs);
-  cr_assert_not_null(expr);
+  cr_assert(not(zero(ptr, expr)));
 
   FilterXObject *obj = init_and_eval_expr(expr);
-  cr_assert_null(obj);
+  cr_assert(zero(ptr, obj));
   filterx_expr_unref(expr);
 }
 
@@ -92,10 +93,10 @@ Test(expr_plus, test_datetime_add_datetime)
   FilterXExpr *rhs = filterx_literal_new(filterx_datetime_new(&rhs_time));
 
   FilterXExpr *expr = filterx_operator_plus_new(lhs, rhs);
-  cr_assert_not_null(expr);
+  cr_assert(not(zero(ptr, expr)));
 
   FilterXObject *obj = init_and_eval_expr(expr);
-  cr_assert_null(obj); // datetime + datetime operation is not supported currently
+  cr_assert(zero(ptr, obj)); // datetime + datetime operation is not supported currently
 
   filterx_object_unref(obj);
   filterx_expr_unref(expr);
@@ -109,10 +110,10 @@ Test(expr_plus, test_datetime_add_integer)
   FilterXExpr *rhs = filterx_literal_new(filterx_integer_new(3600000000)); // 1h in usec
 
   FilterXExpr *expr = filterx_operator_plus_new(lhs, rhs);
-  cr_assert_not_null(expr);
+  cr_assert(not(zero(ptr, expr)));
 
   FilterXObject *obj = init_and_eval_expr(expr);
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(datetime)));
 
   assert_object_repr_equals(obj, "datetime(1577840400.000000)");
@@ -129,10 +130,10 @@ Test(expr_plus, test_datetime_add_double)
   FilterXExpr *rhs = filterx_literal_new(filterx_double_new(3600.0)); // 1h in sec
 
   FilterXExpr *expr = filterx_operator_plus_new(lhs, rhs);
-  cr_assert_not_null(expr);
+  cr_assert(not(zero(ptr, expr)));
 
   FilterXObject *obj = init_and_eval_expr(expr);
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(datetime)));
 
   assert_object_repr_equals(obj, "datetime(1577840400.000000)");
@@ -148,10 +149,10 @@ Test(expr_plus, test_datetime_add_wrong_type)
   FilterXExpr *rhs = filterx_literal_new(filterx_null_new());
 
   FilterXExpr *expr = filterx_operator_plus_new(lhs, rhs);
-  cr_assert_not_null(expr);
+  cr_assert(not(zero(ptr, expr)));
 
   FilterXObject *obj = init_and_eval_expr(expr);
-  cr_assert_null(obj);
+  cr_assert(zero(ptr, obj));
   filterx_expr_unref(expr);
 }
 
@@ -161,15 +162,15 @@ Test(expr_plus, test_integer_add_integer)
   FilterXExpr *rhs = filterx_literal_new(filterx_integer_new(66));
 
   FilterXExpr *expr = filterx_operator_plus_new(lhs, rhs);
-  cr_assert_not_null(expr);
+  cr_assert(not(zero(ptr, expr)));
 
   FilterXObject *obj = init_and_eval_expr(expr);
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(integer)));
 
   GenericNumber gn = filterx_primitive_get_value(obj);
 
-  cr_assert_eq(gn_as_int64(&gn), 99);
+  cr_assert(eq(i64, gn_as_int64(&gn), 99));
 
   filterx_object_unref(obj);
   filterx_expr_unref(expr);
@@ -181,17 +182,17 @@ Test(expr_plus, test_integer_add_double)
   FilterXExpr *rhs = filterx_literal_new(filterx_double_new(0.66));
 
   FilterXExpr *expr = filterx_operator_plus_new(lhs, rhs);
-  cr_assert_not_null(expr);
+  cr_assert(not(zero(ptr, expr)));
 
   FilterXObject *obj = init_and_eval_expr(expr);
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(double)));
 
   GenericNumber gn = filterx_primitive_get_value(obj);
   GenericNumber expected;
   gn_set_double(&expected, 33 + .66, 0);
 
-  cr_assert(gn_compare(&expected, &gn) == 0);
+  cr_assert(eq(int, gn_compare(&expected, &gn), 0));
 
   filterx_object_unref(obj);
   filterx_expr_unref(expr);
@@ -203,10 +204,10 @@ Test(expr_plus, test_integer_add_wrong_type)
   FilterXExpr *rhs = filterx_literal_new(filterx_null_new());
 
   FilterXExpr *expr = filterx_operator_plus_new(lhs, rhs);
-  cr_assert_not_null(expr);
+  cr_assert(not(zero(ptr, expr)));
 
   FilterXObject *obj = init_and_eval_expr(expr);
-  cr_assert_null(obj);
+  cr_assert(zero(ptr, obj));
   filterx_expr_unref(expr);
 }
 
@@ -216,10 +217,10 @@ Test(expr_plus, test_integer_add_overflow)
   FilterXExpr *rhs = filterx_literal_new(filterx_integer_new(1));
 
   FilterXExpr *expr = filterx_operator_plus_new(lhs, rhs);
-  cr_assert_not_null(expr);
+  cr_assert(not(zero(ptr, expr)));
 
   FilterXObject *obj = init_and_eval_expr(expr);
-  cr_assert_null(obj);
+  cr_assert(zero(ptr, obj));
   filterx_expr_unref(expr);
 }
 
@@ -229,17 +230,17 @@ Test(expr_plus, test_double_add_double)
   FilterXExpr *rhs = filterx_literal_new(filterx_double_new(3.1415));
 
   FilterXExpr *expr = filterx_operator_plus_new(lhs, rhs);
-  cr_assert_not_null(expr);
+  cr_assert(not(zero(ptr, expr)));
 
   FilterXObject *obj = init_and_eval_expr(expr);
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(double)));
 
   GenericNumber gn = filterx_primitive_get_value(obj);
   GenericNumber expected;
   gn_set_double(&expected, 3.1415 + .6, 0);
 
-  cr_assert(gn_compare(&expected, &gn) == 0);
+  cr_assert(eq(int, gn_compare(&expected, &gn), 0));
 
   filterx_object_unref(obj);
   filterx_expr_unref(expr);
@@ -251,17 +252,17 @@ Test(expr_plus, test_double_add_integer)
   FilterXExpr *rhs = filterx_literal_new(filterx_integer_new(33));
 
   FilterXExpr *expr = filterx_operator_plus_new(lhs, rhs);
-  cr_assert_not_null(expr);
+  cr_assert(not(zero(ptr, expr)));
 
   FilterXObject *obj = init_and_eval_expr(expr);
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(double)));
 
   GenericNumber gn = filterx_primitive_get_value(obj);
   GenericNumber expected;
   gn_set_double(&expected, .66 + 33, 0);
 
-  cr_assert(gn_compare(&expected, &gn) == 0);
+  cr_assert(eq(int, gn_compare(&expected, &gn), 0));
 
   filterx_object_unref(obj);
   filterx_expr_unref(expr);
@@ -274,10 +275,10 @@ Test(expr_plus, test_double_add_wrong_type)
   FilterXExpr *rhs = filterx_literal_new(filterx_null_new());
 
   FilterXExpr *expr = filterx_operator_plus_new(lhs, rhs);
-  cr_assert_not_null(expr);
+  cr_assert(not(zero(ptr, expr)));
 
   FilterXObject *obj = init_and_eval_expr(expr);
-  cr_assert_null(obj);
+  cr_assert(zero(ptr, obj));
   filterx_expr_unref(expr);
 }
 
@@ -287,10 +288,10 @@ Test(expr_plus, test_list_add_list)
   FilterXExpr *rhs = filterx_object_expr_new(filterx_object_from_json("[\"tik\",\"tak\"]", -1, NULL));
 
   FilterXExpr *expr = filterx_operator_plus_new(lhs, rhs);
-  cr_assert_not_null(expr);
+  cr_assert(not(zero(ptr, expr)));
 
   FilterXObject *obj = init_and_eval_expr(expr);
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
 
   assert_object_repr_equals(obj, "[\"foo\",\"bar\",\"tik\",\"tak\"]");
 
@@ -305,10 +306,10 @@ Test(expr_plus, test_list_add_wrong_type)
   FilterXExpr *rhs = filterx_literal_new(filterx_null_new());
 
   FilterXExpr *expr = filterx_operator_plus_new(lhs, rhs);
-  cr_assert_not_null(expr);
+  cr_assert(not(zero(ptr, expr)));
 
   FilterXObject *obj = init_and_eval_expr(expr);
-  cr_assert_null(obj);
+  cr_assert(zero(ptr, obj));
   filterx_expr_unref(expr);
 }
 
@@ -318,10 +319,10 @@ Test(expr_plus, test_dict_add_dict)
   FilterXExpr *rhs = filterx_object_expr_new(filterx_object_from_json("{\"tik\":\"tak\"}", -1, NULL));
 
   FilterXExpr *expr = filterx_operator_plus_new(lhs, rhs);
-  cr_assert_not_null(expr);
+  cr_assert(not(zero(ptr, expr)));
 
   FilterXObject *obj = init_and_eval_expr(expr);
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
 
   assert_object_repr_equals(obj, "{\"foo\":\"bar\",\"tik\":\"tak\"}");
 
@@ -335,10 +336,10 @@ Test(expr_plus, test_dict_add_wrong_type)
   FilterXExpr *rhs = filterx_literal_new(filterx_null_new());
 
   FilterXExpr *expr = filterx_operator_plus_new(lhs, rhs);
-  cr_assert_not_null(expr);
+  cr_assert(not(zero(ptr, expr)));
 
   FilterXObject *obj = init_and_eval_expr(expr);
-  cr_assert_null(obj);
+  cr_assert(zero(ptr, obj));
   filterx_expr_unref(expr);
 }
 
