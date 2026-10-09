@@ -501,6 +501,86 @@ kafka_update_state(KafkaSourceDriver *self, gboolean lock)
   return err;
 }
 
+static void
+_kafka_throttle_cb(rd_kafka_t *rk, const char *broker_name,
+                   int32_t broker_id, int throttle_time_ms, void *opaque)
+{
+  KafkaSourceDriver *self = (KafkaSourceDriver *) kafka_opaque_driver((KafkaOpaque *)opaque);
+
+  msg_info("kafka: Broker throttled request",
+           evt_tag_str("group_id", self->group_id),
+           evt_tag_str("broker_name", broker_name),
+           evt_tag_int("throttle_time_ms", throttle_time_ms),
+           evt_tag_str("driver", self->super.super.super.id));
+}
+
+void
+_kafka_error_cb(rd_kafka_t *rk, int err, const char *reason, void *opaque)
+{
+  KafkaSourceDriver *self = (KafkaSourceDriver *) kafka_opaque_driver((KafkaOpaque *)opaque);
+
+  /* Do not try to detect the state (call kafka_update_state) if we should quit or if the driver is not initialized yet,
+   * it seems causeing errors from the error callback triggers an infinite loop in librdkafka which
+   * acceptable (?) e.g. from a consumer poll call, but prevents a correct startup/shutdown.
+   * TODO: find a better way to handle this situation
+   */
+  if (main_loop_worker_job_quit() || (self->super.super.super.super.flags & PIF_INITIALIZED) == 0)
+    return;
+
+  kafka_opaque_state_lock(&self->opaque);
+
+  KafkaConnectedState old_state = kafka_opaque_state_get(&self->opaque);
+  /* NOTE: Normally the kafka_update_state call should be enough here.
+   *       Once we can query the metadata we are connected, so we can set the state to connected, and
+   *       let librdkafka handle all the recovery internally.
+   *       Even this works well for the subscribe strategy, but for the assign strategy it seems that
+   *       if the connection cannot be established before the assignment, then the assignment never happens correctly again.
+   *       More strange that once the connection established correctly, the lib handles further disconnects/reconnects well
+   *       even in assign mode. Subscribe mode seems to work well from the beginning, in each situation.
+   *       I think it is a bug in librdkafka, but that must be confirmed.
+   *
+   *       So this one is important for the assign strategy, for now if we are disconnected, and the error callback
+   *       is called with an error, we set the state to disconnected (not calling kafka_update_state), so the
+   *       main-consumer (_consumer_run) loop will try to re-establish the connection and do the assignment again from the ground.
+   */
+  if ((err != RD_KAFKA_RESP_ERR_NO_ERROR && old_state == KFS_DISCONNECTED) ||
+      kafka_update_state(self, FALSE) != RD_KAFKA_RESP_ERR_NO_ERROR)
+    {
+      kafka_opaque_state_set(&self->opaque, KFS_DISCONNECTED);
+    }
+
+  if (kafka_opaque_state_get(&self->opaque) == KFS_DISCONNECTED)
+    {
+      kafka_sd_wakeup_kafka_queues(self);
+
+      if (old_state != KFS_DISCONNECTED)
+        _kafka_log_state_changed(self, KFS_DISCONNECTED, (rd_kafka_resp_err_t) err, reason);
+
+      if (kafka_opaque_state_get_last_error(&self->opaque) != err)
+        {
+          if (old_state != KFS_CONNECTED)
+            {
+              /* Logging further errors ony on trace level, unfortunately house keeping the last error only
+               * is not enought to filter out the repetititons which would be the real goal here
+               * the user can add even more detailed kafka error logging using the config options
+               *      kafka-logging("kafka")
+               *      config(
+               *          "log_level" => "7"
+               *      )
+               * so, we do want to log the minimal info here in case of a connection error
+               * TODO: we can try to maintain a list of already recieved errors later, and show only the new ones in this error run ?!
+               */
+              msg_trace("kafka: Temporally error occured",
+                        //evt_tag_str("broker_name", broker_name),
+                        evt_tag_str("error", reason),
+                        evt_tag_str("driver", self->super.super.super.id));
+            }
+          kafka_opaque_state_set_last_error(&self->opaque, err);
+        }
+    }
+  kafka_opaque_state_unlock(&self->opaque);
+}
+
 KafkaSourcePersist *
 _find_persist(KafkaSourceDriver *self, const gchar *topic, int32_t partition)
 {
@@ -961,6 +1041,96 @@ _apply_assigned_partitions(KafkaSourceDriver *self, rd_kafka_topic_partition_lis
   return result;
 }
 
+static rd_kafka_topic_partition_list_t *
+_compose_partition_list(KafkaSourceDriver *self)
+{
+  g_assert(self->kafka);
+  rd_kafka_topic_partition_list_t *parts = rd_kafka_topic_partition_list_new(0);
+  const guint topics_num = g_list_length(self->requested_topics);
+  g_assert(topics_num > 0);
+
+  for (GList *t = self->requested_topics; t; t = t->next)
+    {
+      KafkaTopicParts *tps_item = (KafkaTopicParts *)t->data;
+      const gchar *requested_topic = tps_item->topic;
+      GList *requested_parts = tps_item->partitions;
+      guint requested_parts_num = g_list_length(requested_parts);
+      g_assert(requested_parts_num >= 1);
+
+      for (GList *p = requested_parts; p; p = p->next)
+        {
+          int32_t requested_partition = (int32_t)GPOINTER_TO_INT(p->data);
+          rd_kafka_topic_partition_list_add(parts, requested_topic, requested_partition);
+          /* Here we use the fact that the partition list is always ordered by partition number and cleaned up from duplicates
+           * so, if we find a wildcard partition, it must be the first and only one in the list */
+          g_assert((requested_partition != RD_KAFKA_PARTITION_UA || requested_parts_num == 1)
+                   && "Wildcard partition cannot be mixed with specific partitions");
+          if (self->options.strategy_hint == KSCS_SUBSCRIBE && requested_partition != RD_KAFKA_PARTITION_UA)
+            msg_warning("kafka: none wildcard partition requested whilst using subscribe strategy hint, topic() partition field(s) might be ignored, and all partitions will be subscribed",
+                        evt_tag_str("topic", requested_topic),
+                        evt_tag_int("partition", requested_partition),
+                        evt_tag_str("group_id", self->group_id),
+                        evt_tag_str("driver", self->super.super.super.id));
+        }
+    }
+  return parts;
+}
+
+/* **********************
+ * Strategy - assign poll
+ * **********************
+ */
+static gboolean
+_setup_method_assigned_consumer(KafkaSourceDriver *self)
+{
+  g_assert(self->kafka);
+  const guint topics_num = g_list_length(self->requested_topics);
+  g_assert(topics_num > 0);
+
+  rd_kafka_topic_partition_list_t *parts = _compose_partition_list(self);
+  return _apply_assigned_partitions(self, parts);
+}
+
+/* *************************
+ * Strategy - subscribe poll
+ * *************************
+ */
+static gboolean
+_setup_method_subscribed_consumer(KafkaSourceDriver *self)
+{
+  g_assert(self->kafka);
+  gboolean result = TRUE;
+  const guint topics_num = g_list_length(self->requested_topics);
+  g_assert(topics_num > 0);
+
+  rd_kafka_topic_partition_list_t *parts = _compose_partition_list(self);
+  rd_kafka_resp_err_t err;
+  if ((err = rd_kafka_subscribe(self->kafka, parts)) == RD_KAFKA_RESP_ERR_NO_ERROR)
+    {
+      /* Subscribe to topic set using balanced consumer groups.
+       * Wildcard (regex) topics are supported: any topic name in the topics list that is prefixed with "^" will be regex-matched to the full list of topics in the cluster and matching topics will be added to the subscription list.
+       * The full topic list is retrieved every topic.metadata.refresh.interval.ms to pick up new or delete topics that match the subscription. If there is any change to the matched topics the consumer will immediately rejoin the group with the updated set of subscribed topics.
+       * Regex and full topic names can be mixed in topics.
+       * NOTE:
+       * Only the topic field is used in the supplied topics list, all other fields are ignored.
+       * subscribe() is an asynchronous method which returns immediately: background threads will (re)join the group, wait for group rebalance, issue any registered rebalance_cb, assign() the assigned partitions, and then start fetching messages. This cycle may take up to session.timeout.ms * 2 or more to complete.
+       *
+       * So, we do not need to save or log anything here, the assignment will be made and logged later when partitions are
+       * actually assigned in the rebalance callback, also, we will add stats for the assigned topics there as well.
+       */
+    }
+  else
+    {
+      msg_error("kafka: rd_kafka_subscribe() failed",
+                evt_tag_str("group_id", self->group_id),
+                evt_tag_str("error", rd_kafka_err2str(err)),
+                evt_tag_str("driver", self->super.super.super.id));
+      result = FALSE;
+    }
+  rd_kafka_topic_partition_list_destroy(parts);
+  return result;
+}
+
 static void
 _alloc_msg_queues(KafkaSourceDriver *self)
 {
@@ -1131,6 +1301,37 @@ kafka_sd_drop_queued_messages(KafkaSourceDriver *self)
 }
 
 void
+kafka_final_flush(KafkaSourceDriver *self)
+{
+  const gint single_poll_timeout = 50;
+  gint remaining_time = self->options.super.poll_timeout;
+
+  if (kafka_opaque_state_get(&self->opaque) == KFS_CONNECTED && self->options.persist_store == KSPS_REMOTE)
+    {
+      rd_kafka_commit(self->kafka, NULL, FALSE); /* synchronous commit */
+      rd_kafka_poll(self->kafka, single_poll_timeout);
+    }
+
+  while (rd_kafka_outq_len(self->kafka) > 0 && remaining_time > 0)
+    {
+      if (kafka_opaque_state_get(&self->opaque) == KFS_CONNECTED)
+        rd_kafka_poll(self->kafka, single_poll_timeout);
+      remaining_time -= single_poll_timeout;
+    }
+
+  if (rd_kafka_outq_len(self->kafka) > 0)
+    msg_warning("kafka: outq flush could not process all items",
+                evt_tag_str("group_id", self->group_id),
+                evt_tag_str("driver", self->super.super.super.id));
+  else
+    kafka_msg_debug("kafka: outq flush completed",
+                    evt_tag_str("group_id", self->group_id),
+                    evt_tag_str("driver", self->super.super.super.id),
+                    evt_tag_int("kafka_outq_len", (int)rd_kafka_outq_len(self->kafka)),
+                    evt_tag_int("worker_queues_len", kafka_sd_worker_queues_len(self)));
+}
+
+void
 kafka_sd_wakeup_kafka_queues(KafkaSourceDriver *self)
 {
 #if SYSLOG_NG_HAVE_RD_KAFKA_QUEUE_YIELD
@@ -1142,6 +1343,56 @@ kafka_sd_wakeup_kafka_queues(KafkaSourceDriver *self)
   msg_warning("kafka: rd_kafka_queue_yield() is not available in the linked librdkafka version, syslog-ng shutdown latency may increase to `poll_timeout` value",
               evt_tag_str("driver", self->super.super.super.id));
 #endif
+}
+
+static void
+_kafka_rebalance_cb(rd_kafka_t *rk,
+                    rd_kafka_resp_err_t err,
+                    rd_kafka_topic_partition_list_t *partitions,
+                    void *opaque)
+{
+  KafkaSourceDriver *self = (KafkaSourceDriver *) kafka_opaque_driver((KafkaOpaque *)opaque);
+
+  g_assert(self->kafka == rk);
+  switch (err)
+    {
+    case RD_KAFKA_RESP_ERR__ASSIGN_PARTITIONS:
+      msg_verbose("kafka: group rebalanced - assigned",
+                  evt_tag_str("group_id", self->group_id),
+                  evt_tag_str("member_id", rd_kafka_memberid(rk)),
+                  evt_tag_str("driver", self->super.super.super.id));
+
+      /* Broker assigned the partitions → assign to the consumers too */
+      if (FALSE == _apply_assigned_partitions(self, rd_kafka_topic_partition_list_copy(partitions)))
+        {
+          msg_error("kafka: failed to apply assigned partitions on rebalance, dropping assignment",
+                    evt_tag_str("group_id", self->group_id),
+                    evt_tag_str("driver", self->super.super.super.id));
+          /* Clear the broker-side assignment too — without persists we cannot
+           * safely process messages from this assignment. The next rebalance or
+           * the consumer poll loop will surface the failed state. */
+          _apply_assigned_partitions(self, NULL);
+        }
+      break;
+
+    case RD_KAFKA_RESP_ERR__REVOKE_PARTITIONS:
+      msg_verbose("kafka: group rebalanced - revoked",
+                  evt_tag_str("group_id", self->group_id),
+                  evt_tag_str("member_id", rd_kafka_memberid(rk)),
+                  evt_tag_str("driver", self->super.super.super.id));
+      kafka_log_partition_list(self, partitions);
+
+      /* Revoke partitions from the consumers */
+      _apply_assigned_partitions(self, NULL);
+      break;
+
+    default:
+      msg_error("kafka: rebalance error",
+                evt_tag_str("error", rd_kafka_err2str(err)),
+                evt_tag_str("group_id", self->group_id),
+                evt_tag_str("driver", self->super.super.super.id));
+      break;
+    }
 }
 
 static gboolean
@@ -1307,6 +1558,153 @@ _apply_options(KafkaSourceDriver *self)
   _check_and_apply_topics(self, self->options.requested_topics, TRUE);
 }
 
+static rd_kafka_t *
+_construct_kafka_client(KafkaSourceDriver *self)
+{
+  kafka_msg_debug("kafka: constructing client",
+                  evt_tag_str("group_id", self->group_id),
+                  evt_tag_str("driver", self->super.super.super.id));
+
+  rd_kafka_conf_t *conf = rd_kafka_conf_new();
+
+  if (FALSE == kafka_conf_set_prop(conf, "metadata.broker.list", self->options.super.bootstrap_servers))
+    goto err_exit;
+  /* NOTE:
+   * 1. The consumer API's automatic offset store granularity is not sufficient.
+   * 2. We want to control the offset storage process ourselves and only mark a message as processed
+   *    once it has been fully delivered — especially in the single topic/single partition case
+   *    where message order matters and must be preserved.
+   * 3. As we can process messages in multiple threads/workers, we have to handle offset storage
+   *    and commiting manually for the scenarios when messages are processed out-of-order.
+   *
+   * So, we store the offset explicitly per-message in the message processor of the consume loop instead,
+   * using our ack and offset tracker, based on the options.persist_store value, if options.persist_store is set to
+   *    - KSPS_LOCAL
+   *          disable the automatic offset store and commit, everything is handled via our local persist state handler
+   *    - KSPS_REMOTE
+   *          disable the automatic offset store, let the user control the commit via the librdkafka automatic commit mechanism
+   *          (enable.auto.commit = true), but we still store the offset manually via the librdkafka API
+   *          once the message is fully processed.
+   */
+  if (FALSE == kafka_conf_set_prop(conf, "enable.auto.offset.store", "false"))
+    goto err_exit;
+  if (FALSE == kafka_conf_set_prop(conf, "enable.auto.commit",
+                                   self->options.persist_store == KSPS_REMOTE ? "true" : "false"))
+    goto err_exit;
+  if (FALSE == kafka_conf_set_prop(conf, "auto.offset.reset", _get_start_fallback_offset_string(self)))
+    goto err_exit;
+
+  static gchar *protected_properties[] =
+  {
+    "bootstrap.servers",
+    "metadata.broker.list",
+    "enable.auto.offset.store",
+    "auto.offset.reset",
+    "enable.auto.commit",
+    "auto.commit.enable",
+  };
+  if (FALSE == kafka_apply_config_props(conf, self->options.super.config, protected_properties,
+                                        G_N_ELEMENTS(protected_properties)))
+    goto err_exit;
+
+  rd_kafka_conf_set_opaque(conf, &self->opaque);
+  if (self->options.super.kafka_logging != KFL_DISABLED)
+    rd_kafka_conf_set_log_cb(conf, kafka_log_callback);
+  rd_kafka_conf_set_error_cb(conf, _kafka_error_cb);
+  rd_kafka_conf_set_throttle_cb(conf, _kafka_throttle_cb);
+  rd_kafka_conf_set_rebalance_cb(conf, _kafka_rebalance_cb);
+
+  gchar errbuf[1024] = {0};
+  rd_kafka_t *client = rd_kafka_new(RD_KAFKA_CONSUMER, conf, errbuf, sizeof(errbuf));
+  if (NULL == client)
+    {
+      msg_error("kafka: error constructing the kafka connection object",
+                evt_tag_str("group_id", self->group_id),
+                evt_tag_str("error", errbuf),
+                evt_tag_str("driver", self->super.super.super.id),
+                log_pipe_location_tag(&self->super.super.super.super));
+      goto err_exit;
+    }
+  return client;
+
+err_exit:
+  rd_kafka_conf_destroy(conf);
+  return NULL;
+}
+
+static gboolean
+_setup_kafka_client(KafkaSourceDriver *self)
+{
+  g_assert(self->kafka);
+  gboolean result = TRUE;
+
+  switch (self->strategy)
+    {
+    case KSCS_ASSIGN:
+      result = _setup_method_assigned_consumer(self);
+      break;
+    case KSCS_SUBSCRIBE:
+      result = _setup_method_subscribed_consumer(self);
+      break;
+    default:
+      g_assert_not_reached();
+    }
+  rd_kafka_poll(self->kafka, 0);
+  return result;
+}
+
+static void
+_destroy_kafka_client(LogDriver *s)
+{
+  KafkaSourceDriver *self = (KafkaSourceDriver *)s;
+
+  kafka_msg_debug("kafka: destroying client",
+                  evt_tag_str("group_id", self->group_id),
+                  evt_tag_str("driver", self->super.super.super.id));
+
+  /* These are just borrowed temporally in _consumer_run_consumer_poll or should have been already destroyed*/
+  g_assert(self->consumer_kafka_queue == NULL && self->main_kafka_queue == NULL);
+
+  if (self->assigned_partitions)
+    _apply_assigned_partitions(self, NULL);
+
+  if (self->kafka)
+    {
+      /* Wait for outstanding requests to finish */
+      kafka_final_flush(self);
+
+      /* NOTE: If this call is hanging, we need to ensure that no resources are in use */
+      rd_kafka_destroy(self->kafka);
+      self->kafka = NULL;
+    }
+}
+
+gboolean
+kafka_sd_reopen(LogDriver *s)
+{
+  KafkaSourceDriver *self = (KafkaSourceDriver *)s;
+
+  if (self->kafka)
+    _destroy_kafka_client(s);
+
+  self->kafka = _construct_kafka_client(self);
+  if (self->kafka == NULL)
+    {
+      msg_error("kafka: error constructing kafka connection object",
+                evt_tag_str("group_id", self->group_id),
+                evt_tag_str("driver", self->super.super.super.id),
+                log_pipe_location_tag(&self->super.super.super.super));
+      return FALSE;
+    }
+
+  if (FALSE == _setup_kafka_client(self))
+    {
+      _destroy_kafka_client(s);
+      return FALSE;
+    }
+  return TRUE;
+}
+
 static gboolean
 kafka_sd_init(LogPipe *s)
 {
@@ -1328,6 +1726,15 @@ kafka_sd_init(LogPipe *s)
       return FALSE;
     }
 
+  /* Order is important here
+   *  - apply options first to have group.id set correctly
+   *  - then decide strategy based on options, as it may affect worker and used queue count
+   *  - then allocate message queues based on strategy and worker count
+   *  - then allocate the stats hash tables as opening the kafka connection may register topic stats
+   *  - then call the parent init to setup threading
+   *  - then open the kafka connection which requires to be ready the group.id and the threading
+   *  - registering further stats need threading and group.id set correctly too
+   */
   _apply_options(self);
   _decide_strategy(self);
 
@@ -1344,6 +1751,9 @@ kafka_sd_init(LogPipe *s)
   if (FALSE == log_threaded_source_driver_init_method(s))
     return FALSE;
 
+  if (FALSE == kafka_sd_reopen(&self->super.super.super))
+    return FALSE;
+
   _register_worker_stats(self);
   _register_aggregated_stats(self);
 
@@ -1358,6 +1768,8 @@ static gboolean
 kafka_sd_deinit(LogPipe *s)
 {
   KafkaSourceDriver *self = (KafkaSourceDriver *)s;
+
+  _destroy_kafka_client(&self->super.super.super);
 
   g_free(self->group_id);
 

@@ -113,6 +113,7 @@ void kafka_unregister_counters(KafkaSourceDriver *self, const gchar *label, cons
                                StatsCounterItem *counter, const gchar **counter_names);
 
 rd_kafka_resp_err_t kafka_update_state(KafkaSourceDriver *self, gboolean lock);
+void kafka_final_flush(KafkaSourceDriver *self);
 
 typedef struct _KafkaOptions
 {
@@ -246,6 +247,8 @@ struct _KafkaSourceDriver
 void kafka_sd_options_defaults(KafkaSourceOptions *self,
                                LogThreadedSourceWorkerOptions *worker_options);
 void kafka_sd_options_destroy(KafkaSourceOptions *self);
+
+gboolean kafka_sd_reopen(LogDriver *s);
 
 gboolean kafka_sd_using_queues(KafkaSourceDriver *self);
 guint kafka_sd_used_queue_num(KafkaSourceDriver *self);
