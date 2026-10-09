@@ -37,5 +37,23 @@
 #include <librdkafka/rdkafka.h>
 #pragma GCC diagnostic pop
 
+#define TOPIC_NAME_ERROR topic_name_error_quark()
+
+typedef enum _KafkaTopicError
+{
+  TOPIC_LENGTH_ZERO,
+  TOPIC_DOT_TWO_DOTS,
+  TOPIC_EXCEEDS_MAX_LENGTH,
+  TOPIC_INVALID_PATTERN,
+} KafkaTopicError;
+
+GQuark topic_name_error_quark(void);
+
+gboolean kafka_validate_topic_name(const gchar *name, GError **error);
+gboolean kafka_conf_set_prop(rd_kafka_conf_t *conf, const gchar *name, const gchar *value);
+gboolean kafka_apply_config_props(rd_kafka_conf_t *conf, GList *props, gchar **protected_properties,
+                                  gsize protected_properties_num);
+void kafka_log_callback(const rd_kafka_t *rkt, int level, const char *fac, const char *msg);
+
 #endif
 
