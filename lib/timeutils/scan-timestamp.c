@@ -539,3 +539,301 @@ scan_rfc5424_timestamp(const guchar **data, gint *length, WallClockTime *wct)
   *length = left;
   return TRUE;
 }
+
+/*******************************************************************************
+ * Application log timestamps
+ *
+ * What applications write at the beginning of their log lines, as opposed to
+ * the syslog formats above.  These scanners leave the caller's cursor alone
+ * unless they match.
+ *******************************************************************************/
+
+static gboolean
+_scan_digits(const gchar **buf, gint *left, gint min_digits, gint max_digits, gint *num, gint *n_digits)
+{
+  guint32 result = 0;
+  gint n = 0;
+
+  while (*left > 0 && n < max_digits && ch_isdigit(**buf))
+    {
+      result = result * 10 + (**buf - '0');
+      (*buf)++;
+      (*left)--;
+      n++;
+    }
+  if (n < min_digits)
+    return FALSE;
+
+  *num = result;
+  if (n_digits)
+    *n_digits = n;
+  return TRUE;
+}
+
+static gboolean
+_set_date(WallClockTime *wct, gint year, gint mon, gint mday)
+{
+  if (mon < 1 || mon > 12 || mday < 1 || mday > 31)
+    return FALSE;
+
+  wct->wct_year = year - 1900;
+  wct->wct_mon = mon - 1;
+  wct->wct_mday = mday;
+  return TRUE;
+}
+
+/* "Oct" or "October" */
+static gboolean
+_scan_month_name(const gchar **buf, gint *left, gint *mon)
+{
+  static const gchar *rest_of_name[] =
+  { "uary", "ruary", "ch", "il", "", "e", "y", "ust", "tember", "ober", "ember", "ember" };
+
+  if (!scan_month_abbrev(buf, left, mon))
+    return FALSE;
+
+  const gchar *rest = rest_of_name[*mon];
+  gint rest_len = strlen(rest);
+
+  if (rest_len && *left >= rest_len && strncasecmp(*buf, rest, rest_len) == 0)
+    {
+      *buf += rest_len;
+      *left -= rest_len;
+    }
+  return TRUE;
+}
+
+/* H:MM:SS or HH:MM:SS, with an optional fraction */
+static gboolean
+_scan_time_of_day(const gchar **buf, gint *left, WallClockTime *wct)
+{
+  if (!_scan_digits(buf, left, 1, 2, &wct->wct_hour, NULL) ||
+      !scan_expect_char(buf, left, ':') ||
+      !_scan_digits(buf, left, 2, 2, &wct->wct_min, NULL) ||
+      !scan_expect_char(buf, left, ':') ||
+      !_scan_digits(buf, left, 2, 2, &wct->wct_sec, NULL))
+    return FALSE;
+
+  if (wct->wct_hour > 23 || wct->wct_min > 59 || wct->wct_sec > 60)
+    return FALSE;
+
+  wct->wct_usec = __parse_usec((const guchar **) buf, left);
+  return TRUE;
+}
+
+/* "+0200", "+02:00" or "Z", with or without a space before it; nothing is
+ * consumed when there is no zone */
+static void
+_scan_optional_zone(const gchar **buf, gint *left, WallClockTime *wct)
+{
+  const gchar *p = *buf;
+  gint l = *left;
+
+  if (l > 0 && *p == ' ')
+    {
+      p++;
+      l--;
+    }
+
+  if (l > 0 && *p == 'Z')
+    {
+      wct->wct_gmtoff = 0;
+      *buf = p + 1;
+      *left = l - 1;
+      return;
+    }
+
+  if (l >= 5 && (*p == '+' || *p == '-') && ch_isdigit(p[1]) && ch_isdigit(p[2]))
+    {
+      gint sign = *p == '-' ? -1 : 1;
+      gint hours = (p[1] - '0') * 10 + (p[2] - '0');
+      gint mins;
+
+      if (ch_isdigit(p[3]) && ch_isdigit(p[4]))
+        {
+          mins = (p[3] - '0') * 10 + (p[4] - '0');
+          p += 5;
+          l -= 5;
+        }
+      else if (l >= 6 && p[3] == ':' && ch_isdigit(p[4]) && ch_isdigit(p[5]))
+        {
+          mins = (p[4] - '0') * 10 + (p[5] - '0');
+          p += 6;
+          l -= 6;
+        }
+      else
+        return;
+
+      wct->wct_gmtoff = sign * (hours * 3600 + mins * 60);
+      *buf = p;
+      *left = l;
+    }
+}
+
+gboolean
+scan_numeric_date_timestamp(const gchar **buf, gint *left, WallClockTime *wct)
+{
+  const gchar *p = *buf;
+  gint l = *left;
+  gint a, b, c, a_digits, c_digits;
+  gint year, mon, mday;
+
+  if (!_scan_digits(&p, &l, 1, 4, &a, &a_digits) || l < 1)
+    return FALSE;
+
+  gchar sep = *p;
+  if (sep != '-' && sep != '/' && sep != '.')
+    return FALSE;
+  p++;
+  l--;
+
+  if (!_scan_digits(&p, &l, 1, 2, &b, NULL) ||
+      !scan_expect_char(&p, &l, sep) ||
+      !_scan_digits(&p, &l, 1, 4, &c, &c_digits))
+    return FALSE;
+
+  if (a_digits == 4 && c_digits <= 2)
+    {
+      /* year first: the month comes next, as in ISO 8601 */
+      year = a;
+      mon = b;
+      mday = c;
+    }
+  else if (a_digits <= 2 && c_digits == 4)
+    {
+      /* year last: dots are European, slashes and dashes American, unless
+       * the day gives the order away */
+      year = c;
+      if (sep == '.' || a > 12)
+        {
+          mday = a;
+          mon = b;
+        }
+      else
+        {
+          mon = a;
+          mday = b;
+        }
+    }
+  else
+    return FALSE;
+
+  if (!_set_date(wct, year, mon, mday) ||
+      !scan_expect_char(&p, &l, ' ') ||
+      !_scan_time_of_day(&p, &l, wct))
+    return FALSE;
+  _scan_optional_zone(&p, &l, wct);
+
+  *buf = p;
+  *left = l;
+  return TRUE;
+}
+
+gboolean
+scan_day_month_year_timestamp(const gchar **buf, gint *left, WallClockTime *wct)
+{
+  const gchar *p = *buf;
+  gint l = *left;
+  gint wday = -1, mday, mon, year;
+
+  /* RFC 2822 starts with the day of the week */
+  if (scan_day_abbrev(&p, &l, &wday)
+      && (!scan_expect_char(&p, &l, ',') || !scan_expect_char(&p, &l, ' ')))
+    return FALSE;
+
+  if (!_scan_digits(&p, &l, 1, 2, &mday, NULL) || l < 1)
+    return FALSE;
+
+  gchar sep = *p;
+  if (sep != ' ' && sep != '-' && sep != '/')
+    return FALSE;
+  p++;
+  l--;
+
+  if (!_scan_month_name(&p, &l, &mon) ||
+      !scan_expect_char(&p, &l, sep) ||
+      !_scan_digits(&p, &l, 4, 4, &year, NULL))
+    return FALSE;
+
+  /* the access log of Apache httpd and nginx separates the time with a colon */
+  if (l < 1 || (*p != ' ' && *p != ':'))
+    return FALSE;
+  p++;
+  l--;
+
+  if (!_set_date(wct, year, mon + 1, mday) ||
+      !_scan_time_of_day(&p, &l, wct))
+    return FALSE;
+  _scan_optional_zone(&p, &l, wct);
+
+  if (wday >= 0)
+    wct->wct_wday = wday;
+  *buf = p;
+  *left = l;
+  return TRUE;
+}
+
+gboolean
+scan_apache_error_timestamp(const gchar **buf, gint *left, WallClockTime *wct)
+{
+  const gchar *p = *buf;
+  gint l = *left;
+  gint wday, mday, mon, year;
+
+  if (!scan_day_abbrev(&p, &l, &wday) ||
+      !scan_expect_char(&p, &l, ' ') ||
+      !scan_month_abbrev(&p, &l, &mon) ||
+      !scan_expect_char(&p, &l, ' ') ||
+      !_scan_digits(&p, &l, 1, 2, &mday, NULL) ||
+      !scan_expect_char(&p, &l, ' ') ||
+      !_scan_time_of_day(&p, &l, wct) ||
+      !scan_expect_char(&p, &l, ' ') ||
+      !_scan_digits(&p, &l, 4, 4, &year, NULL))
+    return FALSE;
+
+  if (!_set_date(wct, year, mon + 1, mday))
+    return FALSE;
+
+  wct->wct_wday = wday;
+  *buf = p;
+  *left = l;
+  return TRUE;
+}
+
+gboolean
+scan_java_util_logging_timestamp(const gchar **buf, gint *left, WallClockTime *wct)
+{
+  const gchar *p = *buf;
+  gint l = *left;
+  gint mday, mon, year;
+
+  if (!_scan_month_name(&p, &l, &mon) ||
+      !scan_expect_char(&p, &l, ' ') ||
+      !_scan_digits(&p, &l, 1, 2, &mday, NULL) ||
+      !scan_expect_char(&p, &l, ',') ||
+      !scan_expect_char(&p, &l, ' ') ||
+      !_scan_digits(&p, &l, 4, 4, &year, NULL) ||
+      !scan_expect_char(&p, &l, ' ') ||
+      !_scan_time_of_day(&p, &l, wct))
+    return FALSE;
+
+  if (!_set_date(wct, year, mon + 1, mday))
+    return FALSE;
+
+  /* a 12-hour clock with AM/PM, a 24-hour one without */
+  if (l >= 3 && p[0] == ' ' && (p[1] == 'A' || p[1] == 'P') && p[2] == 'M')
+    {
+      if (wct->wct_hour > 12)
+        return FALSE;
+      if (p[1] == 'P' && wct->wct_hour < 12)
+        wct->wct_hour += 12;
+      else if (p[1] == 'A' && wct->wct_hour == 12)
+        wct->wct_hour = 0;
+      p += 3;
+      l -= 3;
+    }
+
+  *buf = p;
+  *left = l;
+  return TRUE;
+}
