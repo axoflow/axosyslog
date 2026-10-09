@@ -67,6 +67,7 @@ source genmsg {{
             "values.bytes" => bytes("binary whatever"),
             "values.protobuf" => protobuf("this is not a valid protobuf!!"),
             "values.json" => json('{{"emb_key1": "emb_key1 value", "emb_key2": "emb_key2 value"}}'),
+            "values.sdata" => json('{{"SecureAuth@27389": {{"EventID": "90030"}}}}'),
             "values.true_string" => string("boolean:true"),
             "values.false_string" => string("boolean:false"),
         )
@@ -1090,6 +1091,11 @@ def test_format_syslog_5424(config, syslog_ng):
     formats = [];
     formats[] = format_syslog_5424("foobar", timestamp=datetime(1765146872.0));
     formats[] = format_syslog_5424("foobar", timestamp=datetime(1765146872.0), host="host-value", program="prog-value", pid="hihi", msgid="1234");
+    formats[] = format_syslog_5424("foobar", timestamp=datetime(1765146872.0), sdata="[a b=\"c\"]");
+    formats[] = format_syslog_5424("foobar", timestamp=datetime(1765146872.0), sdata="");
+    formats[] = format_syslog_5424("foobar", timestamp=datetime(1765146872.0), sdata={"SecureAuth@27389": {"EventID": "90030"}});
+    formats[] = format_syslog_5424("foobar", timestamp=datetime(1765146872.0), sdata=$SDATA);
+    formats[] = format_syslog_5424("foobar", timestamp=datetime(1765146872.0), sdata=${values.sdata});
     $MSG = string(formats);
     """,
     )
@@ -1098,7 +1104,40 @@ def test_format_syslog_5424(config, syslog_ng):
     assert file_final.get_stats()["processed"] == 1
     assert file_final.read_log() == '[' \
         '"<13>1 2025-12-07T22:34:32.000000+00:00 - - - - - foobar\\n",' \
-        '"<13>1 2025-12-07T22:34:32.000000+00:00 host-value prog-value hihi 1234 - foobar\\n"' \
+        '"<13>1 2025-12-07T22:34:32.000000+00:00 host-value prog-value hihi 1234 - foobar\\n",' \
+        '"<13>1 2025-12-07T22:34:32.000000+00:00 - - - - [a b=\\"c\\"] foobar\\n",' \
+        '"<13>1 2025-12-07T22:34:32.000000+00:00 - - - - - foobar\\n",' \
+        '"<13>1 2025-12-07T22:34:32.000000+00:00 - - - - [SecureAuth@27389 EventID=\\"90030\\"] foobar\\n",' \
+        '"<13>1 2025-12-07T22:34:32.000000+00:00 - - - - - foobar\\n",' \
+        '"<13>1 2025-12-07T22:34:32.000000+00:00 - - - - [SecureAuth@27389 EventID=\\"90030\\"] foobar\\n"' \
+        ']'
+
+
+def test_format_sdata(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    formats = [];
+    formats[] = format_sdata({"foo": {"bar": "baz"}});
+    formats[] = format_sdata({"foo": {"bar": "baz", "x": "y"}, "SecureAuth@27389": {"EventID": "90030"}});
+    formats[] = format_sdata({"foo": {"bar": "a\"b\\c]d"}});
+    formats[] = format_sdata({"foo": {}});
+    formats[] = format_sdata({});
+    formats[] = format_sdata({"foo": {"bar": 42}});
+    formats[] = format_sdata("not a dict") ?? "error";
+    $MSG = string(formats);
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == '[' \
+        '"[foo bar=\\"baz\\"]",' \
+        '"[foo bar=\\"baz\\" x=\\"y\\"][SecureAuth@27389 EventID=\\"90030\\"]",' \
+        '"[foo bar=\\"a\\\\\\"b\\\\\\\\c\\\\]d\\"]",' \
+        '"[foo]",' \
+        '"-",' \
+        '"[foo bar=\\"42\\"]",' \
+        '"error"' \
         ']'
 
 

@@ -1,1 +1,2 @@
 add_unit_test(LIBTEST CRITERION TARGET test_syslog_format DEPENDS syslogformat)
+add_unit_test(LIBTEST CRITERION TARGET test_filterx_func_format_sdata DEPENDS syslogformat)

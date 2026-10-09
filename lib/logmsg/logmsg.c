@@ -922,7 +922,7 @@ log_msg_is_tag_by_name(LogMessage *self, const gchar *name)
 
 /* structured data elements */
 
-static void
+void
 log_msg_sdata_append_key_escaped(GString *result, const gchar *sstr, gssize len)
 {
   /* The specification does not have any way to escape keys.
@@ -943,7 +943,7 @@ log_msg_sdata_append_key_escaped(GString *result, const gchar *sstr, gssize len)
     }
 }
 
-static void
+void
 log_msg_sdata_append_escaped(GString *result, const gchar *sstr, gssize len)
 {
   gint i;
