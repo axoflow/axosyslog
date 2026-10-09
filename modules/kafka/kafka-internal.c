@@ -209,6 +209,7 @@ void
 kafka_options_defaults(KafkaOptions *self)
 {
   self->poll_timeout = 1000;
+  self->state_update_timeout = 1000; /* state_update_timeout milliseconds - 1 second */
   self->kafka_logging = KFL_DISABLED;
 }
 
@@ -265,6 +266,12 @@ inline void
 kafka_options_set_poll_timeout(KafkaOptions *self, gint poll_timeout)
 {
   self->poll_timeout = poll_timeout;
+}
+
+inline void
+kafka_options_set_state_update_timeout(KafkaOptions *self, gint state_update_timeout)
+{
+  self->state_update_timeout = state_update_timeout;
 }
 
 void
