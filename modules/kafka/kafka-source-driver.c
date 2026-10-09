@@ -27,6 +27,7 @@
 
 #include "kafka-source-driver.h"
 #include "kafka-source-worker.h"
+#include "kafka-source-persist.h"
 #include "kafka-internal.h"
 #include "kafka-props.h"
 #include "kafka-topic-parts.h"
@@ -465,6 +466,64 @@ kafka_update_state(KafkaSourceDriver *self, gboolean lock)
     kafka_opaque_state_unlock(&self->opaque);
 
   return err;
+}
+
+gboolean
+kafka_sd_store_persist_offset(KafkaSourceDriver *self,
+                              KafkaSourcePersist *persist,
+                              int64_t offset)
+{
+  gboolean success = TRUE;
+
+  /* Group rebalancing could happen meanwhile which will free or invalidate the persists and assigned_partitions lists,
+   * therefore we sould lock the persists_mutex too normally, however:
+   *    1) the rebalance callback tries to lock each persist (before tries to invalidate them)
+   *    2) the persist itself has an additional reference already in the caller, so cannot be released/altered during this call
+   *    3) so, as the persis is already locked (in the caller) the persists list cannot be changed anymore (see, _apply_assigned_partitions)
+   * NOTE: this still can fail in the kafka API calls below (as, at the time the kafka rebalance callback is called
+   *       the assigned_partitions are already modified/revoked/invalidated), but at least we avoid use-after-free issues */
+
+  /* If the persist is invalidated it means the topic assignment is changed, or there is no
+   * valid Kafka connection anymore to store the offset */
+  if (FALSE == kafka_source_persist_remote_is_valid(persist))
+    {
+      kafka_msg_debug("kafka: persist is invalidated, cannot store offset remotely",
+                      evt_tag_str("topic", kafka_source_persist_get_topic(persist)),
+                      evt_tag_int("partition", (int) kafka_source_persist_get_partition(persist)),
+                      evt_tag_long("offset", offset),
+                      evt_tag_str("driver", self->super.super.super.id));
+      return FALSE;
+    }
+
+  /* NOTE: Unlike in rd_kafka_offset_store_message(), in rd_kafka_offsets_store() the .offset field is stored as is, it will NOT be + 1 */
+  ++offset;
+  rd_kafka_resp_err_t err = rd_kafka_topic_partition_list_set_offset(self->assigned_partitions,
+                            kafka_source_persist_get_topic(persist), kafka_source_persist_get_partition(persist), offset);
+  if (err != RD_KAFKA_RESP_ERR_NO_ERROR)
+    {
+      msg_error("kafka: failed to set the offset for partition (set_offset)",
+                evt_tag_str("topic", kafka_source_persist_get_topic(persist)),
+                evt_tag_int("partition", (int) kafka_source_persist_get_partition(persist)),
+                evt_tag_long("offset", offset),
+                evt_tag_str("error", rd_kafka_err2str(err)),
+                evt_tag_str("driver", self->super.super.super.id));
+      success = FALSE;
+    }
+  else
+    {
+      err = rd_kafka_offsets_store(self->kafka, self->assigned_partitions);
+      if (err != RD_KAFKA_RESP_ERR_NO_ERROR)
+        {
+          msg_error("kafka: failed to store the offset for partitions (offsets_store)",
+                    evt_tag_str("topic", kafka_source_persist_get_topic(persist)),
+                    evt_tag_int("partition", (int) kafka_source_persist_get_partition(persist)),
+                    evt_tag_long("offset", offset),
+                    evt_tag_str("error", rd_kafka_err2str(err)),
+                    evt_tag_str("driver", self->super.super.super.id));
+          success = FALSE;
+        }
+    }
+  return success;
 }
 
 inline guint

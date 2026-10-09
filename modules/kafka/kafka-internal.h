@@ -41,6 +41,7 @@
 #include "kafka-source-worker.h"
 #include "kafka-dest-driver.h"
 #include "kafka-dest-worker.h"
+#include "kafka-source-persist.h"
 
 #define KAFKA_DEEP_TRACE 0
 #if SYSLOG_NG_ENABLE_DEBUG
@@ -200,6 +201,7 @@ struct _KafkaSourceDriver
   rd_kafka_t *kafka;
   rd_kafka_queue_t *consumer_kafka_queue;
   rd_kafka_queue_t *main_kafka_queue;
+  rd_kafka_topic_partition_list_t *assigned_partitions;
 
   gchar *group_id;
   GList *requested_topics;
@@ -250,6 +252,9 @@ void kafka_sd_signal_reassign(KafkaSourceDriver *self);
 gboolean kafka_sd_reassign_signaled(KafkaSourceDriver *self);
 void kafka_sd_signal_assignement_invalidated(KafkaSourceDriver *self);
 gboolean kafka_sd_assignement_invalidated_signaled(KafkaSourceDriver *self);
+gboolean kafka_sd_store_persist_offset(KafkaSourceDriver *self,
+                                       KafkaSourcePersist *persist,
+                                       int64_t offset);
 gboolean kafka_sd_parallel_processing(KafkaSourceDriver *self);
 
 void kafka_sd_update_msg_length_stats(KafkaSourceDriver *self, gsize len);
