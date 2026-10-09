@@ -128,6 +128,19 @@ class SyslogNg(object):
             self._console_log_reader.check_for_unexpected_messages(unexpected_messages)
         self._process = None
 
+    def kill(self) -> None:
+        """Take syslog-ng down the way a crash would: SIGKILL, nothing flushed or saved."""
+        if not self.is_process_running():
+            raise Exception("syslog-ng is not running")
+
+        saved_pid = self._process.pid
+        self._syslog_ng_executor.kill_process(self._process)
+        if not wait_until_false(self.is_process_running):
+            self.__error_handling("syslog-ng did not terminate on SIGKILL")
+        self._console_log_reader.close_all_fds()
+        self._process = None
+        logger.info("syslog-ng process has been killed with PID: {}\n".format(saved_pid))
+
     def reload(self, config: SyslogNgConfig) -> None:
         config.write_config(self.instance_paths.get_config_path())
 
