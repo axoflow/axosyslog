@@ -55,7 +55,7 @@ kafka_dest_worker_resolve_template_topic_name(KafkaDestWorker *self, LogMessage 
 
   GError *error = NULL;
 
-  if (kafka_dd_validate_topic_name(self->topic_name_buffer->str, &error))
+  if (kafka_validate_topic_name(self->topic_name_buffer->str, &error))
     {
       return self->topic_name_buffer->str;
     }

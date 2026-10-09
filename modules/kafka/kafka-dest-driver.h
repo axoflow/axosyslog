@@ -42,7 +42,6 @@ void kafka_dd_set_flush_timeout_on_reload(LogDriver *d, gint reload_timeout);
 void kafka_dd_set_poll_timeout(LogDriver *d, gint poll_timeout);
 void kafka_dd_set_transaction_commit(LogDriver *d, gboolean transaction_commit);
 
-gboolean kafka_dd_validate_topic_name(const gchar *name, GError **error);
 gboolean kafka_dd_is_topic_name_a_template(KafkaDestDriver *self);
 LogTemplateOptions *kafka_dd_get_template_options(LogDriver *d);
 

@@ -94,7 +94,7 @@ static struct valid_topic_test_params valid_topic_tests_params[] =
 StaticParameterizedTest(struct valid_topic_test_params *param, valid_topic_tests_params, kafka_topic, valid_topic_tests)
 {
   GError *error = NULL;
-  cr_assert_eq(kafka_dd_validate_topic_name(param->topic_name, &error), TRUE);
+  cr_assert_eq(kafka_validate_topic_name(param->topic_name, &error), TRUE);
   cr_assert_null(error);
 }
 
@@ -123,7 +123,7 @@ StaticParameterizedTest(struct invalid_topic_test_params *param, invalid_topic_t
                         invalid_topic_tests)
 {
   GError *error = NULL;
-  cr_assert_eq(kafka_dd_validate_topic_name(param->topic_name, &error), FALSE);
+  cr_assert_eq(kafka_validate_topic_name(param->topic_name, &error), FALSE);
   cr_assert_eq(error->domain, TOPIC_NAME_ERROR);
   cr_assert_eq(error->code, param->type);
   cr_assert_not_null(error);
