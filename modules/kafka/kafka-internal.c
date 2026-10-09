@@ -208,7 +208,7 @@ kafka_format_partition_key(const gchar *topic, int32_t partition, gchar *key, gs
 void
 kafka_options_defaults(KafkaOptions *self)
 {
-  self->poll_timeout = 1000;
+  self->poll_timeout = 10000; /* poll_timeout milliseconds - 10 seconds */
   self->state_update_timeout = 1000; /* state_update_timeout milliseconds - 1 second */
   self->kafka_logging = KFL_DISABLED;
 }
