@@ -51,3 +51,25 @@ def test_format_gelf(config, syslog_ng, frac_digits, timestamp_pattern):
     assert isinstance(gelf["level"], int)
     assert isinstance(gelf["timestamp"], (int, float))
     assert re.search(timestamp_pattern, log)
+
+
+@pytest.mark.parametrize(
+    "pid, expected_pid", [
+        ("1234", 1234),
+        ("worker-3", None),
+    ], ids=["numeric", "non_numeric"],
+)
+def test_format_gelf_pid(config, syslog_ng, pid, expected_pid):
+    config.add_include("scl.conf")
+
+    generator_source = config.create_example_msg_generator_source(num=1, values="PID => {}".format(pid))
+    file_destination = config.create_file_destination(file_name="output.log", template=config.stringify("$(format-gelf)\n"))
+
+    config.create_logpath(statements=[generator_source, file_destination])
+    syslog_ng.start(config)
+    log = file_destination.read_logs(1)[0]
+
+    assert log.endswith("\0")
+    gelf = json.loads(log[:-1])
+    assert gelf["short_message"] == "-- Generated message. --"
+    assert gelf.get("_pid") == expected_pid
