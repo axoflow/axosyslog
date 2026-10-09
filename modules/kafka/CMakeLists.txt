@@ -12,7 +12,7 @@ if (NOT ENABLE_KAFKA)
   return()
 endif()
 
-check_symbol_exists (rd_kafka_init_transactions "librdkafka/rdkafka.h" SYSLOG_NG_HAVE_RD_KAFKA_INIT_TRANSACTIONS)
+check_library_exists(rdkafka rd_kafka_init_transactions "" SYSLOG_NG_HAVE_RD_KAFKA_INIT_TRANSACTIONS)
 
 set(CMAKE_REQUIRED_INCLUDES ${RDKAFKA_INCLUDE_DIR})
 set(CMAKE_REQUIRED_LIBRARIES ${RDKAFKA_LIBRARY})
