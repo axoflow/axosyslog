@@ -655,9 +655,19 @@ _multi_line_accumulate(LogProtoSplunkS2SServer *self, SplunkS2SServerChannel *ch
                        const gchar *line, gsize line_len, const SplunkS2SEventMeta *meta)
 {
   GString *buf = channel->multi_line_buf;
+  gsize max_msg_size = self->super.options->max_msg_size;
 
   while (TRUE)
     {
+      /* cap the event like TRUNCATE on an indexer: a stream whose timestamps
+       * are not recognized would otherwise grow one event without end */
+      if (buf->len && buf->len + 1 + line_len > max_msg_size)
+        {
+          if (!_multi_line_force_extract(self, channel, meta))
+            return FALSE;
+          continue;
+        }
+
       gint verdict = multi_line_logic_accumulate_line(channel->multi_line,
                                                       (const guchar *) buf->str, buf->len,
                                                       (const guchar *) line, line_len);

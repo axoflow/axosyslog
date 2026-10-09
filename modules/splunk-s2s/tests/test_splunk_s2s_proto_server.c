@@ -1132,6 +1132,75 @@ Test(splunk_s2s_proto_server, without_a_timeout_the_pending_event_waits_for_the_
   log_proto_server_free(proto);
 }
 
+Test(splunk_s2s_proto_server, merging_stops_before_the_event_would_exceed_log_msg_size)
+{
+  GString *stream = g_string_new(NULL);
+  _append_preamble_with_channel(stream, 1, "/var/log/app.log");
+  _append_event(stream, 1, CHUNK_FLAGS, 2, "2026-10-09 first\n"
+                                           "\tat com.example.A(A.java:1)\n\tat com.example.B(B.java:2)\n\tat com.example.C(C.java:3)\n");
+
+  LogTransport *transport = log_transport_mock_stream_new(stream->str, stream->len, LTM_EOF);
+  LogProtoServer *proto = _server_new_multi_line(transport, "prefix-garbage", "^[0-9]{4}-", NULL, 0);
+  /* the proto reads the options through the pointer it was handed; the
+   * limit still fits the forwarder info message of the handshake */
+  proto_server_options.max_msg_size = 60;
+
+  _assert_forwarder_info(proto);
+
+  FetchedMessage message;
+  /* 16 + 1 + 27 = 44 bytes, the next frame would make it 72 */
+  _assert_fetch(proto, &message, "2026-10-09 first\n\tat com.example.A(A.java:1)");
+  _fetched_message_clear(&message);
+  /* 27 + 1 + 27 = 55 bytes */
+  _assert_fetch(proto, &message, "\tat com.example.B(B.java:2)\n\tat com.example.C(C.java:3)");
+  _fetched_message_clear(&message);
+
+  _assert_no_more_messages(proto);
+
+  g_string_free(stream, TRUE);
+  log_proto_server_free(proto);
+}
+
+/* the smart mode keeps state across lines, which the cap cuts through */
+Test(splunk_s2s_proto_server, the_size_cap_cuts_through_a_trace_of_the_smart_mode)
+{
+  GString *stream = g_string_new(NULL);
+  _append_preamble_with_channel(stream, 1, "/var/log/app.log");
+  _append_event(stream, 1, CHUNK_FLAGS, 2,
+                "Traceback (most recent call last):\n"
+                "File \"./lib/merge-grammar.py\", line 62, in <module>\n"
+                "  for line in fileinput.input(openhook=fileinput.hook_encoded(\"utf-8\")):\n"
+                "File \"/usr/lib/python3.8/fileinput.py\", line 248, in __next__\n"
+                "  line = self._readline()\n"
+                "unrelated line here\n");
+
+  LogTransport *transport = log_transport_mock_stream_new(stream->str, stream->len, LTM_EOF);
+  LogProtoServer *proto = _server_new_multi_line(transport, "smart", NULL, NULL, 0);
+  proto_server_options.max_msg_size = 100;
+
+  _assert_forwarder_info(proto);
+
+  FetchedMessage message;
+  /* 34 + 1 + 51 bytes, the third line would make it 161 */
+  _assert_fetch(proto, &message, "Traceback (most recent call last):\n"
+                                 "File \"./lib/merge-grammar.py\", line 62, in <module>");
+  _fetched_message_clear(&message);
+  /* 74 bytes, the next line would make it 136 */
+  _assert_fetch(proto, &message, "  for line in fileinput.input(openhook=fileinput.hook_encoded(\"utf-8\")):");
+  _fetched_message_clear(&message);
+  /* the trace goes on from where the cap cut it, and the unrelated line ends it */
+  _assert_fetch(proto, &message, "File \"/usr/lib/python3.8/fileinput.py\", line 248, in __next__\n"
+                                 "  line = self._readline()");
+  _fetched_message_clear(&message);
+  _assert_fetch(proto, &message, "unrelated line here");
+  _fetched_message_clear(&message);
+
+  _assert_no_more_messages(proto);
+
+  g_string_free(stream, TRUE);
+  log_proto_server_free(proto);
+}
+
 Test(splunk_s2s_proto_server, mode_none_leaves_lines_unmerged)
 {
   GString *stream = g_string_new(NULL);
