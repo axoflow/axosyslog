@@ -141,6 +141,14 @@ void kafka_opaque_state_set_last_error(KafkaOpaque *self, gint error);
 
 /* Kafka Source */
 
+typedef enum _KafkaSrcConsumerStrategy
+{
+  KSCS_ASSIGN,
+  KSCS_SUBSCRIBE,
+
+  KSCS_UNDEFINED
+} KafkaSrcConsumerStrategy;
+
 typedef enum _KafkaSrcPersistStore
 {
   KSPS_LOCAL,
@@ -156,6 +164,7 @@ struct _KafkaSourceOptions
   MsgFormatOptions *format_options;
 
   GList *requested_topics;
+  KafkaSrcConsumerStrategy strategy_hint;
   gint time_reopen;
 
   KafkaSrcPersistStore persist_store;
@@ -180,6 +189,8 @@ struct _KafkaSourceDriver
 
   gchar *group_id;
   GList *requested_topics;
+
+  KafkaSrcConsumerStrategy strategy;
 
   const gchar *persist_name;
 

@@ -167,6 +167,12 @@ _validate_part_num(gpointer item, GError **error)
 }
 
 static gboolean
+_is_topic_pattern(const char *topic)
+{
+  return FALSE == kafka_validate_topic_name(topic, NULL);
+}
+
+static gboolean
 _validate_topic_name(gpointer item, GError **error)
 {
   const gchar *topic = (const gchar *)item;
@@ -199,6 +205,50 @@ _format_persist_name(const LogPipe *d)
   else
     g_snprintf(persist_name, sizeof(persist_name), "kafka(%s)", self->super.super.super.id);
   return persist_name;
+}
+
+static gboolean
+_has_wildcard_topic_or_partition(GList *requested_topics,
+                                 gboolean *has_wildcard_topic,
+                                 gboolean *has_wildcard_partition)
+{
+  g_assert(g_list_length(requested_topics));
+
+  for (GList *l = requested_topics; l != NULL; l = l->next)
+    {
+      KafkaTopicParts *item = (KafkaTopicParts *)l->data;
+      if (_is_topic_pattern(item->topic))
+        *has_wildcard_topic = TRUE;
+
+      for (GList *p = item->partitions; p != NULL; p = p->next)
+        {
+          int32_t partition = (int32_t)GPOINTER_TO_INT(p->data);
+          if (partition == RD_KAFKA_PARTITION_UA)
+            *has_wildcard_partition = TRUE;
+        }
+      if (*has_wildcard_topic && *has_wildcard_partition)
+        break;
+    }
+  return *has_wildcard_partition || *has_wildcard_topic;
+}
+
+static void
+_decide_strategy(KafkaSourceDriver *self)
+{
+  gboolean wildcard_topic = FALSE, wildcard_partition = FALSE;
+
+  _has_wildcard_topic_or_partition(self->requested_topics, &wildcard_topic, &wildcard_partition);
+
+  if (wildcard_partition || wildcard_topic || self->options.strategy_hint == KSCS_SUBSCRIBE)
+    self->strategy = KSCS_SUBSCRIBE;
+  else
+    self->strategy = KSCS_ASSIGN;
+
+  msg_verbose("kafka: selected consumer strategy",
+              evt_tag_str("strategy_hint", self->options.strategy_hint == KSCS_SUBSCRIBE ? "subscribe" : "assign"),
+              evt_tag_str("strategy", self->strategy == KSCS_SUBSCRIBE ? "subscribe" : "assign"),
+              evt_tag_str("group_id", self->group_id),
+              evt_tag_str("driver", self->super.super.super.id));
 }
 
 static gboolean
@@ -386,6 +436,8 @@ kafka_sd_init(LogPipe *s)
     }
 
   _apply_options(self);
+  _decide_strategy(self);
+
   kafka_opaque_init(&self->opaque, &self->super.super.super, &self->options.super);
 
   if (FALSE == log_threaded_source_driver_init_method(s))
@@ -484,6 +536,20 @@ kafka_sd_set_topics(LogDriver *d, GList *topics)
 }
 
 gboolean
+kafka_sd_set_strategy_hint(LogDriver *d, const gchar *strategy_hint)
+{
+  KafkaSourceDriver *self = (KafkaSourceDriver *) d;
+
+  if (g_strcmp0(strategy_hint, "subscribe") == 0)
+    self->options.strategy_hint = KSCS_SUBSCRIBE;
+  else if (g_strcmp0(strategy_hint, "assign") == 0)
+    self->options.strategy_hint = KSCS_ASSIGN;
+  else
+    return FALSE;
+  return TRUE;
+}
+
+gboolean
 kafka_sd_set_persis_store(LogDriver *d, const gchar *persist_store)
 {
   KafkaSourceDriver *self = (KafkaSourceDriver *) d;
@@ -533,6 +599,7 @@ kafka_sd_options_defaults(KafkaSourceOptions *self,
   self->format_options = &self->worker_options->parse_options;
 
   kafka_options_defaults(&self->super);
+  self->strategy_hint = KSCS_ASSIGN;
 
   self->persist_store = KSPS_LOCAL;
   self->time_reopen = 60; /* time_reopen seconds */

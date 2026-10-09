@@ -38,6 +38,7 @@ typedef struct _KafkaSourceDriver KafkaSourceDriver;
 void kafka_sd_merge_config(LogDriver *d, GList *props);
 gboolean kafka_sd_set_logging(LogDriver *d, const gchar *logging);
 gboolean kafka_sd_set_topics(LogDriver *d, GList *topics);
+gboolean kafka_sd_set_strategy_hint(LogDriver *d, const gchar *strategy_hint);
 gboolean kafka_sd_set_persis_store(LogDriver *d, const gchar *strategy_hint);
 void kafka_sd_set_bootstrap_servers(LogDriver *d, const gchar *bootstrap_servers);
 void kafka_sd_set_poll_timeout(LogDriver *d, gint poll_timeout);

@@ -63,6 +63,7 @@
 %token KW_FALLBACK_TOPIC
 %token KW_PARTITION
 %token KW_CONFIG
+%token KW_STRATEGY_HINT
 %token KV_KAFKA_LOGGING
 %token KW_FLUSH_TIMEOUT_ON_SHUTDOWN
 %token KW_FLUSH_TIMEOUT_ON_RELOAD
@@ -109,6 +110,7 @@ kafka_src_option
         | KW_CONFIG '(' kafka_properties ')'                    { kafka_sd_merge_config(last_driver, $3);  }
         | KV_KAFKA_LOGGING '(' string ')'                       { CHECK_ERROR(kafka_sd_set_logging(last_driver, $3), @3, "Error parsing logging option %s", $3); free($3); }
         | KW_TOPIC '(' kafka_properties ')'                     { CHECK_ERROR(kafka_sd_set_topics(last_driver, $3), @3, "Error parsing topic options"); }
+        | KW_STRATEGY_HINT '(' string ')'                       { CHECK_ERROR(kafka_sd_set_strategy_hint(last_driver, $3), @3, "Strategy hint must be either `subscribe` or `assign`, received: %s", $3); free($3); }
         | KW_POLL_TIMEOUT '(' positive_integer ')'              { kafka_sd_set_poll_timeout(last_driver, $3); }
         | KW_STATE_UPDATE_TIMEOUT '(' positive_integer ')'      { kafka_sd_set_state_update_timeout(last_driver, $3); }
         | KW_TIME_REOPEN '(' positive_integer ')'               { kafka_sd_set_time_reopen(last_driver, $3); }
