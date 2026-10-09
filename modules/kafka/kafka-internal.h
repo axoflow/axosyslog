@@ -54,6 +54,9 @@
 # define kafka_msg_deep_trace(msg, ...)
 #endif
 
+#define MAX_KAFKA_TOPIC_NAME_LEN 249 // TODO: get from librdkafka?
+#define MAX_KAFKA_PARTITION_KEY_NAME_LEN (MAX_KAFKA_TOPIC_NAME_LEN + 1 + 32) /* extra for partition number */
+
 #define TOPIC_NAME_ERROR topic_name_error_quark()
 
 typedef enum _KafkaLogging
@@ -89,6 +92,7 @@ gboolean kafka_conf_get_prop(const rd_kafka_conf_t *conf, const gchar *name, gch
 gboolean kafka_conf_set_prop(rd_kafka_conf_t *conf, const gchar *name, const gchar *value);
 gboolean kafka_apply_config_props(rd_kafka_conf_t *conf, GList *props, gchar **protected_properties,
                                   gsize protected_properties_num);
+gchar *kafka_format_partition_key(const gchar *topic, int32_t partition, gchar *key, gsize key_size);
 void kafka_log_callback(const rd_kafka_t *rkt, int level, const char *fac, const char *msg);
 
 typedef struct _KafkaOptions

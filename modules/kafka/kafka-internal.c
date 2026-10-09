@@ -198,6 +198,13 @@ kafka_apply_config_props(rd_kafka_conf_t *conf, GList *props, gchar **protected_
   return TRUE;
 }
 
+inline gchar *
+kafka_format_partition_key(const gchar *topic, int32_t partition, gchar *key, gsize key_size)
+{
+  g_snprintf(key, key_size, "%s#%d", topic, partition);
+  return key;
+}
+
 void
 kafka_options_defaults(KafkaOptions *self)
 {
