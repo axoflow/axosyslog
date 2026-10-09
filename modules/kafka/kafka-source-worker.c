@@ -124,6 +124,107 @@ _process_message(LogThreadedSourceWorker *worker, rd_kafka_message_t *msg)
   main_loop_worker_run_gc();
 }
 
+static inline ThreadedFetchResult
+_fetch(LogThreadedSourceWorker *self, rd_kafka_message_t **msg)
+{
+  KafkaSourceDriver *driver = (KafkaSourceDriver *) self->control;
+  GAsyncQueue *msg_queue = kafka_sd_worker_queue(driver, self);
+
+  // TODO: Add if batched_ack_tracker_factory_new support is added
+  // if (G_UNLIKELY(self->curr_fetch_in_run >= self->options.fetch_limit))
+  //   {
+  //   log_threaded_source_worker_close_batch(self);
+  //   return THREADED_FETCH_TRY_AGAIN
+  //   }
+
+  *msg = g_async_queue_try_pop(msg_queue);
+  if (G_LIKELY(*msg != NULL))
+    {
+      kafka_sd_update_msg_worker_stats(driver, self->worker_index);
+      return THREADED_FETCH_SUCCESS;
+    }
+  return THREADED_FETCH_NO_DATA;
+}
+
+/* runs in a dedicated thread */
+static void
+_processor_run(LogThreadedSourceWorker *self)
+{
+  KafkaSourceDriver *driver = (KafkaSourceDriver *) self->control;
+
+  g_atomic_counter_inc(&driver->running_thread_num);
+
+  kafka_msg_debug("kafka: started queue processor",
+                  evt_tag_int("index", self->worker_index),
+                  evt_tag_str("group_id", driver->group_id),
+                  evt_tag_str("driver", driver->super.super.super.id));
+
+  GAsyncQueue *msg_queue = kafka_sd_worker_queue(driver, self);
+  const gdouble iteration_sleep_time = _mainloop_sleep_time(driver->options.fetch_delay);
+  const gdouble fetch_retry_sleep_time = _mainloop_sleep_time(driver->options.fetch_retry_delay);
+  gboolean using_remote_persist = (FALSE == driver->options.disable_bookmarks &&
+                                   driver->options.persist_store == KSPS_REMOTE);
+  rd_kafka_message_t *msg = NULL;
+
+  while (1)
+    {
+      if (G_UNLIKELY(main_loop_worker_job_quit()))
+        break;
+
+      if (G_UNLIKELY(kafka_sd_reassign_signaled(driver)))
+        {
+          kafka_msg_debug("kafka: pausing queue processor due to rebalance/re-assignment signal",
+                          evt_tag_int("index", self->worker_index),
+                          evt_tag_str("group_id", driver->group_id),
+                          evt_tag_str("driver", driver->super.super.super.id));
+          kafka_sd_wait_for_queue(driver, self);
+        }
+
+      /* Lazy check for empty queue */
+      if (g_async_queue_length(msg_queue) == 0)
+        kafka_sd_wait_for_queue(driver, self);
+
+      while (1)
+        {
+          if (G_UNLIKELY(main_loop_worker_job_quit()))
+            break;
+
+          if (G_LIKELY(_fetch(self, &msg) == THREADED_FETCH_SUCCESS))
+            {
+              if (G_UNLIKELY(kafka_sd_reassign_signaled(driver)))
+                {
+                  /* In remote persist mode, the partition assignments might have changed already, so
+                   * we need to stop processing messages here, as the saving of the bookmarks will fail
+                   * later on, it is meaningless to try saving offsets for revoked partitions.
+                   * Just drop all the messages and let the outer loop start working with the new persists
+                   * and partitions after the rebalance is done.
+                   */
+                  if (using_remote_persist)
+                    {
+                      rd_kafka_message_destroy(msg);
+                      continue;
+                    }
+                }
+              _process_message(self, msg);
+              rd_kafka_poll(driver->kafka, 0);
+
+              main_loop_worker_wait_for_exit_until(iteration_sleep_time);
+              continue;
+            }
+
+          main_loop_worker_wait_for_exit_until(fetch_retry_sleep_time);
+          break;
+        }
+    }
+  kafka_msg_debug("kafka: stopped queue processor",
+                  evt_tag_int("index", self->worker_index),
+                  evt_tag_str("group_id", driver->group_id),
+                  evt_tag_int("kafka_outq_len", (int)rd_kafka_outq_len(driver->kafka)),
+                  evt_tag_int("worker_queue_len", g_async_queue_length(msg_queue)),
+                  evt_tag_str("driver", driver->super.super.super.id));
+  g_atomic_counter_dec_and_test(&driver->running_thread_num);
+}
+
 static gboolean
 _queue_message(KafkaSourceWorker *self, rd_kafka_message_t *msg, guint target_queue_ndx)
 {
@@ -399,6 +500,8 @@ _kafka_src_worker_init(LogThreadedSourceWorker *worker,
       self->super.run = _consumer_run;
       self->super.request_exit = _exit_requested;
     }
+  else
+    self->super.run = _processor_run;
 
   return TRUE;
 }
