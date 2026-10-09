@@ -30,6 +30,7 @@
 #include "kafka-internal.h"
 #include "kafka-props.h"
 #include "kafka-topic-parts.h"
+#include "host-id.h"
 
 // TODO: Move these to a common lib place
 GList *
@@ -293,9 +294,73 @@ _check_and_apply_topics(KafkaSourceDriver *self, GList *topics, gboolean apply)
   return TRUE;
 }
 
+gchar *
+_get_unique_group_id(KafkaSourceDriver *self)
+{
+  GString *sb = g_string_new(self->super.super.super.id);
+  host_id_append_formatted_id(sb, host_id_get());
+  return g_string_free(sb, FALSE);
+}
+
+static void
+_apply_group_id(KafkaSourceDriver *self)
+{
+  const gchar *group_id_key = "group.id";
+  gchar *group_id = NULL;
+  KafkaProperty *kp = kafka_property_list_find_not_empty(self->options.super.config, group_id_key);
+  const gchar *conf_group_id = kp ? kp->value : NULL;
+
+  /* Locally stored bookmarks could be inconsistent if multiple consumers share the same group.id as the rebalancing
+   * process could assign the same partition to multiple consumers from multiple instances/clients, therefore we disable the use of
+   * config group.id in this case by generating a unique one based on the driver ID + HOSTID.
+   * NOTE: Actually, this condition could be more strict using `&& driver->strategy == KSCS_SUBSCRIBE`, but
+           the strategy is not yet decided/applied at this point (and the decision cannot be moved now easily)
+   */
+  gboolean disable = (self->options.persist_store == KSPS_LOCAL);
+  if (conf_group_id)
+    {
+      if (disable)
+        {
+          group_id = _get_unique_group_id(self);
+          msg_warning("kafka: cannot use custom config group.id when using locally stored bookmarks, ignoring",
+                      evt_tag_str("group_id", conf_group_id),
+                      evt_tag_str("new_group_id", group_id),
+                      evt_tag_str("driver", self->super.super.super.id));
+
+          g_free(kp->value);
+          kp->value = g_strdup(group_id);
+        }
+      else
+        {
+          group_id = g_strdup(conf_group_id);
+          kafka_msg_debug("kafka: found config group.id",
+                          evt_tag_str("group_id", group_id),
+                          evt_tag_str("driver", self->super.super.super.id));
+        }
+    }
+  else
+    {
+      group_id = _get_unique_group_id(self);
+      kafka_msg_debug((disable ?
+                       "kafka: using a self-generated group.id" :
+                       "kafka: config group.id not found, using a self-generated one"),
+                      evt_tag_str("group_id", group_id),
+                      evt_tag_str("driver", self->super.super.super.id));
+
+      KafkaProperty *kp_groupid = g_new0(KafkaProperty, 1);
+      kp_groupid->name = g_strdup(group_id_key);
+      kp_groupid->value = g_strdup(group_id);
+      self->options.super.config = g_list_prepend(self->options.super.config, kp_groupid);
+    }
+
+  g_free(self->group_id);
+  self->group_id = group_id;
+}
+
 static void
 _apply_options(KafkaSourceDriver *self)
 {
+  _apply_group_id(self);
   _check_and_apply_topics(self, self->options.requested_topics, TRUE);
 }
 
@@ -337,6 +402,8 @@ static gboolean
 kafka_sd_deinit(LogPipe *s)
 {
   KafkaSourceDriver *self = (KafkaSourceDriver *)s;
+
+  g_free(self->group_id);
 
   if (self->requested_topics)
     kafka_tps_list_free(self->requested_topics);
