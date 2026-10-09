@@ -78,10 +78,13 @@ _peek_memory_queue_head_position(GQueue *queue)
 static void
 _log_internal_state(LogQueueDisk *self, const gchar *operation)
 {
+  /* backlog: unacked, still in the file, redelivered on restart */
+  gint64 number_of_messages = qdisk_get_length(self->qdisk) + qdisk_get_backlog_count(self->qdisk);
+
   msg_info("Reliable disk-buffer state",
            evt_tag_str("operation", operation),
            evt_tag_str("filename", qdisk_get_filename(self->qdisk)),
-           evt_tag_long("number_of_messages", log_queue_get_length(&self->super)));
+           evt_tag_long("number_of_messages", number_of_messages));
 
   msg_debug("Reliable disk-buffer internal state",
             evt_tag_str("filename", qdisk_get_filename(self->qdisk)),
