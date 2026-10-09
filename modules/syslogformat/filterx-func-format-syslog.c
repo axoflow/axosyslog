@@ -242,8 +242,8 @@ _format_syslog_5424_eval(FilterXExpr *s)
 
   /*                    OCT _   <   PRI >   1   _   TS   _   HOST       _   PROGRAM       _   PID       _ */
   gsize expected_size = 6 + 1 + 1 + 3 + 1 + 1 + 1 + 32 + 1 + host_len + 1 + program_len + 1 + pid_len + 1 +
-                        msgid_len + 1 + logmsg->num_sdata * 64 + 1 + 1 + message_len + 1 + 64;
-  /*                    MSGID       _   (SDATA or                -)  _   MESSAGE       NL  "for good measure" */
+                        msgid_len + 1 + 1 + 1 + 1 + message_len + 1 + 64;
+  /*                    MSGID       _   -       _   MESSAGE       NL  "for good measure" */
 
   /* PRI */
   GString *buffer = g_string_sized_new(expected_size);
@@ -275,10 +275,7 @@ _format_syslog_5424_eval(FilterXExpr *s)
   g_string_append_c(buffer, ' ');
 
   /* SDATA */
-  if (logmsg->num_sdata)
-    log_msg_append_format_sdata(logmsg, buffer, 0);
-  else
-    g_string_append_c(buffer, '-');
+  g_string_append_c(buffer, '-');
 
   g_string_append_c(buffer, ' ');
 
@@ -382,7 +379,6 @@ _format_syslog_5424_extract_arguments(FilterXFunctionFormatSyslog5424 *self, Fil
   self->program_expr = filterx_function_args_get_named_expr(args, "program");
   self->pid_expr = filterx_function_args_get_named_expr(args, "pid");
   self->msgid_expr = filterx_function_args_get_named_expr(args, "msgid");
-  /* SDATA is only supported from $SDATA, currently */
 
   if (!_format_syslog_5424_extract_add_octet_count_argument(self, args, error))
     return FALSE;
