@@ -485,6 +485,39 @@ kafka_sd_parallel_processing(KafkaSourceDriver *self)
   return self->super.num_workers > 2;
 }
 
+void
+kafka_sd_signal_reassign(KafkaSourceDriver *self)
+{
+  g_mutex_lock(&self->partition_assignement_mutex);
+  self->reassign_signaled = TRUE;
+  g_mutex_unlock(&self->partition_assignement_mutex);
+}
+
+void
+kafka_sd_signal_assignement_invalidated(KafkaSourceDriver *self)
+{
+  g_mutex_lock(&self->partition_assignement_mutex);
+  self->assignement_invalidated_signaled = TRUE;
+  g_mutex_unlock(&self->partition_assignement_mutex);
+}
+
+gboolean
+kafka_sd_reassign_signaled(KafkaSourceDriver *self)
+{
+  /* Lazzy check is enough here, by a good chance we dont need a mutex for this at all
+   * the variable itself is only written before pausing the workers and read after resuming them
+   * also, we cannot fully control the workers, when this is set the partitions are already revoked
+   * and some of the pending commits from the bookmarks will fail anyway */
+  return self->reassign_signaled;
+}
+
+gboolean
+kafka_sd_assignement_invalidated_signaled(KafkaSourceDriver *self)
+{
+  /* Lazy check like above */
+  return self->assignement_invalidated_signaled;
+}
+
 static void
 _alloc_msg_queues(KafkaSourceDriver *self)
 {
@@ -855,6 +888,7 @@ kafka_sd_init(LogPipe *s)
   _apply_options(self);
   _decide_strategy(self);
 
+  g_mutex_init(&self->partition_assignement_mutex);
   _alloc_msg_queues(self);
   self->stats_topics = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
   self->stats_workers = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
@@ -885,6 +919,8 @@ kafka_sd_deinit(LogPipe *s)
 
   kafka_opaque_deinit(&self->opaque);
   _destroy_msg_queues(self);
+
+  g_mutex_clear(&self->partition_assignement_mutex);
 
   _unregister_aggregated_stats(self);
   _unregister_worker_stats(self);

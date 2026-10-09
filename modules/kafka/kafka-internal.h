@@ -211,6 +211,10 @@ struct _KafkaSourceDriver
   guint allocated_queue_num;
   gchar single_queue_name[64];
 
+  GMutex partition_assignement_mutex;
+  gboolean reassign_signaled;
+  gboolean assignement_invalidated_signaled;
+
   GAtomicCounter running_thread_num;
   GAtomicCounter sleeping_thread_num;
 
@@ -242,6 +246,10 @@ gboolean kafka_sd_wait_for_queue_processors_to_sleep(KafkaSourceDriver *self, co
 void kafka_sd_wait_for_queue_processors_to_exit(KafkaSourceDriver *self, const gdouble iteration_sleep_time);
 void kafka_sd_drop_queued_messages(KafkaSourceDriver *self);
 void kafka_sd_wakeup_kafka_queues(KafkaSourceDriver *self);
+void kafka_sd_signal_reassign(KafkaSourceDriver *self);
+gboolean kafka_sd_reassign_signaled(KafkaSourceDriver *self);
+void kafka_sd_signal_assignement_invalidated(KafkaSourceDriver *self);
+gboolean kafka_sd_assignement_invalidated_signaled(KafkaSourceDriver *self);
 gboolean kafka_sd_parallel_processing(KafkaSourceDriver *self);
 
 void kafka_sd_update_msg_length_stats(KafkaSourceDriver *self, gsize len);
