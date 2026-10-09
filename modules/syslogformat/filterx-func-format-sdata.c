@@ -22,8 +22,16 @@
  */
 
 #include "filterx-func-format-sdata.h"
+#include "filterx/filterx-eval.h"
+#include "filterx/filterx-mapping.h"
+#include "filterx/object-string.h"
+#include "filterx/object-extractor.h"
+#include "logmsg/logmsg.h"
+#include "scratch-buffers.h"
 
 #define FILTERX_FUNC_FORMAT_SDATA_USAGE "Usage: format_sdata(sdata_dict)"
+
+typedef void (*SDataAppendEscapedFunc)(GString *result, const gchar *sstr, gssize len);
 
 typedef struct FilterXFunctionFormatSData_
 {
@@ -31,10 +39,106 @@ typedef struct FilterXFunctionFormatSData_
   FilterXExpr *sdata_expr;
 } FilterXFunctionFormatSData;
 
+static gboolean
+_append_escaped(GString *buffer, FilterXObject *obj, SDataAppendEscapedFunc append_escaped)
+{
+  const gchar *str;
+  gsize len;
+  if (filterx_object_extract_string_ref(obj, &str, &len))
+    {
+      append_escaped(buffer, str, len);
+      return TRUE;
+    }
+
+  GString *str_buffer = scratch_buffers_alloc();
+  if (!filterx_object_str(obj, str_buffer))
+    {
+      filterx_eval_push_error("Failed to evaluate format_sdata(): cannot convert object to string", obj);
+      return FALSE;
+    }
+
+  append_escaped(buffer, str_buffer->str, str_buffer->len);
+  return TRUE;
+}
+
+static gboolean
+_append_param(FilterXObject *key, FilterXObject *value, gpointer user_data)
+{
+  GString *buffer = (GString *) user_data;
+
+  g_string_append_c(buffer, ' ');
+  if (!_append_escaped(buffer, key, log_msg_sdata_append_key_escaped))
+    return FALSE;
+
+  g_string_append(buffer, "=\"");
+  if (!_append_escaped(buffer, value, log_msg_sdata_append_escaped))
+    return FALSE;
+
+  g_string_append_c(buffer, '"');
+  return TRUE;
+}
+
+static gboolean
+_append_element(FilterXObject *key, FilterXObject *value, gpointer user_data)
+{
+  GString *buffer = (GString *) user_data;
+
+  FilterXObject *params = filterx_ref_unwrap_ro(value);
+  if (!filterx_object_is_type(params, &FILTERX_TYPE_NAME(mapping)))
+    {
+      filterx_eval_push_error_info_printf("Failed to evaluate format_sdata()",
+                                          "SD-ID value must be a dict, got: %s. " FILTERX_FUNC_FORMAT_SDATA_USAGE,
+                                          filterx_object_get_type_name(value));
+      return FALSE;
+    }
+
+  g_string_append_c(buffer, '[');
+  if (!_append_escaped(buffer, key, log_msg_sdata_append_key_escaped))
+    return FALSE;
+
+  if (!filterx_object_iter(params, _append_param, buffer))
+    return FALSE;
+
+  g_string_append_c(buffer, ']');
+  return TRUE;
+}
+
+gboolean
+filterx_format_sdata_append(GString *buffer, FilterXObject *sdata)
+{
+  FilterXObject *elements = filterx_ref_unwrap_ro(sdata);
+  if (!filterx_object_is_type(elements, &FILTERX_TYPE_NAME(mapping)))
+    {
+      filterx_eval_push_error_info_printf("Failed to evaluate format_sdata()",
+                                          "Object must be a dict, got: %s. " FILTERX_FUNC_FORMAT_SDATA_USAGE,
+                                          filterx_object_get_type_name(sdata));
+      return FALSE;
+    }
+
+  gsize len_before = buffer->len;
+  if (!filterx_object_iter(elements, _append_element, buffer))
+    return FALSE;
+
+  if (buffer->len == len_before)
+    g_string_append_c(buffer, '-');
+
+  return TRUE;
+}
+
 static FilterXObject *
 _format_sdata_eval(FilterXExpr *s)
 {
-  return NULL;
+  FilterXFunctionFormatSData *self = (FilterXFunctionFormatSData *) s;
+
+  FilterXObject *sdata = filterx_expr_eval_typed(self->sdata_expr);
+  if (!sdata)
+    return NULL;
+
+  GString *buffer = scratch_buffers_alloc();
+  gboolean success = filterx_format_sdata_append(buffer, sdata);
+
+  filterx_object_unref(sdata);
+  return success ? filterx_string_new(buffer->str, buffer->len) : NULL;
 }
 
 static void

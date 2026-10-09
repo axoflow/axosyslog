@@ -30,5 +30,6 @@
 FILTERX_FUNCTION_DECLARE(format_sdata);
 
 FilterXExpr *filterx_function_format_sdata_new(FilterXFunctionArgs *args, GError **error);
+gboolean filterx_format_sdata_append(GString *buffer, FilterXObject *sdata);
 
 #endif
