@@ -181,11 +181,19 @@ _invoke_worker_exit_callback(WorkerExitNotification *func)
 static void
 _request_all_threads_to_exit(void)
 {
+  /* NOTE: Order is important here too, worker threads loops which rely on main_loop_worker_job_quit() (a.k.a. main_loop_workers_quit)
+   *       must see main_loop_workers_quit set to TRUE before they check it for proper, quick thread exit.
+   *
+   *       This variable is ambiguous in terms of usage, as it is used both for signaling the exit request, and the exited state.
+   *       Probably it would be better to have separate variables for these two states in the future,
+   *       e.g. main_loop_workers_should_quit and main_loop_workers_quit.
+   */
+  main_loop_workers_quit = TRUE;
+
   g_list_foreach(exit_notification_list, (GFunc) _invoke_worker_exit_callback, NULL);
   g_list_foreach(exit_notification_list, (GFunc) g_free, NULL);
   g_list_free(exit_notification_list);
   exit_notification_list = NULL;
-  main_loop_workers_quit = TRUE;
 }
 
 /* Call this function from worker threads, when you start up */
