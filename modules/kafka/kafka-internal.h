@@ -98,6 +98,8 @@ gboolean kafka_apply_config_props(rd_kafka_conf_t *conf, GList *props, gchar **p
 gchar *kafka_format_partition_key(const gchar *topic, int32_t partition, gchar *key, gsize key_size);
 void kafka_log_callback(const rd_kafka_t *rkt, int level, const char *fac, const char *msg);
 
+rd_kafka_resp_err_t kafka_update_state(KafkaSourceDriver *self, gboolean lock);
+
 typedef struct _KafkaOptions
 {
   gchar *bootstrap_servers;
@@ -186,6 +188,8 @@ struct _KafkaSourceDriver
   KafkaOpaque opaque;
 
   rd_kafka_t *kafka;
+  rd_kafka_queue_t *consumer_kafka_queue;
+  rd_kafka_queue_t *main_kafka_queue;
 
   gchar *group_id;
   GList *requested_topics;
@@ -199,6 +203,8 @@ struct _KafkaSourceDriver
 void kafka_sd_options_defaults(KafkaSourceOptions *self,
                                LogThreadedSourceWorkerOptions *worker_options);
 void kafka_sd_options_destroy(KafkaSourceOptions *self);
+
+void kafka_sd_wakeup_kafka_queues(KafkaSourceDriver *self);
 
 /* Kafka Destination */
 

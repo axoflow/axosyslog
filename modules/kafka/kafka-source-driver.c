@@ -251,6 +251,94 @@ _decide_strategy(KafkaSourceDriver *self)
               evt_tag_str("driver", self->super.super.super.id));
 }
 
+static void
+_kafka_log_state_changed(KafkaSourceDriver *self, KafkaConnectedState state, rd_kafka_resp_err_t err,
+                         const char *reason)
+{
+  const char *state_str;
+  switch (state)
+    {
+    case KFS_CONNECTED:
+      state_str = "CONNECTED";
+      break;
+    case KFS_DISCONNECTED:
+      state_str = "DISCONNECTED";
+      break;
+    default:
+      g_assert_not_reached();
+    }
+
+  msg_verbose("kafka: current state changed",
+              evt_tag_str("state", state_str),
+              evt_tag_str("group_id", self->group_id),
+              evt_tag_str("driver", self->super.super.super.id));
+  if (state == KFS_DISCONNECTED)
+    msg_verbose("kafka: Temporally error occured",
+                evt_tag_str("error", reason ? reason : rd_kafka_err2str(err)),
+                evt_tag_str("driver", self->super.super.super.id));
+}
+
+rd_kafka_resp_err_t
+kafka_update_state(KafkaSourceDriver *self, gboolean lock)
+{
+  if (self->kafka == NULL)
+    return RD_KAFKA_RESP_ERR__STATE;
+
+  if (lock)
+    kafka_opaque_state_lock(&self->opaque);
+
+  KafkaConnectedState state = kafka_opaque_state_get(&self->opaque);
+
+  const struct rd_kafka_metadata *metadata;
+  rd_kafka_resp_err_t err = rd_kafka_metadata(self->kafka, 0, NULL, &metadata,
+                                              self->options.super.state_update_timeout);
+  if (err == RD_KAFKA_RESP_ERR_NO_ERROR)
+    {
+      KafkaConnectedState prev_state = state;
+
+      state = KFS_CONNECTED;
+      kafka_opaque_state_set(&self->opaque, state);
+      kafka_opaque_state_set_last_error(&self->opaque, 0);
+
+      if (prev_state != state)
+        {
+          _kafka_log_state_changed(self, state, err, NULL);
+          kafka_sd_wakeup_kafka_queues(self);
+        }
+      rd_kafka_metadata_destroy(metadata);
+    }
+  else
+    {
+      /* Though, the error can be RD_KAFKA_RESP_ERR__TIMED_OUT as well, treat it as not connected too on startup */
+      if (state == KFS_UNKNOWN)
+        {
+          state = KFS_DISCONNECTED;
+          kafka_opaque_state_set(&self->opaque, state);
+          kafka_opaque_state_set_last_error(&self->opaque, err);
+          _kafka_log_state_changed(self, state, err, NULL);
+        }
+    }
+
+  if (lock)
+    kafka_opaque_state_unlock(&self->opaque);
+
+  return err;
+}
+
+void
+kafka_sd_wakeup_kafka_queues(KafkaSourceDriver *self)
+{
+#if SYSLOG_NG_HAVE_RD_KAFKA_QUEUE_YIELD
+  if (self->consumer_kafka_queue)
+    rd_kafka_queue_yield(self->consumer_kafka_queue);
+  if (self->main_kafka_queue)
+    rd_kafka_queue_yield(self->main_kafka_queue);
+#else
+  msg_warning("kafka: rd_kafka_queue_yield() is not available in the linked librdkafka version, syslog-ng shutdown latency may increase to `poll_timeout` value",
+              evt_tag_str("driver", self->super.super.super.id));
+#endif
+}
+
 static gboolean
 _check_and_sort_partitions(KafkaSourceDriver *self, const gchar *partitions, GList **requested_partitions)
 {
