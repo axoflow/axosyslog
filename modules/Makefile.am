@@ -46,6 +46,7 @@ include modules/redis/Makefile.am
 include modules/riemann/Makefile.am
 include modules/afsnmp/Makefile.am
 include modules/secure-logging/Makefile.am
+include modules/splunk-s2s/Makefile.am
 include modules/stardate/Makefile.am
 include modules/syslogformat/Makefile.am
 include modules/systemd-journal/Makefile.am
@@ -75,7 +76,7 @@ SYSLOG_NG_MODULES	=	\
 	mod-appmodel mod-openbsd mod-snmp mod-secure-logging \
 	mod-mqtt mod-regexp-parser mod-rate-limit-filter mod-metrics-probe \
 	mod-darwinosl \
-	mod-grpc mod-cloud-auth mod-arrow-flight \
+	mod-grpc mod-cloud-auth mod-arrow-flight mod-splunk-s2s \
 	mod-altp-proto
 
 modules modules/: ${SYSLOG_NG_MODULES}
@@ -93,7 +94,8 @@ modules_test_subdirs	=	\
 	modules_cef modules_diskq modules-add-contextual-data modules_getent \
 	modules_map-value-pairs modules_tagsparser modules_xml modules_appmodel \
 	modules_regexp-parser modules_rate-limit-filter modules_metrics-probe \
-	modules_altp-proto
+	modules_altp-proto \
+	modules_splunk_s2s
 
 EXTRA_DIST += modules/CMakeLists.txt
 

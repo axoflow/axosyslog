@@ -291,6 +291,14 @@ Requires: %{name}%{?_isa} = %{version}-%{release}
 %description http
 This module supports the HTTP destination.
 
+%package splunk-s2s
+Summary: Splunk S2S support for %{name}
+Group: Development/Libraries
+Requires: %{name}%{?_isa} = %{version}-%{release}
+
+%description splunk-s2s
+This module supports the Splunk S2S source/destination drivers.
+
 %package slog
 Summary: $(slog) support for %{name}
 Group: Development/Libraries
@@ -630,6 +638,9 @@ fi
 %{_libdir}/syslog-ng/libhttp.so
 %{_libdir}/syslog-ng/libhttp-adapters.so
 %{_libdir}/syslog-ng/libazure-auth-header.so
+
+%files splunk-s2s
+%{_libdir}/syslog-ng/libsplunk-s2s.so
 
 %files slog
 %{_libdir}/syslog-ng/libsecure-logging.so
