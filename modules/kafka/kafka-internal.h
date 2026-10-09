@@ -264,10 +264,19 @@ void kafka_sd_signal_reassign(KafkaSourceDriver *self);
 gboolean kafka_sd_reassign_signaled(KafkaSourceDriver *self);
 void kafka_sd_signal_assignement_invalidated(KafkaSourceDriver *self);
 gboolean kafka_sd_assignement_invalidated_signaled(KafkaSourceDriver *self);
+void kafka_sd_persist_add_msg_bookmark(KafkaSourceDriver *self,
+                                       AckTracker *ack_tracker,
+                                       const gchar *msg_topic_name,
+                                       int32_t msg_partition,
+                                       int64_t msg_offset);
 gboolean kafka_sd_store_persist_offset(KafkaSourceDriver *self,
                                        KafkaSourcePersist *persist,
                                        int64_t offset);
 gboolean kafka_sd_parallel_processing(KafkaSourceDriver *self);
+gboolean kafka_sd_persist_all_ready(KafkaSourceDriver *self);
+gboolean kafka_sd_persist_is_ready(KafkaSourceDriver *self,
+                                   const gchar *msg_topic_name,
+                                   int32_t msg_partition);
 
 void kafka_sd_update_msg_length_stats(KafkaSourceDriver *self, gsize len);
 void kafka_sd_inc_msg_topic_stats(KafkaSourceDriver *self, const gchar *topic);

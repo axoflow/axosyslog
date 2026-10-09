@@ -769,6 +769,67 @@ kafka_sd_store_persist_offset(KafkaSourceDriver *self,
   return success;
 }
 
+inline void
+kafka_sd_persist_add_msg_bookmark(KafkaSourceDriver *self,
+                                  AckTracker *ack_tracker,
+                                  const gchar *msg_topic_name,
+                                  int32_t msg_partition,
+                                  int64_t msg_offset)
+{
+  KafkaSourcePersist *persist = _find_persist(self, msg_topic_name, msg_partition);
+  g_assert(persist);
+
+  Bookmark *bookmark = ack_tracker_request_bookmark(ack_tracker);
+  kafka_source_persist_fill_bookmark(persist, bookmark, msg_offset);
+  msg_trace("kafka: bookmark created",
+            evt_tag_long("offset", msg_offset),
+            evt_tag_str("topic", msg_topic_name),
+            evt_tag_int("partition", msg_partition),
+            evt_tag_str("driver", self->super.super.super.id));
+}
+
+gboolean
+kafka_sd_persist_all_ready(KafkaSourceDriver *self)
+{
+  if (self->all_persists_ready)
+    return TRUE;
+
+  gboolean all_persists_ready = TRUE;
+  GHashTableIter iter;
+  gpointer key, value;
+
+  g_hash_table_iter_init(&iter, self->persists);
+  while (g_hash_table_iter_next(&iter, &key, &value))
+    {
+      KafkaSourcePersist *persist = (KafkaSourcePersist *)value;
+      if (FALSE == kafka_source_persist_is_ready(persist))
+        {
+          all_persists_ready = FALSE;
+          break;
+        }
+    }
+  self->all_persists_ready = all_persists_ready;
+
+  return all_persists_ready;
+}
+
+gboolean
+kafka_sd_persist_is_ready(KafkaSourceDriver *self,
+                          const gchar *msg_topic_name,
+                          int32_t msg_partition)
+{
+  if (self->all_persists_ready)
+    return TRUE;
+
+  gboolean this_persist_ready = FALSE;
+  KafkaSourcePersist *persist = _find_persist(self, msg_topic_name, msg_partition);
+  g_assert(persist);
+
+  this_persist_ready = kafka_source_persist_is_ready(persist);
+
+  return this_persist_ready;
+}
+
 inline guint
 kafka_sd_used_queue_num(KafkaSourceDriver *self)
 {
