@@ -26,6 +26,7 @@
 #include "multi-line/regexp-multi-line.h"
 #include "multi-line/indented-multi-line.h"
 #include "multi-line/smart-multi-line.h"
+#include "multi-line/timestamp-multi-line.h"
 #include "messages.h"
 
 #include <string.h>
@@ -44,6 +45,8 @@ multi_line_factory_construct(const MultiLineOptions *options)
       return regexp_multi_line_new(RML_PREFIX_SUFFIX, options->regexp.prefix, options->regexp.garbage);
     case MLM_SMART:
       return smart_multi_line_new();
+    case MLM_TIMESTAMP:
+      return timestamp_multi_line_new(options->timestamp.pairs);
     case MLM_NONE:
       return NULL;
 
@@ -54,30 +57,135 @@ multi_line_factory_construct(const MultiLineOptions *options)
   g_assert_not_reached();
 }
 
-gboolean
-multi_line_options_set_mode(MultiLineOptions *options, const gchar *mode)
+/* the modes that share a member of the options union */
+typedef enum
+{
+  MLF_NONE,
+  MLF_REGEXP,
+  MLF_TIMESTAMP,
+} MultiLineFamily;
+
+static MultiLineFamily
+_family_of(gint mode)
+{
+  switch (mode)
+    {
+    case MLM_REGEXP_PREFIX_GARBAGE:
+    case MLM_REGEXP_PREFIX_SUFFIX:
+      return MLF_REGEXP;
+    case MLM_TIMESTAMP:
+      return MLF_TIMESTAMP;
+    default:
+      return MLF_NONE;
+    }
+}
+
+static gboolean
+_union_in_use(const MultiLineOptions *options)
+{
+  switch (_family_of(options->mode))
+    {
+    case MLF_REGEXP:
+      return options->regexp.prefix || options->regexp.garbage;
+    case MLF_TIMESTAMP:
+      return options->timestamp.pairs != NULL;
+    default:
+      return FALSE;
+    }
+}
+
+static void
+_release_union(MultiLineOptions *options)
+{
+  switch (_family_of(options->mode))
+    {
+    case MLF_REGEXP:
+      multi_line_pattern_unref(options->regexp.prefix);
+      multi_line_pattern_unref(options->regexp.garbage);
+      break;
+    case MLF_TIMESTAMP:
+      g_free(options->timestamp.pairs);
+      break;
+    default:
+      break;
+    }
+  /* regexp is the largest member */
+  memset(&options->regexp, 0, sizeof(options->regexp));
+}
+
+/* an option of @family binds the mode to it while the mode is still unset */
+static gboolean
+_bind_family(MultiLineOptions *options, MultiLineFamily family, gint default_mode)
+{
+  if (options->mode == MLM_NONE)
+    options->mode = default_mode;
+  return _family_of(options->mode) == family;
+}
+
+static gboolean
+_parse_mode(const gchar *mode, gint *result)
 {
   if (strcasecmp(mode, "indented") == 0)
-    options->mode = MLM_INDENTED;
+    *result = MLM_INDENTED;
   else if (strcasecmp(mode, "regexp") == 0)
-    options->mode = MLM_REGEXP_PREFIX_GARBAGE;
+    *result = MLM_REGEXP_PREFIX_GARBAGE;
   else if (strcasecmp(mode, "prefix-garbage") == 0)
-    options->mode = MLM_REGEXP_PREFIX_GARBAGE;
+    *result = MLM_REGEXP_PREFIX_GARBAGE;
   else if (strcasecmp(mode, "prefix-suffix") == 0)
-    options->mode = MLM_REGEXP_PREFIX_SUFFIX;
+    *result = MLM_REGEXP_PREFIX_SUFFIX;
   else if (strcasecmp(mode, "smart") == 0)
-    options->mode = MLM_SMART;
+    *result = MLM_SMART;
+  else if (strcasecmp(mode, "timestamp") == 0)
+    *result = MLM_TIMESTAMP;
   else if (strcasecmp(mode, "none") == 0)
-    options->mode = MLM_NONE;
+    *result = MLM_NONE;
   else
     return FALSE;
   return TRUE;
 }
 
 gboolean
+multi_line_options_set_mode(MultiLineOptions *options, const gchar *mode)
+{
+  gint new_mode;
+
+  if (!_parse_mode(mode, &new_mode))
+    return FALSE;
+
+  if (_union_in_use(options) && _family_of(new_mode) != _family_of(options->mode))
+    {
+      msg_error("multi-line-mode() conflicts with the multi-line options set before it",
+                evt_tag_str("mode", mode));
+      return FALSE;
+    }
+  options->mode = new_mode;
+  return TRUE;
+}
+
+static GQuark
+_error_quark(void)
+{
+  return g_quark_from_static_string("multi-line-options");
+}
+
+static gboolean
+_bind_regexp_family(MultiLineOptions *options, const gchar *option, GError **error)
+{
+  if (_bind_family(options, MLF_REGEXP, MLM_REGEXP_PREFIX_GARBAGE))
+    return TRUE;
+
+  g_set_error(error, _error_quark(), 0,
+              "%s needs a regexp based multi-line-mode() (prefix-garbage or prefix-suffix)", option);
+  return FALSE;
+}
+
+gboolean
 multi_line_options_set_prefix(MultiLineOptions *options, const gchar *prefix_regexp,
                               GError **error)
 {
+  if (!_bind_regexp_family(options, "multi-line-prefix()", error))
+    return FALSE;
+
   multi_line_pattern_unref(options->regexp.prefix);
   options->regexp.prefix = multi_line_pattern_compile(prefix_regexp, error);
   return options->regexp.prefix != NULL;
@@ -87,23 +195,38 @@ gboolean
 multi_line_options_set_garbage(MultiLineOptions *options, const gchar *garbage_regexp,
                                GError **error)
 {
+  if (!_bind_regexp_family(options, "multi-line-garbage()", error))
+    return FALSE;
+
   multi_line_pattern_unref(options->regexp.garbage);
   options->regexp.garbage = multi_line_pattern_compile(garbage_regexp, error);
   return options->regexp.garbage != NULL;
 }
 
 gboolean
-multi_line_options_validate(MultiLineOptions *options)
+multi_line_options_set_timestamp_pairs(MultiLineOptions *options, const gchar *pairs)
 {
-  gboolean is_garbage_mode = options->mode == MLM_REGEXP_PREFIX_GARBAGE;
-  gboolean is_suffix_mode = options->mode == MLM_REGEXP_PREFIX_SUFFIX;
-
-  if ((!is_garbage_mode && !is_suffix_mode) && (options->regexp.prefix || options->regexp.garbage))
+  if (!_bind_family(options, MLF_TIMESTAMP, MLM_TIMESTAMP))
     {
-      msg_error("multi-line-prefix() and/or multi-line-garbage() specified but multi-line-mode() is not regexp based "
-                "(prefix-garbage or prefix-suffix), please set multi-line-mode() properly");
+      msg_error("multi-line-timestamp-pairs() needs multi-line-mode(timestamp)");
       return FALSE;
     }
+  if (strlen(pairs) % 2 != 0)
+    {
+      msg_error("multi-line-timestamp-pairs() takes open/close character pairs, an even number of characters",
+                evt_tag_str("pairs", pairs));
+      return FALSE;
+    }
+
+  g_free(options->timestamp.pairs);
+  options->timestamp.pairs = g_strdup(pairs);
+  return TRUE;
+}
+
+gboolean
+multi_line_options_validate(MultiLineOptions *options)
+{
+  /* the setters keep the mode and the union consistent */
   return TRUE;
 }
 
@@ -118,10 +241,17 @@ void
 multi_line_options_copy(MultiLineOptions *dest, MultiLineOptions *source)
 {
   dest->mode = source->mode;
-  if (dest->mode == MLM_REGEXP_PREFIX_GARBAGE || dest->mode == MLM_REGEXP_PREFIX_SUFFIX)
+  switch (_family_of(dest->mode))
     {
+    case MLF_REGEXP:
       dest->regexp.prefix = multi_line_pattern_ref(source->regexp.prefix);
       dest->regexp.garbage = multi_line_pattern_ref(source->regexp.garbage);
+      break;
+    case MLF_TIMESTAMP:
+      dest->timestamp.pairs = g_strdup(source->timestamp.pairs);
+      break;
+    default:
+      break;
     }
 }
 
@@ -136,18 +266,19 @@ multi_line_options_init(MultiLineOptions *options)
 void
 multi_line_options_destroy(MultiLineOptions *options)
 {
-  multi_line_pattern_unref(options->regexp.prefix);
-  multi_line_pattern_unref(options->regexp.garbage);
+  _release_union(options);
 }
 
 void
 multi_line_global_init(void)
 {
   smart_multi_line_global_init();
+  timestamp_multi_line_global_init();
 }
 
 void
 multi_line_global_deinit(void)
 {
   smart_multi_line_global_deinit();
+  timestamp_multi_line_global_deinit();
 }

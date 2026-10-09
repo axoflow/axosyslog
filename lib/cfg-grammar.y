@@ -339,6 +339,7 @@ main_location_print (FILE *yyo, YYLTYPE const * const yylocp)
 %token KW_MULTI_LINE_MODE             10206
 %token KW_MULTI_LINE_PREFIX           10207
 %token KW_MULTI_LINE_GARBAGE          10208
+%token KW_MULTI_LINE_TIMESTAMP_PAIRS  10216
 
 /* destination writer options */
 %token KW_TRUNCATE_SIZE               10209
@@ -1799,7 +1800,7 @@ rewrite_condition_opt
 multi_line_option
 	: KW_MULTI_LINE_MODE '(' string ')'
           {
-            CHECK_ERROR(multi_line_options_set_mode(last_multi_line_options, $3), @3, "Invalid multi-line mode");
+            CHECK_ERROR(multi_line_options_set_mode(last_multi_line_options, $3), @3, "Invalid multi-line mode, or one in conflict with the multi-line options before it");
 	    free($3);
           }
 	| KW_MULTI_LINE_PREFIX '(' string ')'
@@ -1813,6 +1814,12 @@ multi_line_option
             GError *error = NULL;
 
             CHECK_ERROR_GERROR(multi_line_options_set_garbage(last_multi_line_options, $3, &error), @3, error, "error compiling multi-line regexp");
+            free($3);
+	  }
+	| KW_MULTI_LINE_TIMESTAMP_PAIRS '(' string ')'
+	  {
+            CHECK_ERROR(multi_line_options_set_timestamp_pairs(last_multi_line_options, $3), @3,
+                        "invalid multi-line-timestamp-pairs()");
             free($3);
 	  }
 	;
