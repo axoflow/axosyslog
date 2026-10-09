@@ -29,6 +29,21 @@
 #include <librdkafka/rdkafka.h>
 #include "kafka-dest-worker.h"
 
+#define KAFKA_DEEP_TRACE 0
+#if SYSLOG_NG_ENABLE_DEBUG
+# define kafka_msg_debug msg_verbose
+# define kafka_msg_trace msg_verbose
+# if KAFKA_DEEP_TRACE
+#  define kafka_msg_deep_trace msg_verbose
+# else
+#  define kafka_msg_deep_trace(msg, ...)
+# endif
+#else
+# define kafka_msg_debug msg_debug
+# define kafka_msg_trace msg_trace
+# define kafka_msg_deep_trace(msg, ...)
+#endif
+
 gchar *kafka_dest_worker_resolve_template_topic_name(KafkaDestWorker *self, LogMessage *msg);
 rd_kafka_topic_t *kafka_dest_worker_calculate_topic_from_template(KafkaDestWorker *self, LogMessage *msg);
 rd_kafka_topic_t *kafka_dest_worker_get_literal_topic(KafkaDestWorker *self);
