@@ -149,6 +149,7 @@ struct _KafkaSourceOptions
 
   MsgFormatOptions *format_options;
 
+  GList *requested_topics;
   gint time_reopen;
 };
 
@@ -170,6 +171,8 @@ struct _KafkaSourceDriver
   rd_kafka_t *kafka;
 
   gchar *group_id;
+  GList *requested_topics;
+
   const gchar *persist_name;
 
 };

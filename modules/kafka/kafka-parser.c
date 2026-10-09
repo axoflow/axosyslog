@@ -37,6 +37,7 @@ static CfgLexerKeyword kafka_keywords[] =
 
   { "topic",          KW_TOPIC },
   { "fallback_topic", KW_FALLBACK_TOPIC},
+  { "partition",      KW_PARTITION},
 
   /* https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md */
   { "config",         KW_CONFIG },
