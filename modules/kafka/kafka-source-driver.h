@@ -48,6 +48,7 @@ void kafka_sd_set_log_fetch_queue_full_delay(LogDriver *s, guint new_value);
 void kafka_sd_set_poll_timeout(LogDriver *d, gint poll_timeout);
 void kafka_sd_set_state_update_timeout(LogDriver *d, gint state_update_timeout);
 void kafka_sd_set_time_reopen(LogDriver *d, gint time_reopen);
+void kafka_sd_set_separate_worker_queues(LogDriver *s, gboolean new_value);
 
 LogDriver *kafka_sd_new(GlobalConfig *cfg);
 

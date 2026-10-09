@@ -174,6 +174,7 @@ struct _KafkaSourceOptions
   guint fetch_retry_delay;
   guint fetch_limit; // TODO: use together with "queued.max.messages.kbytes", if 0 kafka's own setting is used automatically
   guint fetch_queue_full_delay;
+  gboolean separated_worker_queues;
 };
 
 struct _KafkaSourceWorker
@@ -199,6 +200,13 @@ struct _KafkaSourceDriver
   GList *requested_topics;
 
   KafkaSrcConsumerStrategy strategy;
+  GAsyncQueue **msg_queues;
+  GCond *queue_conds;
+  GMutex *queue_cond_mutexes;
+  guint allocated_queue_num;
+
+  GAtomicCounter running_thread_num;
+  GAtomicCounter sleeping_thread_num;
 
   const gchar *persist_name;
 
@@ -208,7 +216,20 @@ void kafka_sd_options_defaults(KafkaSourceOptions *self,
                                LogThreadedSourceWorkerOptions *worker_options);
 void kafka_sd_options_destroy(KafkaSourceOptions *self);
 
+gboolean kafka_sd_using_queues(KafkaSourceDriver *self);
+guint kafka_sd_used_queue_num(KafkaSourceDriver *self);
+guint kafka_sd_worker_queues_len(KafkaSourceDriver *self);
+GAsyncQueue *kafka_sd_worker_queue(KafkaSourceDriver *self, LogThreadedSourceWorker *worker);
+void kafka_sd_wait_for_queue(KafkaSourceDriver *self, LogThreadedSourceWorker *worker);
+void kafka_sd_signal_queue(KafkaSourceDriver *self, LogThreadedSourceWorker *worker);
+void kafka_sd_signal_queue_ndx(KafkaSourceDriver *self, guint ndx);
+void kafka_sd_signal_queues(KafkaSourceDriver *self);
+gboolean kafka_sd_wait_for_queue_processors_to_sleep(KafkaSourceDriver *self, const gdouble iteration_sleep_time,
+                                                     gboolean poll_kafka);
+void kafka_sd_wait_for_queue_processors_to_exit(KafkaSourceDriver *self, const gdouble iteration_sleep_time);
+void kafka_sd_drop_queued_messages(KafkaSourceDriver *self);
 void kafka_sd_wakeup_kafka_queues(KafkaSourceDriver *self);
+gboolean kafka_sd_parallel_processing(KafkaSourceDriver *self);
 
 static inline gdouble
 _mainloop_sleep_time(const gdouble delay)

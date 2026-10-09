@@ -325,6 +325,192 @@ kafka_update_state(KafkaSourceDriver *self, gboolean lock)
   return err;
 }
 
+inline guint
+kafka_sd_used_queue_num(KafkaSourceDriver *self)
+{
+  return self->allocated_queue_num - 1;
+}
+
+inline gboolean
+kafka_sd_using_queues(KafkaSourceDriver *self)
+{
+  return self->allocated_queue_num > 0;
+}
+
+inline gboolean
+kafka_sd_parallel_processing(KafkaSourceDriver *self)
+{
+  return self->super.num_workers > 2;
+}
+
+static void
+_alloc_msg_queues(KafkaSourceDriver *self)
+{
+  g_assert(self->msg_queues == NULL);
+  if (self->super.num_workers <= 1)
+    return;
+
+  /* Intentionally not using the 0 index slot */
+  self->allocated_queue_num = (self->options.separated_worker_queues ? self->super.num_workers : 2);
+
+  self->msg_queues = g_new0(GAsyncQueue *, self->allocated_queue_num);
+  self->queue_cond_mutexes = g_new0(GMutex, self->allocated_queue_num);
+  self->queue_conds = g_new0(GCond, self->allocated_queue_num);
+
+  /* Intentionally not using the 0 index slot */
+  for (guint i = 1; i < self->allocated_queue_num; ++i)
+    {
+      self->msg_queues[i] = g_async_queue_new();
+      g_mutex_init(&self->queue_cond_mutexes[i]);
+      g_cond_init(&self->queue_conds[i]);
+    }
+}
+
+static void
+_destroy_msg_queues(KafkaSourceDriver *self)
+{
+  if (self->msg_queues == NULL)
+    return;
+
+  /* Intentionally not using the 0 index slot */
+  for (guint i = 1; i < self->allocated_queue_num; ++i)
+    {
+      GAsyncQueue *queue = self->msg_queues[i];
+      g_assert(g_async_queue_length(queue) == 0);
+      g_async_queue_unref(queue);
+
+      g_mutex_clear(&self->queue_cond_mutexes[i]);
+      g_cond_clear(&self->queue_conds[i]);
+    }
+  g_free(self->msg_queues);
+  self->msg_queues = NULL;
+  g_free(self->queue_cond_mutexes);
+  self->queue_cond_mutexes = NULL;
+  g_free(self->queue_conds);
+  self->queue_conds = NULL;
+  self->allocated_queue_num = 0;
+}
+
+inline GAsyncQueue *
+kafka_sd_worker_queue(KafkaSourceDriver *self, LogThreadedSourceWorker *worker)
+{
+  /* Intentionally not using the 0 index slot */
+  guint ndx = (self->options.separated_worker_queues ? worker->worker_index : 1);
+  return self->msg_queues[ndx];
+}
+
+void
+kafka_sd_wait_for_queue(KafkaSourceDriver *self, LogThreadedSourceWorker *worker)
+{
+  /* Intentionally not using the 0 index slot */
+  guint ndx = (self->options.separated_worker_queues ? worker->worker_index : 1);
+  g_mutex_lock(&self->queue_cond_mutexes[ndx]);
+  g_atomic_counter_inc(&self->sleeping_thread_num);
+  g_cond_wait(&self->queue_conds[ndx], &self->queue_cond_mutexes[ndx]);
+  g_atomic_counter_dec_and_test(&self->sleeping_thread_num);
+  g_mutex_unlock(&self->queue_cond_mutexes[ndx]);
+}
+
+
+static inline gboolean
+_kafka_sd_all_workers_exited(KafkaSourceDriver *self)
+{
+  return g_atomic_counter_get(&self->running_thread_num) <=
+         1; /* If no workers are started ever, even not the main one, this can be 0 as well */
+}
+
+void
+kafka_sd_wait_for_queue_processors_to_exit(KafkaSourceDriver *self, const gdouble iteration_sleep_time)
+{
+  kafka_msg_trace("kafka: waiting for queue processors to exit",
+                  evt_tag_str("group_id", self->group_id),
+                  evt_tag_str("driver", self->super.super.super.id));
+  kafka_sd_signal_queues(self);
+
+  while (FALSE == _kafka_sd_all_workers_exited(self))
+    {
+      main_loop_worker_wait_for_exit_until(iteration_sleep_time);
+      kafka_sd_signal_queues(self);
+    }
+}
+
+static inline gboolean
+kafka_sd_all_workers_sleeping(KafkaSourceDriver *self)
+{
+  return g_atomic_counter_get(&self->sleeping_thread_num) == self->super.num_workers - 1;
+}
+
+gboolean
+kafka_sd_wait_for_queue_processors_to_sleep(KafkaSourceDriver *self, const gdouble iteration_sleep_time,
+                                            gboolean poll_kafka)
+{
+  kafka_msg_trace("kafka: waiting for queue processors to sleep",
+                  evt_tag_str("group_id", self->group_id),
+                  evt_tag_str("driver", self->super.super.super.id));
+
+  while (FALSE == kafka_sd_all_workers_sleeping(self) && FALSE == _kafka_sd_all_workers_exited(self))
+    {
+      if (poll_kafka)
+        kafka_update_state(self, TRUE);
+
+      if (main_loop_worker_wait_for_exit_until(iteration_sleep_time))
+        return FALSE;
+    }
+  return TRUE;
+}
+
+inline void
+kafka_sd_signal_queue_ndx(KafkaSourceDriver *self, guint ndx)
+{
+  g_cond_signal(&self->queue_conds[ndx]);
+}
+
+inline void
+kafka_sd_signal_queue(KafkaSourceDriver *self, LogThreadedSourceWorker *worker)
+{
+  /* Intentionally not using the 0 index slot */
+  guint ndx = (self->options.separated_worker_queues ? worker->worker_index : 1);
+  kafka_sd_signal_queue_ndx(self, ndx);
+}
+
+inline void
+kafka_sd_signal_queues(KafkaSourceDriver *self)
+{
+  /* Intentionally not using the 0 index slot */
+  for (guint i = 1; i < self->allocated_queue_num; ++i)
+    kafka_sd_signal_queue_ndx(self, i);
+}
+
+/* Lazy check for empty queues */
+inline guint
+kafka_sd_worker_queues_len(KafkaSourceDriver *self)
+{
+  guint len = 0;
+  /* Intentionally not using the 0 index slot */
+  for (guint i = 1; i < self->allocated_queue_num; ++i)
+    len += g_async_queue_length(self->msg_queues[i]);
+  return len;
+}
+
+void
+kafka_sd_drop_queued_messages(KafkaSourceDriver *self)
+{
+  kafka_msg_debug("kafka: dropping queued messages",
+                  evt_tag_str("group_id", self->group_id),
+                  evt_tag_str("driver", self->super.super.super.id),
+                  evt_tag_int("worker_queues_len", kafka_sd_worker_queues_len(self)));
+  rd_kafka_message_t *msg;
+
+  /* Intentionally not using the 0 index slot */
+  for (guint i = 1; i < self->allocated_queue_num; ++i)
+    {
+      GAsyncQueue *msg_queue = self->msg_queues[i];
+      while ((msg = g_async_queue_try_pop(msg_queue)) != NULL)
+        rd_kafka_message_destroy(msg);
+    }
+  g_assert(kafka_sd_worker_queues_len(self) == 0);
+}
+
 void
 kafka_sd_wakeup_kafka_queues(KafkaSourceDriver *self)
 {
@@ -526,6 +712,7 @@ kafka_sd_init(LogPipe *s)
   _apply_options(self);
   _decide_strategy(self);
 
+  _alloc_msg_queues(self);
   kafka_opaque_init(&self->opaque, &self->super.super.super, &self->options.super);
 
   if (FALSE == log_threaded_source_driver_init_method(s))
@@ -549,6 +736,7 @@ kafka_sd_deinit(LogPipe *s)
     kafka_tps_list_free(self->requested_topics);
 
   kafka_opaque_deinit(&self->opaque);
+  _destroy_msg_queues(self);
 
   return log_threaded_source_driver_deinit_method(s);
 }
@@ -568,6 +756,13 @@ kafka_sd_new(GlobalConfig *cfg)
 {
   KafkaSourceDriver *self = g_new0(KafkaSourceDriver, 1);
   log_threaded_source_driver_init_instance(&self->super, cfg);
+
+  /* The default number of workers is best to set to a minimum of 2
+   * to allow parallelism between fetching and processing messages,
+   * even for the single_topic/single_partition KSCS_BATCH_CONSUME processing strategy.
+   * User can override it later if needed.
+   */
+  self->super.num_workers = 2;
 
   self->super.super.super.super.init = kafka_sd_init;
   self->super.super.super.super.deinit = kafka_sd_deinit;
@@ -702,6 +897,12 @@ kafka_sd_set_log_fetch_queue_full_delay(LogDriver *s, guint new_value)
   self->options.fetch_queue_full_delay = new_value;
 }
 
+void kafka_sd_set_separate_worker_queues(LogDriver *s, gboolean new_value)
+{
+  KafkaSourceDriver *self = (KafkaSourceDriver *)s;
+  self->options.separated_worker_queues = new_value;
+}
+
 void
 kafka_sd_options_defaults(KafkaSourceOptions *self,
                           LogThreadedSourceWorkerOptions *worker_options)
@@ -717,6 +918,7 @@ kafka_sd_options_defaults(KafkaSourceOptions *self,
   self->strategy_hint = KSCS_ASSIGN;
 
   self->persist_store = KSPS_LOCAL;
+  self->separated_worker_queues = FALSE;
   self->fetch_queue_full_delay = 1000; /* fetch_queue_full_delay milliseconds = 1 second */
   self->fetch_delay = 1000; /* 1 second / fetch_delay = 1 millisecond */
   self->fetch_retry_delay = 10000; /* 1 second / fetch_retry_delay = 0.1 millisecond */

@@ -70,6 +70,7 @@
 %token KW_POLL_TIMEOUT
 %token KW_STATE_UPDATE_TIMEOUT
 %token KW_LOG_FETCH_QUEUE_FULL_DELAY
+%token KW_SEPARATE_WORKER_QUEUES
 %token KW_BOOTSTRAP_SERVERS
 %token KW_SYNC_SEND
 %token KW_LOG_FETCH_DELAY
@@ -121,6 +122,7 @@ kafka_src_option
         | KW_POLL_TIMEOUT '(' positive_integer ')'              { kafka_sd_set_poll_timeout(last_driver, $3); }
         | KW_STATE_UPDATE_TIMEOUT '(' positive_integer ')'      { kafka_sd_set_state_update_timeout(last_driver, $3); }
         | KW_TIME_REOPEN '(' positive_integer ')'               { kafka_sd_set_time_reopen(last_driver, $3); }
+        | KW_SEPARATE_WORKER_QUEUES '(' yesno ')'               { kafka_sd_set_separate_worker_queues(last_driver, $3); }
         | KW_PERSIST_STORE '(' string ')'                       { CHECK_ERROR(kafka_sd_set_persis_store(last_driver, $3), @3, "Persist store must be either `local` or `remote`, received: %s", $3); free($3); }
         | threaded_source_driver_option
         | threaded_source_driver_workers_option
