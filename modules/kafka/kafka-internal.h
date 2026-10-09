@@ -141,6 +141,12 @@ void kafka_opaque_state_set_last_error(KafkaOpaque *self, gint error);
 
 /* Kafka Source */
 
+typedef enum _KafkaSrcPersistStore
+{
+  KSPS_LOCAL,
+  KSPS_REMOTE,
+} KafkaSrcPersistStore;
+
 struct _KafkaSourceOptions
 {
   KafkaOptions super;
@@ -151,6 +157,8 @@ struct _KafkaSourceOptions
 
   GList *requested_topics;
   gint time_reopen;
+
+  KafkaSrcPersistStore persist_store;
 };
 
 struct _KafkaSourceWorker

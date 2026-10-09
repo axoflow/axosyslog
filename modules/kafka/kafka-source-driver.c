@@ -416,6 +416,20 @@ kafka_sd_set_topics(LogDriver *d, GList *topics)
   return _check_and_apply_topics(self, topics, FALSE);
 }
 
+gboolean
+kafka_sd_set_persis_store(LogDriver *d, const gchar *persist_store)
+{
+  KafkaSourceDriver *self = (KafkaSourceDriver *) d;
+
+  if (g_strcmp0(persist_store, "local") == 0)
+    self->options.persist_store = KSPS_LOCAL;
+  else if (g_strcmp0(persist_store, "remote") == 0)
+    self->options.persist_store = KSPS_REMOTE;
+  else
+    return FALSE;
+  return TRUE;
+}
+
 void
 kafka_sd_set_poll_timeout(LogDriver *d, gint poll_timeout)
 {
@@ -453,6 +467,7 @@ kafka_sd_options_defaults(KafkaSourceOptions *self,
 
   kafka_options_defaults(&self->super);
 
+  self->persist_store = KSPS_LOCAL;
   self->time_reopen = 60; /* time_reopen seconds */
 }
 
