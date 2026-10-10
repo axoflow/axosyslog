@@ -26,10 +26,7 @@
 #define KAFKA_H_INCLUDED
 
 #include "logthrdest/logthrdestdrv.h"
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wignored-qualifiers"
-#include <librdkafka/rdkafka.h>
-#pragma GCC diagnostic pop
+#include "kafka-internal.h"
 
 typedef struct
 {
@@ -85,5 +82,8 @@ rd_kafka_topic_t *kafka_dd_query_insert_topic(KafkaDestDriver *self, const gchar
 LogTemplateOptions *kafka_dd_get_template_options(LogDriver *d);
 
 LogDriver *kafka_dd_new(GlobalConfig *cfg);
+
+/* declared for unit test access */
+gboolean kafka_dd_init(LogPipe *s);
 
 #endif
