@@ -1800,27 +1800,31 @@ rewrite_condition_opt
 multi_line_option
 	: KW_MULTI_LINE_MODE '(' string ')'
           {
-            CHECK_ERROR(multi_line_options_set_mode(last_multi_line_options, $3), @3, "Invalid multi-line mode, or one in conflict with the multi-line options before it");
-	    free($3);
+            /* YYERROR skips the %destructor of the rule's own symbols, so
+             * $3 is freed before CHECK_ERROR() can bail out */
+            gboolean success = multi_line_options_set_mode(last_multi_line_options, $3);
+            free($3);
+            CHECK_ERROR(success, @3, "Invalid multi-line mode, or one in conflict with the multi-line options before it");
           }
 	| KW_MULTI_LINE_PREFIX '(' string ')'
           {
             GError *error = NULL;
-            CHECK_ERROR_GERROR(multi_line_options_set_prefix(last_multi_line_options, $3, &error), @3, error, "error compiling multi-line regexp");
+            gboolean success = multi_line_options_set_prefix(last_multi_line_options, $3, &error);
             free($3);
+            CHECK_ERROR_GERROR(success, @3, error, "error compiling multi-line regexp");
           }
 	| KW_MULTI_LINE_GARBAGE '(' string ')'
 	  {
             GError *error = NULL;
-
-            CHECK_ERROR_GERROR(multi_line_options_set_garbage(last_multi_line_options, $3, &error), @3, error, "error compiling multi-line regexp");
+            gboolean success = multi_line_options_set_garbage(last_multi_line_options, $3, &error);
             free($3);
+            CHECK_ERROR_GERROR(success, @3, error, "error compiling multi-line regexp");
 	  }
 	| KW_MULTI_LINE_TIMESTAMP_PAIRS '(' string ')'
 	  {
-            CHECK_ERROR(multi_line_options_set_timestamp_pairs(last_multi_line_options, $3), @3,
-                        "invalid multi-line-timestamp-pairs()");
+            gboolean success = multi_line_options_set_timestamp_pairs(last_multi_line_options, $3);
             free($3);
+            CHECK_ERROR(success, @3, "invalid multi-line-timestamp-pairs()");
 	  }
 	;
 
