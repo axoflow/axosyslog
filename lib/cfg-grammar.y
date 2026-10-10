@@ -340,6 +340,7 @@ main_location_print (FILE *yyo, YYLTYPE const * const yylocp)
 %token KW_MULTI_LINE_PREFIX           10207
 %token KW_MULTI_LINE_GARBAGE          10208
 %token KW_MULTI_LINE_TIMEOUT          10213
+%token KW_MULTI_LINE_TIMESTAMP_PAIRS  10216
 
 /* destination writer options */
 %token KW_TRUNCATE_SIZE               10209
@@ -1803,7 +1804,7 @@ multi_line_option
             /* YYERROR skips the %destructor of the rule's own symbols */
             gboolean success = multi_line_options_set_mode(last_multi_line_options, $3);
             free($3);
-            CHECK_ERROR(success, @3, "Invalid multi-line mode");
+            CHECK_ERROR(success, @3, "Invalid multi-line mode, or one in conflict with the multi-line options before it");
           }
 	| KW_MULTI_LINE_PREFIX '(' string ')'
           {
@@ -1822,6 +1823,12 @@ multi_line_option
 	| KW_MULTI_LINE_TIMEOUT '(' nonnegative_integer ')'
 	  {
             multi_line_options_set_timeout(last_multi_line_options, $3 * 1000);
+	  }
+	| KW_MULTI_LINE_TIMESTAMP_PAIRS '(' string ')'
+	  {
+            gboolean success = multi_line_options_set_timestamp_pairs(last_multi_line_options, $3);
+            free($3);
+            CHECK_ERROR(success, @3, "invalid multi-line-timestamp-pairs()");
 	  }
 	;
 
