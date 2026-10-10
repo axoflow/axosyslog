@@ -547,6 +547,7 @@ fi
 # uhm, some better places for those?
 %{_datadir}/syslog-ng/xsd/
 %{_datadir}/syslog-ng/smart-multi-line.fsm
+%{_datadir}/syslog-ng/timestamp-multi-line.formats
 
 %{_mandir}/man1/loggen.1*
 %{_mandir}/man1/pdbtool.1*

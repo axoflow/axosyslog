@@ -2,7 +2,8 @@ modules_splunk_s2s_tests_TESTS = \
   modules/splunk-s2s/tests/test_splunk_s2s_protocol \
   modules/splunk-s2s/tests/test_splunk_s2s_proto_client \
   modules/splunk-s2s/tests/test_splunk_s2s_proto_server \
-  modules/splunk-s2s/tests/test_splunk_s2s_roundtrip
+  modules/splunk-s2s/tests/test_splunk_s2s_roundtrip \
+  modules/splunk-s2s/tests/test_splunk_s2s_grammar
 
 check_PROGRAMS += ${modules_splunk_s2s_tests_TESTS}
 
@@ -46,5 +47,17 @@ modules_splunk_s2s_tests_test_splunk_s2s_roundtrip_LDADD = \
   $(top_builddir)/modules/splunk-s2s/libsplunk_s2s_server.la \
   $(top_builddir)/modules/splunk-s2s/libsplunk_s2s_protocol.la \
   $(TEST_LDADD)
+
+modules_splunk_s2s_tests_test_splunk_s2s_grammar_SOURCES = \
+  modules/splunk-s2s/tests/test_splunk_s2s_grammar.c
+modules_splunk_s2s_tests_test_splunk_s2s_grammar_CFLAGS = \
+  $(TEST_CFLAGS) \
+  -I$(top_srcdir)/modules/splunk-s2s
+modules_splunk_s2s_tests_test_splunk_s2s_grammar_LDADD = \
+  $(TEST_LDADD)
+modules_splunk_s2s_tests_test_splunk_s2s_grammar_LDFLAGS = \
+  $(PREOPEN_CORE) \
+  -dlpreopen $(top_builddir)/modules/splunk-s2s/libsplunk-s2s.la \
+  -dlpreopen $(top_builddir)/modules/afsocket/libafsocket.la
 
 EXTRA_DIST += modules/splunk-s2s/tests/CMakeLists.txt

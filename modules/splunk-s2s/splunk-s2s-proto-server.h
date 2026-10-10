@@ -24,7 +24,23 @@
 #define SPLUNK_S2S_PROTO_SERVER_INCLUDED
 
 #include "logproto/logproto-server.h"
+#include "multi-line/multi-line-factory.h"
 
 LogProtoServer *log_proto_splunk_s2s_server_new(LogTransport *transport, const LogProtoServerOptions *options);
+
+/* Merge the lines of raw forwarder chunks into multi-line events, one
+ * accumulator per channel.  @multi_line_options must outlive the proto (it is
+ * the driver's), a mode of MLM_NONE turns merging off.  @multi_line_timeout
+ * is in milliseconds: a pending event is handed over after that much time
+ * without a new line, 0 waits for the next line indefinitely.  Call it right
+ * after construction, before the first fetch().
+ */
+void log_proto_splunk_s2s_server_set_multi_line(LogProtoServer *s, const MultiLineOptions *multi_line_options,
+                                                gint multi_line_timeout);
+
+/* Act as if the multi-line timer had fired: the next fetch() hands over the
+ * pending events whose timeout has passed.  For tests, where no main loop
+ * runs the timer. */
+void log_proto_splunk_s2s_server_fire_multi_line_timeout(LogProtoServer *s);
 
 #endif

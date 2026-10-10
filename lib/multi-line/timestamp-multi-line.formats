@@ -1,0 +1,80 @@
+#############################################################################
+# Copyright (c) 2026 Axoflow
+# Copyright (c) 2026 Balazs Scheidler <balazs.scheidler@axoflow.com>
+#
+# This program is free software: you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
+# As an additional exemption you are allowed to compile & link against the
+# OpenSSL libraries as published by the OpenSSL project. See the file
+# COPYING for details.
+#
+#############################################################################
+#
+# timestamp-multi-line.formats
+#
+# Timestamp formats for multi-line-mode(timestamp), one strptime(3) format per
+# line.  A line that starts with one of these timestamps starts a new event,
+# any other line continues the previous one.  Lines starting with '#' are
+# comments.
+#
+# These formats are only consulted when the built-in scanners fail, and
+# strptime() is a lot slower than those, so the common formats are built in
+# and recognized without any configuration:
+#
+#   2026-10-09T15:31:50.123456+02:00   ISO 8601 / RFC 3339, 'T' or space
+#   2026-10-09 15:31:50,123            separated, optional fraction and zone
+#   Oct  9 15:31:50                    BSD syslog (RFC 3164), optional fraction
+#   Oct 09 2026 15:31:50:              Cisco
+#   Oct 09 15:31:50 2026               Linksys
+#   <134>Oct  9 15:31:50                a syslog PRI, and the "1 " version of
+#   <13>1 2026-10-09T15:31:50Z          RFC 5424, are skipped before the timestamp
+#   10-09-2026 15:31:50.456 +0000      Splunk's own logs, US and European
+#   10/09/2026 15:31:50                numeric dates with '-', '/' or '.',
+#   09.10.2026 15:31:50                year first or last, optional fraction
+#   2026/10/09 15:31:50                and zone (nginx error log, glog)
+#   09/Oct/2026:15:31:50 +0200         Apache httpd and nginx access log
+#   Thu, 09 Oct 2026 15:31:50 +0200    RFC 2822, optional day of week
+#   09-Oct-2026 15:31:50.123           Tomcat
+#   Thu Oct 09 15:31:50.123456 2026    Apache httpd error log
+#   Oct 09, 2026 3:31:50 PM            java.util.logging
+#   09 October 2026 15:31:50           month names in full, in the two above
+#
+# A timestamp may be enclosed in one of the multi-line-timestamp-pairs()
+# characters, "[]" by default: "[2026-10-09 15:31:50] message".
+#
+# Nothing is enabled below: everything common is built in.  The formats are
+# tried in this order, so keep the specific ones before the
+# ambiguous ones.
+#
+
+#
+# The formats below are ambiguous enough to break an event on a line that
+# merely starts with a number.  Enabling one applies to every multi-line-mode(timestamp) source.
+#
+
+# seconds since the epoch: "1791561960", "1791561960.123456"
+#%s
+#%s.%f
+
+# "mashed" dates without separators: "20261009 153150", "20261009153150"
+#%Y%m%d %H%M%S
+#%Y%m%d%H%M%S
+#%y%m%d %H%M%S
+
+# time of day only: "15:31:50"; many application logs print no date at all
+#%H:%M:%S
+#%H:%M:%S.%f
+
+# date only: "2026-10-09"
+#%Y-%m-%d

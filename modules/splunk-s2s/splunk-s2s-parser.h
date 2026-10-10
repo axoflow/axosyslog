@@ -1,7 +1,6 @@
 /*
- * Copyright (c) 2013 Balabit
- * Copyright (c) 2013 Balazs Scheidler <bazsi@balabit.hu>
- * Copyright (c) 2022 Balazs Scheidler <bazsi77@gmail.com>
+ * Copyright (c) 2026 Axoflow
+ * Copyright (c) 2026 Balazs Scheidler <balazs.scheidler@axoflow.com>
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
@@ -22,17 +21,15 @@
  *
  */
 
-#include "multi-line/multi-line-logic.h"
+#ifndef SPLUNK_S2S_PARSER_H_INCLUDED
+#define SPLUNK_S2S_PARSER_H_INCLUDED
 
-void
-multi_line_logic_free_method(MultiLineLogic *s)
-{
-  g_free(s);
-}
+#include "cfg-parser.h"
+#include "cfg-lexer.h"
+#include "logproto/logproto-server.h"
 
-void
-multi_line_logic_init_instance(MultiLineLogic *self)
-{
-  self->reset = NULL;
-  self->free_fn = multi_line_logic_free_method;
-}
+extern CfgParser splunk_s2s_parser;
+
+CFG_PARSER_DECLARE_LEXER_BINDING(splunk_s2s_, SPLUNK_S2S_, LogProtoServerFactory **)
+
+#endif

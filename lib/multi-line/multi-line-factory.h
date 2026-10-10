@@ -34,11 +34,15 @@ enum
   MLM_REGEXP_PREFIX_GARBAGE,
   MLM_REGEXP_PREFIX_SUFFIX,
   MLM_SMART,
+  MLM_TIMESTAMP,
 };
 
 typedef struct _MultiLineOptions
 {
   gint mode;
+  /* the family of @mode decides which member is in use: an option of a
+   * family binds the mode to it while the mode is still MLM_NONE, and the
+   * mode cannot be switched to another family once its member is set */
   union
   {
     struct
@@ -46,6 +50,12 @@ typedef struct _MultiLineOptions
       MultiLinePattern *prefix;
       MultiLinePattern *garbage;
     } regexp;
+    struct
+    {
+      /* open/close character pairs a timestamp may be enclosed in, NULL for
+       * the default of timestamp-multi-line.h */
+      gchar *pairs;
+    } timestamp;
   };
 } MultiLineOptions;
 
@@ -56,6 +66,8 @@ gboolean multi_line_options_set_prefix(MultiLineOptions *options,
                                        const gchar *prefix_regexp, GError **error);
 gboolean multi_line_options_set_garbage(MultiLineOptions *options,
                                         const gchar *garbage_regexp, GError **error);
+/* FALSE when @pairs is not a sequence of open/close character pairs */
+gboolean multi_line_options_set_timestamp_pairs(MultiLineOptions *options, const gchar *pairs);
 
 gboolean multi_line_options_validate(MultiLineOptions *options);
 void multi_line_options_copy(MultiLineOptions *dest, MultiLineOptions *source);

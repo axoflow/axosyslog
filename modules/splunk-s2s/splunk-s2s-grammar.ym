@@ -1,0 +1,110 @@
+/*
+ * Copyright (c) 2026 Axoflow
+ * Copyright (c) 2026 Balazs Scheidler <balazs.scheidler@axoflow.com>
+ *
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *
+ * As an additional exemption you are allowed to compile & link against the
+ * OpenSSL libraries as published by the OpenSSL project. See the file
+ * COPYING for details.
+ *
+ */
+
+%code top {
+#include "splunk-s2s-parser.h"
+
+}
+
+
+%code {
+
+#include "splunk-s2s-options.h"
+#include "cfg-parser.h"
+#include "cfg-grammar-internal.h"
+#include "messages.h"
+
+/* the options of the transport(splunk-s2s(...)) being parsed, so that the
+ * option rules below can reach them */
+static SplunkS2SProtoServerOptions *last_splunk_s2s_options;
+
+}
+
+%define api.prefix {splunk_s2s_}
+
+/* this parameter is needed in order to instruct bison to use a complete
+ * argument list for yylex/yyerror */
+
+%lex-param {CfgLexer *lexer}
+%parse-param {CfgLexer *lexer}
+%parse-param {LogProtoServerFactory **instance}
+%parse-param {gpointer arg}
+
+/* INCLUDE_DECLS */
+
+%token KW_SPLUNK_S2S
+%token KW_MULTI_LINE_TIMEOUT
+
+%%
+
+start
+        : LL_CONTEXT_SERVER_PROTO splunk_s2s_transport
+          {
+            if (yychar != SPLUNK_S2S_EMPTY)
+              cfg_lexer_unput_token(lexer, &yylval);
+            YYACCEPT;
+          }
+        ;
+
+/* transport(splunk-s2s) and transport("splunk-s2s") take this route as well,
+ * with an empty option block */
+splunk_s2s_transport
+        : KW_SPLUNK_S2S
+          {
+            /* @arg is the last_proto_server_options of the driver, which is
+             * the LogProtoServerOptionsStorage union our options extend */
+            last_splunk_s2s_options = splunk_s2s_proto_server_options_defaults((LogProtoServerOptions *) arg);
+            last_multi_line_options = &last_splunk_s2s_options->multi_line_options;
+            *instance = splunk_s2s_proto_server_get_factory();
+          }
+          splunk_s2s_options_block
+          {
+            CHECK_ERROR(multi_line_options_validate(last_multi_line_options), @1,
+                        "invalid multi-line options in transport(splunk-s2s())");
+            CHECK_ERROR(last_splunk_s2s_options->multi_line_timeout == 0
+                        || last_multi_line_options->mode != MLM_NONE, @1,
+                        "multi-line-timeout() requires multi-line-mode() in transport(splunk-s2s())");
+          }
+        ;
+
+splunk_s2s_options_block
+        : '(' splunk_s2s_options ')'
+        |
+        ;
+
+splunk_s2s_options
+        : splunk_s2s_option splunk_s2s_options
+        |
+        ;
+
+splunk_s2s_option
+        : multi_line_option
+        | KW_MULTI_LINE_TIMEOUT '(' nonnegative_integer ')'
+          {
+            last_splunk_s2s_options->multi_line_timeout = $3 * 1000;
+          }
+        ;
+
+/* INCLUDE_RULES */
+
+%%
