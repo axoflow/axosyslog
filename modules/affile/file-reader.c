@@ -104,7 +104,7 @@ _construct_poll_events(FileReader *self, gint fd)
         return poll_file_changes_new(fd, self->filename->str, self->options->follow_freq, &self->super);
       else
         return poll_multiline_file_changes_new(fd, self->filename->str, self->options->follow_freq,
-                                               self->options->multi_line_timeout, self);
+                                               proto_opts->multi_line_options.timeout, self);
     }
   else if (fd >= 0 && _is_fd_pollable(fd))
     return poll_fd_events_new(fd);
@@ -367,12 +367,6 @@ file_reader_options_set_follow_freq(FileReaderOptions *options, gint follow_freq
 }
 
 void
-file_reader_options_set_multi_line_timeout(FileReaderOptions *options, gint multi_line_timeout)
-{
-  options->multi_line_timeout = multi_line_timeout;
-}
-
-void
 file_reader_options_defaults(FileReaderOptions *options)
 {
   log_reader_options_defaults(&options->reader_options);
@@ -384,11 +378,13 @@ file_reader_options_defaults(FileReaderOptions *options)
 static gboolean
 file_reader_options_validate(FileReaderOptions *options)
 {
-  if (options->multi_line_timeout && options->follow_freq >= options->multi_line_timeout)
+  gint multi_line_timeout = file_reader_options_get_log_proto_options(options)->multi_line_options.timeout;
+
+  if (multi_line_timeout && options->follow_freq >= multi_line_timeout)
     {
       msg_error("multi-line-timeout() should be set to a higher value than follow-freq(), "
                 "it is recommended to set multi-line-timeout() to a multiple of follow-freq()",
-                evt_tag_int("multi_line_timeout", options->multi_line_timeout),
+                evt_tag_int("multi_line_timeout", multi_line_timeout),
                 evt_tag_int("follow_freq", options->follow_freq));
       return FALSE;
     }
