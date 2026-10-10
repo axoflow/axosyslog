@@ -52,6 +52,7 @@
 #include "filterx/func-failure-info.h"
 #include "filterx/func-dict-to-pairs.h"
 #include "filterx/func-uuid.h"
+#include "filterx/func-random.h"
 #include "filterx/func-digest.h"
 #include "filterx/func-encode.h"
 #include "filterx/func-glob.h"
@@ -127,6 +128,7 @@ _simple_init(void)
   g_assert(filterx_builtin_simple_function_register("uuid", filterx_simple_function_uuid4));
   g_assert(filterx_builtin_simple_function_register("uuid4", filterx_simple_function_uuid4));
   g_assert(filterx_builtin_simple_function_register("uuid7", filterx_simple_function_uuid7));
+  g_assert(filterx_builtin_simple_function_register("random", filterx_simple_function_random));
   g_assert(filterx_builtin_simple_function_register("md5", filterx_simple_function_md5));
   g_assert(filterx_builtin_simple_function_register("sha1", filterx_simple_function_sha1));
   g_assert(filterx_builtin_simple_function_register("sha256", filterx_simple_function_sha256));

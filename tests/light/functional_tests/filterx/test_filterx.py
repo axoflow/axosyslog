@@ -487,6 +487,24 @@ def test_simple_false_condition(config, syslog_ng):
     assert file_false.read_log() == "foobar"
 
 
+def test_random_as_filter_keeps_message(config, syslog_ng):
+    (file_true, file_false) = create_config(config, """ random(1) == 0; """)
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "foobar"
+
+
+def test_random_as_filter_drops_message(config, syslog_ng):
+    (file_true, file_false) = create_config(config, """ random(1) != 0; """)
+    syslog_ng.start(config)
+
+    assert "processed" not in file_true.get_stats()
+    assert file_false.get_stats()["processed"] == 1
+    assert file_false.read_log() == "foobar"
+
+
 def test_simple_assignment(config, syslog_ng):
 
     (file_true, file_false) = create_config(config, """ $MSG = "rewritten message!"; """)
