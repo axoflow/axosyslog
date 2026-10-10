@@ -22,55 +22,48 @@
  * COPYING for details.
  *
  */
-#include "kafka-props.h"
+#include "kafka-topic-parts.h"
 #include "messages.h"
 #include "str-utils.h"
 #include <stdio.h>
-#include <stdlib.h>
 
-KafkaProperty *
-kafka_property_new(const gchar *name, const gchar *value)
+KafkaTopicParts *
+kafka_tps_new(const gchar *topic, GList *partitions)
 {
-  KafkaProperty *self = g_new0(KafkaProperty, 1);
+  KafkaTopicParts *self = g_new0(KafkaTopicParts, 1);
 
-  self->name = g_strdup(name);
-  self->value = g_strdup(value);
+  self->topic = g_strdup(topic);
+  self->partitions = partitions;
   return self;
 }
 
-void
-kafka_property_free(KafkaProperty *self)
+/* We assume both lists are sorted */
+gboolean
+kafka_tps_equal(gconstpointer tps1, gconstpointer tps2)
 {
-  g_free(self->name);
-  g_free(self->value);
+  GList *parts1 = ((KafkaTopicParts *)tps1)->partitions;
+  GList *parts2 = ((KafkaTopicParts *)tps2)->partitions;
+
+  if (FALSE == g_str_equal(((KafkaTopicParts *)tps1)->topic, ((KafkaTopicParts *)tps2)->topic)
+      || g_list_length(parts1) != g_list_length(parts2))
+    return FALSE;
+
+  for (; parts1 && parts2; parts1 = parts1->next, parts2 = parts2->next)
+    if (parts1->data != parts2->data)
+      return FALSE;
+  return TRUE;
+}
+
+void
+kafka_tps_free(KafkaTopicParts *self)
+{
+  g_free(self->topic);
+  g_list_free(self->partitions);
   g_free(self);
 }
 
-static gint
-_property_name_compare(const KafkaProperty *kp1, const KafkaProperty *kp2)
-{
-  return g_strcmp0(kp1->name, kp2->name);
-}
-
-KafkaProperty *
-kafka_property_list_find_not_empty(GList *l, const gchar *name)
-{
-  KafkaProperty key = { (gchar *)name, NULL };
-  GList *li = g_list_find_custom(l, &key, (GCompareFunc) _property_name_compare);
-
-  if (li == NULL)
-    return NULL;
-
-  KafkaProperty *conf_data = (KafkaProperty *)li->data;
-  if (conf_data != NULL && conf_data->value != NULL && conf_data->value[0] != '\0')
-    return conf_data;
-  return NULL;
-}
-
 void
-kafka_property_list_free(GList *l)
+kafka_tps_list_free(GList *l)
 {
-  g_list_foreach(l, (GFunc) kafka_property_free, NULL);
-
-  g_list_free(l);
+  g_list_free_full(l, (GDestroyNotify) kafka_tps_free);
 }
