@@ -55,5 +55,17 @@ gboolean kafka_apply_config_props(rd_kafka_conf_t *conf, GList *props, gchar **p
                                   gsize protected_properties_num);
 void kafka_log_callback(const rd_kafka_t *rkt, int level, const char *fac, const char *msg);
 
-#endif
+typedef struct _KafkaOptions
+{
+  gchar *bootstrap_servers;
+  GList *config;
+  gint poll_timeout;
+} KafkaOptions;
 
+void kafka_options_defaults(KafkaOptions *self);
+void kafka_options_destroy(KafkaOptions *self);
+void kafka_options_merge_config(KafkaOptions *self, GList *props);
+void kafka_options_set_bootstrap_servers(KafkaOptions *self, const gchar *bootstrap_servers);
+void kafka_options_set_poll_timeout(KafkaOptions *self, gint poll_timeout);
+
+#endif

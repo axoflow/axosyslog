@@ -28,37 +28,45 @@
 #include "logthrdest/logthrdestdrv.h"
 #include "kafka-internal.h"
 
-typedef struct
+typedef struct _KafkaDestinationOptions KafkaDestinationOptions;
+struct _KafkaDestinationOptions
 {
-  LogThreadedDestDriver super;
+  KafkaOptions super;
+
+  LogTemplate *topic_name;
+  gchar *fallback_topic_name;
 
   LogTemplateOptions template_options;
   LogTemplate *key;
   LogTemplate *message;
-  LogTemplate *topic_name;
+
+  gint flush_timeout_on_shutdown;
+  gint flush_timeout_on_reload;
+
+  gboolean transaction_commit;
+};
+
+typedef struct _KafkaDestDriver KafkaDestDriver;
+struct _KafkaDestDriver
+{
+  LogThreadedDestDriver super;
+  KafkaDestinationOptions options;
+
+  rd_kafka_topic_t *topic;
+  rd_kafka_t *kafka;
+
   GHashTable *topics;
   GMutex topics_lock;
 
-  gboolean transaction_commit;
-  GList *config;
-  gchar *bootstrap_servers;
-  gchar *fallback_topic_name;
-  rd_kafka_topic_t *topic;
-  rd_kafka_t *kafka;
-  gint flush_timeout_on_shutdown;
-  gint flush_timeout_on_reload;
-  gint poll_timeout;
   gboolean transaction_inited;
-} KafkaDestDriver;
+};
 
-void kafka_dd_set_topic(LogDriver *d, LogTemplate *topic);
-gboolean kafka_dd_reopen(LogDriver *d);
-void kafka_dd_set_fallback_topic(LogDriver *d, const gchar *fallback_topic);
 void kafka_dd_merge_config(LogDriver *d, GList *props);
+void kafka_dd_set_topic(LogDriver *d, LogTemplate *topic);
+void kafka_dd_set_fallback_topic(LogDriver *d, const gchar *fallback_topic);
 void kafka_dd_set_bootstrap_servers(LogDriver *d, const gchar *bootstrap_servers);
 void kafka_dd_set_key_ref(LogDriver *d, LogTemplate *key);
 void kafka_dd_set_message_ref(LogDriver *d, LogTemplate *message);
-void kafka_dd_shutdown(LogThreadedDestDriver *s);
 void kafka_dd_set_flush_timeout_on_shutdown(LogDriver *d, gint shutdown_timeout);
 void kafka_dd_set_flush_timeout_on_reload(LogDriver *d, gint reload_timeout);
 void kafka_dd_set_poll_timeout(LogDriver *d, gint poll_timeout);
@@ -67,6 +75,9 @@ void kafka_dd_set_transaction_commit(LogDriver *d, gboolean transaction_commit);
 gboolean kafka_dd_is_topic_name_a_template(KafkaDestDriver *self);
 rd_kafka_topic_t *kafka_dd_query_insert_topic(KafkaDestDriver *self, const gchar *name);
 LogTemplateOptions *kafka_dd_get_template_options(LogDriver *d);
+
+gboolean kafka_dd_reopen(LogDriver *d);
+void kafka_dd_shutdown(LogThreadedDestDriver *s);
 
 LogDriver *kafka_dd_new(GlobalConfig *cfg);
 
