@@ -47,7 +47,7 @@ log_proto_prefix_garbage_multiline_server_new(LogTransport *transport,
     multi_line_options_set_garbage(&multi_line_options, garbage, NULL);
 
   LogProtoServer *server = log_proto_multiline_server_new(transport, get_inited_proto_server_options(),
-                                                          multi_line_factory_construct(&multi_line_options));
+                                                          &multi_line_options);
   multi_line_options_destroy(&multi_line_options);
   return server;
 }
@@ -67,7 +67,7 @@ log_proto_prefix_suffix_multiline_server_new(LogTransport *transport,
     multi_line_options_set_garbage(&multi_line_options, suffix, NULL);
 
   LogProtoServer *server = log_proto_multiline_server_new(transport, get_inited_proto_server_options(),
-                                                          multi_line_factory_construct(&multi_line_options));
+                                                          &multi_line_options);
   multi_line_options_destroy(&multi_line_options);
   return server;
 }
