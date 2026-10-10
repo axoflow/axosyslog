@@ -26,6 +26,7 @@
 #define KAFKA_DEST_WORKER_H_INCLUDED
 
 #include "logthrdest/logthrdestdrv.h"
+#include "kafka-internal.h"
 
 typedef struct _KafkaDestWorker
 {
@@ -37,5 +38,11 @@ typedef struct _KafkaDestWorker
 } KafkaDestWorker;
 
 LogThreadedDestWorker *kafka_dest_worker_new(LogThreadedDestDriver *owner, gint worker_index);
+
+/* declared for test access */
+const gchar *kafka_dest_worker_resolve_template_topic_name(KafkaDestWorker *self, LogMessage *msg);
+rd_kafka_topic_t *kafka_dest_worker_calculate_topic_from_template(KafkaDestWorker *self, LogMessage *msg);
+rd_kafka_topic_t *kafka_dest_worker_get_literal_topic(KafkaDestWorker *self);
+rd_kafka_topic_t *kafka_dest_worker_calculate_topic(KafkaDestWorker *self, LogMessage *msg);
 
 #endif

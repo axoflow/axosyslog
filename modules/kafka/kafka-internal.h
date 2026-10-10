@@ -2,6 +2,7 @@
  * Copyright (c) 2020 Balabit
  * Copyright (c) 2020 Balazs Scheidler
  * Copyright (c) 2020 Vivin Peris
+ * Copyright (c) 2025 Hofi <hofione@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
@@ -22,18 +23,19 @@
  *
  */
 
+/*
+ * Original Kafka source implementation sourced from https://github.com/syslog-ng/syslog-ng/pull/5564.
+ * The license has been upgraded from GPL-2.0-or-later to GPL-3.0-or-later.
+ */
+
 #ifndef KAFKA_INTERNAL_H_INCLUDED
 #define KAFKA_INTERNAL_H_INCLUDED
 
 #include "logthrdest/logthrdestdrv.h"
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wignored-qualifiers"
 #include <librdkafka/rdkafka.h>
-#include "kafka-dest-worker.h"
-
-gchar *kafka_dest_worker_resolve_template_topic_name(KafkaDestWorker *self, LogMessage *msg);
-rd_kafka_topic_t *kafka_dest_worker_calculate_topic_from_template(KafkaDestWorker *self, LogMessage *msg);
-rd_kafka_topic_t *kafka_dest_worker_get_literal_topic(KafkaDestWorker *self);
-rd_kafka_topic_t *kafka_dest_worker_calculate_topic(KafkaDestWorker *self, LogMessage *msg);
-gboolean kafka_dd_init(LogPipe *s);
+#pragma GCC diagnostic pop
 
 #endif
 
