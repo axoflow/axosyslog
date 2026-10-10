@@ -28,14 +28,15 @@
 #include "logthrdest/logthrdestdrv.h"
 #include "kafka-internal.h"
 
-typedef struct _KafkaDestWorker
+typedef struct _KafkaDestWorker KafkaDestWorker;
+struct _KafkaDestWorker
 {
   LogThreadedDestWorker super;
   struct iv_timer poll_timer;
   GString *key;
   GString *message;
   GString *topic_name_buffer;
-} KafkaDestWorker;
+};
 
 LogThreadedDestWorker *kafka_dest_worker_new(LogThreadedDestDriver *owner, gint worker_index);
 
