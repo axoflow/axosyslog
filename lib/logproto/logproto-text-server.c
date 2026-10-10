@@ -297,6 +297,8 @@ log_proto_text_server_yield_whole_buffer_as_message(LogProtoTextServer *self, Lo
   *msg_len = buffer_bytes;
   self->consumed_len = -1;
   state->pending_buffer_pos = (*msg) + (*msg_len) - self->super.buffer;
+  if (self->multi_line)
+    multi_line_logic_reset(self->multi_line);
 }
 
 static inline const guchar *
@@ -380,6 +382,8 @@ log_proto_text_server_flush(LogProtoBufferedServer *s)
   LogProtoTextServer *self = (LogProtoTextServer *) s;
   self->consumed_len = -1;
   self->cached_eol_pos = 0;
+  if (self->multi_line)
+    multi_line_logic_reset(self->multi_line);
 }
 
 void
