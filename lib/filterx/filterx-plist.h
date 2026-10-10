@@ -62,6 +62,8 @@ gboolean filterx_pointer_list_foreach(FilterXPointerList *self,
 void filterx_pointer_list_add(FilterXPointerList *self, gpointer value);
 void filterx_pointer_list_add_list(FilterXPointerList *self, GList *elements);
 
+gsize filterx_pointer_list_index_of(FilterXPointerList *self, gpointer value);
+
 void filterx_pointer_list_seal(FilterXPointerList *self);
 void filterx_pointer_list_init(FilterXPointerList *self);
 void filterx_pointer_list_clear(FilterXPointerList *self, GDestroyNotify destroy);
@@ -138,6 +140,12 @@ static inline FilterXExpr *
 filterx_expr_list_index_fast(FilterXExprList *self, gsize index)
 {
   return (FilterXExpr *) filterx_pointer_list_index_fast(self, index);
+}
+
+static inline gsize
+filterx_expr_list_index_of(FilterXExprList *self, FilterXExpr *expr)
+{
+  return filterx_pointer_list_index_of(self, expr);
 }
 
 static inline gsize

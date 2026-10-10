@@ -395,6 +395,13 @@ filterx_string_new_from_json_literal(const gchar *str, gssize str_len)
 FilterXObject *
 _filterx_string_new_indirect_from_str_and_len(FilterXObject *object, const gchar *str, gsize str_len)
 {
+  /* an indirect string borrows @object's bytes for as long as it lives, so
+   * it must not outlive @object: with @object in an arena other than the
+   * one the new string would land in, it would.  Copy the bytes instead. */
+  if (G_UNLIKELY(object && filterx_object_is_allocator_resident(object)
+                 && object->allocator_id != filterx_eval_current_allocator_id()))
+    return &_string_new(str, str_len, NULL)->super;
+
   FilterXString *self = filterx_new_object(FilterXString);
   filterx_object_init_instance(&self->super, &FILTERX_TYPE_NAME(string));
 

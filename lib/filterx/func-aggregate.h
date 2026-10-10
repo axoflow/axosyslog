@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2024 Attila Szakacs
+ * Copyright (c) 2026 Axoflow
+ * Copyright (c) 2026 Balazs Scheidler <balazs.scheidler@axoflow.com>
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
@@ -19,24 +20,17 @@
  * COPYING for details.
  *
  */
-#ifndef FILTERX_COMPOUND_H_INCLUDED
-#define FILTERX_COMPOUND_H_INCLUDED
 
-#include "filterx/filterx-expr.h"
+#ifndef FILTERX_FUNC_AGGREGATE_H_INCLUDED
+#define FILTERX_FUNC_AGGREGATE_H_INCLUDED
 
-FilterXObject *filterx_compound_expr_eval_ext(FilterXExpr *s, gsize start_index);
-void filterx_compound_expr_add_ref(FilterXExpr *s, FilterXExpr *expr);
-void filterx_compound_expr_add_list_ref(FilterXExpr *s, GList *expr_list);
-FilterXExpr *filterx_compound_expr_new(gboolean return_value_of_last_expr);
-FilterXExpr *filterx_compound_expr_new_va(gboolean return_value_of_last_expr, FilterXExpr *first, ...);
-gsize filterx_compound_expr_get_count(FilterXExpr *s);
+#include "filterx/expr-function.h"
 
-FILTERX_EXPR_DECLARE_TYPE(compound);
+FilterXExpr *filterx_function_aggregate_new(FilterXFunctionArgs *args, GError **error);
 
-static inline gboolean
-filterx_expr_is_compound(FilterXExpr *expr)
-{
-  return expr && expr->type == FILTERX_EXPR_TYPE_NAME(compound);
-}
+/* for tests only: synchronously runs the timeout/replay logic for @key, as
+ * if its timer had just fired. Returns FALSE if there's no pending entry
+ * for @key. */
+gboolean filterx_function_aggregate_test_expire(FilterXExpr *s, FilterXObject *key);
 
 #endif

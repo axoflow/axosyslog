@@ -25,6 +25,7 @@
 
 #include "filterx/filterx-object.h"
 #include "filterx/filterx-env.h"
+#include "filterx/filterx-eval.h"
 
 FILTERX_DECLARE_TYPE(stash_reference);
 
@@ -71,5 +72,8 @@ filterx_stashed_object_unref(FilterXStashedObject *self)
 
 FilterXObject *filterx_stash_retrieve(FilterXStashedObject **stash);
 gboolean filterx_stash_store(FilterXStashedObject **stash, FilterXObject *object, FilterXEnvironment *env);
+
+void filterx_stash_begin_build_context(FilterXEvalContext *context, FilterXEnvironment *env);
+void filterx_stash_end_build_context(FilterXEvalContext *context);
 
 #endif
