@@ -417,6 +417,20 @@ _accumulate_line(MultiLineLogic *s,
   return result;
 }
 
+/* the consumed message is gone, the stream is where it was: a trace cut in
+ * two by the caller goes on in the state machine, so its rest is still
+ * recognized as a trace */
+static void
+_reset(MultiLineLogic *s)
+{
+  SmartMultiLine *self = (SmartMultiLine *) s;
+
+  g_mutex_lock(&self->lock);
+  self->last_segment_rewound = FALSE;
+  self->consumed_message_is_trace = FALSE;
+  g_mutex_unlock(&self->lock);
+}
+
 static void
 _free(MultiLineLogic *s)
 {
@@ -433,6 +447,7 @@ smart_multi_line_new(void)
   multi_line_logic_init_instance(&self->super);
   self->super.free_fn = _free;
   self->super.accumulate_line = _accumulate_line;
+  self->super.reset = _reset;
   self->last_segment_rewound = FALSE;
   self->current_state = SMLS_START_STATE;
   g_mutex_init(&self->lock);
