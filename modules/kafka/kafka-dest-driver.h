@@ -64,6 +64,7 @@ struct _KafkaDestDriver
 void kafka_dd_merge_config(LogDriver *d, GList *props);
 void kafka_dd_set_topic(LogDriver *d, LogTemplate *topic);
 void kafka_dd_set_fallback_topic(LogDriver *d, const gchar *fallback_topic);
+gboolean kafka_dd_set_logging(LogDriver *d, const gchar *logging);
 void kafka_dd_set_bootstrap_servers(LogDriver *d, const gchar *bootstrap_servers);
 void kafka_dd_set_key_ref(LogDriver *d, LogTemplate *key);
 void kafka_dd_set_message_ref(LogDriver *d, LogTemplate *message);

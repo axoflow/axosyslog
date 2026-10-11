@@ -61,6 +61,14 @@ kafka_dd_merge_config(LogDriver *d, GList *props)
   kafka_options_merge_config(&self->options.super, props);
 }
 
+gboolean
+kafka_dd_set_logging(LogDriver *d, const gchar *logging)
+{
+  KafkaDestDriver *self = (KafkaDestDriver *)d;
+
+  return kafka_options_set_logging(&self->options.super, logging);
+}
+
 void
 kafka_dd_set_bootstrap_servers(LogDriver *d, const gchar *bootstrap_servers)
 {
@@ -208,6 +216,14 @@ kafka_dd_query_insert_topic(KafkaDestDriver *self, const gchar *name)
 }
 
 static void
+_kafka_log_callback(const rd_kafka_t *rkt, int level, const char *fac, const char *msg)
+{
+  KafkaDestDriver *self = (KafkaDestDriver *) rd_kafka_opaque(rkt);
+
+  kafka_log_message(self->options.super.kafka_logging, level, fac, msg);
+}
+
+static void
 _kafka_delivery_report_cb(rd_kafka_t *rk,
                           void *payload, size_t len,
                           rd_kafka_resp_err_t err,
@@ -271,7 +287,10 @@ _construct_client(KafkaDestDriver *self)
                                 G_N_ELEMENTS(protected_properties)))
     goto err_exit;
 
-  rd_kafka_conf_set_log_cb(conf, kafka_log_callback);
+  if (self->options.super.kafka_logging == KFL_DISABLED)
+    rd_kafka_conf_set_log_cb(conf, NULL);
+  else
+    rd_kafka_conf_set_log_cb(conf, _kafka_log_callback);
   rd_kafka_conf_set_dr_cb(conf, _kafka_delivery_report_cb);
   rd_kafka_conf_set_opaque(conf, self);
 

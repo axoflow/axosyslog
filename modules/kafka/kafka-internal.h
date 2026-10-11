@@ -56,6 +56,15 @@
 
 #define TOPIC_NAME_ERROR topic_name_error_quark()
 
+typedef enum _KafkaLogging
+{
+  KFL_DISABLED,
+  KFL_KAFKA_LEVEL,
+  KFL_TRACE_LEVEL,
+
+  KFL_UNKNOWN
+} KafkaLogging;
+
 typedef enum _KafkaTopicError
 {
   TOPIC_LENGTH_ZERO,
@@ -70,18 +79,20 @@ gboolean kafka_validate_topic_name(const gchar *name, GError **error);
 gboolean kafka_conf_set_prop(rd_kafka_conf_t *conf, const gchar *name, const gchar *value);
 gboolean kafka_apply_config_props(rd_kafka_conf_t *conf, GList *props, gchar **protected_properties,
                                   gsize protected_properties_num);
-void kafka_log_callback(const rd_kafka_t *rkt, int level, const char *fac, const char *msg);
+void kafka_log_message(KafkaLogging logging, int level, const char *fac, const char *msg);
 
 typedef struct _KafkaOptions
 {
   gchar *bootstrap_servers;
   GList *config;
+  KafkaLogging kafka_logging;
   gint poll_timeout;
 } KafkaOptions;
 
 void kafka_options_defaults(KafkaOptions *self);
 void kafka_options_destroy(KafkaOptions *self);
 void kafka_options_merge_config(KafkaOptions *self, GList *props);
+gboolean kafka_options_set_logging(KafkaOptions *self, const gchar *logging);
 void kafka_options_set_bootstrap_servers(KafkaOptions *self, const gchar *bootstrap_servers);
 void kafka_options_set_poll_timeout(KafkaOptions *self, gint poll_timeout);
 
