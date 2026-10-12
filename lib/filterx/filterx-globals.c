@@ -203,6 +203,7 @@ _ctors_init(void)
   g_assert(filterx_builtin_function_ctor_register("set_timezone", filterx_function_set_timezone_new));
   g_assert(filterx_builtin_function_ctor_register("get_timezone_source", filterx_function_get_timezone_source_new));
   g_assert(filterx_builtin_function_ctor_register("digest", filterx_function_digest_new));
+  g_assert(filterx_builtin_function_ctor_register("random_bool", filterx_function_random_bool_new));
 }
 
 static void

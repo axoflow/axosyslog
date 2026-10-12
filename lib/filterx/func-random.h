@@ -26,7 +26,9 @@
 
 #include "filterx/filterx-object.h"
 #include "filterx/filterx-expr.h"
+#include "filterx/expr-function.h"
 
 FilterXObject *filterx_simple_function_random(FilterXExpr *s, FilterXObject *args[], gsize args_len);
+FilterXExpr *filterx_function_random_bool_new(FilterXFunctionArgs *args, GError **error);
 
 #endif

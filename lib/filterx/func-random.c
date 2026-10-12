@@ -26,6 +26,7 @@
 #include "filterx/object-extractor.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/expr-function.h"
+#include "filterx/expr-literal.h"
 #include "tls-support.h"
 
 #include <openssl/rand.h>
@@ -125,4 +126,133 @@ filterx_simple_function_random(FilterXExpr *s, FilterXObject *args[], gsize args
     }
 
   return filterx_integer_new((gint64) _next_bounded((guint64) bound));
+}
+
+#define FILTERX_FUNC_RANDOM_BOOL_USAGE "Usage: random_bool([probability])"
+
+typedef struct _FilterXFunctionRandomBool
+{
+  FilterXFunction super;
+  /* NULL if the probability is a literal, then the threshold is precomputed */
+  FilterXExpr *probability;
+  guint64 threshold;
+} FilterXFunctionRandomBool;
+
+/* scales a probability in [0, 1] to [0, 2^53], to compare 53-bit draws with: exact for 0 and 1 */
+static gboolean
+_probability_to_threshold(FilterXObject *obj, guint64 *threshold)
+{
+  GenericNumber gn;
+  if (!filterx_object_extract_generic_number(obj, &gn) || gn_is_nan(&gn))
+    return FALSE;
+
+  gdouble probability = gn_as_double(&gn);
+  if (!(probability >= 0.0 && probability <= 1.0))
+    return FALSE;
+
+  *threshold = (guint64) (probability * 0x1.0p53);
+  return TRUE;
+}
+
+static FilterXObject *
+_random_bool_eval(FilterXExpr *s)
+{
+  FilterXFunctionRandomBool *self = (FilterXFunctionRandomBool *) s;
+  guint64 threshold = self->threshold;
+
+  if (self->probability)
+    {
+      FilterXObject *probability = filterx_expr_eval(self->probability);
+      if (!probability)
+        return NULL;
+
+      gboolean valid = _probability_to_threshold(probability, &threshold);
+      filterx_object_unref(probability);
+      if (!valid)
+        {
+          filterx_eval_push_error_static_info(FILTERX_FUNC_RANDOM_BOOL_USAGE,
+                                              "probability must be a number between 0 and 1");
+          return NULL;
+        }
+    }
+
+  return filterx_boolean_new((_next() >> 11) < threshold);
+}
+
+static gboolean
+_random_bool_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXFunctionRandomBool *self = (FilterXFunctionRandomBool *) s;
+
+  if (!self->probability)
+    return TRUE;
+  return filterx_expr_visit(s, &self->probability, f, user_data);
+}
+
+static void
+_random_bool_free(FilterXExpr *s)
+{
+  FilterXFunctionRandomBool *self = (FilterXFunctionRandomBool *) s;
+  filterx_expr_unref(self->probability);
+  filterx_function_free_method(&self->super);
+}
+
+static FilterXExpr *
+_extract_probability_expr(FilterXFunctionArgs *args, GError **error)
+{
+  guint64 args_len = filterx_function_args_len(args);
+
+  if (args_len > 1)
+    {
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL, FILTERX_FUNC_RANDOM_BOOL_USAGE);
+      return NULL;
+    }
+
+  if (args_len == 1)
+    return filterx_function_args_get_expr(args, 0);
+  return NULL;
+}
+
+FilterXExpr *
+filterx_function_random_bool_new(FilterXFunctionArgs *args, GError **error)
+{
+  FilterXFunctionRandomBool *self = g_new0(FilterXFunctionRandomBool, 1);
+  filterx_function_init_instance(&self->super, "random_bool", FXE_READ);
+  self->super.super.eval = _random_bool_eval;
+  self->super.super.walk_children = _random_bool_walk;
+  self->super.super.free_fn = _random_bool_free;
+  self->threshold = G_GUINT64_CONSTANT(1) << 52;
+
+  GError *local_error = NULL;
+  self->probability = _extract_probability_expr(args, &local_error);
+  if (local_error)
+    {
+      g_propagate_error(error, local_error);
+      goto error;
+    }
+
+  if (filterx_expr_is_literal(self->probability))
+    {
+      FilterXObject *probability = filterx_literal_get_value(self->probability);
+      gboolean valid = _probability_to_threshold(probability, &self->threshold);
+      filterx_object_unref(probability);
+      if (!valid)
+        {
+          g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                      "random_bool(): probability must be a number between 0 and 1");
+          goto error;
+        }
+      g_clear_pointer(&self->probability, filterx_expr_unref);
+    }
+
+  if (!filterx_function_args_check(args, error))
+    goto error;
+
+  filterx_function_args_free(args);
+  return &self->super.super;
+
+error:
+  filterx_function_args_free(args);
+  filterx_expr_unref(&self->super.super);
+  return NULL;
 }

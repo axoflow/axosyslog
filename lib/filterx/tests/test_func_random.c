@@ -22,12 +22,15 @@
  */
 
 #include <criterion/criterion.h>
+#include <math.h>
+#include <stdlib.h>
 #include "libtest/filterx-lib.h"
 
 #include "filterx/func-random.h"
 #include "filterx/object-string.h"
 #include "filterx/object-primitive.h"
 #include "filterx/expr-function.h"
+#include "filterx/expr-literal.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/filterx-private.h"
 
@@ -98,6 +101,56 @@ Test(filterx_func_random, rejects_invalid_bound)
   _assert_rejected(filterx_integer_new(0));
   _assert_rejected(filterx_double_new(2.5));
   _assert_rejected(filterx_string_new("10", -1));
+}
+
+static FilterXExpr *
+_create_random_bool_expr(FilterXExpr *probability, GError **error)
+{
+  GList *args = probability ? g_list_append(NULL, filterx_function_arg_new(NULL, probability)) : NULL;
+  return filterx_function_random_bool_new(filterx_function_args_new(args, NULL), error);
+}
+
+static gint
+_count_true(FilterXExpr *probability, gint n)
+{
+  GError *error = NULL;
+  FilterXExpr *fn = _create_random_bool_expr(probability, &error);
+  cr_assert_null(error);
+  gint count = 0;
+  for (gint i = 0; i < n; i++)
+    {
+      FilterXObject *res = init_and_eval_expr(fn);
+      gboolean value;
+      cr_assert(res && filterx_boolean_unwrap(res, &value));
+      filterx_object_unref(res);
+      count += value;
+    }
+
+  filterx_expr_unref(fn);
+  return count;
+}
+
+/* literals are precomputed by the constructor, other expressions are evaluated per call */
+Test(filterx_func_random, bool_probability_is_respected)
+{
+  cr_assert_eq(_count_true(filterx_literal_new(filterx_integer_new(0)), 1000), 0);
+  cr_assert_eq(_count_true(filterx_object_expr_new(filterx_double_new(1.0)), 1000), 1000);
+  /* binomial(10000, p <= 0.5): sigma <= 50, so these are >10 sigma bounds */
+  cr_assert_lt(abs(_count_true(filterx_literal_new(filterx_double_new(0.25)), 10000) - 2500), 500);
+  cr_assert_lt(abs(_count_true(filterx_object_expr_new(filterx_double_new(0.25)), 10000) - 2500), 500);
+  cr_assert_lt(abs(_count_true(NULL, 10000) - 5000), 500);
+}
+
+Test(filterx_func_random, bool_rejects_invalid_probability)
+{
+  GError *error = NULL;
+  cr_assert_null(_create_random_bool_expr(filterx_literal_new(filterx_double_new(1.1)), &error));
+  cr_assert_not_null(error);
+  g_clear_error(&error);
+  FilterXExpr *fn = _create_random_bool_expr(filterx_object_expr_new(filterx_double_new(NAN)), &error);
+  cr_assert_null(error);
+  cr_assert_null(init_and_eval_expr(fn));
+  filterx_expr_unref(fn);
 }
 
 

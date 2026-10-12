@@ -505,6 +505,38 @@ def test_random_as_filter_drops_message(config, syslog_ng):
     assert file_false.read_log() == "foobar"
 
 
+def test_random_bool_keeps_message(config, syslog_ng):
+    (file_true, file_false) = create_config(config, """ if (not random_bool(1)) { drop; }; """)
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "foobar"
+
+
+def test_random_bool_drops_message(config, syslog_ng):
+    (file_true, file_false) = create_config(config, """ if (not random_bool(0)) { drop; }; """)
+    syslog_ng.start(config)
+
+    assert syslog_ng.wait_for_message_in_console_log("filterx rule evaluation result; result='explicitly dropped'") != []
+    assert "processed" not in file_true.get_stats()
+    assert "processed" not in file_false.get_stats()
+
+
+def test_random_bool_with_variable_probability(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, """
+        probability = 1;
+        if (not random_bool(probability)) { drop; };
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "foobar"
+
+
 def test_simple_assignment(config, syslog_ng):
 
     (file_true, file_false) = create_config(config, """ $MSG = "rewritten message!"; """)
