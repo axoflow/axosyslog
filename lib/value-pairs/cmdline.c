@@ -166,6 +166,13 @@ vp_cmdline_parse_pair (const gchar *option_name, const gchar *value,
       return FALSE;
     }
 
+  if (value[0] == '=')
+    {
+      g_set_error (error, G_OPTION_ERROR, G_OPTION_ERROR_BAD_VALUE,
+                   "Error parsing value-pairs: missing key in key=value pair");
+      return FALSE;
+    }
+
   kv = g_strsplit(value, "=", 2);
 
   template = log_template_new(cfg, NULL);
@@ -405,6 +412,35 @@ vp_cmdline_parse_cast(const gchar *option_name, const gchar *value,
   return TRUE;
 }
 
+static gboolean
+vp_cmdline_join_arrow_pairs(gint *argc, gchar **argv, GPtrArray *joined, GError **error)
+{
+  gint j = 1;
+
+  for (gint i = 1; i < *argc; i++)
+    {
+      if (strcmp(argv[i], "=>") != 0)
+        {
+          argv[j++] = argv[i];
+          continue;
+        }
+
+      if (j == 1 || i + 1 == *argc)
+        {
+          g_set_error(error, G_OPTION_ERROR, G_OPTION_ERROR_BAD_VALUE,
+                      "Error parsing value-pairs: => must be preceded by a key and followed by a value");
+          return FALSE;
+        }
+
+      argv[j - 1] = g_strconcat(argv[j - 1], "=", argv[++i], NULL);
+      g_ptr_array_add(joined, argv[j - 1]);
+    }
+
+  argv[j] = NULL;
+  *argc = j;
+  return TRUE;
+}
+
 static void
 _value_pairs_add_optional_options(ValuePairs *vp, GOptionGroup *og, const ValuePairsOptionalOptions *optional_options)
 {
@@ -523,9 +559,12 @@ value_pairs_parse_command_line(ValuePairs *vp,
   if (custom_options)
     g_option_context_add_group(ctx, custom_options);
 
-  success = g_option_context_parse(ctx, argc, argv, error);
+  GPtrArray *joined_pairs = g_ptr_array_new_with_free_func(g_free);
+  success = vp_cmdline_join_arrow_pairs(argc, *argv, joined_pairs, error)
+            && g_option_context_parse(ctx, argc, argv, error);
   vp_cmdline_parse_rekey_finish(user_data_args);
   g_option_context_free(ctx);
+  g_ptr_array_free(joined_pairs, TRUE);
   return success;
 }
 
