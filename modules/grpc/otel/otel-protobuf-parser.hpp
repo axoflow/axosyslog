@@ -31,11 +31,11 @@
 #include "logmsg/logmsg.h"
 #include "compat/cpp-end.h"
 
-#include "opentelemetry/proto/resource/v1/resource.pb.h"
-#include "opentelemetry/proto/common/v1/common.pb.h"
-#include "opentelemetry/proto/logs/v1/logs.pb.h"
-#include "opentelemetry/proto/metrics/v1/metrics.pb.h"
-#include "opentelemetry/proto/trace/v1/trace.pb.h"
+#include "syslogng/opentelemetry/proto/resource/v1/resource.pb.h"
+#include "syslogng/opentelemetry/proto/common/v1/common.pb.h"
+#include "syslogng/opentelemetry/proto/logs/v1/logs.pb.h"
+#include "syslogng/opentelemetry/proto/metrics/v1/metrics.pb.h"
+#include "syslogng/opentelemetry/proto/trace/v1/trace.pb.h"
 
 #include <grpcpp/support/config.h>
 
@@ -43,12 +43,12 @@ namespace syslogng {
 namespace grpc {
 namespace otel {
 
-using opentelemetry::proto::resource::v1::Resource;
-using opentelemetry::proto::common::v1::InstrumentationScope;
-using opentelemetry::proto::common::v1::KeyValueList;
-using opentelemetry::proto::logs::v1::LogRecord;
-using opentelemetry::proto::metrics::v1::Metric;
-using opentelemetry::proto::trace::v1::Span;
+using syslogng::opentelemetry::proto::resource::v1::Resource;
+using syslogng::opentelemetry::proto::common::v1::InstrumentationScope;
+using syslogng::opentelemetry::proto::common::v1::KeyValueList;
+using syslogng::opentelemetry::proto::logs::v1::LogRecord;
+using syslogng::opentelemetry::proto::metrics::v1::Metric;
+using syslogng::opentelemetry::proto::trace::v1::Span;
 
 class ProtobufParser
 {

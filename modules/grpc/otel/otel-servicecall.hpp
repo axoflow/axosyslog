@@ -24,9 +24,9 @@
 #ifndef OTEL_SERVICECALL_HPP
 #define OTEL_SERVICECALL_HPP
 
-#include "opentelemetry/proto/collector/trace/v1/trace_service.pb.h"
-#include "opentelemetry/proto/collector/logs/v1/logs_service.pb.h"
-#include "opentelemetry/proto/collector/metrics/v1/metrics_service.pb.h"
+#include "syslogng/opentelemetry/proto/collector/trace/v1/trace_service.pb.h"
+#include "syslogng/opentelemetry/proto/collector/logs/v1/logs_service.pb.h"
+#include "syslogng/opentelemetry/proto/collector/metrics/v1/metrics_service.pb.h"
 
 #include "otel-services.hpp"
 
@@ -34,12 +34,12 @@ namespace syslogng {
 namespace grpc {
 namespace otel {
 
-using opentelemetry::proto::collector::trace::v1::ExportTraceServiceRequest;
-using opentelemetry::proto::collector::trace::v1::ExportTraceServiceResponse;
-using opentelemetry::proto::collector::logs::v1::ExportLogsServiceRequest;
-using opentelemetry::proto::collector::logs::v1::ExportLogsServiceResponse;
-using opentelemetry::proto::collector::metrics::v1::ExportMetricsServiceRequest;
-using opentelemetry::proto::collector::metrics::v1::ExportMetricsServiceResponse;
+using syslogng::opentelemetry::proto::collector::trace::v1::ExportTraceServiceRequest;
+using syslogng::opentelemetry::proto::collector::trace::v1::ExportTraceServiceResponse;
+using syslogng::opentelemetry::proto::collector::logs::v1::ExportLogsServiceRequest;
+using syslogng::opentelemetry::proto::collector::logs::v1::ExportLogsServiceResponse;
+using syslogng::opentelemetry::proto::collector::metrics::v1::ExportMetricsServiceRequest;
+using syslogng::opentelemetry::proto::collector::metrics::v1::ExportMetricsServiceResponse;
 
 using TraceService = AsyncExportService<ExportTraceServiceRequest, ExportTraceServiceResponse>;
 using LogsService = AsyncExportService<ExportLogsServiceRequest, ExportLogsServiceResponse>;

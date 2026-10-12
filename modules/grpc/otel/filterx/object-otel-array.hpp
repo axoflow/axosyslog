@@ -32,7 +32,7 @@
 
 #include "filterx/protobuf-field-converter.hpp"
 #include "object-otel-base.hpp"
-#include "opentelemetry/proto/common/v1/common.pb.h"
+#include "syslogng/opentelemetry/proto/common/v1/common.pb.h"
 
 typedef struct FilterXOtelArray_ FilterXOtelArray;
 
@@ -43,7 +43,7 @@ namespace grpc {
 namespace otel {
 namespace filterx {
 
-using opentelemetry::proto::common::v1::ArrayValue;
+using syslogng::opentelemetry::proto::common::v1::ArrayValue;
 
 class Array : public Base
 {

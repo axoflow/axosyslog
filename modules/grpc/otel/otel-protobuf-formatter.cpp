@@ -34,11 +34,11 @@
 #include <syslog.h>
 
 using namespace google::protobuf;
-using namespace opentelemetry::proto::common::v1;
-using namespace opentelemetry::proto::resource::v1;
-using namespace opentelemetry::proto::logs::v1;
-using namespace opentelemetry::proto::metrics::v1;
-using namespace opentelemetry::proto::trace::v1;
+using namespace syslogng::opentelemetry::proto::common::v1;
+using namespace syslogng::opentelemetry::proto::resource::v1;
+using namespace syslogng::opentelemetry::proto::logs::v1;
+using namespace syslogng::opentelemetry::proto::metrics::v1;
+using namespace syslogng::opentelemetry::proto::trace::v1;
 
 using namespace syslogng::grpc::otel;
 
