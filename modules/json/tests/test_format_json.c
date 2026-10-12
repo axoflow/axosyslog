@@ -118,6 +118,17 @@ Test(format_json, test_format_json_key)
   assert_template_format("$(format-json --key PRI)", "{\"PRI\":\"155\"}");
 }
 
+Test(format_json, test_format_json_arrow_pairs)
+{
+  assert_template_format("$(format-json \"host\" => \"${HOST}\" \"msg\" => \"${MSG}\")",
+                         "{\"msg\":\"árvíztűrőtükörfúrógép\",\"host\":\"bzorp\"}");
+  assert_template_format("$(format-json --scope none pid => ${PID} --key HOST)",
+                         "{\"pid\":\"23323\",\"HOST\":\"bzorp\"}");
+  assert_template_failure("$(format-json host =>)", "=> must be preceded by a key and followed by a value");
+  assert_template_failure("$(format-json => bzorp)", "=> must be preceded by a key and followed by a value");
+  assert_template_failure("$(format-json =bzorp)", "missing key in key=value pair");
+}
+
 Test(format_json, test_format_json_rekey)
 {
   assert_template_format("$(format-json .msg.text=dotted --rekey .* --shift 1 --add-prefix _)",
