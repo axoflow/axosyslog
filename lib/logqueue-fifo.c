@@ -35,6 +35,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
+#include <stdlib.h>
 #include <iv_thread.h>
 
 QueueType log_queue_fifo_type = "FIFO";
@@ -72,6 +73,15 @@ QueueType log_queue_fifo_type = "FIFO";
  *
  */
 
+/* Per-thread input queue.  Each input thread writes its own slot on every
+ * push without taking a lock, so the slots must not share cache lines with
+ * each other (or with the queue header, which the output thread writes):
+ * otherwise the cores would ping-pong the line on every message even though
+ * no data is actually shared.  The struct is kept at exactly one cache line
+ * and the slot array is aligned to a cache line boundary at allocation. */
+
+#define INPUT_QUEUE_ALIGNMENT 64
+
 typedef struct _InputQueue
 {
   struct iv_list_head items;
@@ -79,7 +89,9 @@ typedef struct _InputQueue
   guint32 len;
   guint32 non_flow_controlled_len;
   gsize total_size;
-} InputQueue;
+} __attribute__((aligned(INPUT_QUEUE_ALIGNMENT))) InputQueue;
+
+G_STATIC_ASSERT(sizeof(InputQueue) == INPUT_QUEUE_ALIGNMENT);
 
 typedef struct _OverflowQueue
 {
@@ -108,6 +120,8 @@ typedef struct _LogQueueFifo
   gint num_input_queues;
   InputQueue input_queues[0];
 } LogQueueFifo;
+
+G_STATIC_ASSERT(G_STRUCT_OFFSET(LogQueueFifo, input_queues) % INPUT_QUEUE_ALIGNMENT == 0);
 
 /* NOTE: this is inherently racy. If the LogQueue->lock is taken, then the
  * race is limited to the changes in output_queue queue changes.
@@ -707,7 +721,12 @@ log_queue_fifo_new(gint log_fifo_size, const gchar *persist_name, gint stats_lev
   LogQueueFifo *self;
 
   gint max_threads = main_loop_worker_get_max_number_of_threads();
-  self = g_malloc0(sizeof(LogQueueFifo) + max_threads * sizeof(self->input_queues[0]));
+  gsize size = sizeof(LogQueueFifo) + max_threads * sizeof(InputQueue);
+
+  void *mem;
+  if (posix_memalign(&mem, INPUT_QUEUE_ALIGNMENT, size) != 0)
+    g_error("%s: failed to allocate %" G_GSIZE_FORMAT " bytes", G_STRLOC, size);
+  self = memset(mem, 0, size);
 
   if (queue_sck_builder)
     {
