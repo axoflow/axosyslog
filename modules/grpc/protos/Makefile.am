@@ -26,10 +26,6 @@ LOKI_PROTO_PROTOC_FLAGS = $(PROTOC_GEN_GRPC_CPP_PLUGIN_FLAGS) --proto_path=$(LOK
 GOOGLEAPIS_PROTO_PROTOC_FLAGS = $(PROTOC_GEN_GRPC_CPP_PLUGIN_FLAGS) --proto_path=$(GOOGLEAPIS_PROTO_SRCDIR) --cpp_out=$(GOOGLEAPIS_PROTO_BUILDDIR)
 CLICKHOUSE_PROTO_PROTOC_FLAGS = $(PROTOC_GEN_GRPC_CPP_PLUGIN_FLAGS) --proto_path=$(CLICKHOUSE_PROTO_SRCDIR) --cpp_out=$(CLICKHOUSE_PROTO_BUILDDIR)
 
-modules/grpc/protos/otlp/%.grpc.pb.cc modules/grpc/protos/otlp/%.grpc.pb.h:
-	mkdir -p $(OPENTELEMETRY_PROTO_BUILDDIR)
-	$(PROTOC) $(OPENTELEMETRY_PROTO_PROTOC_FLAGS) --grpc-cpp_out=$(OPENTELEMETRY_PROTO_BUILDDIR) $*.proto
-
 modules/grpc/protos/otlp/%.pb.cc modules/grpc/protos/otlp/%.pb.h:
 	mkdir -p $(OPENTELEMETRY_PROTO_BUILDDIR)
 	$(PROTOC) $(OPENTELEMETRY_PROTO_PROTOC_FLAGS) $*.proto
@@ -59,16 +55,10 @@ modules/grpc/protos/clickhouse/%.pb.cc modules/grpc/protos/clickhouse/%.pb.h:
 	$(PROTOC) $(CLICKHOUSE_PROTO_PROTOC_FLAGS) $*.proto
 
 GRPC_PROTOS_BUILT_SOURCES = \
-  $(OPENTELEMETRY_PROTO_BUILDDIR)/opentelemetry/proto/collector/logs/v1/logs_service.grpc.pb.cc \
-  $(OPENTELEMETRY_PROTO_BUILDDIR)/opentelemetry/proto/collector/logs/v1/logs_service.grpc.pb.h \
   $(OPENTELEMETRY_PROTO_BUILDDIR)/opentelemetry/proto/collector/logs/v1/logs_service.pb.cc \
   $(OPENTELEMETRY_PROTO_BUILDDIR)/opentelemetry/proto/collector/logs/v1/logs_service.pb.h \
-  $(OPENTELEMETRY_PROTO_BUILDDIR)/opentelemetry/proto/collector/metrics/v1/metrics_service.grpc.pb.cc \
-  $(OPENTELEMETRY_PROTO_BUILDDIR)/opentelemetry/proto/collector/metrics/v1/metrics_service.grpc.pb.h \
   $(OPENTELEMETRY_PROTO_BUILDDIR)/opentelemetry/proto/collector/metrics/v1/metrics_service.pb.cc \
   $(OPENTELEMETRY_PROTO_BUILDDIR)/opentelemetry/proto/collector/metrics/v1/metrics_service.pb.h \
-  $(OPENTELEMETRY_PROTO_BUILDDIR)/opentelemetry/proto/collector/trace/v1/trace_service.grpc.pb.cc \
-  $(OPENTELEMETRY_PROTO_BUILDDIR)/opentelemetry/proto/collector/trace/v1/trace_service.grpc.pb.h \
   $(OPENTELEMETRY_PROTO_BUILDDIR)/opentelemetry/proto/collector/trace/v1/trace_service.pb.cc \
   $(OPENTELEMETRY_PROTO_BUILDDIR)/opentelemetry/proto/collector/trace/v1/trace_service.pb.h \
   $(OPENTELEMETRY_PROTO_BUILDDIR)/opentelemetry/proto/common/v1/common.pb.cc \

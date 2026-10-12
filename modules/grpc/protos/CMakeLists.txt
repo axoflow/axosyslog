@@ -19,9 +19,7 @@ set(OTEL_PROTO_SOURCES
   opentelemetry/proto/logs/v1/logs.proto
   opentelemetry/proto/metrics/v1/metrics.proto
   opentelemetry/proto/trace/v1/trace.proto
-  opentelemetry/proto/resource/v1/resource.proto)
-
-set(OTEL_PROTO_GRPC_SOURCES
+  opentelemetry/proto/resource/v1/resource.proto
   opentelemetry/proto/collector/logs/v1/logs_service.proto
   opentelemetry/proto/collector/metrics/v1/metrics_service.proto
   opentelemetry/proto/collector/trace/v1/trace_service.proto)
@@ -62,12 +60,6 @@ protobuf_generate_cpp(
   PROTOS ${OTEL_PROTO_SOURCES})
 
 protobuf_generate_cpp_grpc(
-  PROTO_PATH ${OTEL_PROTO_SRCDIR}
-  CPP_OUT ${OTEL_PROTO_BUILDDIR}
-  OUT_SRCS OTEL_PROTO_GENERATED_GRPC_SOURCES
-  PROTOS ${OTEL_PROTO_GRPC_SOURCES})
-
-protobuf_generate_cpp_grpc(
   PROTO_PATH ${LOKI_PROTO_SRCDIR}
   CPP_OUT ${LOKI_PROTO_BUILDDIR}
   OUT_SRCS LOKI_PROTO_GENERATED_GRPC_SOURCES
@@ -99,7 +91,6 @@ protobuf_generate_cpp_grpc(
 
 add_library(grpc-protos SHARED
   ${OTEL_PROTO_GENERATED_SOURCES}
-  ${OTEL_PROTO_GENERATED_GRPC_SOURCES}
   ${LOKI_PROTO_GENERATED_GRPC_SOURCES}
   ${GOOGLEAPIS_PROTO_GENERATED_SOURCES}
   ${GOOGLEAPIS_PROTO_GENERATED_GRPC_SOURCES}
