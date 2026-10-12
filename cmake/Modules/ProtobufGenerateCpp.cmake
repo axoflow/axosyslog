@@ -72,13 +72,14 @@ endfunction()
 
 
 function(protobuf_generate_cpp)
-  cmake_parse_arguments(protobuf_generate_cpp "" "PROTO_PATH;CPP_OUT;OUT_SRCS" "PROTOS" "${ARGN}")
+  cmake_parse_arguments(protobuf_generate_cpp "" "PROTO_PATH;CPP_OUT;OUT_SRCS" "PROTOS;DEPENDS" "${ARGN}")
 
   _protobuf_generate_cpp_internal(
     PROTO_PATH ${protobuf_generate_cpp_PROTO_PATH}
     CPP_OUT ${protobuf_generate_cpp_CPP_OUT}
     OUT_SRCS _out_srcs
-    PROTOS ${protobuf_generate_cpp_PROTOS})
+    PROTOS ${protobuf_generate_cpp_PROTOS}
+    EXTRA_DEPENDS ${protobuf_generate_cpp_DEPENDS})
 
   set(${protobuf_generate_cpp_OUT_SRCS} ${_out_srcs} PARENT_SCOPE)
 endfunction()
