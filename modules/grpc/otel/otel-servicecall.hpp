@@ -24,23 +24,26 @@
 #ifndef OTEL_SERVICECALL_HPP
 #define OTEL_SERVICECALL_HPP
 
-#include "opentelemetry/proto/collector/trace/v1/trace_service.grpc.pb.h"
-#include "opentelemetry/proto/collector/logs/v1/logs_service.grpc.pb.h"
-#include "opentelemetry/proto/collector/metrics/v1/metrics_service.grpc.pb.h"
+#include "opentelemetry/proto/collector/trace/v1/trace_service.pb.h"
+#include "opentelemetry/proto/collector/logs/v1/logs_service.pb.h"
+#include "opentelemetry/proto/collector/metrics/v1/metrics_service.pb.h"
+
+#include "otel-services.hpp"
 
 namespace syslogng {
 namespace grpc {
 namespace otel {
 
-using opentelemetry::proto::collector::trace::v1::TraceService;
 using opentelemetry::proto::collector::trace::v1::ExportTraceServiceRequest;
 using opentelemetry::proto::collector::trace::v1::ExportTraceServiceResponse;
-using opentelemetry::proto::collector::logs::v1::LogsService;
 using opentelemetry::proto::collector::logs::v1::ExportLogsServiceRequest;
 using opentelemetry::proto::collector::logs::v1::ExportLogsServiceResponse;
-using opentelemetry::proto::collector::metrics::v1::MetricsService;
 using opentelemetry::proto::collector::metrics::v1::ExportMetricsServiceRequest;
 using opentelemetry::proto::collector::metrics::v1::ExportMetricsServiceResponse;
+
+using TraceService = AsyncExportService<ExportTraceServiceRequest, ExportTraceServiceResponse>;
+using LogsService = AsyncExportService<ExportLogsServiceRequest, ExportLogsServiceResponse>;
+using MetricsService = AsyncExportService<ExportMetricsServiceRequest, ExportMetricsServiceResponse>;
 
 class AsyncServiceCallInterface
 {
@@ -58,11 +61,11 @@ public:
   void Proceed(bool ok) override {}
 };
 
-using TraceServiceCall = AsyncServiceCall<TraceService::AsyncService,
+using TraceServiceCall = AsyncServiceCall<TraceService,
       ExportTraceServiceRequest, ExportTraceServiceResponse>;
-using LogsServiceCall = AsyncServiceCall<LogsService::AsyncService,
+using LogsServiceCall = AsyncServiceCall<LogsService,
       ExportLogsServiceRequest, ExportLogsServiceResponse>;
-using MetricsServiceCall = AsyncServiceCall<MetricsService::AsyncService,
+using MetricsServiceCall = AsyncServiceCall<MetricsService,
       ExportMetricsServiceRequest, ExportMetricsServiceResponse>;
 
 class StopEventCall;

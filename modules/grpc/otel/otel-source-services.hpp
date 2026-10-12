@@ -24,10 +24,6 @@
 #ifndef OTEL_SOURCE_SERVICES_HPP
 #define OTEL_SOURCE_SERVICES_HPP
 
-#include "opentelemetry/proto/collector/trace/v1/trace_service.grpc.pb.h"
-#include "opentelemetry/proto/collector/logs/v1/logs_service.grpc.pb.h"
-#include "opentelemetry/proto/collector/metrics/v1/metrics_service.grpc.pb.h"
-
 #include "otel-servicecall.hpp"
 #include "otel-source.hpp"
 #include "otel-protobuf-parser.hpp"
