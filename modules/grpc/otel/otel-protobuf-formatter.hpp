@@ -30,9 +30,9 @@
 #include "value-pairs/value-pairs.h"
 #include "compat/cpp-end.h"
 
-#include "opentelemetry/proto/logs/v1/logs.pb.h"
-#include "opentelemetry/proto/metrics/v1/metrics.pb.h"
-#include "opentelemetry/proto/trace/v1/trace.pb.h"
+#include "axosyslog/opentelemetry/proto/logs/v1/logs.pb.h"
+#include "axosyslog/opentelemetry/proto/metrics/v1/metrics.pb.h"
+#include "axosyslog/opentelemetry/proto/trace/v1/trace.pb.h"
 
 namespace syslogng {
 namespace grpc {
@@ -50,23 +50,23 @@ MessageType get_message_type(LogMessage *msg);
 
 using google::protobuf::RepeatedPtrField;
 
-using opentelemetry::proto::resource::v1::Resource;
-using opentelemetry::proto::common::v1::InstrumentationScope;
-using opentelemetry::proto::common::v1::KeyValue;
-using opentelemetry::proto::common::v1::KeyValueList;
-using opentelemetry::proto::logs::v1::LogRecord;
-using opentelemetry::proto::metrics::v1::Metric;
-using opentelemetry::proto::metrics::v1::Gauge;
-using opentelemetry::proto::metrics::v1::Sum;
-using opentelemetry::proto::metrics::v1::Histogram;
-using opentelemetry::proto::metrics::v1::ExponentialHistogram;
-using opentelemetry::proto::metrics::v1::Summary;
-using opentelemetry::proto::metrics::v1::Exemplar;
-using opentelemetry::proto::metrics::v1::NumberDataPoint;
-using opentelemetry::proto::metrics::v1::SummaryDataPoint;
-using opentelemetry::proto::metrics::v1::HistogramDataPoint;
-using opentelemetry::proto::metrics::v1::ExponentialHistogramDataPoint;
-using opentelemetry::proto::trace::v1::Span;
+using axosyslog::opentelemetry::proto::resource::v1::Resource;
+using axosyslog::opentelemetry::proto::common::v1::InstrumentationScope;
+using axosyslog::opentelemetry::proto::common::v1::KeyValue;
+using axosyslog::opentelemetry::proto::common::v1::KeyValueList;
+using axosyslog::opentelemetry::proto::logs::v1::LogRecord;
+using axosyslog::opentelemetry::proto::metrics::v1::Metric;
+using axosyslog::opentelemetry::proto::metrics::v1::Gauge;
+using axosyslog::opentelemetry::proto::metrics::v1::Sum;
+using axosyslog::opentelemetry::proto::metrics::v1::Histogram;
+using axosyslog::opentelemetry::proto::metrics::v1::ExponentialHistogram;
+using axosyslog::opentelemetry::proto::metrics::v1::Summary;
+using axosyslog::opentelemetry::proto::metrics::v1::Exemplar;
+using axosyslog::opentelemetry::proto::metrics::v1::NumberDataPoint;
+using axosyslog::opentelemetry::proto::metrics::v1::SummaryDataPoint;
+using axosyslog::opentelemetry::proto::metrics::v1::HistogramDataPoint;
+using axosyslog::opentelemetry::proto::metrics::v1::ExponentialHistogramDataPoint;
+using axosyslog::opentelemetry::proto::trace::v1::Span;
 
 class ProtobufFormatter
 {

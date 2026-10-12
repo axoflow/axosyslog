@@ -42,17 +42,17 @@ namespace syslogng {
 namespace grpc {
 namespace otel {
 
-using opentelemetry::proto::resource::v1::Resource;
-using opentelemetry::proto::common::v1::InstrumentationScope;
-using opentelemetry::proto::trace::v1::ResourceSpans;
-using opentelemetry::proto::trace::v1::ScopeSpans;
-using opentelemetry::proto::trace::v1::Span;
-using opentelemetry::proto::logs::v1::ResourceLogs;
-using opentelemetry::proto::logs::v1::ScopeLogs;
-using opentelemetry::proto::logs::v1::LogRecord;
-using opentelemetry::proto::metrics::v1::ResourceMetrics;
-using opentelemetry::proto::metrics::v1::ScopeMetrics;
-using opentelemetry::proto::metrics::v1::Metric;
+using axosyslog::opentelemetry::proto::resource::v1::Resource;
+using axosyslog::opentelemetry::proto::common::v1::InstrumentationScope;
+using axosyslog::opentelemetry::proto::trace::v1::ResourceSpans;
+using axosyslog::opentelemetry::proto::trace::v1::ScopeSpans;
+using axosyslog::opentelemetry::proto::trace::v1::Span;
+using axosyslog::opentelemetry::proto::logs::v1::ResourceLogs;
+using axosyslog::opentelemetry::proto::logs::v1::ScopeLogs;
+using axosyslog::opentelemetry::proto::logs::v1::LogRecord;
+using axosyslog::opentelemetry::proto::metrics::v1::ResourceMetrics;
+using axosyslog::opentelemetry::proto::metrics::v1::ScopeMetrics;
+using axosyslog::opentelemetry::proto::metrics::v1::Metric;
 
 template <class S, class Req, class Res>
 class AsyncServiceCall final : public AsyncServiceCallInterface

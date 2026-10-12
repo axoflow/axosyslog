@@ -34,11 +34,11 @@
 
 using namespace syslogng::grpc::otel;
 
-using namespace opentelemetry::proto::resource::v1;
-using namespace opentelemetry::proto::common::v1;
-using namespace opentelemetry::proto::logs::v1;
-using namespace opentelemetry::proto::metrics::v1;
-using namespace opentelemetry::proto::trace::v1;
+using namespace axosyslog::opentelemetry::proto::resource::v1;
+using namespace axosyslog::opentelemetry::proto::common::v1;
+using namespace axosyslog::opentelemetry::proto::logs::v1;
+using namespace axosyslog::opentelemetry::proto::metrics::v1;
+using namespace axosyslog::opentelemetry::proto::trace::v1;
 
 static LogMessage *
 _create_log_msg_with_dummy_resource_and_scope()

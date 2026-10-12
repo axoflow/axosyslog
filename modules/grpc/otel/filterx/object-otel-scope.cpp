@@ -147,7 +147,7 @@ Scope::iter(FilterXObjectIterFunc func, void *user_data)
   return iter_on_otel_protobuf_message_fields(scope, func, user_data);
 }
 
-const opentelemetry::proto::common::v1::InstrumentationScope &
+const axosyslog::opentelemetry::proto::common::v1::InstrumentationScope &
 Scope::get_value() const
 {
   return scope;
