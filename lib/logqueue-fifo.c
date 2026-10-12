@@ -78,7 +78,6 @@ typedef struct _InputQueue
   WorkerBatchCallback cb;
   guint32 len;
   guint32 non_flow_controlled_len;
-  UnixTime first_message_recvd;
   gsize total_size;
 } InputQueue;
 
@@ -294,6 +293,14 @@ _message_has_to_be_dropped(LogQueueFifo *self, const LogPathOptions *path_option
          && log_queue_fifo_get_non_flow_controlled_length(self) >= self->log_fifo_size;
 }
 
+static inline const UnixTime *
+_input_queue_first_message_recvd(InputQueue *input_queue)
+{
+  LogMessageQueueNode *first = iv_list_entry(input_queue->items.next, LogMessageQueueNode, list);
+
+  return &first->msg->timestamps[LM_TS_RECVD];
+}
+
 /**
  * Assumed to be called from one of the input threads. If the thread_index
  * cannot be determined, the item is put directly in the wait queue.
@@ -346,7 +353,6 @@ log_queue_fifo_push_tail(LogQueue *s, LogMessage *msg, const LogPathOptions *pat
 
           main_loop_worker_register_batch_callback(&self->input_queues[thread_index].cb);
           log_queue_ref(&self->super);
-          self->input_queues[thread_index].first_message_recvd = msg->timestamps[LM_TS_RECVD];
         }
 
       log_msg_write_protect(msg);
@@ -366,7 +372,8 @@ log_queue_fifo_push_tail(LogQueue *s, LogMessage *msg, const LogPathOptions *pat
            */
 
           gint64 input_queue_age_msec =
-            unix_time_diff_in_msec(&msg->timestamps[LM_TS_RECVD], &self->input_queues[thread_index].first_message_recvd);
+            unix_time_diff_in_msec(&msg->timestamps[LM_TS_RECVD],
+                                   _input_queue_first_message_recvd(&self->input_queues[thread_index]));
 
           flush_input_queue = input_queue_age_msec > 100;
         }
