@@ -24,6 +24,7 @@
  * test_type_inference.c this suite runs in the --disable-jit configuration too. */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "filterx/filterx-expr.h"
 #include "filterx/filterx-type-inference.h"
@@ -76,8 +77,8 @@ Test(filterx_access_path, equal_keys_intern_to_one_pointer)
   gchar *a = g_strdup("hello");
   gchar *b = g_strdup("hello");
 
-  cr_assert_eq(filterx_access_path_intern_key(a), filterx_access_path_intern_key(b));
-  cr_assert_neq(filterx_access_path_intern_key("hello"), filterx_access_path_intern_key("world"));
+  cr_assert(eq(ptr, filterx_access_path_intern_key(a), filterx_access_path_intern_key(b)));
+  cr_assert(ne(ptr, filterx_access_path_intern_key("hello"), filterx_access_path_intern_key("world")));
 
   g_free(a);
   g_free(b);
@@ -85,16 +86,16 @@ Test(filterx_access_path, equal_keys_intern_to_one_pointer)
 
 Test(filterx_access_path, interning_a_null_key_yields_null)
 {
-  cr_assert_null(filterx_access_path_intern_key(NULL));
+  cr_assert(zero(ptr, filterx_access_path_intern_key(NULL)));
 }
 
 Test(filterx_access_path, an_unnameable_step_truncates_the_path)
 {
   FilterXAccessPath path = ROOT(7);
 
-  cr_assert_not(filterx_access_path_append_step(&path, NULL));
+  cr_assert(not(filterx_access_path_append_step(&path, NULL)));
   cr_assert(path.truncated);
-  cr_assert_eq(path.n_steps, 0);
+  cr_assert(eq(uint, path.n_steps, 0));
 }
 
 Test(filterx_access_path, a_step_past_an_unnameable_one_does_not_reattach)
@@ -103,10 +104,10 @@ Test(filterx_access_path, a_step_past_an_unnameable_one_does_not_reattach)
    * a path has lost its address every further step keeps it lost. */
   FilterXAccessPath path = ROOT(7);
 
-  cr_assert_not(filterx_access_path_append_step(&path, NULL));
-  cr_assert_not(filterx_access_path_append_step(&path, filterx_access_path_intern_key("a")));
+  cr_assert(not(filterx_access_path_append_step(&path, NULL)));
+  cr_assert(not(filterx_access_path_append_step(&path, filterx_access_path_intern_key("a"))));
   cr_assert(path.truncated);
-  cr_assert_eq(path.n_steps, 0);
+  cr_assert(eq(uint, path.n_steps, 0));
 }
 
 Test(filterx_access_path, an_interned_key_outlives_the_string_it_was_made_from)
@@ -117,8 +118,8 @@ Test(filterx_access_path, an_interned_key_outlives_the_string_it_was_made_from)
   memset(transient, 'x', strlen(transient));
   g_free(transient);
 
-  cr_assert_str_eq(interned, "borrowed");
-  cr_assert_eq(filterx_access_path_intern_key("borrowed"), interned);
+  cr_assert(eq(str, interned, "borrowed"));
+  cr_assert(eq(ptr, filterx_access_path_intern_key("borrowed"), interned));
 }
 
 Test(filterx_access_path, clearing_the_key_pool_keeps_interning_usable)
@@ -128,8 +129,8 @@ Test(filterx_access_path, clearing_the_key_pool_keeps_interning_usable)
   filterx_access_path_release_keys();
 
   const gchar *after = filterx_access_path_intern_key("recycled");
-  cr_assert_str_eq(after, "recycled");
-  cr_assert_eq(filterx_access_path_intern_key("recycled"), after);
+  cr_assert(eq(str, after, "recycled"));
+  cr_assert(eq(ptr, filterx_access_path_intern_key("recycled"), after));
 }
 
 /* --- ordering ------------------------------------------------------------------------------- */
@@ -140,9 +141,9 @@ Test(filterx_access_path, roots_order_numerically_and_never_interleave)
   FilterXAccessPath a_deep = PATH(7, "z");
   FilterXAccessPath b = ROOT(9);
 
-  cr_assert_eq(_compare_sign(&a, &b), -1);
-  cr_assert_eq(_compare_sign(&a_deep, &b), -1);
-  cr_assert_eq(_compare_sign(&b, &a_deep), 1);
+  cr_assert(eq(int, _compare_sign(&a, &b), -1));
+  cr_assert(eq(int, _compare_sign(&a_deep, &b), -1));
+  cr_assert(eq(int, _compare_sign(&b, &a_deep), 1));
 }
 
 Test(filterx_access_path, a_path_sorts_before_its_own_descendants)
@@ -151,8 +152,8 @@ Test(filterx_access_path, a_path_sorts_before_its_own_descendants)
   FilterXAccessPath child = PATH(7, "cfg", "net");
   FilterXAccessPath grandchild = PATH(7, "cfg", "net", "port");
 
-  cr_assert_eq(_compare_sign(&p, &child), -1);
-  cr_assert_eq(_compare_sign(&child, &grandchild), -1);
+  cr_assert(eq(int, _compare_sign(&p, &child), -1));
+  cr_assert(eq(int, _compare_sign(&child, &grandchild), -1));
 }
 
 Test(filterx_access_path, a_shared_character_prefix_is_not_a_shared_path_prefix)
@@ -161,12 +162,12 @@ Test(filterx_access_path, a_shared_character_prefix_is_not_a_shared_path_prefix)
   FilterXAccessPath subscription = PATH(7, "subscription");
   FilterXAccessPath sub_child = PATH(7, "sub", "x");
 
-  cr_assert_not(filterx_access_path_is_prefix_of(&sub, &subscription));
+  cr_assert(not(filterx_access_path_is_prefix_of(&sub, &subscription)));
   cr_assert(filterx_access_path_is_prefix_of(&sub, &sub_child));
 
   /* ... and the ordering agrees: sub's descendants all land before subscription. */
-  cr_assert_eq(_compare_sign(&sub, &sub_child), -1);
-  cr_assert_eq(_compare_sign(&sub_child, &subscription), -1);
+  cr_assert(eq(int, _compare_sign(&sub, &sub_child), -1));
+  cr_assert(eq(int, _compare_sign(&sub_child, &subscription), -1));
 }
 
 Test(filterx_access_path, a_path_is_immediately_followed_by_exactly_its_descendants)
@@ -195,17 +196,17 @@ Test(filterx_access_path, a_path_is_immediately_followed_by_exactly_its_descenda
           if (!filterx_access_path_is_prefix_of(&paths[i], &paths[j]))
             left_the_subtree = TRUE;
           else
-            cr_assert_not(left_the_subtree,
-                          "entry %u is a descendant of %u but a non-descendant sorted between them", j, i);
+            cr_assert(not(left_the_subtree),
+                      "entry %u is a descendant of %u but a non-descendant sorted between them", j, i);
         }
     }
 
   /* And spot-check the order the invariant produces. */
-  cr_assert_eq(_compare_sign(&paths[0], &paths[1]), -1);
-  cr_assert_eq(paths[0].root, 7);
-  cr_assert_eq(paths[0].n_steps, 0);
-  cr_assert_eq(paths[1].n_steps, 1);
-  cr_assert_eq(paths[1].steps[0], filterx_access_path_intern_key("cfg"));
+  cr_assert(eq(int, _compare_sign(&paths[0], &paths[1]), -1));
+  cr_assert(eq(u32, paths[0].root, 7));
+  cr_assert(eq(uint, paths[0].n_steps, 0));
+  cr_assert(eq(uint, paths[1].n_steps, 1));
+  cr_assert(eq(ptr, paths[1].steps[0], filterx_access_path_intern_key("cfg")));
 }
 
 /* --- the env -------------------------------------------------------------------------------- */
@@ -234,7 +235,7 @@ Test(filterx_type_env, an_entry_of_an_unknown_static_type_is_not_the_same_as_no_
   FilterXAccessPath absent = PATH(7, "b");
 
   cr_assert(filterx_type_env_get_fact_at_path(env, &present, NULL, NULL));
-  cr_assert_not(filterx_type_env_get_fact_at_path(env, &absent, NULL, NULL));
+  cr_assert(not(filterx_type_env_get_fact_at_path(env, &absent, NULL, NULL)));
 
   filterx_type_env_free(env);
 }
@@ -250,8 +251,8 @@ Test(filterx_type_env, a_write_replaces_one_location_and_leaves_its_siblings_alo
   /* d.a = "s"; d.a = 1;  -- an overwrite, not a meet. */
   _set(env, PATH(7, "a"), FILTERX_STATIC_TYPE_INTEGER, FALSE);
 
-  cr_assert_eq(_static_type_at(env, PATH(7, "a")), FILTERX_STATIC_TYPE_INTEGER);
-  cr_assert_eq(_static_type_at(env, PATH(7, "b")), FILTERX_STATIC_TYPE_INTEGER);
+  cr_assert(eq(int, _static_type_at(env, PATH(7, "a")), FILTERX_STATIC_TYPE_INTEGER));
+  cr_assert(eq(int, _static_type_at(env, PATH(7, "b")), FILTERX_STATIC_TYPE_INTEGER));
 
   filterx_type_env_free(env);
 }
@@ -278,12 +279,12 @@ Test(filterx_type_env, an_unrecorded_key_reads_as_unknown_whether_its_container_
   _set(env, ROOT(7), FILTERX_STATIC_TYPE_DICT, FALSE);
   _set(env, PATH(7, "x"), FILTERX_STATIC_TYPE_STRING, FALSE);
 
-  cr_assert_eq(_static_type_at(env, PATH(7, "x")), FILTERX_STATIC_TYPE_STRING);
-  cr_assert_eq(_static_type_at(env, PATH(7, "whatever")), FILTERX_STATIC_TYPE_UNKNOWN);
+  cr_assert(eq(int, _static_type_at(env, PATH(7, "x")), FILTERX_STATIC_TYPE_STRING));
+  cr_assert(eq(int, _static_type_at(env, PATH(7, "whatever")), FILTERX_STATIC_TYPE_UNKNOWN));
 
   _set(env, ROOT(7), FILTERX_STATIC_TYPE_DICT, TRUE);
   _set(env, PATH(7, "x"), FILTERX_STATIC_TYPE_STRING, FALSE);
-  cr_assert_eq(_static_type_at(env, PATH(7, "whatever")), FILTERX_STATIC_TYPE_UNKNOWN);
+  cr_assert(eq(int, _static_type_at(env, PATH(7, "whatever")), FILTERX_STATIC_TYPE_UNKNOWN));
 
   filterx_type_env_free(env);
 }
@@ -300,7 +301,7 @@ Test(filterx_type_env, a_truncated_path_reads_as_unknown)
   filterx_access_path_append_step(&dynamic, NULL);
 
   cr_assert(dynamic.truncated);
-  cr_assert_eq(_static_type_at(env, dynamic), FILTERX_STATIC_TYPE_UNKNOWN);
+  cr_assert(eq(int, _static_type_at(env, dynamic), FILTERX_STATIC_TYPE_UNKNOWN));
 
   filterx_type_env_free(env);
 }
@@ -320,8 +321,8 @@ Test(filterx_type_env, unset_of_a_named_key_keeps_the_parent_closed)
   gboolean closed = FALSE;
   cr_assert(filterx_type_env_get_fact_at_path(env, &root, NULL, &closed));
   cr_assert(closed, "removing a named key shrinks the key set, it does not make it unknown");
-  cr_assert_eq(_static_type_at(env, PATH(7, "port")), FILTERX_STATIC_TYPE_UNKNOWN);
-  cr_assert_eq(_static_type_at(env, PATH(7, "host")), FILTERX_STATIC_TYPE_STRING);
+  cr_assert(eq(int, _static_type_at(env, PATH(7, "port")), FILTERX_STATIC_TYPE_UNKNOWN));
+  cr_assert(eq(int, _static_type_at(env, PATH(7, "host")), FILTERX_STATIC_TYPE_STRING));
 
   filterx_type_env_free(env);
 }
@@ -340,20 +341,20 @@ Test(filterx_type_env, a_write_through_an_unnameable_key_empties_the_container_i
   filterx_access_path_append_step(&dynamic, NULL);
   filterx_type_env_set_shape_at_path(env, &dynamic, NULL);
 
-  cr_assert_eq(_static_type_at(env, ROOT(7)), FILTERX_STATIC_TYPE_DICT,
-               "the write reached into d, it did not replace it");
-  cr_assert_eq(_static_type_at(env, PATH(7, "net")), FILTERX_STATIC_TYPE_UNKNOWN);
-  cr_assert_eq(_static_type_at(env, PATH(7, "net", "host")), FILTERX_STATIC_TYPE_UNKNOWN);
-  cr_assert_eq(_static_type_at(env, PATH(7, "tls")), FILTERX_STATIC_TYPE_UNKNOWN);
+  cr_assert(eq(int, _static_type_at(env, ROOT(7)), FILTERX_STATIC_TYPE_DICT),
+            "the write reached into d, it did not replace it");
+  cr_assert(eq(int, _static_type_at(env, PATH(7, "net")), FILTERX_STATIC_TYPE_UNKNOWN));
+  cr_assert(eq(int, _static_type_at(env, PATH(7, "net", "host")), FILTERX_STATIC_TYPE_UNKNOWN));
+  cr_assert(eq(int, _static_type_at(env, PATH(7, "tls")), FILTERX_STATIC_TYPE_UNKNOWN));
 
   FilterXAccessPath root = ROOT(7);
   gboolean closed = TRUE;
   cr_assert(filterx_type_env_get_fact_at_path(env, &root, NULL, &closed));
-  cr_assert_not(closed, "the key the write landed on is not among the recorded ones");
+  cr_assert(not(closed), "the key the write landed on is not among the recorded ones");
 
   /* ... and a key written afterwards is then simply what that key is. */
   _set(env, PATH(7, "a"), FILTERX_STATIC_TYPE_INTEGER, FALSE);
-  cr_assert_eq(_static_type_at(env, PATH(7, "a")), FILTERX_STATIC_TYPE_INTEGER);
+  cr_assert(eq(int, _static_type_at(env, PATH(7, "a")), FILTERX_STATIC_TYPE_INTEGER));
 
   filterx_type_env_free(env);
 }
@@ -373,8 +374,8 @@ Test(filterx_type_env, meet_keeps_a_key_the_other_side_proves_absent)
 
   filterx_type_env_meet_into(dst, src);
 
-  cr_assert_eq(_static_type_at(dst, PATH(7, "a")), FILTERX_STATIC_TYPE_INTEGER);
-  cr_assert_eq(_static_type_at(dst, ROOT(7)), FILTERX_STATIC_TYPE_DICT);
+  cr_assert(eq(int, _static_type_at(dst, PATH(7, "a")), FILTERX_STATIC_TYPE_INTEGER));
+  cr_assert(eq(int, _static_type_at(dst, ROOT(7)), FILTERX_STATIC_TYPE_DICT));
 
   filterx_type_env_free(dst);
   filterx_type_env_free(src);
@@ -394,10 +395,10 @@ Test(filterx_type_env, meet_drops_a_key_the_other_side_cannot_vouch_for)
   filterx_type_env_meet_into(dst, src);
 
   FilterXAccessPath a = PATH(7, "a");
-  cr_assert_not(filterx_type_env_get_fact_at_path(dst, &a, NULL, NULL));
-  cr_assert_eq(_static_type_at(dst, PATH(7, "a")), FILTERX_STATIC_TYPE_UNKNOWN);
-  cr_assert_eq(_static_type_at(dst, PATH(7, "an_unrelated_key")), FILTERX_STATIC_TYPE_UNKNOWN,
-               "d.a's type must not have been published over any other key either");
+  cr_assert(not(filterx_type_env_get_fact_at_path(dst, &a, NULL, NULL)));
+  cr_assert(eq(int, _static_type_at(dst, PATH(7, "a")), FILTERX_STATIC_TYPE_UNKNOWN));
+  cr_assert(eq(int, _static_type_at(dst, PATH(7, "an_unrelated_key")), FILTERX_STATIC_TYPE_UNKNOWN),
+            "d.a's type must not have been published over any other key either");
 
   filterx_type_env_free(dst);
   filterx_type_env_free(src);
@@ -422,7 +423,7 @@ Test(filterx_type_env, meet_gives_up_closed_on_the_parent_of_a_key_it_drops)
   FilterXAccessPath root = ROOT(7);
   gboolean closed = TRUE;
   cr_assert(filterx_type_env_get_fact_at_path(dst, &root, NULL, &closed));
-  cr_assert_not(closed, "d would otherwise claim to have no keys at all");
+  cr_assert(not(closed), "d would otherwise claim to have no keys at all");
 
   filterx_type_env_free(dst);
   filterx_type_env_free(src);
@@ -443,7 +444,7 @@ Test(filterx_type_env, meet_keeps_a_disagreeing_key_present_at_an_unknown_static
   FilterXAccessPath a = PATH(7, "a");
   cr_assert(filterx_type_env_get_fact_at_path(dst, &a, NULL, NULL),
             "both sides claim the key exists, so it stays recorded even at an unknown static type");
-  cr_assert_eq(_static_type_at(dst, PATH(7, "a")), FILTERX_STATIC_TYPE_UNKNOWN);
+  cr_assert(eq(int, _static_type_at(dst, PATH(7, "a")), FILTERX_STATIC_TYPE_UNKNOWN));
 
   filterx_type_env_free(dst);
   filterx_type_env_free(src);
@@ -463,7 +464,7 @@ Test(filterx_type_env, meet_gives_up_closed_when_the_other_side_knows_of_an_extr
   FilterXAccessPath root = ROOT(7);
   gboolean closed = TRUE;
   cr_assert(filterx_type_env_get_fact_at_path(dst, &root, NULL, &closed));
-  cr_assert_not(closed, "dst's key set was only complete on dst's own path");
+  cr_assert(not(closed), "dst's key set was only complete on dst's own path");
 
   filterx_type_env_free(dst);
   filterx_type_env_free(src);
@@ -478,7 +479,7 @@ Test(filterx_type_env, meet_drops_a_variable_the_other_side_says_nothing_about)
 
   filterx_type_env_meet_into(dst, src);
 
-  cr_assert_eq(_static_type_at(dst, ROOT(7)), FILTERX_STATIC_TYPE_UNKNOWN);
+  cr_assert(eq(int, _static_type_at(dst, ROOT(7)), FILTERX_STATIC_TYPE_UNKNOWN));
 
   filterx_type_env_free(dst);
   filterx_type_env_free(src);
@@ -495,9 +496,9 @@ Test(filterx_access_path, a_path_past_the_depth_cap_is_truncated_not_rejected)
   for (guint i = 0; i < FILTERX_ACCESS_PATH_MAX_DEPTH; i++)
     cr_assert(filterx_access_path_append_step(&path, filterx_access_path_intern_key("k")));
 
-  cr_assert_not(filterx_access_path_append_step(&path, filterx_access_path_intern_key("one_too_many")));
+  cr_assert(not(filterx_access_path_append_step(&path, filterx_access_path_intern_key("one_too_many"))));
   cr_assert(path.truncated);
-  cr_assert_eq(path.n_steps, FILTERX_ACCESS_PATH_MAX_DEPTH);
+  cr_assert(eq(uint, path.n_steps, FILTERX_ACCESS_PATH_MAX_DEPTH));
 }
 
 Test(filterx_type_env, a_truncated_write_opens_the_deepest_addressable_ancestor)
@@ -519,12 +520,12 @@ Test(filterx_type_env, a_truncated_write_opens_the_deepest_addressable_ancestor)
 
   /* The root is untouched: only the ancestor that could not address the write gives up its
    * complete key set. */
-  cr_assert_eq(_static_type_at(env, ROOT(7)), FILTERX_STATIC_TYPE_DICT);
-  cr_assert_eq(_static_type_at(env, deep), FILTERX_STATIC_TYPE_DICT);
+  cr_assert(eq(int, _static_type_at(env, ROOT(7)), FILTERX_STATIC_TYPE_DICT));
+  cr_assert(eq(int, _static_type_at(env, deep), FILTERX_STATIC_TYPE_DICT));
 
   gboolean closed = TRUE;
   cr_assert(filterx_type_env_get_fact_at_path(env, &deep, NULL, &closed));
-  cr_assert_not(closed);
+  cr_assert(not(closed));
 
   filterx_type_env_free(env);
 }
@@ -548,11 +549,11 @@ Test(filterx_type_env, a_filtered_clone_selects_on_the_root_of_the_path)
 
   FilterXTypeEnv *clone = filterx_type_env_clone_filtered(env, _is_root_seven, NULL);
 
-  cr_assert_eq(_static_type_at(clone, PATH(7, "a")), FILTERX_STATIC_TYPE_STRING);
-  cr_assert_eq(_static_type_at(clone, ROOT(9)), FILTERX_STATIC_TYPE_UNKNOWN);
+  cr_assert(eq(int, _static_type_at(clone, PATH(7, "a")), FILTERX_STATIC_TYPE_STRING));
+  cr_assert(eq(int, _static_type_at(clone, ROOT(9)), FILTERX_STATIC_TYPE_UNKNOWN));
 
   FilterXAccessPath nine_a = PATH(9, "a");
-  cr_assert_not(filterx_type_env_get_fact_at_path(clone, &nine_a, NULL, NULL));
+  cr_assert(not(filterx_type_env_get_fact_at_path(clone, &nine_a, NULL, NULL)));
 
   filterx_type_env_free(clone);
   filterx_type_env_free(env);
@@ -586,8 +587,8 @@ Test(filterx_access_path, a_getattr_chain_peels_to_its_root_variable)
                                   filterx_string_new("c", -1)),
                                 &path));
 
-  cr_assert_eq(_compare_sign(&path, &expected), 0);
-  cr_assert_not(path.truncated);
+  cr_assert(eq(int, _compare_sign(&path, &expected), 0));
+  cr_assert(not(path.truncated));
 }
 
 Test(filterx_access_path, a_getattr_over_a_macro_variable_is_not_addressable)
@@ -596,9 +597,9 @@ Test(filterx_access_path, a_getattr_over_a_macro_variable_is_not_addressable)
    * and -- since every assignment forks its RHS -- nothing that can alias it either. */
   FilterXAccessPath path;
 
-  cr_assert_not(_peel_path_and_free(filterx_getattr_new(filterx_msg_variable_expr_new("FACILITY"),
+  cr_assert(not(_peel_path_and_free(filterx_getattr_new(filterx_msg_variable_expr_new("FACILITY"),
                                                         filterx_string_new("b", -1)),
-                                    &path));
+                                    &path)));
 }
 
 Test(filterx_access_path, a_getattr_over_a_function_call_is_not_addressable)
@@ -610,8 +611,8 @@ Test(filterx_access_path, a_getattr_over_a_function_call_is_not_addressable)
   FilterXExpr *call = filterx_function_unset_empties_new(filterx_function_args_new(args, &error), &error);
   FilterXAccessPath path;
 
-  cr_assert_null(error);
-  cr_assert_not(_peel_path_and_free(filterx_getattr_new(call, filterx_string_new("b", -1)), &path));
+  cr_assert(zero(ptr, error));
+  cr_assert(not(_peel_path_and_free(filterx_getattr_new(call, filterx_string_new("b", -1)), &path)));
 }
 
 Test(filterx_access_path, a_literal_string_subscript_names_what_a_getattr_names)
@@ -625,8 +626,8 @@ Test(filterx_access_path, a_literal_string_subscript_names_what_a_getattr_names)
                                                           filterx_literal_new(filterx_string_new("b", -1))),
                                 &by_subscript));
 
-  cr_assert_eq(_compare_sign(&by_attr, &by_subscript), 0);
-  cr_assert_eq(by_attr.steps[0], by_subscript.steps[0]);   /* interned, so one pointer */
+  cr_assert(eq(int, _compare_sign(&by_attr, &by_subscript), 0));
+  cr_assert(eq(ptr, by_attr.steps[0], by_subscript.steps[0]));   /* interned, so one pointer */
 }
 
 Test(filterx_access_path, a_list_index_and_a_computed_key_both_truncate_the_path)
@@ -643,11 +644,11 @@ Test(filterx_access_path, a_list_index_and_a_computed_key_both_truncate_the_path
                                 &by_computed));
 
   cr_assert(by_index.truncated);
-  cr_assert_eq(by_index.n_steps, 0);
-  cr_assert_eq(by_index.root, MSG_ROOT("l"));
+  cr_assert(eq(uint, by_index.n_steps, 0));
+  cr_assert(eq(u32, by_index.root, MSG_ROOT("l")));
   cr_assert(by_computed.truncated);
-  cr_assert_eq(by_computed.n_steps, 0);
-  cr_assert_eq(by_computed.root, MSG_ROOT("l"));
+  cr_assert(eq(uint, by_computed.n_steps, 0));
+  cr_assert(eq(u32, by_computed.root, MSG_ROOT("l")));
 }
 
 Test(filterx_access_path, a_getattr_over_a_dynamic_subscript_stays_truncated_at_the_container)
@@ -662,8 +663,8 @@ Test(filterx_access_path, a_getattr_over_a_dynamic_subscript_stays_truncated_at_
                                 &path));
 
   cr_assert(path.truncated);
-  cr_assert_eq(path.n_steps, 0);
-  cr_assert_eq(path.root, MSG_ROOT("d"));
+  cr_assert(eq(uint, path.n_steps, 0));
+  cr_assert(eq(u32, path.root, MSG_ROOT("d")));
 }
 
 Test(filterx_access_path, a_chain_past_the_depth_cap_keeps_its_root_nearest_steps)
@@ -682,9 +683,9 @@ Test(filterx_access_path, a_chain_past_the_depth_cap_keeps_its_root_nearest_step
 
   /* Assembled root-first, so it is the deep end that falls off. */
   cr_assert(path.truncated);
-  cr_assert_eq(path.n_steps, FILTERX_ACCESS_PATH_MAX_DEPTH);
-  cr_assert_eq(path.steps[0], filterx_access_path_intern_key("a"));
-  cr_assert_eq(path.steps[FILTERX_ACCESS_PATH_MAX_DEPTH - 1], filterx_access_path_intern_key("h"));
+  cr_assert(eq(uint, path.n_steps, FILTERX_ACCESS_PATH_MAX_DEPTH));
+  cr_assert(eq(ptr, path.steps[0], filterx_access_path_intern_key("a")));
+  cr_assert(eq(ptr, path.steps[FILTERX_ACCESS_PATH_MAX_DEPTH - 1], filterx_access_path_intern_key("h")));
 }
 
 Test(filterx_access_path, a_setattr_names_the_location_it_writes)
@@ -700,7 +701,7 @@ Test(filterx_access_path, a_setattr_names_the_location_it_writes)
                                   filterx_literal_new(filterx_integer_new(1))),
                                 &path));
 
-  cr_assert_eq(_compare_sign(&path, &expected), 0);
+  cr_assert(eq(int, _compare_sign(&path, &expected), 0));
 }
 
 static void

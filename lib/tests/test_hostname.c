@@ -20,6 +20,7 @@
  *
  */
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/parameterized.h"
 
 #include "hostname.h"
@@ -115,7 +116,7 @@ StaticParameterizedTest(HostNameList *host_name_list, test_hostname_fqdn_convers
 
   g_strlcpy(buf, host_name_list->host_name, sizeof(buf));
   convert_hostname_to_fqdn(buf, sizeof(buf));
-  cr_assert_str_eq(buf, host_name_list->expected, "hostname values mismatch");
+  cr_assert(eq(str, buf, host_name_list->expected), "hostname values mismatch");
 }
 
 static HostNameList test_hostname_short_conversion_params[] =
@@ -138,7 +139,7 @@ StaticParameterizedTest(HostNameList *host_name_list, test_hostname_short_conver
 
   g_strlcpy(buf, host_name_list->host_name, sizeof(buf));
   convert_hostname_to_short_hostname(buf, sizeof(buf));
-  cr_assert_str_eq(buf, host_name_list->expected, "hostname values mismatch");
+  cr_assert(eq(str, buf, host_name_list->expected), "hostname values mismatch");
 }
 
 static HostNameList test_hostname_fqdn_params[] =
@@ -155,7 +156,7 @@ StaticParameterizedTest(HostNameList *host_name_list, test_hostname_fqdn_params,
   hostname_reinit(host_name_list->domain_override);
 
   host = get_local_hostname_fqdn();
-  cr_assert_str_eq(host, host_name_list->expected, "hostname values mismatch");
+  cr_assert(eq(str, host, host_name_list->expected), "hostname values mismatch");
 }
 
 static HostNameList test_hostname_short_params[] =
@@ -172,29 +173,29 @@ StaticParameterizedTest(HostNameList *host_name_list, test_hostname_short_params
   hostname_reinit(host_name_list->domain_override);
 
   host = get_local_hostname_short();
-  cr_assert_str_eq(host, host_name_list->expected, "hostname values mismatch");
+  cr_assert(eq(str, host, host_name_list->expected), "hostname values mismatch");
 }
 
 Test(test_hostname, test_extract_fqdn_from_hostent_uses_primary_name_if_it_is_an_fqdn)
 {
   gchar *aliases[] = { "bzorp", "bzorp.lan", NULL };
 
-  cr_assert_str_eq(_invoke_extract_fqdn_from_hostent("bzorp.balabit", aliases), "bzorp.balabit",
-                   "_extract_fqdn didn't return the requested hostname");
+  cr_assert(eq(str, _invoke_extract_fqdn_from_hostent("bzorp.balabit", aliases), "bzorp.balabit"),
+            "_extract_fqdn didn't return the requested hostname");
 }
 
 Test(test_hostname, test_extract_fqdn_from_hostent_finds_the_first_fqdn_in_aliases_if_primary_is_short)
 {
   gchar *aliases[] = { "bzorp", "bzorp.lan", NULL };
 
-  cr_assert_str_eq(_invoke_extract_fqdn_from_hostent("bzorp", aliases), "bzorp.lan",
-                   "_extract_fqdn didn't return the requested hostname");
+  cr_assert(eq(str, _invoke_extract_fqdn_from_hostent("bzorp", aliases), "bzorp.lan"),
+            "_extract_fqdn didn't return the requested hostname");
 }
 
 Test(test_hostname, test_extract_fqdn_from_hostent_returns_NULL_when_no_fqdn_is_found)
 {
   gchar *aliases[] = { "bzorp", "foobar", NULL };
 
-  cr_assert_null(_invoke_extract_fqdn_from_hostent("bzorp", aliases),
-                 "_extract_fqdn returned non-NULL when we expected failure");
+  cr_assert(zero(ptr, _invoke_extract_fqdn_from_hostent("bzorp", aliases)),
+            "_extract_fqdn returned non-NULL when we expected failure");
 }

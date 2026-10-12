@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/grab-logging.h"
 #include "libtest/stopwatch.h"
 #include "libtest/cr_template.h"
@@ -101,7 +102,7 @@ _spin_for_counter_value(StatsCounterItem *counter, gssize expected_value)
       _sleep_msec(1);
       c++;
     }
-  cr_assert(expected_value == value,
+  cr_assert(eq(i64, expected_value, value),
             "counter did not reach the expected value after %d seconds, "
             "expected_value=%" G_GSSIZE_FORMAT ", value=%" G_GSSIZE_FORMAT,
             MAX_SPIN_ITERATIONS / 1000, expected_value, value);
@@ -169,7 +170,7 @@ _insert_single_message_success(LogThreadedDestDriver *s, LogMessage *msg)
   TestThreadedDestDriver *self = (TestThreadedDestDriver *) s;
 
   self->insert_counter++;
-  cr_expect_neq(self->super.worker.instance.seq_num, 0);
+  cr_expect(ne(i32, self->super.worker.instance.seq_num, 0));
   return LTR_SUCCESS;
 }
 
@@ -178,14 +179,14 @@ Test(logthrdestdrv, driver_can_be_instantiated_and_one_message_is_properly_proce
   dd->super.worker.insert = _insert_single_message_success;
 
   _generate_message_and_wait_for_processing(dd, dd->super.metrics.written_messages);
-  cr_assert(dd->insert_counter == 1,
+  cr_assert(eq(int, dd->insert_counter, 1),
             "insert()-ed message count expected to match the amount generated, found %d", dd->insert_counter);
 
-  cr_assert(stats_counter_get(dd->super.metrics.processed_messages) == 1);
-  cr_assert(stats_counter_get(dd->super.metrics.written_messages) == 1);
-  cr_assert(stats_counter_get(dd->super.metrics.dropped_messages) == 0);
-  cr_assert(stats_counter_get(dd->super.worker.instance.queue->metrics.shared.memory_usage) == 0);
-  cr_assert(dd->super.shared_seq_num == 2,
+  cr_assert(eq(sz, stats_counter_get(dd->super.metrics.processed_messages), 1));
+  cr_assert(eq(sz, stats_counter_get(dd->super.metrics.written_messages), 1));
+  cr_assert(eq(sz, stats_counter_get(dd->super.metrics.dropped_messages), 0));
+  cr_assert(eq(sz, stats_counter_get(dd->super.worker.instance.queue->metrics.shared.memory_usage), 0));
+  cr_assert(eq(i32, dd->super.shared_seq_num, 2),
             "seq_num expected to be 1 larger than the amount of messages generated, found %d", dd->super.shared_seq_num);
 }
 
@@ -195,7 +196,7 @@ _insert_single_message_with_zero_seq_num(LogThreadedDestDriver *s, LogMessage *m
   TestThreadedDestDriver *self = (TestThreadedDestDriver *) s;
 
   self->insert_counter++;
-  cr_expect_eq(self->super.worker.instance.seq_num, 0);
+  cr_expect(eq(i32, self->super.worker.instance.seq_num, 0));
   return LTR_SUCCESS;
 }
 
@@ -205,14 +206,14 @@ Test(logthrdestdrv, non_local_messages_dont_increment_seq_num)
 
   _generate_messages(dd, 1, FALSE);
   _spin_for_counter_value(dd->super.metrics.written_messages, 1);
-  cr_assert(dd->insert_counter == 1,
+  cr_assert(eq(int, dd->insert_counter, 1),
             "insert()-ed message count expected to match the amount generated, found %d", dd->insert_counter);
 
-  cr_assert(stats_counter_get(dd->super.metrics.processed_messages) == 1);
-  cr_assert(stats_counter_get(dd->super.metrics.written_messages) == 1);
-  cr_assert(stats_counter_get(dd->super.metrics.dropped_messages) == 0);
-  cr_assert(stats_counter_get(dd->super.worker.instance.queue->metrics.shared.memory_usage) == 0);
-  cr_assert(dd->super.shared_seq_num == 1,
+  cr_assert(eq(sz, stats_counter_get(dd->super.metrics.processed_messages), 1));
+  cr_assert(eq(sz, stats_counter_get(dd->super.metrics.written_messages), 1));
+  cr_assert(eq(sz, stats_counter_get(dd->super.metrics.dropped_messages), 0));
+  cr_assert(eq(sz, stats_counter_get(dd->super.worker.instance.queue->metrics.shared.memory_usage), 0));
+  cr_assert(eq(i32, dd->super.shared_seq_num, 1),
             "seq_num expected to be unchanged while non-local messages get derilered, found %d, expected: %d",
             dd->super.shared_seq_num, 1);
 }
@@ -232,13 +233,13 @@ Test(logthrdestdrv, message_drops_are_accounted_in_the_drop_counter_and_are_repo
 
   start_grabbing_messages();
   _generate_message_and_wait_for_processing(dd, dd->super.metrics.dropped_messages);
-  cr_assert(dd->insert_counter == 1,
+  cr_assert(eq(int, dd->insert_counter, 1),
             "insert()-ed message count expected to match the amount generated, found %d", dd->insert_counter);
 
-  cr_assert(stats_counter_get(dd->super.metrics.processed_messages) == 1);
-  cr_assert(stats_counter_get(dd->super.metrics.written_messages) == 0);
-  cr_assert(stats_counter_get(dd->super.metrics.dropped_messages) == 1);
-  cr_assert(dd->super.shared_seq_num == 2,
+  cr_assert(eq(sz, stats_counter_get(dd->super.metrics.processed_messages), 1));
+  cr_assert(eq(sz, stats_counter_get(dd->super.metrics.written_messages), 0));
+  cr_assert(eq(sz, stats_counter_get(dd->super.metrics.dropped_messages), 1));
+  cr_assert(eq(i32, dd->super.shared_seq_num, 2),
             "seq_num expected to be 1 larger than the amount of messages generated, found %d", dd->super.shared_seq_num);
   assert_grabbed_log_contains("dropped while sending");
 }
@@ -260,13 +261,13 @@ Test(logthrdestdrv, connection_failure_is_considered_an_error_and_retried_indefi
 
   start_grabbing_messages();
   _generate_message_and_wait_for_processing(dd, dd->super.metrics.written_messages);
-  cr_assert(dd->insert_counter == 11,
+  cr_assert(eq(int, dd->insert_counter, 11),
             "insert() invocations expected to match 11 (10 failed and 1 successul) attempts, found %d", dd->insert_counter);
 
-  cr_assert(stats_counter_get(dd->super.metrics.processed_messages) == 1);
-  cr_assert(stats_counter_get(dd->super.metrics.written_messages) == 1);
-  cr_assert(stats_counter_get(dd->super.metrics.dropped_messages) == 0);
-  cr_assert(dd->super.shared_seq_num == 12,
+  cr_assert(eq(sz, stats_counter_get(dd->super.metrics.processed_messages), 1));
+  cr_assert(eq(sz, stats_counter_get(dd->super.metrics.written_messages), 1));
+  cr_assert(eq(sz, stats_counter_get(dd->super.metrics.dropped_messages), 0));
+  cr_assert(eq(i32, dd->super.shared_seq_num, 12),
             "seq_num expected to be 1 larger than the number of insert attempts, found %d", dd->super.shared_seq_num);
   assert_grabbed_log_contains("Server disconnected");
 }
@@ -288,13 +289,13 @@ Test(logthrdestdrv, error_result_retries_sending_retry_max_times_and_then_drops)
 
   start_grabbing_messages();
   _generate_message_and_wait_for_processing(dd, dd->super.metrics.dropped_messages);
-  cr_assert(dd->insert_counter == 5,
+  cr_assert(eq(int, dd->insert_counter, 5),
             "insert() invocations expected to match the number of retry attempts, found %d", dd->insert_counter);
 
-  cr_assert(stats_counter_get(dd->super.metrics.processed_messages) == 1);
-  cr_assert(stats_counter_get(dd->super.metrics.written_messages) == 0);
-  cr_assert(stats_counter_get(dd->super.metrics.dropped_messages) == 1);
-  cr_assert(dd->super.shared_seq_num == 6,
+  cr_assert(eq(sz, stats_counter_get(dd->super.metrics.processed_messages), 1));
+  cr_assert(eq(sz, stats_counter_get(dd->super.metrics.written_messages), 0));
+  cr_assert(eq(sz, stats_counter_get(dd->super.metrics.dropped_messages), 1));
+  cr_assert(eq(i32, dd->super.shared_seq_num, 6),
             "seq_num expected to be 1 larger than the number of insert attempts, found %d", dd->super.shared_seq_num);
   assert_grabbed_log_contains("Error occurred while");
   assert_grabbed_log_contains("Multiple failures while sending");
@@ -318,14 +319,14 @@ Test(logthrdestdrv, error_result_retries_sending_retry_max_times_and_then_accept
 
   start_grabbing_messages();
   _generate_message_and_wait_for_processing(dd, dd->super.metrics.written_messages);
-  cr_assert(dd->insert_counter == 5,
+  cr_assert(eq(int, dd->insert_counter, 5),
             "insert() invocations expected to match the number of failed (4) plus the number of successful (1) attempts, found %d",
             dd->insert_counter);
 
-  cr_assert(stats_counter_get(dd->super.metrics.processed_messages) == 1);
-  cr_assert(stats_counter_get(dd->super.metrics.written_messages) == 1);
-  cr_assert(stats_counter_get(dd->super.metrics.dropped_messages) == 0);
-  cr_assert(dd->super.shared_seq_num == 6,
+  cr_assert(eq(sz, stats_counter_get(dd->super.metrics.processed_messages), 1));
+  cr_assert(eq(sz, stats_counter_get(dd->super.metrics.written_messages), 1));
+  cr_assert(eq(sz, stats_counter_get(dd->super.metrics.dropped_messages), 0));
+  cr_assert(eq(i32, dd->super.shared_seq_num, 6),
             "seq_num expected to be 1 larger than the number of insert attempts, found %d", dd->super.shared_seq_num);
   assert_grabbed_log_contains("Error occurred while");
 }
@@ -360,16 +361,16 @@ Test(logthrdestdrv, batched_set_of_messages_are_successfully_delivered)
   dd->super.batch_lines = 5;
 
   _generate_messages_and_wait_for_processing(dd, 10, dd->super.metrics.written_messages);
-  cr_assert(dd->insert_counter == 10,
+  cr_assert(eq(int, dd->insert_counter, 10),
             "insert() invocations expected to match the number of messages generated, found %d", dd->insert_counter);
-  cr_assert(dd->flush_size == 10,
+  cr_assert(eq(int, dd->flush_size, 10),
             "flush_size expected to match the number of messages generated, found %d", dd->flush_size);
 
-  cr_assert(stats_counter_get(dd->super.metrics.processed_messages) == 10);
-  cr_assert(stats_counter_get(dd->super.metrics.written_messages) == 10);
-  cr_assert(stats_counter_get(dd->super.metrics.dropped_messages) == 0);
-  cr_assert(stats_counter_get(dd->super.worker.instance.queue->metrics.shared.memory_usage) == 0);
-  cr_assert(dd->super.shared_seq_num == 11,
+  cr_assert(eq(sz, stats_counter_get(dd->super.metrics.processed_messages), 10));
+  cr_assert(eq(sz, stats_counter_get(dd->super.metrics.written_messages), 10));
+  cr_assert(eq(sz, stats_counter_get(dd->super.metrics.dropped_messages), 0));
+  cr_assert(eq(sz, stats_counter_get(dd->super.worker.instance.queue->metrics.shared.memory_usage), 0));
+  cr_assert(eq(i32, dd->super.shared_seq_num, 11),
             "seq_num expected to be 1 larger than the number of insert attempts, found %d", dd->super.shared_seq_num);
 }
 
@@ -404,14 +405,14 @@ Test(logthrdestdrv, batched_set_of_messages_are_dropped_as_a_whole)
 
   start_grabbing_messages();
   _generate_messages_and_wait_for_processing(dd, 10, dd->super.metrics.dropped_messages);
-  cr_assert(dd->insert_counter == 10);
-  cr_assert(dd->flush_size == 10);
+  cr_assert(eq(int, dd->insert_counter, 10));
+  cr_assert(eq(int, dd->flush_size, 10));
 
-  cr_assert(stats_counter_get(dd->super.metrics.processed_messages) == 10);
-  cr_assert(stats_counter_get(dd->super.metrics.written_messages) == 0);
-  cr_assert(stats_counter_get(dd->super.metrics.dropped_messages) == 10);
-  cr_assert(stats_counter_get(dd->super.worker.instance.queue->metrics.shared.memory_usage) == 0);
-  cr_assert(dd->super.shared_seq_num == 11, "%d", dd->super.shared_seq_num);
+  cr_assert(eq(sz, stats_counter_get(dd->super.metrics.processed_messages), 10));
+  cr_assert(eq(sz, stats_counter_get(dd->super.metrics.written_messages), 0));
+  cr_assert(eq(sz, stats_counter_get(dd->super.metrics.dropped_messages), 10));
+  cr_assert(eq(sz, stats_counter_get(dd->super.worker.instance.queue->metrics.shared.memory_usage), 0));
+  cr_assert(eq(i32, dd->super.shared_seq_num, 11), "%d", dd->super.shared_seq_num);
   assert_grabbed_log_contains("dropped while sending message");
 }
 
@@ -420,7 +421,7 @@ _expect_batch_size_remains_the_same_across_retries(TestThreadedDestDriver *self)
 {
   if (self->super.worker.instance.retries_on_error_counter > 0)
     {
-      cr_expect(self->super.worker.instance.batch_size == self->prev_flush_size,
+      cr_expect(eq(int, self->super.worker.instance.batch_size, self->prev_flush_size),
                 "batch_size has to remain the same across retries, batch_size=%d, prev_flush_size=%d",
                 self->super.worker.instance.batch_size, self->prev_flush_size);
     }
@@ -467,16 +468,16 @@ Test(logthrdestdrv,
   start_grabbing_messages();
   _generate_messages_and_wait_for_processing(dd, 10, dd->super.metrics.dropped_messages);
 
-  cr_assert(dd->insert_counter == dd->super.retries_on_error_max * 10,
+  cr_assert(eq(int, dd->insert_counter, dd->super.retries_on_error_max * 10),
             "not all messages were attempted %d times, insert_counter=%d", dd->super.retries_on_error_max, dd->insert_counter);
-  cr_assert(dd->flush_size == dd->super.retries_on_error_max * 10,
+  cr_assert(eq(int, dd->flush_size, dd->super.retries_on_error_max * 10),
             "not all messages were flushed %d times, flush_size=%d", dd->super.retries_on_error_max, dd->flush_size);
 
-  cr_assert(stats_counter_get(dd->super.metrics.processed_messages) == 10);
-  cr_assert(stats_counter_get(dd->super.metrics.written_messages) == 0);
-  cr_assert(stats_counter_get(dd->super.metrics.dropped_messages) == 10);
-  cr_assert(stats_counter_get(dd->super.worker.instance.queue->metrics.shared.memory_usage) == 0);
-  cr_assert(dd->super.shared_seq_num == dd->super.retries_on_error_max * 10 + 1,
+  cr_assert(eq(sz, stats_counter_get(dd->super.metrics.processed_messages), 10));
+  cr_assert(eq(sz, stats_counter_get(dd->super.metrics.written_messages), 0));
+  cr_assert(eq(sz, stats_counter_get(dd->super.metrics.dropped_messages), 10));
+  cr_assert(eq(sz, stats_counter_get(dd->super.worker.instance.queue->metrics.shared.memory_usage), 0));
+  cr_assert(eq(i32, dd->super.shared_seq_num, dd->super.retries_on_error_max * 10 + 1),
             "seq_num needs to be one larger than the number of insert attempts, found %d", dd->super.shared_seq_num);
   assert_grabbed_log_contains("Error occurred while");
   assert_grabbed_log_contains("Multiple failures while sending");
@@ -540,16 +541,16 @@ Test(logthrdestdrv,
   start_grabbing_messages();
   _generate_messages_and_wait_for_processing(dd, 10, dd->super.metrics.written_messages);
 
-  cr_assert(dd->insert_counter == total_attempts * 10,
+  cr_assert(eq(int, dd->insert_counter, total_attempts * 10),
             "not all messages were attempted %d times, insert_counter=%d", total_attempts, dd->insert_counter);
-  cr_assert(dd->flush_size == total_attempts * 10,
+  cr_assert(eq(int, dd->flush_size, total_attempts * 10),
             "not all messages were flushed %d times, flush_size=%d", total_attempts, dd->flush_size);
 
-  cr_assert(stats_counter_get(dd->super.metrics.processed_messages) == 10);
-  cr_assert(stats_counter_get(dd->super.metrics.written_messages) == 10);
-  cr_assert(stats_counter_get(dd->super.metrics.dropped_messages) == 0);
-  cr_assert(stats_counter_get(dd->super.worker.instance.queue->metrics.shared.memory_usage) == 0);
-  cr_assert(dd->super.shared_seq_num == total_attempts * 10 + 1, "%d", dd->super.shared_seq_num);
+  cr_assert(eq(sz, stats_counter_get(dd->super.metrics.processed_messages), 10));
+  cr_assert(eq(sz, stats_counter_get(dd->super.metrics.written_messages), 10));
+  cr_assert(eq(sz, stats_counter_get(dd->super.metrics.dropped_messages), 0));
+  cr_assert(eq(sz, stats_counter_get(dd->super.worker.instance.queue->metrics.shared.memory_usage), 0));
+  cr_assert(eq(i32, dd->super.shared_seq_num, total_attempts * 10 + 1), "%d", dd->super.shared_seq_num);
   assert_grabbed_log_contains("Error occurred while");
 }
 
@@ -614,16 +615,16 @@ Test(logthrdestdrv,
   start_grabbing_messages();
   _generate_messages_and_wait_for_processing(dd, 10, dd->super.metrics.written_messages);
 
-  cr_assert(dd->insert_counter == total_attempts * 10,
+  cr_assert(eq(int, dd->insert_counter, total_attempts * 10),
             "not all messages were attempted %d times, insert_counter=%d", total_attempts, dd->insert_counter);
-  cr_assert(dd->flush_size == total_attempts * 10,
+  cr_assert(eq(int, dd->flush_size, total_attempts * 10),
             "not all messages were flushed %d times, flush_size=%d", total_attempts, dd->flush_size);
 
-  cr_assert(stats_counter_get(dd->super.metrics.processed_messages) == 10);
-  cr_assert(stats_counter_get(dd->super.metrics.written_messages) == 10);
-  cr_assert(stats_counter_get(dd->super.metrics.dropped_messages) == 0);
-  cr_assert(stats_counter_get(dd->super.worker.instance.queue->metrics.shared.memory_usage) == 0);
-  cr_assert(dd->super.shared_seq_num == total_attempts * 10 + 1, "%d", dd->super.shared_seq_num);
+  cr_assert(eq(sz, stats_counter_get(dd->super.metrics.processed_messages), 10));
+  cr_assert(eq(sz, stats_counter_get(dd->super.metrics.written_messages), 10));
+  cr_assert(eq(sz, stats_counter_get(dd->super.metrics.dropped_messages), 0));
+  cr_assert(eq(sz, stats_counter_get(dd->super.worker.instance.queue->metrics.shared.memory_usage), 0));
+  cr_assert(eq(i32, dd->super.shared_seq_num, total_attempts * 10 + 1), "%d", dd->super.shared_seq_num);
   assert_grabbed_log_contains("Server disconnected");
 }
 
@@ -642,16 +643,16 @@ Test(logthrdestdrv, throttle_is_applied_to_delivery_and_causes_flush_to_be_calle
   /* NOTE: initially we send a bucket worth of messages, and then pace out
    * the remaining 6 buckets 1sec apart */
 
-  cr_assert(time_msec > 5000000);
-  cr_assert(dd->insert_counter == 20);
-  cr_assert(dd->flush_size == 20);
-  cr_assert(dd->flush_counter > 3);
+  cr_assert(gt(u64, time_msec, 5000000));
+  cr_assert(eq(int, dd->insert_counter, 20));
+  cr_assert(eq(int, dd->flush_size, 20));
+  cr_assert(gt(int, dd->flush_counter, 3));
 
-  cr_assert(stats_counter_get(dd->super.metrics.processed_messages) == 20);
-  cr_assert(stats_counter_get(dd->super.metrics.written_messages) == 20);
-  cr_assert(stats_counter_get(dd->super.metrics.dropped_messages) == 0);
-  cr_assert(stats_counter_get(dd->super.worker.instance.queue->metrics.shared.memory_usage) == 0);
-  cr_assert(dd->super.shared_seq_num == 21, "%d", dd->super.shared_seq_num);
+  cr_assert(eq(sz, stats_counter_get(dd->super.metrics.processed_messages), 20));
+  cr_assert(eq(sz, stats_counter_get(dd->super.metrics.written_messages), 20));
+  cr_assert(eq(sz, stats_counter_get(dd->super.metrics.dropped_messages), 0));
+  cr_assert(eq(sz, stats_counter_get(dd->super.worker.instance.queue->metrics.shared.memory_usage), 0));
+  cr_assert(eq(i32, dd->super.shared_seq_num, 21), "%d", dd->super.shared_seq_num);
 }
 
 Test(logthrdestdrv, batch_timeout_delays_flush_to_the_specified_interval)
@@ -675,20 +676,20 @@ Test(logthrdestdrv, batch_timeout_delays_flush_to_the_specified_interval)
    * if we need, we can always increase flush-timeout() if for some reason 1
    * seconds wouldn't be enough time to do this validation.
    */
-  cr_assert(initial_feed_time < 1000000,
+  cr_assert(lt(u64, initial_feed_time, 1000000),
             "The initial feeding took more than batch_timeout(), e.g. 1 seconds. "
             "We can't validate that no flush happened in this period, check the "
             "comment above this assert for more information. initial_feed_time=%"
             G_GUINT64_FORMAT, initial_feed_time);
 
-  cr_assert(flush_counter == 0,
+  cr_assert(eq(int, flush_counter, 0),
             "Although the flush time has not yet elapsed, "
             "flush_counter is not zero, flush_counter=%d, initial_feed_time=%"
             G_GUINT64_FORMAT, flush_counter, initial_feed_time);
   _spin_for_counter_value(dd->super.metrics.written_messages, 2);
 
-  cr_assert(dd->flush_size == 2);
-  cr_assert(dd->flush_counter == 1);
+  cr_assert(eq(int, dd->flush_size, 2));
+  cr_assert(eq(int, dd->flush_counter, 1));
 }
 
 Test(logthrdestdrv, batch_timeout_limits_flush_frequency)
@@ -712,23 +713,23 @@ Test(logthrdestdrv, batch_timeout_limits_flush_frequency)
       /* NOTE: the same rationale applies to this assert than in
        * batch_timeout_delays_flush_to_the_specified_interval() */
 
-      cr_assert(initial_feed_time < 1000000,
+      cr_assert(lt(u64, initial_feed_time, 1000000),
                 "The initial feeding took more than batch_timeout(), e.g. 1 seconds. "
                 "We can't validate that no flush happened in this period, check the "
                 "comment above this assert for more information. initial_feed_time=%"
                 G_GUINT64_FORMAT, initial_feed_time);
-      cr_assert(flush_counter == i,
+      cr_assert(eq(int, flush_counter, i),
                 "Although the flush time has not yet elapsed, flush_counter has already changed"
                 "flush_counter=%d, expected %d, initial_feed_time=%" G_GUINT64_FORMAT,
                 dd->flush_counter, i, initial_feed_time);
 
       /* force batch_timeout() to elapse, give some time to the thread to flush */
       _sleep_msec(1200);
-      cr_assert(dd->flush_counter == i + 1,
+      cr_assert(eq(int, dd->flush_counter, i + 1),
                 "The flush time has now been forcibly spent, but the flush has not happened as expected."
                 "flush_counter=%d, expected %d", dd->flush_counter, i + 1);
     }
-  cr_assert(dd->flush_size == 10);
+  cr_assert(eq(int, dd->flush_size, 10));
 }
 
 static gboolean
@@ -759,7 +760,7 @@ Test(logthrdestdrv, test_connect_failure_kicks_in_suspend_retry_logic_which_keep
   cr_assert(log_pipe_post_config_init(&dd->super.super.super.super));
 
   _generate_message_and_wait_for_processing(dd, dd->super.metrics.written_messages);
-  cr_assert(dd->connect_counter == 11, "%d", dd->connect_counter);
+  cr_assert(eq(int, dd->connect_counter, 11), "%d", dd->connect_counter);
   assert_grabbed_log_contains("Error establishing connection to server");
 }
 
@@ -795,15 +796,15 @@ Test(logthrdestdrv, test_explicit_ack_accept)
   dd->super.batch_lines = 5;
 
   _generate_messages_and_wait_for_processing(dd, 10, dd->super.metrics.written_messages);
-  cr_assert(dd->insert_counter == 10, "%d", dd->insert_counter);
-  cr_assert(dd->flush_size == 10);
+  cr_assert(eq(int, dd->insert_counter, 10), "%d", dd->insert_counter);
+  cr_assert(eq(int, dd->flush_size, 10));
 
-  cr_assert(stats_counter_get(dd->super.metrics.processed_messages) == 10);
-  cr_assert(stats_counter_get(dd->super.metrics.written_messages) == 10);
-  cr_assert(stats_counter_get(dd->super.worker.instance.queue->metrics.shared.queued_messages) == 0);
-  cr_assert(stats_counter_get(dd->super.metrics.dropped_messages) == 0);
-  cr_assert(stats_counter_get(dd->super.worker.instance.queue->metrics.shared.memory_usage) == 0);
-  cr_assert(dd->super.shared_seq_num == 11, "%d", dd->super.shared_seq_num);
+  cr_assert(eq(sz, stats_counter_get(dd->super.metrics.processed_messages), 10));
+  cr_assert(eq(sz, stats_counter_get(dd->super.metrics.written_messages), 10));
+  cr_assert(eq(sz, stats_counter_get(dd->super.worker.instance.queue->metrics.shared.queued_messages), 0));
+  cr_assert(eq(sz, stats_counter_get(dd->super.metrics.dropped_messages), 0));
+  cr_assert(eq(sz, stats_counter_get(dd->super.worker.instance.queue->metrics.shared.memory_usage), 0));
+  cr_assert(eq(i32, dd->super.shared_seq_num, 11), "%d", dd->super.shared_seq_num);
 }
 
 MainLoopOptions main_loop_options = {0};

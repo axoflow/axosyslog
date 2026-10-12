@@ -32,6 +32,16 @@ set(SANITIZER_EXCEPTION_LIST
   test-mongodb-config
 )
 
+set(CRITERION_COMPAT_WARNING_OPTIONS "")
+if (CRITERION_FOUND AND CRITERION_VERSION VERSION_LESS "2.5.0")
+  set(CRITERION_COMPAT_WARNING_OPTIONS -Wno-shadow -Wno-float-equal -Wno-unused-value)
+  if ("${CMAKE_C_COMPILER_ID}" MATCHES "Clang")
+    list(APPEND CRITERION_COMPAT_WARNING_OPTIONS $<$<COMPILE_LANGUAGE:C>:-Wno-incompatible-pointer-types-discards-qualifiers>)
+  else()
+    list(APPEND CRITERION_COMPAT_WARNING_OPTIONS $<$<COMPILE_LANGUAGE:C>:-Wno-discarded-qualifiers>)
+  endif()
+endif()
+
 function (add_unit_test)
 
   if (NOT BUILD_TESTING)
@@ -46,6 +56,7 @@ function (add_unit_test)
 
   add_executable(${ADD_UNIT_TEST_TARGET} ${ADD_UNIT_TEST_SOURCES})
   target_compile_definitions(${ADD_UNIT_TEST_TARGET} PRIVATE TOP_SRCDIR="${PROJECT_SOURCE_DIR}")
+  target_compile_options(${ADD_UNIT_TEST_TARGET} PRIVATE ${CRITERION_COMPAT_WARNING_OPTIONS})
   target_link_libraries(${ADD_UNIT_TEST_TARGET} ${ADD_UNIT_TEST_DEPENDS} syslog-ng)
   target_include_directories(${ADD_UNIT_TEST_TARGET} PUBLIC ${ADD_UNIT_TEST_INCLUDES})
   if (NOT APPLE)

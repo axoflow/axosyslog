@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/mock-transport.h"
 #include "libtest/proto_lib.h"
 #include "libtest/msg_parse_lib.h"
@@ -50,8 +51,8 @@ teardown(void)
 
 Test(log_proto, test_base)
 {
-  cr_assert_eq(log_proto_get_char_size_for_fixed_encoding("iso-8859-2"), 1);
-  cr_assert_eq(log_proto_get_char_size_for_fixed_encoding("ucs-4"), 4);
+  cr_assert(eq(int, log_proto_get_char_size_for_fixed_encoding("iso-8859-2"), 1));
+  cr_assert(eq(int, log_proto_get_char_size_for_fixed_encoding("ucs-4"), 4));
 
   log_proto_server_options_set_encoding(&proto_server_options, "ucs-4");
   LogProtoServer *proto = log_proto_binary_record_server_new(

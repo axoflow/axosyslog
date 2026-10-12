@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "ack-tracker/instant_ack_tracker.h"
 #include "ack-tracker/ack_tracker_factory.h"
@@ -132,11 +133,11 @@ TestSuite(instant_ack_tracker_bookmarkless, .init = _setup, .fini = _teardown);
 Test(instant_ack_tracker_bookmarkless, request_bookmark_returns_the_same_bookmark)
 {
   LogSource *src = _init_log_source(instant_ack_tracker_bookmarkless_factory_new());
-  cr_assert_not_null(src->ack_tracker);
+  cr_assert(not(zero(ptr, src->ack_tracker)));
   AckTracker *ack_tracker = src->ack_tracker;
   Bookmark *bm1 = ack_tracker_request_bookmark(ack_tracker);
   Bookmark *bm2 = ack_tracker_request_bookmark(ack_tracker);
-  cr_expect_eq(bm1, bm2);
+  cr_expect(eq(ptr, bm1, bm2));
   _deinit_log_source(src);
 }
 
@@ -145,22 +146,22 @@ Test(instant_ack_tracker_bookmarkless, bookmark_save_not_called_when_acked)
   LogSource *src = _init_log_source(instant_ack_tracker_bookmarkless_factory_new());
   TestLogPipeDst *dst = _init_test_logpipe_dst();
   log_pipe_append(&src->super, &dst->super);
-  cr_assert_not_null(src->ack_tracker);
+  cr_assert(not(zero(ptr, src->ack_tracker)));
   AckTracker *ack_tracker = src->ack_tracker;
   Bookmark *bm = ack_tracker_request_bookmark(ack_tracker);
   guint saved_ctr = 0;
   _fill_bookmark(bm, &saved_ctr);
   LogMessage *msg = log_msg_new_empty();
-  cr_expect_eq(window_size_counter_get(&src->window_size, NULL), 10);
+  cr_expect(eq(sz, window_size_counter_get(&src->window_size, NULL), 10));
   log_source_post(src, msg);
   // this is why we need a dummy 'destination' : keep back ACK
-  cr_expect_eq(window_size_counter_get(&src->window_size, NULL), 9);
-  cr_assert_eq(msg->ack_record->tracker, ack_tracker);
+  cr_expect(eq(sz, window_size_counter_get(&src->window_size, NULL), 9));
+  cr_assert(eq(ptr, msg->ack_record->tracker, ack_tracker));
   LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
   log_msg_ack(msg, &path_options, AT_PROCESSED);
   // okay, ACK is done, but save counter is 0 -> so Bookmark::save not called
-  cr_expect_eq(saved_ctr, 0);
-  cr_expect_eq(window_size_counter_get(&src->window_size, NULL), 10);
+  cr_expect(eq(uint, saved_ctr, 0));
+  cr_expect(eq(sz, window_size_counter_get(&src->window_size, NULL), 10));
   log_msg_unref(msg);
   _deinit_log_source(src);
   _deinit_test_logpipe_dst(dst);
@@ -169,7 +170,7 @@ Test(instant_ack_tracker_bookmarkless, bookmark_save_not_called_when_acked)
 Test(instant_ack_tracker_bookmarkless, same_bookmark_for_all_messages)
 {
   LogSource *src = _init_log_source(instant_ack_tracker_bookmarkless_factory_new());
-  cr_assert_not_null(src->ack_tracker);
+  cr_assert(not(zero(ptr, src->ack_tracker)));
   AckTracker *ack_tracker = src->ack_tracker;
   Bookmark *bm1 = ack_tracker_request_bookmark(ack_tracker);
   LogMessage *msg1 = log_msg_new_empty();
@@ -179,7 +180,7 @@ Test(instant_ack_tracker_bookmarkless, same_bookmark_for_all_messages)
   ack_tracker_track_msg(ack_tracker, msg2);
   ack_tracker_manage_msg_ack(ack_tracker, msg1, AT_PROCESSED);
   ack_tracker_manage_msg_ack(ack_tracker, msg2, AT_PROCESSED);
-  cr_expect_eq(bm1, bm2);
+  cr_expect(eq(ptr, bm1, bm2));
   _deinit_log_source(src);
 }
 
@@ -189,16 +190,16 @@ TestSuite(instant_ack_tracker, .init = _setup, .fini = _teardown);
 Test(instant_ack_tracker, request_bookmark_returns_same_bookmarks_until_pending_not_assigned)
 {
   LogSource *src = _init_log_source(instant_ack_tracker_factory_new());
-  cr_assert_not_null(src->ack_tracker);
+  cr_assert(not(zero(ptr, src->ack_tracker)));
   AckTracker *ack_tracker = src->ack_tracker;
   Bookmark *bm1 = ack_tracker_request_bookmark(ack_tracker);
   Bookmark *bm2 = ack_tracker_request_bookmark(ack_tracker);
-  cr_expect_eq(bm1, bm2);
+  cr_expect(eq(ptr, bm1, bm2));
   LogMessage *msg = log_msg_new_empty();
   ack_tracker_track_msg(ack_tracker, msg);
   log_msg_ref(msg);
   bm2 = ack_tracker_request_bookmark(ack_tracker);
-  cr_expect_neq(bm1, bm2);
+  cr_expect(ne(ptr, bm1, bm2));
   ack_tracker_manage_msg_ack(ack_tracker, msg, AT_PROCESSED);
   log_msg_unref(msg);
   _deinit_log_source(src);
@@ -209,22 +210,22 @@ Test(instant_ack_tracker, bookmark_saving)
   LogSource *src = _init_log_source(instant_ack_tracker_factory_new());
   TestLogPipeDst *dst = _init_test_logpipe_dst();
   log_pipe_append(&src->super, &dst->super);
-  cr_assert_not_null(src->ack_tracker);
+  cr_assert(not(zero(ptr, src->ack_tracker)));
   AckTracker *ack_tracker = src->ack_tracker;
   Bookmark *bm = ack_tracker_request_bookmark(ack_tracker);
   guint saved_ctr = 0;
   _fill_bookmark(bm, &saved_ctr);
   LogMessage *msg = log_msg_new_empty();
-  cr_expect_eq(window_size_counter_get(&src->window_size, NULL), 10);
+  cr_expect(eq(sz, window_size_counter_get(&src->window_size, NULL), 10));
   log_source_post(src, msg);
   // this is why we need a dummy 'destination' : keep back ACK
-  cr_expect_eq(window_size_counter_get(&src->window_size, NULL), 9);
-  cr_assert_eq(msg->ack_record->tracker, ack_tracker);
+  cr_expect(eq(sz, window_size_counter_get(&src->window_size, NULL), 9));
+  cr_assert(eq(ptr, msg->ack_record->tracker, ack_tracker));
   LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
   log_msg_ack(msg, &path_options, AT_PROCESSED);
   // okay, ACK is done, save counter is 1
-  cr_expect_eq(saved_ctr, 1);
-  cr_expect_eq(window_size_counter_get(&src->window_size, NULL), 10);
+  cr_expect(eq(uint, saved_ctr, 1));
+  cr_expect(eq(sz, window_size_counter_get(&src->window_size, NULL), 10));
   log_msg_unref(msg);
   _deinit_log_source(src);
   _deinit_test_logpipe_dst(dst);

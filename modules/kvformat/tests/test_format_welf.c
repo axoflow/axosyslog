@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/parameterized.h"
 #include "libtest/cr_template.h"
 
@@ -102,8 +103,8 @@ assert_template(LogMessage *msg, const gchar *template_str, const gchar *expecte
   GString *result = g_string_new("");
 
   log_template_format(template, msg, &DEFAULT_TEMPLATE_EVAL_OPTIONS, result);
-  cr_assert_str_eq(result->str, expected, "Template (%s) result different: %s != %s",
-                   template_str, result->str, expected);
+  cr_assert(eq(str, result->str, expected), "Template (%s) result different: %s != %s",
+            template_str, result->str, expected);
 
   g_string_free(result, TRUE);
   log_template_unref(template);

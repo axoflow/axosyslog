@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/msg_parse_lib.h"
 #include "libtest/fake-time.h"
 
@@ -78,8 +79,8 @@ _parse_log_message(gchar *raw_message_str, gint parse_flags, gchar *bad_hostname
 
   if (bad_hostname_re)
     {
-      cr_assert_eq(regcomp(&bad_hostname, bad_hostname_re, REG_NOSUB | REG_EXTENDED), 0,
-                   "Unexpected failure of regcomp(); bad_hostname_re='%s'", bad_hostname_re);
+      cr_assert(eq(int, regcomp(&bad_hostname, bad_hostname_re, REG_NOSUB | REG_EXTENDED), 0),
+                "Unexpected failure of regcomp(); bad_hostname_re='%s'", bad_hostname_re);
       parse_options.bad_hostname = &bad_hostname;
     }
 
@@ -102,7 +103,7 @@ assert_log_message_sdata_pairs(LogMessage *message, struct sdata_pair *expected_
   for (i = 0; expected_sd_pairs && expected_sd_pairs[i].name != NULL; i++)
     {
       const gchar *actual_value = log_msg_get_value_by_name(message, expected_sd_pairs[i].name, NULL);
-      cr_assert_str_eq(actual_value, expected_sd_pairs[i].value);
+      cr_assert(eq(str, actual_value, expected_sd_pairs[i].value));
     }
 }
 
@@ -160,23 +161,23 @@ test_log_messages_can_be_parsed(struct msgparse_params *param)
   if (param->expected_stamp_sec)
     {
       if (param->expected_stamp_sec != 1)
-        cr_assert_eq(parsed_timestamp->ut_sec, param->expected_stamp_sec,
-                     "Unexpected timestamp, value=%"G_GINT64_FORMAT", expected=%lu, msg=%s",
-                     parsed_timestamp->ut_sec, param->expected_stamp_sec, param->msg);
+        cr_assert(eq(i64, parsed_timestamp->ut_sec, param->expected_stamp_sec),
+                  "Unexpected timestamp, value=%"G_GINT64_FORMAT", expected=%lu, msg=%s",
+                  parsed_timestamp->ut_sec, param->expected_stamp_sec, param->msg);
 
-      cr_assert_eq(parsed_timestamp->ut_usec, param->expected_stamp_usec, "Unexpected microseconds");
-      cr_assert_eq(parsed_timestamp->ut_gmtoff, param->expected_stamp_ofs, "Unexpected timezone offset");
+      cr_assert(eq(u32, parsed_timestamp->ut_usec, param->expected_stamp_usec), "Unexpected microseconds");
+      cr_assert(eq(i64, parsed_timestamp->ut_gmtoff, param->expected_stamp_ofs), "Unexpected timezone offset");
     }
   else
     {
       now = get_cached_realtime_sec();
-      cr_assert(_absolute_value(parsed_timestamp->ut_sec - now) <= 5,
+      cr_assert(le(ulong, _absolute_value(parsed_timestamp->ut_sec - now), 5),
                 "Expected parsed message timestamp to be set to now; now='%d', timestamp->tv_sec='%d'",
                 (gint)now, (gint)parsed_timestamp->ut_sec);
     }
 
-  cr_assert_eq(parsed_message->pri, param->expected_pri, "Unexpected message priority %d != %d",
-               parsed_message->pri, param->expected_pri);
+  cr_assert(eq(i64, parsed_message->pri, param->expected_pri), "Unexpected message priority %d != %d",
+            parsed_message->pri, param->expected_pri);
   if (param->expected_host)
     assert_log_message_value(parsed_message, LM_V_HOST, param->expected_host);
   assert_log_message_value(parsed_message, LM_V_PROGRAM, param->expected_program);
@@ -189,7 +190,7 @@ test_log_messages_can_be_parsed(struct msgparse_params *param)
     {
       sd_str = g_string_sized_new(0);
       log_msg_format_sdata(parsed_message, sd_str, 0);
-      cr_assert_str_eq(sd_str->str, param->expected_sd_str, "Unexpected formatted SData");
+      cr_assert(eq(str, sd_str->str, param->expected_sd_str), "Unexpected formatted SData");
       g_string_free(sd_str, TRUE);
     }
 

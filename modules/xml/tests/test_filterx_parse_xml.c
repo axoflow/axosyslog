@@ -22,6 +22,7 @@
 
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "filterx-parse-xml.h"
 #include "filterx/object-string.h"
@@ -57,8 +58,8 @@ _assert_parse_xml_fail(const gchar *raw_xml)
   FilterXExpr *func = _create_parse_xml_expr(raw_xml);
 
   FilterXObject *result = init_and_eval_expr(func);
-  cr_assert(!result);
-  cr_assert(filterx_eval_get_last_error());
+  cr_assert(zero(ptr, result));
+  cr_assert(not(zero(ptr, filterx_eval_get_last_error())));
 
   filterx_eval_clear_errors();
   filterx_expr_unref(func);
@@ -70,14 +71,14 @@ _assert_parse_xml_with_input_dict(const gchar *raw_xml, const gchar *expected_js
   FilterXExpr *func = _create_parse_xml_expr(raw_xml);
 
   FilterXObject *result = init_and_eval_expr(func);
-  cr_assert(result);
-  cr_assert(filterx_eval_get_error_count() == 0);
+  cr_assert(not(zero(ptr, result)));
+  cr_assert(eq(int, filterx_eval_get_error_count(), 0));
 
   cr_assert(filterx_object_is_type_or_ref(result, &FILTERX_TYPE_NAME(mapping)));
 
   GString *formatted_result = g_string_new(NULL);
   filterx_object_repr(result, formatted_result);
-  cr_assert_str_eq(formatted_result->str, expected_json);
+  cr_assert(eq(str, formatted_result->str, expected_json));
 
   g_string_free(formatted_result, TRUE);
   filterx_object_unref(result);

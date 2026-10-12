@@ -20,6 +20,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include <string.h>
 
 #include "afuser.h"
@@ -68,7 +69,7 @@ Test(afuser, formats_raw_message_by_default)
 
   afuser_dd_format_message(driver, msg, formatted_message);
 
-  cr_assert(strstr(formatted_message->str, "\033[31mfoo\033[0m\n") != NULL,
+  cr_assert(not(zero(ptr, strstr(formatted_message->str, "\033[31mfoo\033[0m\n"))),
             "formatted_message='%s'", formatted_message->str);
 
   g_string_free(formatted_message, TRUE);
@@ -85,7 +86,7 @@ Test(afuser, formats_escaped_message_when_enabled)
   afuser_dd_set_escaping(driver, TRUE);
   afuser_dd_format_message(driver, msg, formatted_message);
 
-  cr_assert(strstr(formatted_message->str, "\\033[31mfoo\\033[0m\n") != NULL,
+  cr_assert(not(zero(ptr, strstr(formatted_message->str, "\\033[31mfoo\\033[0m\n"))),
             "formatted_message='%s'", formatted_message->str);
 
   g_string_free(formatted_message, TRUE);

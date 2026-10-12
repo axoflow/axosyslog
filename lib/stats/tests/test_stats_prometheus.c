@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "stats/stats.h"
 #include "stats/stats-registry.h"
@@ -84,8 +85,8 @@ test_logpipe_cluster(const gchar *name, StatsClusterLabel *labels, gsize labels_
 static inline void
 assert_prometheus_format(StatsCluster *cluster, gint type,  const gchar *expected_prom_record)
 {
-  cr_assert_str_eq(stats_prometheus_format_counter(cluster, type, stats_cluster_get_counter(cluster, type))->str,
-                   expected_prom_record);
+  cr_assert(eq(str, stats_prometheus_format_counter(cluster, type, stats_cluster_get_counter(cluster, type))->str,
+               expected_prom_record));
 }
 
 Test(stats_prometheus, test_prometheus_format_single)
@@ -206,22 +207,22 @@ Test(stats_prometheus, test_prometheus_format_label_escaping)
 
 Test(stats_prometheus, test_prometheus_format_value)
 {
-  cr_assert_str_eq(stats_format_prometheus_format_value(SCU_NONE, 9), "9");
+  cr_assert(eq(str, stats_format_prometheus_format_value(SCU_NONE, 9), "9"));
 
-  cr_assert_str_eq(stats_format_prometheus_format_value(SCU_GIB, 9), "9663676416");
-  cr_assert_str_eq(stats_format_prometheus_format_value(SCU_MIB, 9), "9437184");
-  cr_assert_str_eq(stats_format_prometheus_format_value(SCU_KIB, 9), "9216");
-  cr_assert_str_eq(stats_format_prometheus_format_value(SCU_BYTES, 9), "9");
+  cr_assert(eq(str, stats_format_prometheus_format_value(SCU_GIB, 9), "9663676416"));
+  cr_assert(eq(str, stats_format_prometheus_format_value(SCU_MIB, 9), "9437184"));
+  cr_assert(eq(str, stats_format_prometheus_format_value(SCU_KIB, 9), "9216"));
+  cr_assert(eq(str, stats_format_prometheus_format_value(SCU_BYTES, 9), "9"));
 
-  cr_assert_str_eq(stats_format_prometheus_format_value(SCU_HOURS, 9), "32400");
-  cr_assert_str_eq(stats_format_prometheus_format_value(SCU_MINUTES, 9), "540");
-  cr_assert_str_eq(stats_format_prometheus_format_value(SCU_SECONDS, 9), "9");
+  cr_assert(eq(str, stats_format_prometheus_format_value(SCU_HOURS, 9), "32400"));
+  cr_assert(eq(str, stats_format_prometheus_format_value(SCU_MINUTES, 9), "540"));
+  cr_assert(eq(str, stats_format_prometheus_format_value(SCU_SECONDS, 9), "9"));
 
   gdouble actual = g_ascii_strtod(stats_format_prometheus_format_value(SCU_MILLISECONDS, 9), NULL);
-  cr_assert_float_eq(actual, 0.009L, DBL_EPSILON);
+  cr_assert(epsilon_eq(dbl, actual, 0.009, DBL_EPSILON));
 
   actual = g_ascii_strtod(stats_format_prometheus_format_value(SCU_NANOSECONDS, 9), NULL);
-  cr_assert_float_eq(actual, 9e-9, DBL_EPSILON);
+  cr_assert(epsilon_eq(dbl, actual, 9e-9, DBL_EPSILON));
 }
 
 

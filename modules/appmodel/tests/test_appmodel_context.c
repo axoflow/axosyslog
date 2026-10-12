@@ -21,6 +21,7 @@
  *
  */
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "appmodel.h"
 
 static AppModelContext *ac;
@@ -60,7 +61,7 @@ Test(appmodel_context, iter_applications_enumerates_apps_without_asterisk)
   appmodel_context_register_object(ac, &application_new("bar", "port514")->super);
   appmodel_context_register_object(ac, &application_new("baz", "port514")->super);
   appmodel_context_iter_objects(ac, APPLICATION_TYPE_NAME, _foreach_app, result);
-  cr_assert_str_eq(result->str, "foobarbaz");
+  cr_assert(eq(str, result->str, "foobarbaz"));
   g_string_free(result, TRUE);
 }
 
@@ -72,7 +73,7 @@ Test(appmodel_context, iter_applications_enumerates_apps_in_the_order_of_registr
   appmodel_context_register_object(ac, &application_new("bar", "port514")->super);
   appmodel_context_register_object(ac, &application_new("foo", "port514")->super);
   appmodel_context_iter_objects(ac, APPLICATION_TYPE_NAME, _foreach_app, result);
-  cr_assert_str_eq(result->str, "bazbarfoo");
+  cr_assert(eq(str, result->str, "bazbarfoo"));
   g_string_free(result, TRUE);
 }
 

@@ -39,7 +39,7 @@ libtest_libsyslog_ng_test_a_SOURCES =   \
 	libtest/filterx-lib.c	\
 	libtest/filterx-lib.h
 
-libtest_libsyslog_ng_test_a_CFLAGS = $(AM_CFLAGS) $(CRITERION_CFLAGS) $(JSON_CFLAGS)
+libtest_libsyslog_ng_test_a_CFLAGS = $(AM_CFLAGS) $(CRITERION_CFLAGS) $(CRITERION_COMPAT_CFLAGS) $(JSON_CFLAGS)
 
 libtestinclude_HEADERS		    =	\
 	libtest/config_parse_lib.h		\

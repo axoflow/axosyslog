@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "http-loadbalancer.h"
 #include "apphook.h"
@@ -76,7 +77,7 @@ Test(http_loadbalancer, target_index_is_set_as_urls_are_added_to_the_array_index
   HTTPLoadBalancer *lb = _construct_load_balancer();
 
   for (gint i = 0; i < lb->num_targets; i++)
-    cr_assert(lb->targets[i].index == i);
+    cr_assert(eq(int, lb->targets[i].index, i));
   http_load_balancer_free(lb);
 }
 
@@ -88,7 +89,7 @@ Test(http_loadbalancer, number_of_clients_is_tracked_in_num_clients)
   for (gint i = 0; i < G_N_ELEMENTS(lbc); i++)
     {
       http_lb_client_init(&lbc[i], lb);
-      cr_assert(lb->num_clients == i + 1);
+      cr_assert(eq(int, lb->num_clients, i + 1));
     }
   http_load_balancer_free(lb);
 }
@@ -107,8 +108,8 @@ Test(http_loadbalancer, choose_target_selects_the_first_operational_target)
   HTTPLoadBalancerTarget *target = http_load_balancer_choose_target(lb, &lbc);
 
   http_lb_target_format_templated_url(target, msg, &options, url);
-  cr_assert_str_eq(url->str, "http://localhost:8000");
-  cr_assert(target->state == HTTP_TARGET_OPERATIONAL);
+  cr_assert(eq(str, url->str, "http://localhost:8000"));
+  cr_assert(eq(int, target->state, HTTP_TARGET_OPERATIONAL));
 
   g_string_free(url, TRUE);
   log_template_options_destroy(&options);
@@ -136,8 +137,8 @@ Test(http_loadbalancer, choose_target_escapes_templated_url)
   HTTPLoadBalancerTarget *target = http_load_balancer_choose_target(lb, &lbc);
 
   http_lb_target_format_templated_url(target, msg, &options, url);
-  cr_assert_str_eq(url->str, "http://localhost:8000/foo%20bar");
-  cr_assert(target->state == HTTP_TARGET_OPERATIONAL);
+  cr_assert(eq(str, url->str, "http://localhost:8000/foo%20bar"));
+  cr_assert(eq(int, target->state, HTTP_TARGET_OPERATIONAL));
 
   g_string_free(url, TRUE);
   log_template_options_destroy(&options);
@@ -154,7 +155,7 @@ Test(http_loadbalancer, url_fixedness_classification)
   {
     HTTPLoadBalancer *lb = http_load_balancer_new();
     cr_assert(http_load_balancer_add_target(lb, "http://localhost:8000/path", &error));
-    cr_assert_not(http_load_balancer_is_url_templated(lb));
+    cr_assert(not(http_load_balancer_is_url_templated(lb)));
     cr_assert(http_load_balancer_is_url_fixed(lb));
     http_load_balancer_free(lb);
   }
@@ -164,7 +165,7 @@ Test(http_loadbalancer, url_fixedness_classification)
     HTTPLoadBalancer *lb = http_load_balancer_new();
     cr_assert(http_load_balancer_add_target(lb, "http://localhost:8000/${HOST}", &error));
     cr_assert(http_load_balancer_is_url_templated(lb));
-    cr_assert_not(http_load_balancer_is_url_fixed(lb));
+    cr_assert(not(http_load_balancer_is_url_fixed(lb)));
     http_load_balancer_free(lb);
   }
 
@@ -187,7 +188,7 @@ Test(http_loadbalancer, url_fixedness_classification)
                                             "http://localhost:8000/$(url-encode ${HOST})",
                                             &error));
     cr_assert(http_load_balancer_is_url_templated(lb));
-    cr_assert_not(http_load_balancer_is_url_fixed(lb));
+    cr_assert(not(http_load_balancer_is_url_fixed(lb)));
     http_load_balancer_free(lb);
   }
 }
@@ -217,8 +218,8 @@ Test(http_loadbalancer, choose_target_balances_clients_to_targets)
        * the first couple of targets for the excess.
        */
 
-      cr_expect(target_counts[i] - expected_number_of_workers <= 1 &&
-                target_counts[i] - expected_number_of_workers >= 0,
+      cr_expect(all(le(int, target_counts[i] - expected_number_of_workers, 1),
+                    ge(int, target_counts[i] - expected_number_of_workers, 0)),
                 "The target %d is not balanced, expected_number_of_workers=%d, actual=%d",
                 i, expected_number_of_workers, target_counts[i]);
     }
@@ -240,7 +241,7 @@ Test(http_loadbalancer, choose_target_tries_to_stay_affine_to_the_current_target
       for (gint n = 0; n < 100; n++)
         {
           HTTPLoadBalancerTarget *target = http_load_balancer_choose_target(lb, &lbc[i]);
-          cr_assert(initial_target == target);
+          cr_assert(eq(ptr, initial_target, target));
         }
     }
 
@@ -267,7 +268,7 @@ Test(http_loadbalancer, failed_target_is_taken_out_of_rotation)
     {
       HTTPLoadBalancerTarget *target = http_load_balancer_choose_target(lb, &lbc[i]);
 
-      cr_assert(target != NULL);
+      cr_assert(not(zero(ptr, target)));
       /* fail every second */
       if (_should_fail_this_target(target))
         {
@@ -283,10 +284,10 @@ Test(http_loadbalancer, failed_target_is_taken_out_of_rotation)
     {
       HTTPLoadBalancerTarget *target = http_load_balancer_choose_target(lb, &lbc[i]);
 
-      cr_assert(_should_fail_this_target(target) == FALSE,
+      cr_assert(not(_should_fail_this_target(target)),
                 "HTTPLoadBalancer returned a target that was marked as failed, index=%d",
                 target->index);
-      cr_assert(target->state == HTTP_TARGET_OPERATIONAL);
+      cr_assert(eq(int, target->state, HTTP_TARGET_OPERATIONAL));
       target_counts[target->index]++;
     }
 
@@ -295,13 +296,13 @@ Test(http_loadbalancer, failed_target_is_taken_out_of_rotation)
     {
       if (_should_fail_this_target(&lb->targets[i]))
         {
-          cr_expect(lb->targets[i].state == HTTP_TARGET_FAILED);
+          cr_expect(eq(int, lb->targets[i].state, HTTP_TARGET_FAILED));
         }
       else
         {
           gint expected_number_of_workers = NUM_CLIENTS / (NUM_TARGETS - failing_targets);
-          cr_expect(target_counts[i] - expected_number_of_workers <= 1 &&
-                    target_counts[i] - expected_number_of_workers >= 0,
+          cr_expect(all(le(int, target_counts[i] - expected_number_of_workers, 1),
+                        ge(int, target_counts[i] - expected_number_of_workers, 0)),
                     "The target %d is not balanced, expected_number_of_workers=%d, actual=%d",
                     i, expected_number_of_workers, target_counts[i]);
         }
@@ -324,15 +325,15 @@ Test(http_loadbalancer, number_of_failed_targets_is_tracked_even_if_the_same_tar
       HTTPLoadBalancerTarget *target = &lb->targets[i];
 
       http_load_balancer_set_target_failed(lb, target);
-      cr_assert(lb->num_failed_targets == i + 1);
+      cr_assert(eq(int, lb->num_failed_targets, i + 1));
       http_load_balancer_set_target_failed(lb, target);
-      cr_assert(lb->num_failed_targets == i + 1);
+      cr_assert(eq(int, lb->num_failed_targets, i + 1));
       http_load_balancer_set_target_successful(lb, target);
-      cr_assert(lb->num_failed_targets == i);
+      cr_assert(eq(int, lb->num_failed_targets, i));
       http_load_balancer_set_target_successful(lb, target);
-      cr_assert(lb->num_failed_targets == i);
+      cr_assert(eq(int, lb->num_failed_targets, i));
       http_load_balancer_set_target_failed(lb, target);
-      cr_assert(lb->num_failed_targets == i + 1);
+      cr_assert(eq(int, lb->num_failed_targets, i + 1));
     }
 
   _teardown_lb_clients(lb, &lbc, 1);
@@ -358,20 +359,20 @@ Test(http_loadbalancer, if_all_targets_fail_the_least_recently_failed_one_is_tri
   /* check that we get the least recently failed target */
   HTTPLoadBalancerTarget *target = http_load_balancer_choose_target(lb, &lbc);
 
-  cr_assert(target->state != HTTP_TARGET_OPERATIONAL);
-  cr_assert(target->index == NUM_TARGETS - 1);
+  cr_assert(ne(int, target->state, HTTP_TARGET_OPERATIONAL));
+  cr_assert(eq(int, target->index, NUM_TARGETS - 1));
   http_load_balancer_set_target_failed(lb, target);
 
   target = http_load_balancer_choose_target(lb, &lbc);
 
-  cr_assert(target->state != HTTP_TARGET_OPERATIONAL);
-  cr_assert(target->index == NUM_TARGETS - 2);
+  cr_assert(ne(int, target->state, HTTP_TARGET_OPERATIONAL));
+  cr_assert(eq(int, target->index, NUM_TARGETS - 2));
   http_load_balancer_set_target_failed(lb, target);
 
   target = http_load_balancer_choose_target(lb, &lbc);
 
-  cr_assert(target->state != HTTP_TARGET_OPERATIONAL);
-  cr_assert(target->index == NUM_TARGETS - 3);
+  cr_assert(ne(int, target->state, HTTP_TARGET_OPERATIONAL));
+  cr_assert(eq(int, target->index, NUM_TARGETS - 3));
 
   _teardown_lb_clients(lb, &lbc, 1);
   http_load_balancer_free(lb);
@@ -391,7 +392,7 @@ Test(http_loadbalancer, failed_servers_are_reattempted_after_recovery_time)
   for (gint i = 0; i < G_N_ELEMENTS(lbc); i++)
     {
       target = http_load_balancer_choose_target(lb, &lbc[i]);
-      cr_assert(target->state == HTTP_TARGET_OPERATIONAL,
+      cr_assert(eq(int, target->state, HTTP_TARGET_OPERATIONAL),
                 "As it seems the test lost its race against the load"
                 "balancer's 1 seconds recovery timeout.  You can always bump"
                 "the timeout a bit higher, but hey this loop is 16 iterations"
@@ -399,7 +400,7 @@ Test(http_loadbalancer, failed_servers_are_reattempted_after_recovery_time)
     }
   sleep(1);
   target = http_load_balancer_choose_target(lb, &lbc[0]);
-  cr_assert(target->state == HTTP_TARGET_FAILED);
+  cr_assert(eq(int, target->state, HTTP_TARGET_FAILED));
 
   _teardown_lb_clients(lb, lbc, G_N_ELEMENTS(lbc));
   http_load_balancer_free(lb);
@@ -409,9 +410,9 @@ Test(http_loadbalancer, drop_targets_resets_the_target_list)
 {
   HTTPLoadBalancer *lb = _construct_load_balancer();
 
-  cr_assert(lb->num_targets != 0);
+  cr_assert(ne(int, lb->num_targets, 0));
   http_load_balancer_drop_all_targets(lb);
-  cr_assert(lb->num_targets == 0);
+  cr_assert(eq(int, lb->num_targets, 0));
   http_load_balancer_free(lb);
 }
 

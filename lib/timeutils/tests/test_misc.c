@@ -21,6 +21,7 @@
  *
  */
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "timeutils/misc.h"
 
 #include "apphook.h"
@@ -39,9 +40,9 @@ Test(misc, timespec_diff_msec_returns_the_timespec_difference_in_msec)
     .tv_sec = 1, .tv_nsec = MSEC_TO_NSEC(200)
   });
 
-  cr_assert(timespec_diff_msec(&ts2, &ts1) == 100);
-  cr_assert(timespec_diff_usec(&ts2, &ts1) == MSEC_TO_USEC(100));
-  cr_assert(timespec_diff_nsec(&ts2, &ts1) == MSEC_TO_NSEC(100));
+  cr_assert(eq(long, timespec_diff_msec(&ts2, &ts1), 100));
+  cr_assert(eq(i64, timespec_diff_usec(&ts2, &ts1), MSEC_TO_USEC(100)));
+  cr_assert(eq(i64, timespec_diff_nsec(&ts2, &ts1), MSEC_TO_NSEC(100)));
 
   ts1 = ((struct timespec)
   {
@@ -52,9 +53,9 @@ Test(misc, timespec_diff_msec_returns_the_timespec_difference_in_msec)
     .tv_sec = 1, .tv_nsec = MSEC_TO_NSEC(100)
   });
 
-  cr_assert(timespec_diff_msec(&ts2, &ts1) == 200);
-  cr_assert(timespec_diff_usec(&ts2, &ts1) == MSEC_TO_USEC(200));
-  cr_assert(timespec_diff_nsec(&ts2, &ts1) == MSEC_TO_NSEC(200));
+  cr_assert(eq(long, timespec_diff_msec(&ts2, &ts1), 200));
+  cr_assert(eq(i64, timespec_diff_usec(&ts2, &ts1), MSEC_TO_USEC(200)));
+  cr_assert(eq(i64, timespec_diff_nsec(&ts2, &ts1), MSEC_TO_NSEC(200)));
 
   ts1 = ((struct timespec)
   {
@@ -65,9 +66,9 @@ Test(misc, timespec_diff_msec_returns_the_timespec_difference_in_msec)
     .tv_sec = 0, .tv_nsec = MSEC_TO_NSEC(900)
   });
 
-  cr_assert(timespec_diff_msec(&ts2, &ts1) == -200);
-  cr_assert(timespec_diff_usec(&ts2, &ts1) == MSEC_TO_USEC(-200));
-  cr_assert(timespec_diff_nsec(&ts2, &ts1) == MSEC_TO_NSEC(-200));
+  cr_assert(eq(long, timespec_diff_msec(&ts2, &ts1), -200));
+  cr_assert(eq(i64, timespec_diff_usec(&ts2, &ts1), MSEC_TO_USEC(-200)));
+  cr_assert(eq(i64, timespec_diff_nsec(&ts2, &ts1), MSEC_TO_NSEC(-200)));
 }
 
 Test(misc, timespec_add_msec_adds_msec_to_timespec)
@@ -83,9 +84,9 @@ Test(misc, timespec_add_msec_adds_msec_to_timespec)
 
   timespec_add_msec(&ts2, 100);
 
-  cr_assert(timespec_diff_msec(&ts2, &ts1) == 100);
-  cr_assert(timespec_diff_usec(&ts2, &ts1) == MSEC_TO_USEC(100));
-  cr_assert(timespec_diff_nsec(&ts2, &ts1) == MSEC_TO_NSEC(100));
+  cr_assert(eq(long, timespec_diff_msec(&ts2, &ts1), 100));
+  cr_assert(eq(i64, timespec_diff_usec(&ts2, &ts1), MSEC_TO_USEC(100)));
+  cr_assert(eq(i64, timespec_diff_nsec(&ts2, &ts1), MSEC_TO_NSEC(100)));
 
   ts1 = ((struct timespec)
   {
@@ -95,27 +96,27 @@ Test(misc, timespec_add_msec_adds_msec_to_timespec)
 
   timespec_add_msec(&ts2, 900);
 
-  cr_assert(timespec_diff_msec(&ts2, &ts1) == 900);
-  cr_assert(timespec_diff_usec(&ts2, &ts1) == MSEC_TO_USEC(900));
-  cr_assert(timespec_diff_nsec(&ts2, &ts1) == MSEC_TO_NSEC(900));
-  cr_assert(ts2.tv_nsec == 0, "%ld", ts2.tv_nsec);
-  cr_assert(ts2.tv_sec == 2, "%ld", ts2.tv_sec);
+  cr_assert(eq(long, timespec_diff_msec(&ts2, &ts1), 900));
+  cr_assert(eq(i64, timespec_diff_usec(&ts2, &ts1), MSEC_TO_USEC(900)));
+  cr_assert(eq(i64, timespec_diff_nsec(&ts2, &ts1), MSEC_TO_NSEC(900)));
+  cr_assert(eq(long, ts2.tv_nsec, 0), "%ld", ts2.tv_nsec);
+  cr_assert(eq(i64, ts2.tv_sec, 2), "%ld", ts2.tv_sec);
 
   timespec_add_msec(&ts2, -1);
 
-  cr_assert(timespec_diff_msec(&ts2, &ts1) == 899);
-  cr_assert(timespec_diff_usec(&ts2, &ts1) == MSEC_TO_USEC(899));
-  cr_assert(timespec_diff_nsec(&ts2, &ts1) == MSEC_TO_NSEC(899));
-  cr_assert(ts2.tv_nsec == MSEC_TO_NSEC(999), "%ld", ts2.tv_nsec);
-  cr_assert(ts2.tv_sec == 1, "%ld", ts2.tv_sec);
+  cr_assert(eq(long, timespec_diff_msec(&ts2, &ts1), 899));
+  cr_assert(eq(i64, timespec_diff_usec(&ts2, &ts1), MSEC_TO_USEC(899)));
+  cr_assert(eq(i64, timespec_diff_nsec(&ts2, &ts1), MSEC_TO_NSEC(899)));
+  cr_assert(eq(long, ts2.tv_nsec, MSEC_TO_NSEC(999)), "%ld", ts2.tv_nsec);
+  cr_assert(eq(i64, ts2.tv_sec, 1), "%ld", ts2.tv_sec);
 
   timespec_add_msec(&ts2, 2);
 
-  cr_assert(timespec_diff_msec(&ts2, &ts1) == 901);
-  cr_assert(timespec_diff_usec(&ts2, &ts1) == MSEC_TO_USEC(901));
-  cr_assert(timespec_diff_nsec(&ts2, &ts1) == MSEC_TO_NSEC(901));
-  cr_assert(ts2.tv_nsec == MSEC_TO_NSEC(1), "%ld", ts2.tv_nsec);
-  cr_assert(ts2.tv_sec == 2, "%ld", ts2.tv_sec);
+  cr_assert(eq(long, timespec_diff_msec(&ts2, &ts1), 901));
+  cr_assert(eq(i64, timespec_diff_usec(&ts2, &ts1), MSEC_TO_USEC(901)));
+  cr_assert(eq(i64, timespec_diff_nsec(&ts2, &ts1), MSEC_TO_NSEC(901)));
+  cr_assert(eq(long, ts2.tv_nsec, MSEC_TO_NSEC(1)), "%ld", ts2.tv_nsec);
+  cr_assert(eq(i64, ts2.tv_sec, 2), "%ld", ts2.tv_sec);
 }
 
 Test(misc, timespec_add_usec_adds_usec_to_timespec)
@@ -131,9 +132,9 @@ Test(misc, timespec_add_usec_adds_usec_to_timespec)
 
   timespec_add_usec(&ts2, MSEC_TO_USEC(100));
 
-  cr_assert(timespec_diff_msec(&ts2, &ts1) == 100);
-  cr_assert(timespec_diff_usec(&ts2, &ts1) == MSEC_TO_USEC(100));
-  cr_assert(timespec_diff_nsec(&ts2, &ts1) == MSEC_TO_NSEC(100));
+  cr_assert(eq(long, timespec_diff_msec(&ts2, &ts1), 100));
+  cr_assert(eq(i64, timespec_diff_usec(&ts2, &ts1), MSEC_TO_USEC(100)));
+  cr_assert(eq(i64, timespec_diff_nsec(&ts2, &ts1), MSEC_TO_NSEC(100)));
 
   ts1 = ((struct timespec)
   {
@@ -143,27 +144,27 @@ Test(misc, timespec_add_usec_adds_usec_to_timespec)
 
   timespec_add_usec(&ts2, MSEC_TO_USEC(900));
 
-  cr_assert(timespec_diff_msec(&ts2, &ts1) == 900);
-  cr_assert(timespec_diff_usec(&ts2, &ts1) == MSEC_TO_USEC(900));
-  cr_assert(timespec_diff_nsec(&ts2, &ts1) == MSEC_TO_NSEC(900));
-  cr_assert(ts2.tv_nsec == 0, "%ld", ts2.tv_nsec);
-  cr_assert(ts2.tv_sec == 2, "%ld", ts2.tv_sec);
+  cr_assert(eq(long, timespec_diff_msec(&ts2, &ts1), 900));
+  cr_assert(eq(i64, timespec_diff_usec(&ts2, &ts1), MSEC_TO_USEC(900)));
+  cr_assert(eq(i64, timespec_diff_nsec(&ts2, &ts1), MSEC_TO_NSEC(900)));
+  cr_assert(eq(long, ts2.tv_nsec, 0), "%ld", ts2.tv_nsec);
+  cr_assert(eq(i64, ts2.tv_sec, 2), "%ld", ts2.tv_sec);
 
   timespec_add_usec(&ts2, MSEC_TO_USEC(-1));
 
-  cr_assert(timespec_diff_msec(&ts2, &ts1) == 899);
-  cr_assert(timespec_diff_usec(&ts2, &ts1) == MSEC_TO_USEC(899));
-  cr_assert(timespec_diff_nsec(&ts2, &ts1) == MSEC_TO_NSEC(899));
-  cr_assert(ts2.tv_nsec == MSEC_TO_NSEC(999), "%ld", ts2.tv_nsec);
-  cr_assert(ts2.tv_sec == 1, "%ld", ts2.tv_sec);
+  cr_assert(eq(long, timespec_diff_msec(&ts2, &ts1), 899));
+  cr_assert(eq(i64, timespec_diff_usec(&ts2, &ts1), MSEC_TO_USEC(899)));
+  cr_assert(eq(i64, timespec_diff_nsec(&ts2, &ts1), MSEC_TO_NSEC(899)));
+  cr_assert(eq(long, ts2.tv_nsec, MSEC_TO_NSEC(999)), "%ld", ts2.tv_nsec);
+  cr_assert(eq(i64, ts2.tv_sec, 1), "%ld", ts2.tv_sec);
 
   timespec_add_usec(&ts2, MSEC_TO_USEC(2));
 
-  cr_assert(timespec_diff_msec(&ts2, &ts1) == 901);
-  cr_assert(timespec_diff_usec(&ts2, &ts1) == MSEC_TO_USEC(901));
-  cr_assert(timespec_diff_nsec(&ts2, &ts1) == MSEC_TO_NSEC(901));
-  cr_assert(ts2.tv_nsec == MSEC_TO_NSEC(1), "%ld", ts2.tv_nsec);
-  cr_assert(ts2.tv_sec == 2, "%ld", ts2.tv_sec);
+  cr_assert(eq(long, timespec_diff_msec(&ts2, &ts1), 901));
+  cr_assert(eq(i64, timespec_diff_usec(&ts2, &ts1), MSEC_TO_USEC(901)));
+  cr_assert(eq(i64, timespec_diff_nsec(&ts2, &ts1), MSEC_TO_NSEC(901)));
+  cr_assert(eq(long, ts2.tv_nsec, MSEC_TO_NSEC(1)), "%ld", ts2.tv_nsec);
+  cr_assert(eq(i64, ts2.tv_sec, 2), "%ld", ts2.tv_sec);
 }
 
 

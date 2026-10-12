@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/parameterized.h"
 #include "libtest/msg_parse_lib.h"
 #include "libtest/cr_template.h"
@@ -77,7 +78,7 @@ _check_deserialized_message_original_fields(LogMessage *msg)
                                     log_msg_get_value_handle(".SDATA.exampleSDID@0.eventSource"),
                                     "Application",
                                     LM_VT_STRING);
-  cr_assert_eq(msg->pri, 132, ERROR_MSG);
+  cr_assert(eq(u16, msg->pri, 132), ERROR_MSG);
 
 }
 
@@ -145,7 +146,7 @@ _deserialize_message_from_string(const guint8 *serialized, gsize serialized_len)
   _reset_log_msg_registry();
 
   LogMessage *msg = log_msg_deserialize(sa);
-  cr_assert(msg != NULL, ERROR_MSG);
+  cr_assert(not(zero(ptr, msg)), ERROR_MSG);
   serialize_archive_free(sa);
   return msg;
 }
@@ -158,12 +159,12 @@ Test(logmsg_serialize, serialize)
   _reset_log_msg_registry();
   LogMessage *msg = log_msg_deserialize(sa);
 
-  cr_assert(msg, ERROR_MSG);
+  cr_assert(not(zero(ptr, msg)), ERROR_MSG);
 
   /* we use nv_registry_get_handle() as it will not change the name-value
    * pair flags, whereas log_msg_get_value_handle() would */
   NVHandle sdata_handle = nv_registry_get_handle(logmsg_registry, ".SDATA.exampleSDID@0.eventSource");
-  cr_assert(sdata_handle != 0,
+  cr_assert(ne(u32, sdata_handle, 0),
             "the .SDATA.exampleSDID@0.eventSource handle was not defined during deserialization");
   cr_assert(log_msg_is_handle_sdata(sdata_handle),
             "deserialized SDATA name-value pairs have to marked as such");
@@ -190,12 +191,12 @@ _create_message_to_be_serialized_with_ts_processed(const gchar *raw_msg, const i
 static void
 _check_processed_timestamp(LogMessage *msg, UnixTime *processed)
 {
-  cr_assert_eq(msg->timestamps[LM_TS_PROCESSED].ut_sec, processed->ut_sec,
-               "tv_sec value does not match");
-  cr_assert_eq(msg->timestamps[LM_TS_PROCESSED].ut_usec, processed->ut_usec,
-               "tv_usec value does not match");
-  cr_assert_eq(msg->timestamps[LM_TS_PROCESSED].ut_gmtoff, processed->ut_gmtoff,
-               "zone_offset value does not match");
+  cr_assert(eq(i64, msg->timestamps[LM_TS_PROCESSED].ut_sec, processed->ut_sec),
+            "tv_sec value does not match");
+  cr_assert(eq(u32, msg->timestamps[LM_TS_PROCESSED].ut_usec, processed->ut_usec),
+            "tv_usec value does not match");
+  cr_assert(eq(i32, msg->timestamps[LM_TS_PROCESSED].ut_gmtoff, processed->ut_gmtoff),
+            "zone_offset value does not match");
 }
 
 Test(logmsg_serialize, simple_serialization)

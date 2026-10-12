@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "ack-tracker/ack_tracker_factory.h"
 
@@ -38,7 +39,7 @@ Test(AckTrackerFactory, position_tracking)
   AckTrackerFactory *batched = batched_ack_tracker_factory_new(0, 1, _dummy_on_batch_acked, NULL);
 
   cr_expect(ack_tracker_type_is_position_tracked(instant->type));
-  cr_expect_not(ack_tracker_type_is_position_tracked(bookmarkless->type));
+  cr_expect(not(ack_tracker_type_is_position_tracked(bookmarkless->type)));
   cr_expect(ack_tracker_type_is_position_tracked(consecutive->type));
   cr_expect(ack_tracker_type_is_position_tracked(batched->type));
 

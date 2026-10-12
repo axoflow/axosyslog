@@ -20,6 +20,7 @@
  *
  */
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/parameterized.h"
 #include "logmsg/logmsg.h"
 #include "apphook.h"
@@ -120,7 +121,7 @@ Test(msg_ack, clone_ack)
   LogMessage *cloned = create_clone(t->original, &t->path_options);
 
   log_msg_drop(cloned, &t->path_options, AT_PROCESSED);
-  cr_assert_not(t->acked);
+  cr_assert(not(t->acked));
 
   t->deinit(t);
   cr_assert(t->acked);
@@ -159,13 +160,13 @@ StaticParameterizedTest(struct nv_pair *param, params, msg_ack, test_cloned_clon
   LogMessage *cloned_clone2 = create_clone(cloned,  &t->path_options);
 
   log_msg_drop(cloned_clone1, &t->path_options, AT_PROCESSED);
-  cr_assert_not(t->acked);
+  cr_assert(not(t->acked));
 
   log_msg_drop(cloned_clone2, &t->path_options, AT_PROCESSED);
-  cr_assert_not(t->acked);
+  cr_assert(not(t->acked));
 
   log_msg_drop(cloned, &t->path_options, AT_PROCESSED);
-  cr_assert_not(t->acked);
+  cr_assert(not(t->acked));
 
   t->deinit(t);
   cr_assert(t->acked);

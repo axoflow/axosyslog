@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/filterx-lib.h"
 
 #include "filterx/func-glob.h"
@@ -54,7 +55,7 @@ _create_glob_match_expr(const gchar *filename, const gchar *patterns[], gsize nu
   GError *error = NULL;
   FilterXExpr *fn = filterx_simple_function_new("glob_match", filterx_function_args_new(args, NULL),
                                                 filterx_simple_function_glob_match, &error);
-  cr_assert_null(error);
+  cr_assert(zero(ptr, error));
   return fn;
 }
 
@@ -64,7 +65,7 @@ _eval_glob_match(const gchar *filename, const gchar *patterns[], gsize num_patte
   FilterXExpr *fn = _create_glob_match_expr(filename, patterns, num_patterns);
   FilterXObject *res = init_and_eval_expr(fn);
 
-  cr_assert_not_null(res);
+  cr_assert(not(zero(ptr, res)));
 
   gboolean result;
   cr_assert(filterx_boolean_unwrap(res, &result));
@@ -83,21 +84,21 @@ Test(filterx_func_glob_match, single_pattern_matches)
 Test(filterx_func_glob_match, single_pattern_does_not_match)
 {
   const gchar *patterns[] = { "*.log" };
-  cr_assert_not(_eval_glob_match("filename.txt", patterns, G_N_ELEMENTS(patterns)));
+  cr_assert(not(_eval_glob_match("filename.txt", patterns, G_N_ELEMENTS(patterns))));
 }
 
 Test(filterx_func_glob_match, question_mark_wildcard)
 {
   const gchar *patterns[] = { "file.???" };
   cr_assert(_eval_glob_match("file.txt", patterns, G_N_ELEMENTS(patterns)));
-  cr_assert_not(_eval_glob_match("file.py", patterns, G_N_ELEMENTS(patterns)));
+  cr_assert(not(_eval_glob_match("file.py", patterns, G_N_ELEMENTS(patterns))));
 }
 
 Test(filterx_func_glob_match, path_pattern)
 {
   const gchar *patterns[] = { "/var/log/*" };
   cr_assert(_eval_glob_match("/var/log/syslog", patterns, G_N_ELEMENTS(patterns)));
-  cr_assert_not(_eval_glob_match("/var/run/syslog", patterns, G_N_ELEMENTS(patterns)));
+  cr_assert(not(_eval_glob_match("/var/run/syslog", patterns, G_N_ELEMENTS(patterns))));
 }
 
 Test(filterx_func_glob_match, multiple_patterns_first_matches)
@@ -115,12 +116,12 @@ Test(filterx_func_glob_match, multiple_patterns_second_matches)
 Test(filterx_func_glob_match, multiple_patterns_none_match)
 {
   const gchar *patterns[] = { "*.log", "*.txt" };
-  cr_assert_not(_eval_glob_match("filename.cfg", patterns, G_N_ELEMENTS(patterns)));
+  cr_assert(not(_eval_glob_match("filename.cfg", patterns, G_N_ELEMENTS(patterns))));
 }
 
 Test(filterx_func_glob_match, empty_pattern_list_never_matches)
 {
-  cr_assert_not(_eval_glob_match("filename.log", NULL, 0));
+  cr_assert(not(_eval_glob_match("filename.log", NULL, 0)));
 }
 
 Test(filterx_func_glob_match, rejects_no_arguments)
@@ -128,10 +129,10 @@ Test(filterx_func_glob_match, rejects_no_arguments)
   GError *error = NULL;
   FilterXExpr *fn = filterx_simple_function_new("glob_match", filterx_function_args_new(NULL, NULL),
                                                 filterx_simple_function_glob_match, &error);
-  cr_assert_null(error);
+  cr_assert(zero(ptr, error));
 
   FilterXObject *res = init_and_eval_expr(fn);
-  cr_assert_null(res);
+  cr_assert(zero(ptr, res));
 
   filterx_expr_unref(fn);
 }
@@ -145,10 +146,10 @@ Test(filterx_func_glob_match, rejects_filename_only)
   GError *error = NULL;
   FilterXExpr *fn = filterx_simple_function_new("glob_match", filterx_function_args_new(args, NULL),
                                                 filterx_simple_function_glob_match, &error);
-  cr_assert_null(error);
+  cr_assert(zero(ptr, error));
 
   FilterXObject *res = init_and_eval_expr(fn);
-  cr_assert_null(res);
+  cr_assert(zero(ptr, res));
 
   filterx_expr_unref(fn);
 }
@@ -167,10 +168,10 @@ Test(filterx_func_glob_match, rejects_non_string_filename)
   GError *error = NULL;
   FilterXExpr *fn = filterx_simple_function_new("glob_match", filterx_function_args_new(args, NULL),
                                                 filterx_simple_function_glob_match, &error);
-  cr_assert_null(error);
+  cr_assert(zero(ptr, error));
 
   FilterXObject *res = init_and_eval_expr(fn);
-  cr_assert_null(res);
+  cr_assert(zero(ptr, res));
 
   filterx_expr_unref(fn);
 }
@@ -190,10 +191,10 @@ Test(filterx_func_glob_match, rejects_non_string_pattern)
   GError *error = NULL;
   FilterXExpr *fn = filterx_simple_function_new("glob_match", filterx_function_args_new(args, NULL),
                                                 filterx_simple_function_glob_match, &error);
-  cr_assert_null(error);
+  cr_assert(zero(ptr, error));
 
   FilterXObject *res = init_and_eval_expr(fn);
-  cr_assert_null(res);
+  cr_assert(zero(ptr, res));
 
   filterx_expr_unref(fn);
 }
@@ -209,10 +210,10 @@ Test(filterx_func_glob_match, rejects_non_list_or_string_patterns_arg)
   GError *error = NULL;
   FilterXExpr *fn = filterx_simple_function_new("glob_match", filterx_function_args_new(args, NULL),
                                                 filterx_simple_function_glob_match, &error);
-  cr_assert_null(error);
+  cr_assert(zero(ptr, error));
 
   FilterXObject *res = init_and_eval_expr(fn);
-  cr_assert_null(res);
+  cr_assert(zero(ptr, res));
 
   filterx_expr_unref(fn);
 }

@@ -20,6 +20,7 @@
  *
  */
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "scanner/list-scanner/list-scanner.h"
 
@@ -28,7 +29,7 @@ ListScanner *list_scanner;
 static void
 assert_no_more_tokens(void)
 {
-  cr_assert(!list_scanner_scan_next(list_scanner), "list_scanner is expected to return no more key-value pairs");
+  cr_assert(not(list_scanner_scan_next(list_scanner)), "list_scanner is expected to return no more key-value pairs");
 }
 
 static void
@@ -43,8 +44,8 @@ assert_current_value_is(const gchar *expected_key)
   const gchar *key = list_scanner_get_current_value(list_scanner);
   gint key_len = list_scanner_get_current_value_len(list_scanner);
 
-  cr_assert_str_eq(key, expected_key, "current key mismatch");
-  cr_assert_eq(key_len, strlen(expected_key));
+  cr_assert(eq(str, key, expected_key), "current key mismatch");
+  cr_assert(eq(i64, key_len, strlen(expected_key)));
 }
 
 static void

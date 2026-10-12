@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/config_parse_lib.h"
 #include "libtest/msg_parse_lib.h"
 #include "libtest/grab-logging.h"
@@ -100,9 +101,9 @@ Test(rewrite, reference_on_condition_cloned)
 {
   LogRewrite *test_rewrite = create_rewrite_rule("set(\"00100\", value(\"device_id\") condition(program(\"ARCGIS\")));");
   LogPipe *cloned_rule = log_pipe_clone(&test_rewrite->super);
-  cr_assert_eq(test_rewrite->condition->ref_cnt, 2, "Bad reference number of condition");
+  cr_assert(eq(u32, test_rewrite->condition->ref_cnt, 2), "Bad reference number of condition");
   log_pipe_unref(cloned_rule);
-  cr_assert_eq(test_rewrite->condition->ref_cnt, 1, "Bad reference number of condition");
+  cr_assert(eq(u32, test_rewrite->condition->ref_cnt, 1), "Bad reference number of condition");
   cfg_free(configuration);
 }
 
@@ -292,7 +293,7 @@ Test(rewrite, set_field_cloned)
   LogRewrite *test_rewrite =
     create_rewrite_rule("groupset(\"value\" values(\"field1\") condition( program(\"program\") ) );");
   LogPipe *cloned_rule = log_pipe_clone(&test_rewrite->super);
-  cr_assert(cloned_rule != NULL, "Can't cloned the rewrite");
+  cr_assert(not(zero(ptr, cloned_rule)), "Can't cloned the rewrite");
   log_pipe_unref(cloned_rule);
   cfg_free(configuration);
 }

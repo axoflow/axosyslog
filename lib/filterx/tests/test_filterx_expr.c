@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/cr_template.h"
 
 #include "filterx/filterx-scope.h"
@@ -51,7 +52,7 @@ _assert_int_value_and_unref(FilterXObject *object, gint64 expected_value)
 {
   gint64 value;
   cr_assert(filterx_integer_unwrap(object, &value));
-  cr_assert_eq(value, expected_value);
+  cr_assert(eq(i64, value, expected_value));
   filterx_object_unref(object);
 }
 
@@ -112,10 +113,10 @@ Test(filterx_expr, test_filterx_literal_list_with_inmutable_values)
 
   // result = [42,43,44];
   result = init_and_eval_expr(list_expr);
-  cr_assert(result);
+  cr_assert(not(zero(ptr, result)));
   cr_assert(filterx_object_truthy(result));
   cr_assert(filterx_object_len(result, &len));
-  cr_assert_eq(len, 3);
+  cr_assert(eq(u64, len, 3));
   _assert_int_value_and_unref(filterx_sequence_get_subscript(result, 0), 42);
   _assert_int_value_and_unref(filterx_sequence_get_subscript(result, 1), 43);
   _assert_int_value_and_unref(filterx_sequence_get_subscript(result, 2), 44);
@@ -141,16 +142,16 @@ Test(filterx_expr, test_filterx_literal_list_with_embedded_list)
 
   // result = [[1337]];
   result = init_and_eval_expr(list_expr);
-  cr_assert(result);
+  cr_assert(not(zero(ptr, result)));
   cr_assert(filterx_object_truthy(result));
   cr_assert(filterx_object_len(result, &len));
-  cr_assert_eq(len, 1);
+  cr_assert(eq(u64, len, 1));
 
   FilterXObject *stored_inner_list = filterx_sequence_get_subscript(result, 0);
-  cr_assert(stored_inner_list);
+  cr_assert(not(zero(ptr, stored_inner_list)));
   cr_assert(filterx_object_is_type(filterx_ref_unwrap_ro(stored_inner_list), &FILTERX_TYPE_NAME(sequence)));
   cr_assert(filterx_object_len(stored_inner_list, &len));
-  cr_assert_eq(len, 1);
+  cr_assert(eq(u64, len, 1));
   _assert_int_value_and_unref(filterx_sequence_get_subscript(stored_inner_list, 0), 1337);
   filterx_object_unref(stored_inner_list);
 
@@ -174,10 +175,10 @@ Test(filterx_expr, test_filterx_dict_immutable_values)
                                                    NULL);
 
   result = init_and_eval_expr(dict_expr);
-  cr_assert(result);
+  cr_assert(not(zero(ptr, result)));
   cr_assert(filterx_object_truthy(result));
   cr_assert(filterx_object_len(result, &len));
-  cr_assert_eq(len, 3);
+  cr_assert(eq(u64, len, 3));
   _assert_int_value_and_unref(filterx_object_get_subscript(result, foo), 42);
   _assert_int_value_and_unref(filterx_object_get_subscript(result, bar), 43);
   _assert_int_value_and_unref(filterx_object_get_subscript(result, baz), 44);
@@ -208,17 +209,17 @@ Test(filterx_expr, test_filterx_dict_with_embedded_dict)
                                                    NULL);
 
   result = init_and_eval_expr(dict_expr);
-  cr_assert(result);
+  cr_assert(not(zero(ptr, result)));
   cr_assert(filterx_object_truthy(result));
   cr_assert(filterx_object_len(result, &len));
-  cr_assert_eq(len, 3);
+  cr_assert(eq(u64, len, 3));
   _assert_int_value_and_unref(filterx_object_get_subscript(result, foo), 420);
   _assert_int_value_and_unref(filterx_object_get_subscript(result, bar), 1337);
 
   FilterXObject *stored_inner_dict = filterx_object_get_subscript(result, baz);
-  cr_assert(stored_inner_dict);
+  cr_assert(not(zero(ptr, stored_inner_dict)));
   cr_assert(filterx_object_is_type(filterx_ref_unwrap_ro(stored_inner_dict), &FILTERX_TYPE_NAME(mapping)));
-  cr_assert_eq(filterx_object_len(stored_inner_dict, &len), 1);
+  cr_assert(filterx_object_len(stored_inner_dict, &len));
   _assert_int_value_and_unref(filterx_object_get_subscript(stored_inner_dict, foo), 1);
   filterx_object_unref(stored_inner_dict);
 
@@ -233,7 +234,7 @@ Test(filterx_expr, test_filterx_dict_with_embedded_dict)
 Test(filterx_expr, test_filterx_assign)
 {
   FilterXExpr *result_var = filterx_msg_variable_expr_new("result_var");
-  cr_assert(result_var != NULL);
+  cr_assert(not(zero(ptr, result_var)));
 
   FilterXExpr *assign = filterx_assign_new(result_var, filterx_literal_new(filterx_string_new("foobar", -1)));
 
@@ -241,18 +242,18 @@ Test(filterx_expr, test_filterx_assign)
   set_libtest_filterx_scope(filterx_scope_new(NULL, l));
 
   FilterXObject *res = init_and_eval_expr(assign);
-  cr_assert_not_null(res);
+  cr_assert(not(zero(ptr, res)));
   cr_assert(filterx_object_is_type(res, &FILTERX_TYPE_NAME(string)));
-  cr_assert_str_eq(filterx_string_get_value_as_cstr(res), "foobar");
+  cr_assert(eq(str, filterx_string_get_value_as_cstr(res), "foobar"));
   cr_assert(filterx_object_truthy(res));
   cr_assert(assign->ignore_falsy_result);
 
-  cr_assert_not_null(result_var);
+  cr_assert(not(zero(ptr, result_var)));
   FilterXObject *result_obj = init_and_eval_expr(result_var);
-  cr_assert_not_null(result_obj);
+  cr_assert(not(zero(ptr, result_obj)));
   cr_assert(filterx_object_is_type(result_obj, &FILTERX_TYPE_NAME(string)));
   const gchar *result_val = filterx_string_get_value_as_cstr(result_obj);
-  cr_assert_str_eq("foobar", result_val);
+  cr_assert(eq(str, "foobar", result_val));
 
   filterx_object_unref(res);
   filterx_expr_unref(assign);
@@ -285,7 +286,7 @@ Test(filterx_expr, test_filterx_tuple_unpack_assignment)
   set_libtest_filterx_scope(filterx_scope_new(NULL, l));
 
   FilterXObject *res = init_and_eval_expr(assign);
-  cr_assert_not_null(res);
+  cr_assert(not(zero(ptr, res)));
   filterx_object_unref(res);
 
   _assert_int_value_and_unref(init_and_eval_expr(var_a), 1);
@@ -307,7 +308,7 @@ Test(filterx_expr, test_filterx_tuple_unpack_assignment_element_count_mismatch)
   set_libtest_filterx_scope(filterx_scope_new(NULL, l));
 
   FilterXObject *res = init_and_eval_expr(assign);
-  cr_assert_null(res);
+  cr_assert(zero(ptr, res));
   filterx_eval_clear_errors();
 
   filterx_expr_unref(assign);
@@ -325,7 +326,7 @@ Test(filterx_expr, test_filterx_tuple_unpack_assignment_rejects_non_sequence_rhs
   set_libtest_filterx_scope(filterx_scope_new(NULL, l));
 
   FilterXObject *res = init_and_eval_expr(assign);
-  cr_assert_null(res);
+  cr_assert(zero(ptr, res));
   filterx_eval_clear_errors();
 
   filterx_expr_unref(assign);
@@ -339,12 +340,12 @@ Test(filterx_expr, test_filterx_setattr)
 
   FilterXExpr *setattr = filterx_setattr_new(fillable, filterx_string_new("foo", -1),
                                              filterx_literal_new(filterx_string_new("bar", -1)));
-  cr_assert_not_null(setattr);
+  cr_assert(not(zero(ptr, setattr)));
 
   FilterXObject *res = init_and_eval_expr(setattr);
-  cr_assert_not_null(res);
+  cr_assert(not(zero(ptr, res)));
   cr_assert(filterx_object_is_type(res, &FILTERX_TYPE_NAME(string)));
-  cr_assert_str_eq(filterx_string_get_value_as_cstr(res), "bar");
+  cr_assert(eq(str, filterx_string_get_value_as_cstr(res), "bar"));
   cr_assert(filterx_object_truthy(res));
   cr_assert(setattr->ignore_falsy_result);
   filterx_object_unref(res);
@@ -362,12 +363,12 @@ Test(filterx_expr, test_filterx_set_subscript)
   FilterXExpr *setattr = filterx_set_subscript_new(fillable,
                                                    filterx_literal_new(filterx_string_new("foo", -1)),
                                                    filterx_literal_new(filterx_string_new("bar", -1)));
-  cr_assert_not_null(setattr);
+  cr_assert(not(zero(ptr, setattr)));
 
   FilterXObject *res = init_and_eval_expr(setattr);
-  cr_assert_not_null(res);
+  cr_assert(not(zero(ptr, res)));
   cr_assert(filterx_object_is_type(res, &FILTERX_TYPE_NAME(string)));
-  cr_assert_str_eq(filterx_string_get_value_as_cstr(res), "bar");
+  cr_assert(eq(str, filterx_string_get_value_as_cstr(res), "bar"));
   cr_assert(filterx_object_truthy(res));
   cr_assert(setattr->ignore_falsy_result);
   filterx_object_unref(res);

@@ -23,6 +23,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/grab-logging.h"
 
 #include "template/templates.c"
@@ -44,16 +45,16 @@ Plugin hello_plugin = TEMPLATE_FUNCTION_PLUGIN(hello, "hello");
 
 
 #define assert_common_element(expected) \
-    cr_assert_str_eq(current_elem->text, expected.text, "%s", "Bad compiled template text"); \
+    cr_assert(eq(str, current_elem->text, expected.text), "%s", "Bad compiled template text"); \
     if (expected.default_value) \
       { \
-        cr_assert_str_eq(current_elem->default_value, expected.default_value, "%s", "Bad compiled template default value"); \
+        cr_assert(eq(str, current_elem->default_value, expected.default_value), "%s", "Bad compiled template default value"); \
       } \
     else \
       { \
-        cr_assert_null(current_elem->default_value, "%s", "Bad compiled template default value"); \
+        cr_assert(zero(ptr, current_elem->default_value), "%s", "Bad compiled template default value"); \
       } \
-    cr_assert_eq(current_elem->msg_ref, expected.msg_ref, "%s", "Bad compiled template msg_ref");
+    cr_assert(eq(u16, current_elem->msg_ref, expected.msg_ref), "%s", "Bad compiled template msg_ref");
 
 #define fill_expected_template_element(element, text, default_value, spec, type, msg_ref)  {\
     element.text; \
@@ -76,11 +77,11 @@ Plugin hello_plugin = TEMPLATE_FUNCTION_PLUGIN(hello, "hello");
                                                                                                                                                                 \
     fill_expected_template_element(expected_elem, text = text_mut, \
                                    default_value = default_value_mut, spec, type, msg_ref); \
-    cr_assert_eq((current_elem->type), (expected_elem.type), "%s", "Bad compiled template type");               \
+    cr_assert(eq(u8, (current_elem->type), (expected_elem.type)), "%s", "Bad compiled template type");               \
     assert_common_element(expected_elem);                               \
-    if ((expected_elem.type) == LTE_MACRO) cr_assert_eq(current_elem->macro, expected_elem.macro, "%s", "Bad compiled template macro");     \
-    if ((expected_elem.type) == LTE_VALUE) cr_assert_eq(current_elem->value_handle, expected_elem.value_handle, "%s", "Bad compiled template macro"); \
-    if ((expected_elem.type) == LTE_FUNC) cr_assert_eq(current_elem->func.ops, expected_elem.func.ops, "%s", "Bad compiled template macro");  \
+    if ((expected_elem.type) == LTE_MACRO) cr_assert(eq(uint, current_elem->macro, expected_elem.macro), "%s", "Bad compiled template macro");     \
+    if ((expected_elem.type) == LTE_VALUE) cr_assert(eq(u32, current_elem->value_handle, expected_elem.value_handle), "%s", "Bad compiled template macro"); \
+    if ((expected_elem.type) == LTE_FUNC) cr_assert(eq(ptr, current_elem->func.ops, expected_elem.func.ops), "%s", "Bad compiled template macro");  \
     g_free(text_mut); \
     g_free(default_value_mut); \
 } while (0)
@@ -116,7 +117,7 @@ assert_template_compile(const gchar *template_string)
   GError *error = NULL;
 
   cr_assert(log_template_compile(template, template_string, &error), "%s", "Can't compile template");
-  cr_assert_str_eq(template->template_str, template_string, "%s", "Bad stored template");
+  cr_assert(eq(str, template->template_str, template_string), "%s", "Bad stored template");
   select_first_element();
 }
 
@@ -125,8 +126,8 @@ assert_failed_template_compile(const gchar *template_string, const gchar *expect
 {
   GError *error = NULL;
 
-  cr_assert_not(log_template_compile(template, template_string, &error), "%s", "Can compile bad template");
-  cr_assert_str_eq(error->message, expected_error_message, "%s", "Bad error message");
+  cr_assert(not(log_template_compile(template, template_string, &error)), "%s", "Can compile bad template");
+  cr_assert(eq(str, error->message, expected_error_message), "%s", "Bad error message");
 
   g_clear_error(&error);
   select_first_element();
@@ -138,7 +139,7 @@ get_template_function_ops(const gchar *name)
   Plugin *plugin;
 
   plugin = cfg_find_plugin(configuration, LL_CONTEXT_TEMPLATE_FUNC, name);
-  cr_assert_not_null(plugin, "Template function %s is not found", name);
+  cr_assert(not(zero(ptr, plugin)), "Template function %s is not found", name);
 
   if (plugin)
     return plugin->construct(plugin);
