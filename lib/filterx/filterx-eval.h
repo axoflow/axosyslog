@@ -104,6 +104,7 @@ void filterx_eval_dump_errors(const gchar *message);
 void filterx_eval_begin_context(FilterXEvalContext *context, FilterXEvalContext *previous_context,
                                 FilterXScope *scope_storage, LogMessage *msg);
 void filterx_eval_end_context(FilterXEvalContext *context);
+LogMessage *filterx_eval_make_message_writable(FilterXEvalContext *context);
 void filterx_eval_begin_restricted_context(FilterXEvalContext *context, FilterXEnvironment *env);
 void filterx_eval_end_restricted_context(FilterXEvalContext *context);
 
