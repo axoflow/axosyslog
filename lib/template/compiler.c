@@ -56,7 +56,10 @@ log_template_add_func_elem(LogTemplateCompiler *self, gint argc, gchar *argv[], 
   LogTemplateElem *e;
 
   if (argc == 0)
-    return TRUE;
+    {
+      g_strfreev(argv);
+      return TRUE;
+    }
 
   e = log_template_elem_new_func(self->template, self->text->str, argc, argv, self->msg_ref, error);
   if (!e)
