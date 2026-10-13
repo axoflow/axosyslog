@@ -125,6 +125,7 @@ DestWorker::connect()
   if (!this->channel->WaitForConnected(connect_timeout))
     return false;
 
+  this->mark_channel_used();
   this->connected = true;
   return true;
 }
@@ -135,6 +136,12 @@ DestWorker::disconnect()
   if (!this->connected)
     return;
   this->connected = false;
+}
+
+void
+DestWorker::mark_channel_used()
+{
+  this->last_channel_use = std::chrono::steady_clock::now();
 }
 
 /* create_channel_args() asks for a local subchannel pool, so the fresh
@@ -150,6 +157,24 @@ DestWorker::reopen_channel()
   this->channel = fresh_channel;
   this->create_stubs();
   return true;
+}
+
+void
+DestWorker::reopen_channel_if_idle()
+{
+  if (this->owner.idle_reconnect_timeout == 0)
+    return;
+
+  if (std::chrono::steady_clock::now() - this->last_channel_use
+      < std::chrono::seconds(this->owner.idle_reconnect_timeout))
+    return;
+
+  msg_debug("Reopening idle gRPC channel",
+            evt_tag_int("idle_reconnect_timeout", this->owner.idle_reconnect_timeout),
+            log_pipe_location_tag((LogPipe *) this->super->super.owner));
+
+  /* On failure flush() still runs, only it can empty the batch of the worker. */
+  (void) this->reopen_channel();
 }
 
 void
@@ -229,7 +254,16 @@ LogThreadedResult
 _flush(LogThreadedDestWorker *s, LogThreadedFlushMode mode)
 {
   GrpcDestWorker *self = (GrpcDestWorker *) s;
-  return self->cpp->flush(mode);
+
+  /* An empty flush sends nothing: it must not reopen the channel or count as channel use. */
+  if (s->batch_size == 0)
+    return self->cpp->flush(mode);
+
+  self->cpp->reopen_channel_if_idle();
+
+  LogThreadedResult result = self->cpp->flush(mode);
+  self->cpp->mark_channel_used();
+  return result;
 }
 
 static void
