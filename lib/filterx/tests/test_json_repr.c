@@ -103,6 +103,23 @@ Test(filterx_json_repr, json_string_orphan_surrogate_does_not_overrun)
 }
 
 static void
+_assert_json_string_decodes_to(const gchar *json, const gchar *expected)
+{
+  FilterXObject *obj = filterx_object_from_json(json, -1, NULL);
+  cr_assert_not_null(obj);
+  assert_object_str_equals(obj, expected);
+  filterx_object_unref(obj);
+}
+
+Test(filterx_json_repr, json_string_unpaired_high_surrogates_are_replaced)
+{
+  _assert_json_string_decodes_to("\"\\uD800abc\\uDC00\"", "\xEF\xBF\xBD" "abc" "\xEF\xBF\xBD");
+  _assert_json_string_decodes_to("\"\\uD800\\uD800\\uDC00\"", "\xEF\xBF\xBD" "\xF0\x90\x80\x80");
+  _assert_json_string_decodes_to("\"\\uD800A\"", "\xEF\xBF\xBD" "A");
+  _assert_json_string_decodes_to("\"\\uD800\\u0041\"", "\xEF\xBF\xBD" "A");
+}
+
+static void
 setup(void)
 {
   app_startup();
