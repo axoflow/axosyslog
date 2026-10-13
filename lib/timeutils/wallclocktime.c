@@ -856,6 +856,13 @@ out:
           /* calculate month of day of year */
           isleap = isleap_sum(wct->tm.tm_year, TM_YEAR_BASE);
 
+          while (wct->tm.tm_yday < 0)
+            {
+              wct->tm.tm_year--;
+              isleap = isleap_sum(wct->tm.tm_year, TM_YEAR_BASE);
+              wct->tm.tm_yday += start_of_month[isleap][12];
+            }
+
           while (wct->tm.tm_yday >= start_of_month[isleap][12])
             {
               wct->tm.tm_yday -= start_of_month[isleap][12];

@@ -56,12 +56,14 @@ Test(wallclocktime, test_wall_clock_time_init)
   cr_assert(wall_clock_time_is_set(&wct) == FALSE);
 }
 
-Test(wallclocktime, test_strptime_week_zero_derives_a_real_month)
+Test(wallclocktime, test_strptime_week_zero_rolls_back_to_the_previous_year)
 {
-  /* %U week 0 makes tm_yday negative */
+  /* %U week 0 makes tm_yday negative: the Sunday before 2200-01-01, a Wednesday */
   WallClockTime wct = WALL_CLOCK_TIME_INIT;
-  wall_clock_time_strptime(&wct, "%C\n%U", "220");
-  cr_assert(wct.wct_mon >= 0 && wct.wct_mon <= 11, "wct_mon=%d", wct.wct_mon);
+  cr_assert_not_null(wall_clock_time_strptime(&wct, "%C\n%U", "220"));
+  cr_assert_eq(wct.wct_year, 2199 - 1900);
+  cr_assert_eq(wct.wct_mon, 11);
+  cr_assert_eq(wct.wct_mday, 29);
 }
 
 Test(wallclocktime, test_strptime_percent_g_needs_a_digit)
