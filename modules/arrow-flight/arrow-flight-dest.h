@@ -46,6 +46,7 @@ void arrow_flight_dd_set_batch_bytes(LogDriver *d, glong b);
 void arrow_flight_dd_set_keepalive_time(LogDriver *d, gint t);
 void arrow_flight_dd_set_keepalive_timeout(LogDriver *d, gint t);
 void arrow_flight_dd_set_keepalive_max_pings(LogDriver *d, gint p);
+void arrow_flight_dd_set_idle_reconnect_timeout(LogDriver *d, gint t);
 
 LogTemplateOptions *arrow_flight_dd_get_template_options(LogDriver *d);
 
