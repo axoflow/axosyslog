@@ -103,6 +103,11 @@ public:
     this->keepalive_max_pings_without_data = p;
   }
 
+  void set_idle_reconnect_timeout(int t)
+  {
+    this->idle_reconnect_timeout = t;
+  }
+
   void add_extra_channel_arg(std::string name, long value)
   {
     this->int_extra_channel_args.push_back(std::make_pair(name, value));
@@ -225,6 +230,8 @@ protected:
   int keepalive_time;
   int keepalive_timeout;
   int keepalive_max_pings_without_data;
+
+  int idle_reconnect_timeout;
 
   std::stringstream worker_partition_key;
   bool flush_on_key_change;
