@@ -636,6 +636,8 @@ log_expr_node_lookup_flag(const gchar *flag)
     return LC_FLOW_CONTROL;
   else if (strcmp(flag, "no-flow-control") == 0)
     return LC_NO_FLOW_CONTROL;
+  else if (strcmp(flag, "destination-failover") == 0)
+    return LC_DESTINATION_FAILOVER;
   else if (strcmp(flag, "drop-unmatched") == 0)
     {
       msg_warning_once("WARNING: The drop-unmatched flag has been removed starting with " VERSION_4_1 ". "
@@ -649,7 +651,11 @@ log_expr_node_lookup_flag(const gchar *flag)
 gboolean
 log_expr_node_validate_flags(gint flags)
 {
-  return !(flags & LC_FLOW_CONTROL && flags & LC_NO_FLOW_CONTROL);
+  if (flags & LC_FLOW_CONTROL && flags & LC_NO_FLOW_CONTROL)
+    return FALSE;
+  if ((flags & LC_DESTINATION_FAILOVER) && (flags & (LC_FALLBACK | LC_FINAL)))
+    return FALSE;
+  return TRUE;
 }
 
 static LogPipe *
@@ -925,6 +931,11 @@ cfg_tree_propagate_expr_node_properties_to_pipe(LogExprNode *node, LogPipe *pipe
 
   if (node->flags & LC_FINAL)
     pipe->flags |= PIF_BRANCH_FINAL;
+
+  if (node->flags & LC_DESTINATION_FAILOVER)
+    {
+      pipe->flags |= PIF_BRANCH_FINAL | PIF_BRANCH_DESTINATION_FAILOVER;
+    }
 
   if (_is_log_path(node))
     {

@@ -55,6 +55,8 @@ struct _AFSocketDestDriver
   TransportMapper *transport_mapper;
   gchar *driver_name;
 
+  gboolean currently_unreachable;
+
   struct
   {
     StatsCounterItem *output_unreachable;
@@ -109,6 +111,8 @@ void afsocket_dd_init_instance(AFSocketDestDriver *self, SocketOptions *socket_o
                                GlobalConfig *cfg);
 void afsocket_dd_reconnect(AFSocketDestDriver *self);
 void afsocket_dd_stop_watches(AFSocketDestDriver *self);
+gboolean afsocket_dd_reject_if_unreachable(AFSocketDestDriver *self, LogMessage *msg,
+                                           const LogPathOptions *path_options);
 
 gboolean afsocket_dd_init(LogPipe *s);
 gboolean afsocket_dd_deinit(LogPipe *s);

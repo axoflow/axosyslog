@@ -110,6 +110,8 @@ log_multiplexer_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_op
             }
 
           matched = TRUE;
+          local_path_options.destination_failover = path_options->destination_failover
+                                                    || (next_hop->flags & PIF_BRANCH_DESTINATION_FAILOVER) != 0;
           log_msg_add_ack(msg, &local_path_options);
           log_pipe_queue(next_hop, log_msg_ref(msg), &local_path_options);
 
@@ -169,9 +171,18 @@ log_multiplexer_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_op
    * perform a filtering function, which means we need to push our filtering
    * responsibility to the next pipe element.
    *
+   * flags(destination-failover) is the one case where we *are* dispatching
+   * to destinations (self->delivery_propagation is FALSE, as set by
+   * cfg_tree_compile_reference()/cfg_tree_compile_junction()) but still
+   * need to propagate: path_options->destination_failover, set earlier in
+   * this function for a PIF_BRANCH_DESTINATION_FAILOVER next_hop and
+   * inherited unchanged through any further nesting (see
+   * log_path_options_push_junction()), tells us this message is on such a
+   * path without needing to know anything about the concrete pipe graph
+   * around us.
    */
 
-  if (self->delivery_propagation)
+  if (self->delivery_propagation || path_options->destination_failover)
     {
       if (!delivered && path_options->matched)
         *path_options->matched = FALSE;
