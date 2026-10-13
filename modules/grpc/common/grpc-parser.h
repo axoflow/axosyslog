@@ -50,6 +50,7 @@
   { "time",                      KW_TIME }, \
   { "timeout",                   KW_TIMEOUT }, \
   { "max_pings_without_data",    KW_MAX_PINGS_WITHOUT_DATA }, \
+  { "idle_reconnect_timeout",    KW_IDLE_RECONNECT_TIMEOUT }, \
   { "ip",                        KW_IP }, \
   { "port",                      KW_PORT }, \
   { "peer_verify",               KW_PEER_VERIFY }, \
