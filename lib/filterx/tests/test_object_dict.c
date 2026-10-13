@@ -24,6 +24,8 @@
 
 #include "filterx/object-dict.h"
 #include "filterx/object-list.h"
+#include "filterx/object-primitive.h"
+#include "filterx/filterx-ref.h"
 #include "filterx/filterx-sequence.h"
 #include "filterx/object-string.h"
 #include "filterx/object-message-value.h"
@@ -258,6 +260,29 @@ Test(filterx_dict, test_list_freeze)
   filterx_object_unref(val_1);
   filterx_object_unref(val_0);
   filterx_object_unref(list);
+}
+
+Test(filterx_dict, test_adding_to_a_frozen_floating_list_leaves_it_intact)
+{
+  /* a constant-folded + result is stored floating in its literal */
+  FilterXObject *frozen = filterx_ref_float_unchecked(filterx_list_new());
+  filterx_config_freeze_object(configuration, &frozen);
+
+  FilterXObject *elem = filterx_integer_new(1);
+  FilterXObject *other = filterx_list_new();
+  cr_assert(filterx_sequence_append(other, &elem));
+
+  FilterXObject *sum = filterx_object_add(frozen, other);
+  cr_assert_not_null(sum);
+  cr_assert_neq(sum, frozen);
+
+  guint64 len = 1;
+  cr_assert(filterx_object_len(frozen, &len));
+  cr_assert_eq(len, 0);
+
+  filterx_object_unref(sum);
+  filterx_object_unref(other);
+  filterx_object_unref(elem);
 }
 
 Test(filterx_dict, test_dict_freeze)
