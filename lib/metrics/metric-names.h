@@ -74,6 +74,7 @@
   M(output_batch_size_bytes) \
   M(output_batch_size_events) \
   M(output_batch_timedout_total) \
+  M(output_connection_failures_total) \
   M(output_event_bytes_total) \
   M(output_event_latency_seconds) \
   M(output_event_retries_total) \
