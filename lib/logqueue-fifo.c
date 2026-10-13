@@ -104,12 +104,10 @@ typedef struct _LogQueueFifo
 {
   LogQueue super;
 
-  /* scalable qoverflow implementation */
-  OverflowQueue output_queue;
-  OverflowQueue wait_queue;
-  OverflowQueue backlog_queue; /* entries that were sent but not acked yet */
-
+  /* These are read only by the input threads.  Keep it away from the queue
+   * state below */
   gint log_fifo_size;
+  gint num_input_queues;
 
   struct
   {
@@ -117,10 +115,24 @@ typedef struct _LogQueueFifo
     StatsCounterItem *capacity;
   } metrics;
 
-  gint num_input_queues;
+  /* scalable qoverflow implementation, each of the three queues on its own
+   * cache line(s) according to who writes them */
+
+  /* input and output threads under super.lock, once per input batch */
+  OverflowQueue wait_queue __attribute__((aligned(INPUT_QUEUE_ALIGNMENT)));
+
+  /* output thread only, on every message */
+  OverflowQueue output_queue __attribute__((aligned(INPUT_QUEUE_ALIGNMENT)));
+  OverflowQueue backlog_queue; /* entries that were sent but not acked yet */
+
   InputQueue input_queues[0];
 } LogQueueFifo;
 
+/* the output thread's queues must not share a line with the fields the input threads read */
+G_STATIC_ASSERT(G_STRUCT_OFFSET(LogQueueFifo, output_queue) / INPUT_QUEUE_ALIGNMENT
+                > G_STRUCT_OFFSET(LogQueueFifo, num_input_queues) / INPUT_QUEUE_ALIGNMENT);
+G_STATIC_ASSERT(G_STRUCT_OFFSET(LogQueueFifo, backlog_queue) / INPUT_QUEUE_ALIGNMENT
+                == G_STRUCT_OFFSET(LogQueueFifo, output_queue) / INPUT_QUEUE_ALIGNMENT);
 G_STATIC_ASSERT(G_STRUCT_OFFSET(LogQueueFifo, input_queues) % INPUT_QUEUE_ALIGNMENT == 0);
 
 /* NOTE: this is inherently racy. If the LogQueue->lock is taken, then the
