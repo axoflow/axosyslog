@@ -62,20 +62,16 @@ DestinationWorker::~DestinationWorker()
 {
 }
 
-bool
-DestinationWorker::init()
+void
+DestinationWorker::create_stubs()
 {
-  if (!syslogng::grpc::DestWorker::init())
-    return false;
   this->stub = google::cloud::bigquery::storage::v1::BigQueryWrite().NewStub(this->channel);
-  return true;
 }
 
 void
-DestinationWorker::deinit()
+DestinationWorker::destroy_stubs()
 {
   this->stub.reset();
-  syslogng::grpc::DestWorker::deinit();
 }
 
 bool

@@ -104,12 +104,14 @@ DestWorker::init()
   this->channel = this->create_channel();
   if (!this->channel)
     return false;
+  this->create_stubs();
   return log_threaded_dest_worker_init_method(&super->super);
 }
 
 void
 DestWorker::deinit()
 {
+  this->destroy_stubs();
   this->channel.reset();
   log_threaded_dest_worker_deinit_method(&super->super);
 }

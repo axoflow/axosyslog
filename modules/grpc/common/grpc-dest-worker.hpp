@@ -50,6 +50,8 @@ public:
   virtual void disconnect();
 
 protected:
+  virtual void create_stubs() = 0;
+  virtual void destroy_stubs() = 0;
   void prepare_context(::grpc::ClientContext &context);
   void prepare_context_dynamic(::grpc::ClientContext &context, LogMessage *msg);
   std::shared_ptr<::grpc::ChannelCredentials> create_credentials();

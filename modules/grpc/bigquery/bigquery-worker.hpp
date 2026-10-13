@@ -61,8 +61,8 @@ public:
 protected:
   bool connect() override;
   void disconnect() override;
-  bool init() override;
-  void deinit() override;
+  void create_stubs() override;
+  void destroy_stubs() override;
   bool connected;
 
 private:
