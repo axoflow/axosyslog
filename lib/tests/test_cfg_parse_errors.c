@@ -83,6 +83,20 @@ Test(cfg_parse_errors, syntax_error_frees_the_partially_built_filterx_block)
     cr_assert(not(_parse(configs[i])), "%s", configs[i]);
 }
 
+/* bison does not run the destructors of the rule whose action failed */
+Test(cfg_parse_errors, failed_filterx_action_frees_what_it_owns)
+{
+  const gchar *configs[] =
+  {
+    "log { filterx { dpath($x) = 1; }; };",
+    "log { filterx { x = enum(nosuch.thing); }; };",
+    "log { filterx { x = \"${MSG\"; }; };",
+  };
+
+  for (gint i = 0; i < G_N_ELEMENTS(configs); i++)
+    cr_assert(not(_parse(configs[i])), "%s", configs[i]);
+}
+
 static void
 setup(void)
 {
