@@ -66,6 +66,31 @@ static const ResponseCodeLabel<arrow::StatusCode> arrow_status_code_labels[] =
   { arrow::StatusCode::AlreadyExists, "already_exists" },
 };
 
+template <typename Code, size_t N>
+static const char *
+_lookup_label(const ResponseCodeLabel<Code> (&table)[N], Code code)
+{
+  for (const auto &entry : table)
+    {
+      if (entry.code == code)
+        return entry.label;
+    }
+  return "unknown_error";
+}
+
+static const char *
+_response_code_label(const arrow::Status &status)
+{
+  if (status.ok())
+    return "ok";
+
+  auto flight_detail = arrow::flight::FlightStatusDetail::UnwrapStatus(status);
+  if (flight_detail)
+    return _lookup_label(flight_status_code_labels, flight_detail->code());
+
+  return _lookup_label(arrow_status_code_labels, status.code());
+}
+
 /* Takes the ownership of kb. */
 void
 DestDriverMetrics::init(StatsClusterKeyBuilder *kb_, int stats_level)
@@ -112,4 +137,10 @@ DestDriverMetrics::deinit()
 
   stats_cluster_key_builder_free(kb);
   kb = nullptr;
+}
+
+void
+DestDriverMetrics::insert_request_stats(const arrow::Status &status)
+{
+  stats_counter_inc(stats_cluster_single_get_counter(request_clusters.at(_response_code_label(status))));
 }

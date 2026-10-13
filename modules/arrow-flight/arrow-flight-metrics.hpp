@@ -31,6 +31,8 @@
 #include "stats/stats-cluster-key-builder.h"
 #include "compat/cpp-end.h"
 
+#include <arrow/status.h>
+
 #include <map>
 #include <string>
 
@@ -42,6 +44,8 @@ class DestDriverMetrics
 public:
   void init(StatsClusterKeyBuilder *kb, int stats_level);
   void deinit();
+
+  void insert_request_stats(const arrow::Status &status);
 
 private:
   StatsClusterKeyBuilder *kb = nullptr;
