@@ -567,6 +567,7 @@ DestinationWorker::flush(LogThreadedFlushMode mode)
       status = this->close_stream();
       if (status.ok())
         {
+          status = arrow::Status::IOError("Stream closed without an ack");
           result = LTR_NOT_CONNECTED;
           goto exit;
         }
@@ -589,8 +590,7 @@ server_error:
     }
 
 delivered:
-  status = arrow::ipc::GetRecordBatchSize(*batch, &batch_bytes);
-  if (status.ok())
+  if (arrow::ipc::GetRecordBatchSize(*batch, &batch_bytes).ok())
     {
       log_threaded_dest_worker_written_bytes_add(&this->super->super, batch_bytes);
       log_threaded_dest_driver_insert_batch_length_stats(this->super->super.owner, batch_bytes);
