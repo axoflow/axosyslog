@@ -409,7 +409,7 @@ DestinationWorker::format_path(LogMessage *msg)
   return this->buffer->str;
 }
 
-bool
+arrow::Status
 DestinationWorker::open_stream(const gchar *path)
 {
   (void) this->close_stream();
@@ -424,14 +424,14 @@ DestinationWorker::open_stream(const gchar *path)
       msg_error("arrow-flight: DoPut failed",
                 evt_tag_str("error", put_result.status().ToString().c_str()),
                 log_pipe_location_tag(&this->super->super.owner->super.super.super));
-      return false;
+      return put_result.status();
     }
 
   this->writer = std::move(put_result->writer);
   this->metadata_reader = std::move(put_result->reader);
   this->current_stream_path = path;
 
-  return true;
+  return arrow::Status::OK();
 }
 
 arrow::Status
@@ -529,7 +529,8 @@ DestinationWorker::flush(LogThreadedFlushMode mode)
 
   if (!this->writer || this->current_stream_path != path)
     {
-      if (!this->open_stream(path))
+      status = this->open_stream(path);
+      if (!status.ok())
         {
           result = LTR_NOT_CONNECTED;
           goto exit;
