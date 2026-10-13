@@ -579,6 +579,152 @@ Test(scan_day_abbrev, invalid_day_names)
   _parse_invalid_day("SaX");
 }
 
+/****************************************************************************
+ * Application log timestamps
+ ****************************************************************************/
+
+typedef gboolean (*TimestampScanner)(const gchar **buf, gint *left, WallClockTime *wct);
+
+static gboolean
+_scan_to_iso(TimestampScanner scanner, const gchar *ts, gchar converted[CONVERTED_TS_SIZE], const gchar **rest)
+{
+  UnixTime stamp;
+  GString *result = g_string_new("");
+  WallClockTime wct = WALL_CLOCK_TIME_INIT;
+  const gchar *data = ts;
+  gint length = strlen(ts);
+  gboolean success = scanner(&data, &length, &wct);
+
+  cr_assert(length >= 0);
+  cr_assert(data == &ts[strlen(ts) - length]);
+  *rest = data;
+
+  unix_time_unset(&stamp);
+  convert_wall_clock_time_to_unix_time(&wct, &stamp);
+  append_format_unix_time(&stamp, result, TS_FMT_ISO, stamp.ut_gmtoff, 3);
+  strncpy(converted, result->str, CONVERTED_TS_SIZE);
+  converted[CONVERTED_TS_SIZE - 1] = 0;
+  g_string_free(result, TRUE);
+  return success;
+}
+
+/* the scanner matches @ts, yields @expected and leaves exactly " rest" behind */
+#define _expect_scanned_eq(scanner, ts, expected) \
+  ({ \
+    gchar converted[CONVERTED_TS_SIZE]; \
+    const gchar *rest; \
+    cr_expect(_scan_to_iso(scanner, ts " rest", converted, &rest) && strcmp(converted, expected) == 0, \
+              #scanner " on ts=%s, converted=%s, expected=%s", ts, converted, expected); \
+    cr_expect_str_eq(rest, " rest", #scanner " consumed the wrong amount of ts=%s, rest=%s", ts, rest); \
+  })
+
+#define _expect_scan_fails(scanner, ts) \
+  ({ \
+    WallClockTime wct = WALL_CLOCK_TIME_INIT; \
+    const gchar *start = ts; \
+    const gchar *data = start; \
+    gint length = strlen(start); \
+    cr_expect_not(scanner(&data, &length, &wct), #scanner " accepted ts=%s", start); \
+    cr_expect(data == start && length == strlen(start), #scanner " moved the cursor on a failed ts=%s", start); \
+  })
+
+Test(parse_timestamp, numeric_date_timestamps)
+{
+  /* Splunk's own logs, with the zone */
+  _expect_scanned_eq(scan_numeric_date_timestamp, "10-09-2026 15:31:50.456 +0000", "2026-10-09T15:31:50.456+00:00");
+  _expect_scanned_eq(scan_numeric_date_timestamp, "10-09-2026 15:31:50 +02:00", "2026-10-09T15:31:50.000+02:00");
+  /* American slashes, European dots, the local zone (CEST) applies */
+  _expect_scanned_eq(scan_numeric_date_timestamp, "10/09/2026 15:31:50", "2026-10-09T15:31:50.000+02:00");
+  _expect_scanned_eq(scan_numeric_date_timestamp, "09.10.2026 15:31:50", "2026-10-09T15:31:50.000+02:00");
+  _expect_scanned_eq(scan_numeric_date_timestamp, "9.10.2026 5:31:50", "2026-10-09T05:31:50.000+02:00");
+  /* a day above 12 settles the order whatever the separator */
+  _expect_scanned_eq(scan_numeric_date_timestamp, "24/10/2026 15:31:50", "2026-10-24T15:31:50.000+02:00");
+  /* year first */
+  _expect_scanned_eq(scan_numeric_date_timestamp, "2026/10/09 15:31:50", "2026-10-09T15:31:50.000+02:00");
+  _expect_scanned_eq(scan_numeric_date_timestamp, "2026-10-09 15:31:50,123Z", "2026-10-09T15:31:50.123+00:00");
+
+  _expect_scan_fails(scan_numeric_date_timestamp, "10-09-26 15:31:50");
+  _expect_scan_fails(scan_numeric_date_timestamp, "13/13/2026 15:31:50");
+  _expect_scan_fails(scan_numeric_date_timestamp, "10-09-2026 15:31");
+  _expect_scan_fails(scan_numeric_date_timestamp, "10-09-2026T15:31:50");
+  _expect_scan_fails(scan_numeric_date_timestamp, "1791561960 message");
+  _expect_scan_fails(scan_numeric_date_timestamp, "20261009 153150");
+  _expect_scan_fails(scan_numeric_date_timestamp, "15:31:50 message");
+}
+
+Test(parse_timestamp, day_month_year_timestamps)
+{
+  _expect_scanned_eq(scan_day_month_year_timestamp, "09/Oct/2026:15:31:50 +0200", "2026-10-09T15:31:50.000+02:00");
+  _expect_scanned_eq(scan_day_month_year_timestamp, "09 Oct 2026 15:31:50", "2026-10-09T15:31:50.000+02:00");
+  _expect_scanned_eq(scan_day_month_year_timestamp, "Thu, 09 Oct 2026 15:31:50 -0500", "2026-10-09T15:31:50.000-05:00");
+  _expect_scanned_eq(scan_day_month_year_timestamp, "09-Oct-2026 15:31:50.123", "2026-10-09T15:31:50.123+02:00");
+  _expect_scanned_eq(scan_day_month_year_timestamp, "9 Oct 2026 15:31:50", "2026-10-09T15:31:50.000+02:00");
+  _expect_scanned_eq(scan_day_month_year_timestamp, "09 October 2026 15:31:50", "2026-10-09T15:31:50.000+02:00");
+  _expect_scanned_eq(scan_day_month_year_timestamp, "Thu, 09 October 2026 15:31:50 +0200",
+                     "2026-10-09T15:31:50.000+02:00");
+  _expect_scanned_eq(scan_day_month_year_timestamp, "01 May 2026 15:31:50", "2026-05-01T15:31:50.000+02:00");
+
+  _expect_scan_fails(scan_day_month_year_timestamp, "09 Sept 2026 15:31:50");
+  _expect_scan_fails(scan_day_month_year_timestamp, "09/Oct-2026:15:31:50");
+  _expect_scan_fails(scan_day_month_year_timestamp, "09 Foo 2026 15:31:50");
+  _expect_scan_fails(scan_day_month_year_timestamp, "Thu Oct 09 15:31:50 2026");
+  _expect_scan_fails(scan_day_month_year_timestamp, "Oct 09, 2026 3:31:50 PM");
+}
+
+Test(parse_timestamp, apache_error_timestamps)
+{
+  _expect_scanned_eq(scan_apache_error_timestamp, "Thu Oct 09 15:31:50.123456 2026", "2026-10-09T15:31:50.123+02:00");
+  _expect_scanned_eq(scan_apache_error_timestamp, "Thu Oct 09 15:31:50 2026", "2026-10-09T15:31:50.000+02:00");
+  _expect_scanned_eq(scan_apache_error_timestamp, "Thu Oct 9 15:31:50 2026", "2026-10-09T15:31:50.000+02:00");
+
+  _expect_scan_fails(scan_apache_error_timestamp, "Oct 09 15:31:50 2026");
+  _expect_scan_fails(scan_apache_error_timestamp, "Thu Oct 09 15:31:50");
+}
+
+Test(parse_timestamp, java_util_logging_timestamps)
+{
+  _expect_scanned_eq(scan_java_util_logging_timestamp, "Oct 09, 2026 3:31:50 PM", "2026-10-09T15:31:50.000+02:00");
+  _expect_scanned_eq(scan_java_util_logging_timestamp, "Oct 09, 2026 12:31:50 AM", "2026-10-09T00:31:50.000+02:00");
+  _expect_scanned_eq(scan_java_util_logging_timestamp, "Oct 09, 2026 12:31:50 PM", "2026-10-09T12:31:50.000+02:00");
+  _expect_scanned_eq(scan_java_util_logging_timestamp, "Oct 9, 2026 15:31:50", "2026-10-09T15:31:50.000+02:00");
+  _expect_scanned_eq(scan_java_util_logging_timestamp, "October 09, 2026 15:31:50", "2026-10-09T15:31:50.000+02:00");
+  _expect_scanned_eq(scan_java_util_logging_timestamp, "February 09, 2026 3:31:50 PM", "2026-02-09T15:31:50.000+01:00");
+
+  _expect_scan_fails(scan_java_util_logging_timestamp, "Oct 09 2026 15:31:50");
+  _expect_scan_fails(scan_java_util_logging_timestamp, "Oct 09, 2026 13:31:50 PM");
+}
+
+Test(parse_timestamp, application_log_scanners_accept_a_leap_second)
+{
+  const gchar *ts = "2026-06-30 23:59:60";
+  const gchar *p = ts;
+  gint left = strlen(ts);
+  WallClockTime leap = WALL_CLOCK_TIME_INIT;
+
+  cr_assert(scan_numeric_date_timestamp(&p, &left, &leap));
+  cr_assert_eq(leap.wct_sec, 60);
+
+  _expect_scan_fails(scan_numeric_date_timestamp, "2026-06-30 23:59:61");
+  _expect_scan_fails(scan_numeric_date_timestamp, "2026-06-30 23:60:00");
+}
+
+Test(parse_timestamp, application_log_scanners_handle_non_zero_terminated_input)
+{
+  /* the trailing garbage must not be read */
+  const gchar buf[] = "09/Oct/2026:15:31:50 +0200XXXXXXXX";
+  const gchar *data = buf;
+  gint length = strlen("09/Oct/2026:15:31:50 +0200");
+  WallClockTime wct = WALL_CLOCK_TIME_INIT;
+
+  cr_assert(scan_day_month_year_timestamp(&data, &length, &wct));
+  cr_assert_eq(length, 0);
+  cr_assert_eq(wct.wct_gmtoff, 7200);
+
+  data = buf;
+  length = strlen("09/Oct/2026:15:31:5");
+  cr_assert_not(scan_day_month_year_timestamp(&data, &length, &wct));
+}
+
 
 void
 setup(void)

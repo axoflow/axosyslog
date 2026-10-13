@@ -27,13 +27,30 @@
 #include "libtest/proto_lib.h"
 #include "libtest/msg_parse_lib.h"
 
-#include "multi-line/indented-multi-line.h"
+#include "multi-line/multi-line-factory.h"
 #include "logproto/logproto-multiline-server.h"
+#include "logproto/logproto-text-server.h"
+
+#include <iv.h>
+#include <unistd.h>
+
+static LogProtoServer *
+_indented_multiline_server_new(LogTransport *transport, const LogProtoServerOptions *options, gint timeout_msec)
+{
+  MultiLineOptions multi_line_options;
+
+  multi_line_options_defaults(&multi_line_options);
+  multi_line_options_set_mode(&multi_line_options, "indented");
+  multi_line_options_set_timeout(&multi_line_options, timeout_msec);
+  LogProtoServer *server = log_proto_multiline_server_new(transport, options, &multi_line_options);
+  multi_line_options_destroy(&multi_line_options);
+  return server;
+}
 
 LogProtoServer *
 log_proto_indented_multiline_server_new(LogTransport *transport, const LogProtoServerOptions *options)
 {
-  return log_proto_multiline_server_new(transport, options, indented_multi_line_new());
+  return _indented_multiline_server_new(transport, options, 0);
 }
 
 static void
@@ -153,4 +170,66 @@ Test(log_proto, test_multiline_at_eof)
 {
   test_multiline_at_eof(log_transport_mock_stream_new);
   test_multiline_at_eof(log_transport_mock_records_new);
+}
+
+/* iv_now is read once per loop iteration, and there is no loop here */
+static void
+_sleep_msec(gint msec)
+{
+  usleep(msec * 1000);
+  iv_invalidate_now();
+}
+
+/* one fetch(), unlike proto_server_fetch() which keeps going until a message */
+static LogProtoStatus
+_fetch_once(LogProtoServer *proto, const guchar **msg, gsize *msg_len)
+{
+  LogTransportAuxData aux;
+  gboolean may_read = TRUE;
+
+  *msg = NULL;
+  *msg_len = 0;
+  log_transport_aux_data_init(&aux);
+  LogProtoStatus status = log_proto_server_fetch(proto, msg, msg_len, &may_read, &aux, NULL);
+  log_transport_aux_data_destroy(&aux);
+  return status;
+}
+
+Test(log_proto, test_multi_line_timeout_hands_over_the_pending_lines, .timeout = 10)
+{
+  LogProtoServer *proto;
+  const guchar *msg = NULL;
+  gsize msg_len = 0;
+  GIOCondition cond;
+  gint timeout;
+
+  proto_server_options.max_msg_size = 32;
+  /* the stream goes quiet after the second line, nothing ends the message */
+  proto = _indented_multiline_server_new(
+            log_transport_mock_endless_records_new(
+              "0\n"
+              " 1=2\n", -1,
+              LTM_EOF),
+            get_inited_proto_server_options(), 100);
+
+  /* the lines are read in and consumed, then the quiet stream reports EAGAIN */
+  cr_assert_eq(_fetch_once(proto, &msg, &msg_len), LPS_AGAIN);
+  cr_assert_null(msg, "the message must wait for its next line");
+
+  /* the timer firing before the deadline changes nothing */
+  log_proto_text_server_fire_multi_line_timeout(proto);
+  cr_assert_eq(log_proto_server_poll_prepare(proto, &cond, &timeout), LPPA_POLL_IO);
+
+  /* past the deadline the lines consumed so far are flushed as the message */
+  _sleep_msec(150);
+  log_proto_text_server_fire_multi_line_timeout(proto);
+  cr_assert_eq(log_proto_server_poll_prepare(proto, &cond, &timeout), LPPA_FORCE_SCHEDULE_FETCH);
+  cr_assert_eq(_fetch_once(proto, &msg, &msg_len), LPS_SUCCESS);
+  cr_assert_not_null(msg);
+  cr_assert_eq(msg_len, strlen("0\n 1=2\n"));
+  cr_assert_arr_eq(msg, "0\n 1=2\n", msg_len);
+
+  cr_assert_eq(log_proto_server_poll_prepare(proto, &cond, &timeout), LPPA_POLL_IO);
+
+  log_proto_server_free(proto);
 }
