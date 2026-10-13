@@ -50,6 +50,8 @@ set(ARROW_FLIGHT_CPP_SOURCES
   arrow-flight-dest.h
   arrow-flight-dest.hpp
   arrow-flight-dest.cpp
+  arrow-flight-metrics.hpp
+  arrow-flight-metrics.cpp
   arrow-flight-worker.h
   arrow-flight-worker.hpp
   arrow-flight-worker.cpp
