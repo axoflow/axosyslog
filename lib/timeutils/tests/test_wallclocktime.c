@@ -66,6 +66,16 @@ Test(wallclocktime, test_strptime_week_zero_rolls_back_to_the_previous_year)
   cr_assert_eq(wct.wct_mday, 29);
 }
 
+Test(wallclocktime, test_strptime_epoch_past_time_max_fails)
+{
+  WallClockTime wct = WALL_CLOCK_TIME_INIT;
+  cr_assert_null(wall_clock_time_strptime(&wct, "%s", "9223372036854775808"));
+
+  const gchar *digits = "88888888888888888888";
+  gchar *end = wall_clock_time_strptime(&wct, "%s", digits);
+  cr_assert_eq(end, digits + 19, "the 20th digit must stay unparsed");
+}
+
 Test(wallclocktime, test_strptime_percent_g_needs_a_digit)
 {
   WallClockTime wct = WALL_CLOCK_TIME_INIT;

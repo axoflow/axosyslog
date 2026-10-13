@@ -531,7 +531,7 @@ recurse:
 #endif
         case 's': /* seconds since the epoch */
         {
-          time_t sse = 0;
+          uint64_t sse = 0;
           uint64_t rulim = TIME_MAX;
 
           if (*bp < '0' || *bp > '9')
@@ -546,10 +546,10 @@ recurse:
               sse += *bp++ - '0';
               rulim /= 10;
             }
-          while ((sse * 10 <= TIME_MAX) &&
+          while ((sse <= TIME_MAX / 10) &&
                  rulim && *bp >= '0' && *bp <= '9');
 
-          if (sse < 0 || (uint64_t)sse > TIME_MAX)
+          if (sse > TIME_MAX)
             {
               bp = NULL;
               continue;
