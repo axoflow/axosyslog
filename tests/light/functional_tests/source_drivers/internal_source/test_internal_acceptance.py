@@ -20,6 +20,7 @@
 # COPYING for details.
 #
 #############################################################################
+from axosyslog_light.syslog_ng_ctl.prometheus_stats_handler import MetricFilter
 
 
 def test_internal_source_with_threaded_destination(config, syslog_ng):
@@ -40,3 +41,27 @@ def test_internal_source_with_threaded_destination(config, syslog_ng):
 
     syslog_ng.stop()
     assert example_destination.read_until_logs(["syslog-ng shutting down"])
+
+
+def test_internal_events_are_counted_by_severity(config, syslog_ng):
+    internal_source = config.create_internal_source()
+    internal_destination = config.create_file_destination(file_name="internal.log")
+    config.create_logpath(statements=[internal_source, internal_destination])
+
+    generator_source = config.create_example_msg_generator_source(num=1)
+    unwritable_destination = config.create_file_destination(file_name="missing-dir/output.log", create_dirs="no")
+    config.create_logpath(statements=[generator_source, unwritable_destination])
+
+    syslog_ng.start_params.stderr = False
+    syslog_ng.start_params.trace = False
+    syslog_ng.start_params.verbose = False
+
+    syslog_ng.start(config)
+    assert internal_destination.read_until_logs(["syslog-ng starting up", "Error opening file for writing"])
+
+    samples = config.get_prometheus_samples([MetricFilter("syslogng_internal_events_total", {})])
+    by_severity = {sample.labels["severity"]: sample.value for sample in samples if "severity" in sample.labels}
+
+    assert set(by_severity) == {"emerg", "alert", "crit", "err", "warning", "notice", "info", "debug"}
+    assert by_severity["notice"] >= 1
+    assert by_severity["err"] >= 1
