@@ -19,6 +19,7 @@ fi
 (cd /source && git log -1) >> "$outdir/git-commit"
 
 export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so
+export MALLOC_CONF="tcache_gc_incr_bytes:1073741824"
 
 # Cache layout is coming from: Intel(R) Xeon(R) Platinum 8275CL CPU @ 3.00GHz
 #
