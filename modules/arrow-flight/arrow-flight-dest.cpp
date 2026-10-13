@@ -85,12 +85,17 @@ DestinationDriver::init()
   if (this->batch_bytes > 0 && this->super->super.batch_lines <= 0)
     this->super->super.batch_lines = G_MAXINT;
 
+  StatsClusterKeyBuilder *kb = stats_cluster_key_builder_new();
+  this->super->super.format_stats_key(&this->super->super, kb);
+  this->metrics.init(kb, log_pipe_is_internal(&this->super->super.super.super.super) ? STATS_LEVEL3 : STATS_LEVEL1);
+
   return true;
 }
 
 bool
 DestinationDriver::deinit()
 {
+  this->metrics.deinit();
   return log_threaded_dest_driver_deinit_method(&this->super->super.super.super.super);
 }
 
