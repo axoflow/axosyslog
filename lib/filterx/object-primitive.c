@@ -187,7 +187,8 @@ double_repr(double dbl, gint prec, GString *repr)
                    ? g_strdup_printf("%.*f", prec, dbl)
                    : g_strdup_printf("%.17g", dbl);
       gchar *dot = strchr(buf, '.');
-      if (!dot && strchr(buf, 'e') == NULL)
+      gchar *exponent = strchr(buf, 'e');
+      if (!dot && !exponent)
         {
           /* no fractions, not scientific notation */
           g_string_append(repr, buf);
@@ -195,7 +196,9 @@ double_repr(double dbl, gint prec, GString *repr)
         }
       else
         {
-          if (dot)
+          /* %g already trimmed the scientific form, and the scan would eat
+           * the exponent's zeroes */
+          if (dot && !exponent)
             {
               gchar *last_useful_digit = dot + 1;
               for (gchar *c = last_useful_digit; *c; c++)
