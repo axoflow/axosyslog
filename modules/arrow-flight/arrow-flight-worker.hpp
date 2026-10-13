@@ -60,7 +60,7 @@ private:
   bool should_initiate_flush();
   void prepare_batch();
   std::string format_path(LogMessage *msg);
-  bool open_stream(const gchar *path);
+  arrow::Status open_stream(const gchar *path);
   arrow::Status close_stream();
   LogThreadedResult map_status_to_result(const arrow::Status &status);
   bool create_builders();
