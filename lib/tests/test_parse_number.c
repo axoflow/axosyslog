@@ -165,6 +165,14 @@ Test(parse_number_with_suffix, test_exponent_suffix_is_parsed_properly)
   assert_parse_with_suffix("1g", 1000 * 1000 * 1000);
 }
 
+Test(parse_number_with_suffix, test_suffix_overflowing_int64_is_rejected)
+{
+  assert_parse_with_suffix("9223372036854775k", G_GINT64_CONSTANT(9223372036854775000));
+  assert_parse_with_suffix_fails("9223372036854776k");
+  assert_parse_with_suffix_fails("8888888888888888g");
+  assert_parse_with_suffix_fails("-9223372036854776k");
+}
+
 Test(parse_number_with_suffix, test_byte_units_are_accepted)
 {
   assert_parse_with_suffix("1b", 1);
