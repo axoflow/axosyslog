@@ -45,6 +45,8 @@ class SyslogNgPaths(object):
                 "stdout": Path("syslog_ng_{}_stdout".format(instance_name)),
                 "syntax_only_stderr": Path("syslog_ng_{}_syntax_only_stderr".format(instance_name)),
                 "syntax_only_stdout": Path("syslog_ng_{}_syntax_only_stdout".format(instance_name)),
+                "list_paths_stderr": Path("syslog_ng_{}_list_paths_stderr".format(instance_name)),
+                "list_paths_stdout": Path("syslog_ng_{}_list_paths_stdout".format(instance_name)),
             },
         }
 
@@ -102,6 +104,12 @@ class SyslogNgPaths(object):
 
     def get_syntax_only_stdout_path(self):
         return self.__syslog_ng_paths["file_paths"]["syntax_only_stdout"]
+
+    def get_list_paths_stderr_path(self):
+        return self.__syslog_ng_paths["file_paths"]["list_paths_stderr"]
+
+    def get_list_paths_stdout_path(self):
+        return self.__syslog_ng_paths["file_paths"]["list_paths_stdout"]
 
     def get_syslog_ng_bin(self):
         return self.__syslog_ng_paths["binary_file_paths"]["syslog_ng_binary"]
