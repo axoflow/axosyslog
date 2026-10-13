@@ -90,10 +90,7 @@ DestinationWorker::connect()
   if (!this->construct_write_stream())
     return false;
 
-  this->batch_writer_ctx = std::make_unique<::grpc::ClientContext>();
-  this->prepare_context(*this->batch_writer_ctx.get());
-  this->batch_writer = this->stub->AppendRows(this->batch_writer_ctx.get());
-
+  this->open_append_rows_stream();
   this->prepare_batch();
 
   this->connected = true;
@@ -333,6 +330,14 @@ DestinationWorker::create_channel()
     }
 
   return channel_;
+}
+
+void
+DestinationWorker::open_append_rows_stream()
+{
+  this->batch_writer_ctx = std::make_unique<::grpc::ClientContext>();
+  this->prepare_context(*this->batch_writer_ctx.get());
+  this->batch_writer = this->stub->AppendRows(this->batch_writer_ctx.get());
 }
 
 bool
