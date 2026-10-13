@@ -504,7 +504,7 @@ DestinationWorker::flush(LogThreadedFlushMode mode)
   std::shared_ptr<arrow::Buffer> ack;
   arrow::Status status;
   int64_t batch_bytes = 0;
-  const gchar *path = this->current_batch_path.c_str();
+  const std::string path = this->current_batch_path;
 
   if (this->get_batch_size() == 0)
     return LTR_SUCCESS;
@@ -529,7 +529,7 @@ DestinationWorker::flush(LogThreadedFlushMode mode)
 
   if (!this->writer || this->current_stream_path != path)
     {
-      if (!this->open_stream(path))
+      if (!this->open_stream(path.c_str()))
         {
           result = LTR_NOT_CONNECTED;
           goto exit;
