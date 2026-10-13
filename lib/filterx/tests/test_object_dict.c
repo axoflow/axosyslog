@@ -353,4 +353,20 @@ teardown(void)
   app_shutdown();
 }
 
+Test(filterx_dict, test_empty_dict_membership_is_false)
+{
+  FilterXObject *dict = filterx_dict_new();
+  FilterXObject *member = filterx_string_new("foo", -1);
+
+  FilterXObject *result = filterx_object_is_member_of(dict, member);
+  gboolean is_member = TRUE;
+  cr_assert(result);
+  cr_assert(filterx_boolean_unwrap(result, &is_member));
+  cr_assert_not(is_member);
+
+  filterx_object_unref(result);
+  filterx_object_unref(member);
+  filterx_object_unref(dict);
+}
+
 TestSuite(filterx_dict, .init = setup, .fini = teardown);
