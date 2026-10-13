@@ -63,6 +63,7 @@ protected:
   void disconnect() override;
   void create_stubs() override;
   void destroy_stubs() override;
+  bool reopen_channel() override;
   bool connected;
 
 private:

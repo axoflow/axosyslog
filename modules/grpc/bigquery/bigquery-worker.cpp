@@ -341,6 +341,28 @@ DestinationWorker::open_append_rows_stream()
 }
 
 bool
+DestinationWorker::reopen_channel()
+{
+  if (!syslogng::grpc::DestWorker::reopen_channel())
+    return false;
+
+  /* The old stream rides the idle connection: a graceful close could wait
+   * on a flow that a middlebox has already forgotten. */
+  this->batch_writer_ctx->TryCancel();
+  (void) this->batch_writer->Finish();
+  this->batch_writer.reset();
+  this->batch_writer_ctx.reset();
+  this->is_stream_open = false;
+
+  if (!this->construct_write_stream())
+    return false;
+
+  this->open_append_rows_stream();
+  this->current_batch->set_write_stream(this->write_stream.name());
+  return true;
+}
+
+bool
 DestinationWorker::construct_write_stream()
 {
   ::grpc::ClientContext ctx;
