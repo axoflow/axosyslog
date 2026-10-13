@@ -76,9 +76,12 @@ struct _LogSource
   gsize wakeup_threshold;
   /* full_window_size = static + dynamic */
   gsize full_window_size;
-  atomic_gssize window_size_to_be_reclaimed;
-  atomic_gssize pending_reclamation;
-  WindowSizeCounter window_size;
+  gint64 window_full_sleep_nsec;
+  AckTrackerFactory *ack_tracker_factory;
+  AckTracker *ack_tracker;
+
+  void (*wakeup)(LogSource *s);
+  void (*schedule_dynamic_window_realloc)(LogSource *s);
 
   struct
   {
@@ -102,16 +105,20 @@ struct _LogSource
 
   } metrics;
 
+  /* these are shared between the input/output threads and bouncing back and forth */
   guint32 last_ack_count;
   guint32 ack_count;
-  gint64 window_full_sleep_nsec;
   struct timespec last_ack_rate_time;
-  AckTrackerFactory *ack_tracker_factory;
-  AckTracker *ack_tracker;
-
-  void (*wakeup)(LogSource *s);
-  void (*schedule_dynamic_window_realloc)(LogSource *s);
+  atomic_gssize window_size_to_be_reclaimed;
+  atomic_gssize pending_reclamation;
+  WindowSizeCounter window_size;
 };
+
+/* the hot flow control state should not share a cache line with the fields
+ * read on every message */
+G_STATIC_ASSERT(G_STRUCT_OFFSET(LogSource, last_ack_count) - G_STRUCT_OFFSET(LogSource,
+                metrics.window_available) >= 64);
+G_STATIC_ASSERT(G_STRUCT_OFFSET(LogSource, last_ack_count) - G_STRUCT_OFFSET(LogSource, ack_tracker) >= 64);
 
 static inline gboolean
 log_source_free_to_send(LogSource *self)
