@@ -64,6 +64,7 @@ typedef struct _FilterXEvalContext FilterXEvalContext;
 struct _FilterXEvalContext
 {
   LogMessage *msg;
+  const LogPathOptions *path_options;
   FilterXScope *scope;
   FilterXError errors[FILTERX_CONTEXT_ERROR_STACK_SIZE];
   gint error_count;

@@ -164,6 +164,7 @@ log_filterx_pipe_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_o
     LogPathOptions local_path_options;
 
     path_options = log_path_options_chain(&local_path_options, path_options);
+    eval_context.path_options = path_options;
 
     msg_trace(">>>>>> filterx rule evaluation begin",
               evt_tag_str("rule", self->name),
