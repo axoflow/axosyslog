@@ -88,6 +88,21 @@ Test(expr_function, test_function_null_arg)
   filterx_expr_unref(func);
 }
 
+Test(expr_function, test_function_without_args_evaluates)
+{
+  GError *error = NULL;
+  FilterXExpr *func = filterx_simple_function_new("test_dummy", filterx_function_args_new(NULL, NULL),
+                                                  test_dummy_function, &error);
+  cr_assert_not_null(func);
+  cr_assert_null(error);
+
+  FilterXObject *res = init_and_eval_expr(func);
+  cr_assert_not_null(res);
+  cr_assert_str_eq(filterx_string_get_value_as_cstr(res), "");
+  filterx_expr_unref(func);
+  filterx_object_unref(res);
+}
+
 Test(expr_function, test_function_valid_arg)
 {
   GList *args = NULL;
