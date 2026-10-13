@@ -33,6 +33,7 @@
 typedef struct _FilterInList
 {
   FilterExprNode super;
+  gchar *list_file;
   NVHandle value_handle;
   GTree *tree;
 } FilterInList;
@@ -61,30 +62,32 @@ filter_in_list_free(FilterExprNode *s)
 {
   FilterInList *self = (FilterInList *)s;
 
-  g_tree_destroy(self->tree);
+  g_free(self->list_file);
+  if (self->tree)
+    g_tree_destroy(self->tree);
 }
 
-FilterExprNode *
-filter_in_list_new(const gchar *list_file, const gchar *property)
+static gboolean
+filter_in_list_init(FilterExprNode *s, GlobalConfig *cfg)
 {
-  FilterInList *self;
+  FilterInList *self = (FilterInList *)s;
   FILE *stream;
   gchar line[16384];
 
-  stream = fopen(list_file, "r");
+  /* a reverted reload initializes the old config again, it keeps the list it read first */
+  if (self->tree)
+    return TRUE;
+
+  stream = fopen(self->list_file, "r");
   if (!stream)
     {
       msg_error("Error opening in-list filter list file",
-                evt_tag_str("file", list_file),
+                evt_tag_str("file", self->list_file),
                 evt_tag_error("errno"));
-      return NULL;
+      return FALSE;
     }
 
-  self = g_new0(FilterInList, 1);
-  filter_expr_node_init_instance(&self->super);
-  self->value_handle = log_msg_get_value_handle(property);
   self->tree = g_tree_new_full((GCompareDataFunc)strcmp, NULL, g_free, NULL);
-
   while (fgets(line, sizeof(line), stream) != NULL)
     {
       line[strlen(line) - 1] = '\0';
@@ -93,6 +96,19 @@ filter_in_list_new(const gchar *list_file, const gchar *property)
     }
   fclose(stream);
 
+  return TRUE;
+}
+
+FilterExprNode *
+filter_in_list_new(const gchar *list_file, const gchar *property)
+{
+  FilterInList *self = g_new0(FilterInList, 1);
+
+  filter_expr_node_init_instance(&self->super);
+  self->list_file = g_strdup(list_file);
+  self->value_handle = log_msg_get_value_handle(property);
+
+  self->super.init = filter_in_list_init;
   self->super.eval = filter_in_list_eval;
   self->super.free_fn = filter_in_list_free;
   return &self->super;

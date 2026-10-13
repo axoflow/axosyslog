@@ -68,6 +68,67 @@ def test_list_paths_reports_missing_files(config, syslog_ng, port_allocator, tmp
     assert syslog_ng.list_paths(config) == "path_secret: {}\n".format(credentials)
 
 
+def _list_paths_without_errors(syslog_ng, config):
+    # With the debug output off, a file that was read and found missing is the only thing on stderr.
+    syslog_ng.start_params.debug = syslog_ng.start_params.trace = False
+    syslog_ng.start_params.verbose = syslog_ng.start_params.startup_debug = False
+
+    output = syslog_ng.list_paths(config)
+
+    assert syslog_ng.instance_paths.get_list_paths_stderr_path().read_text() == ""
+    return output
+
+
+def test_list_paths_lists_a_missing_in_list_file(config, syslog_ng, tmp_path):
+    missing_list_file = tmp_path / "missing.list"
+    config.set_raw_config(
+        f"""
+@version: {config.get_version()}
+
+filter f_list {{ in-list("{missing_list_file}", value("PROGRAM")); }};
+
+log {{
+    source {{ example-msg-generator(num(1)); }};
+    filter(f_list);
+}};
+""",
+    )
+
+    assert _list_paths_without_errors(syslog_ng, config) == "path_no_check: {}\n".format(missing_list_file)
+
+
+def test_list_paths_lists_missing_grpc_credential_files(config, syslog_ng, port_allocator, tmp_path):
+    config.set_raw_config(
+        f"""
+@version: {config.get_version()}
+
+log {{
+    source {{
+        opentelemetry(port({port_allocator()})
+            auth(tls(key-file("{tmp_path}/server.key") cert-file("{tmp_path}/server.crt") ca-file("{tmp_path}/server-ca.crt"))));
+    }};
+    destination {{
+        opentelemetry(url("127.0.0.1:{port_allocator()}")
+            auth(tls(key-file("{tmp_path}/client.key") cert-file("{tmp_path}/client.crt") ca-file("{tmp_path}/client-ca.crt"))));
+    }};
+    destination {{
+        opentelemetry(url("127.0.0.1:{port_allocator()}") auth(service-account(key("{tmp_path}/service-account.json"))));
+    }};
+}};
+""",
+    )
+
+    assert _list_paths_without_errors(syslog_ng, config) == (
+        f"path_secret: {tmp_path}/server.key\n"
+        f"path_no_check: {tmp_path}/server.crt\n"
+        f"path_no_check: {tmp_path}/server-ca.crt\n"
+        f"path_secret: {tmp_path}/client.key\n"
+        f"path_no_check: {tmp_path}/client.crt\n"
+        f"path_no_check: {tmp_path}/client-ca.crt\n"
+        f"path_secret: {tmp_path}/service-account.json\n"
+    )
+
+
 def test_list_paths_lists_directories_but_syslog_ng_ctl_list_files_does_not(config, syslog_ng, syslog_ng_ctl, port_allocator, tmp_path):
     list_file = tmp_path / "programs.list"
     list_file.write_text("example\n")

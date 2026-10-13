@@ -251,20 +251,21 @@ grpc_server_credentials_builder_tls_options
   |
   ;
 
+/* The builders read these files, --list-paths only names them */
 grpc_server_credentials_builder_tls_option
   : KW_KEY_FILE '(' path_secret_no_check ')'
       {
-        CHECK_ERROR(grpc_server_credentials_builder_set_tls_key_path(last_grpc_server_credentials_builder, $3), @1, "Failed to set key-file()");
+        CHECK_ERROR(cfg_is_listing_paths(configuration) || grpc_server_credentials_builder_set_tls_key_path(last_grpc_server_credentials_builder, $3), @1, "Failed to set key-file()");
         free($3);
       }
   | KW_CERT_FILE '(' path_no_check ')'
       {
-        CHECK_ERROR(grpc_server_credentials_builder_set_tls_cert_path(last_grpc_server_credentials_builder, $3), @1, "Failed to set cert-file()");
+        CHECK_ERROR(cfg_is_listing_paths(configuration) || grpc_server_credentials_builder_set_tls_cert_path(last_grpc_server_credentials_builder, $3), @1, "Failed to set cert-file()");
         free($3);
       }
   | KW_CA_FILE '(' path_no_check ')'
       {
-        CHECK_ERROR(grpc_server_credentials_builder_set_tls_ca_path(last_grpc_server_credentials_builder, $3), @1, "Failed to set ca-file()");
+        CHECK_ERROR(cfg_is_listing_paths(configuration) || grpc_server_credentials_builder_set_tls_ca_path(last_grpc_server_credentials_builder, $3), @1, "Failed to set ca-file()");
         free($3);
       }
   | KW_PEER_VERIFY '(' grpc_server_credentials_builder_tls_peer_verify ')'
@@ -293,20 +294,21 @@ grpc_client_credentials_builder_tls_options
   |
   ;
 
+/* The builders read these files, --list-paths only names them */
 grpc_client_credentials_builder_tls_option
   : KW_KEY_FILE '(' path_secret_no_check ')'
       {
-        CHECK_ERROR(grpc_client_credentials_builder_set_tls_key_path(last_grpc_client_credentials_builder, $3), @1, "Failed to set key-file()");
+        CHECK_ERROR(cfg_is_listing_paths(configuration) || grpc_client_credentials_builder_set_tls_key_path(last_grpc_client_credentials_builder, $3), @1, "Failed to set key-file()");
         free($3);
       }
   | KW_CERT_FILE '(' path_no_check ')'
       {
-        CHECK_ERROR(grpc_client_credentials_builder_set_tls_cert_path(last_grpc_client_credentials_builder, $3), @1, "Failed to set cert-file()");
+        CHECK_ERROR(cfg_is_listing_paths(configuration) || grpc_client_credentials_builder_set_tls_cert_path(last_grpc_client_credentials_builder, $3), @1, "Failed to set cert-file()");
         free($3);
       }
   | KW_CA_FILE '(' path_no_check ')'
       {
-        CHECK_ERROR(grpc_client_credentials_builder_set_tls_ca_path(last_grpc_client_credentials_builder, $3), @1, "Failed to set ca-file()");
+        CHECK_ERROR(cfg_is_listing_paths(configuration) || grpc_client_credentials_builder_set_tls_ca_path(last_grpc_client_credentials_builder, $3), @1, "Failed to set ca-file()");
         free($3);
       }
   ;
@@ -335,8 +337,14 @@ grpc_client_credentials_builder_service_account_options
   |
   ;
 
+/* The builder reads the key, --list-paths only names it */
 grpc_client_credentials_builder_service_account_option
-  : KW_KEY '(' path_secret ')' { grpc_client_credentials_builder_service_account_set_key(last_grpc_client_credentials_builder, $3); free($3); }
+  : KW_KEY '(' path_secret ')'
+      {
+        if (!cfg_is_listing_paths(configuration))
+          grpc_client_credentials_builder_service_account_set_key(last_grpc_client_credentials_builder, $3);
+        free($3);
+      }
   | KW_TOKEN_VALIDITY_DURATION '(' nonnegative_integer64 ')' { grpc_client_credentials_builder_service_account_set_validity_duration(last_grpc_client_credentials_builder, $3); }
   ;
 

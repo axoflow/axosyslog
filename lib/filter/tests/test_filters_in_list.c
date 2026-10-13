@@ -54,6 +54,7 @@ evaluate_testcase(const gchar *msg,
   gboolean result;
 
   cr_assert_not_null(filter_node, "Constructing an in-list filter");
+  cr_assert(filter_expr_init(filter_node, configuration), "Initializing an in-list filter");
   log_msg = msg_format_parse(&parse_options, (const guchar *) msg, strlen(msg));
   result = filter_expr_eval(filter_node, log_msg);
 
@@ -91,8 +92,10 @@ Test(template_filters, test_given_macro_is_not_available_in_this_message)
 Test(template_filters, test_list_file_doesnt_exist)
 {
   gchar *list_file_which_doesnt_exist = g_strdup_printf(LIST_FILE_DIR "notexisting.list", top_srcdir);
-  cr_assert_null(filter_in_list_new(list_file_which_doesnt_exist, "PROGRAM"),
-                 "in-list filter should fail, when the list file does not exist");
+  FilterExprNode *filter_node = filter_in_list_new(list_file_which_doesnt_exist, "PROGRAM");
+  cr_assert_not(filter_expr_init(filter_node, configuration),
+                "in-list filter should fail, when the list file does not exist");
+  filter_expr_unref(filter_node);
   g_free(list_file_which_doesnt_exist);
 }
 

@@ -88,8 +88,8 @@ class SyslogNg(object):
     def list_paths(self, config: SyslogNgConfig) -> str:
         config.write_config(self.instance_paths.get_config_path())
 
-        stdout_path = Path(f"syslog_ng_{self.instance_paths.get_instance_name()}_list_paths_stdout")
-        stderr_path = Path(f"syslog_ng_{self.instance_paths.get_instance_name()}_list_paths_stderr")
+        stdout_path = Path(self.instance_paths.get_list_paths_stdout_path())
+        stderr_path = Path(self.instance_paths.get_list_paths_stderr_path())
 
         start_params = copy(self.start_params)
         start_params.list_paths = True

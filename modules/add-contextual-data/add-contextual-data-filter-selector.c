@@ -117,7 +117,11 @@ _init_filter_from_log_node(GlobalConfig *cfg, LogExprNode *node)
   LogFilterPipe *filter_pipe = (LogFilterPipe *) node->children->object;
   FilterExprNode *selected_filter = filter_expr_clone(filter_pipe->expr);
 
-  filter_expr_init(selected_filter, cfg);
+  if (!filter_expr_init(selected_filter, cfg))
+    {
+      filter_expr_unref(selected_filter);
+      return NULL;
+    }
 
   return selected_filter;
 }
@@ -138,6 +142,12 @@ _populate_filter_store(AddContextualDataFilterSelector *self)
         }
 
       FilterExprNode *selected_filter = _init_filter_from_log_node(self->filters_cfg, node);
+      if (!selected_filter)
+        {
+          msg_error("Error initializing filter of rule engine", evt_tag_str("filter", node->name));
+          g_list_free(objects_in_cfg);
+          return FALSE;
+        }
       msg_debug("Insert into filter store", evt_tag_str("filter", node->name));
       _filter_store_prepend(self->filter_store, node->name, selected_filter);
     }
