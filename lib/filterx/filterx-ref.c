@@ -399,6 +399,8 @@ _filterx_ref_freeze(FilterXObject *s, FilterXObjectFreezer *freezer)
 {
   FilterXRef *self = (FilterXRef *) s;
 
+  /* a config-owned ref is no temporary, so copies must clone it */
+  filterx_ref_ground_unchecked(s);
   filterx_object_freezer_keep(freezer, s);
   filterx_object_freeze(self->value, freezer);
 }
