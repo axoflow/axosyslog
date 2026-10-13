@@ -1178,6 +1178,24 @@ def test_uuid7(config, syslog_ng):
     assert re.match(r"^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$", uuid_str)
 
 
+def test_random(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    r = random();
+    n = random(10);
+    $MSG = {
+        "unit": r >= 0.0 and r < 1.0,
+        "bound": n >= 0 and n < 10,
+        "types": istype(r, "double") and istype(n, "integer"),
+    };
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == '{"unit":true,"bound":true,"types":true}'
+
+
 def test_digest(config, syslog_ng):
     (file_final,) = create_config(
         config, r"""

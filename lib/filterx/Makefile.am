@@ -78,6 +78,7 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/func-vars.h \
 	lib/filterx/func-failure-info.h \
 	lib/filterx/func-dict-to-pairs.h \
+	lib/filterx/func-random.h \
 	lib/filterx/func-uuid.h \
 	lib/filterx/func-digest.h \
 	lib/filterx/func-encode.h \
@@ -169,6 +170,7 @@ lib_filterx_libfilterx_la_SOURCES = \
 	lib/filterx/func-istype.c \
 	lib/filterx/func-keys.c	\
 	lib/filterx/func-len.c \
+	lib/filterx/func-random.c \
 	lib/filterx/func-repr.c \
 	lib/filterx/func-sdata.c \
 	lib/filterx/func-set-fields.c \

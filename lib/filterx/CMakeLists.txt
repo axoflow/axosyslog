@@ -76,6 +76,7 @@ set(FILTERX_HEADERS
     filterx/func-repr.h
     filterx/func-failure-info.h
     filterx/func-dict-to-pairs.h
+    filterx/func-random.h
     filterx/func-uuid.h
     filterx/func-digest.h
     filterx/func-encode.h
@@ -169,6 +170,7 @@ set(FILTERX_SOURCES
     filterx/func-repr.c
     filterx/func-failure-info.c
     filterx/func-dict-to-pairs.c
+    filterx/func-random.c
     filterx/func-uuid.c
     filterx/func-digest.c
     filterx/func-encode.c
