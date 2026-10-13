@@ -137,6 +137,21 @@ DestWorker::disconnect()
   this->connected = false;
 }
 
+/* create_channel_args() asks for a local subchannel pool, so the fresh
+ * channel cannot pick up the idle connection of another channel. */
+bool
+DestWorker::reopen_channel()
+{
+  auto fresh_channel = this->create_channel();
+  if (!fresh_channel)
+    return false;
+
+  this->destroy_stubs();
+  this->channel = fresh_channel;
+  this->create_stubs();
+  return true;
+}
+
 void
 DestWorker::prepare_context(::grpc::ClientContext &context)
 {
