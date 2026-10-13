@@ -19,6 +19,7 @@ fi
 (cd /source && git log -1) >> "$outdir/git-commit"
 
 export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so
+export MALLOC_CONF="tcache_gc_incr_bytes:1073741824"
 
 # Cache layout is coming from: Intel(R) Xeon(R) Platinum 8275CL CPU @ 3.00GHz
 #
@@ -46,7 +47,7 @@ export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so
 #
 # we could be using L2 as the LL: --LL=1048576,16,64
 cd "$outdir"
-rm -f output.txt
+rm -f output.txt /install/var/syslog-ng.persist /install/var/syslog-ng.ctl
 valgrind --tool=callgrind --dump-instr=yes --collect-jumps=yes \
 	--I1=32768,8,64 --D1=32768,8,64 --LL=33554432,8,64  --cache-sim=yes \
 	--instr-atstart=no \
