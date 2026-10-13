@@ -6,6 +6,8 @@ modules_arrow_flight_libarrow_flight_cpp_la_SOURCES = \
   modules/arrow-flight/arrow-flight-dest.h \
   modules/arrow-flight/arrow-flight-dest.hpp \
   modules/arrow-flight/arrow-flight-dest.cpp \
+  modules/arrow-flight/arrow-flight-metrics.hpp \
+  modules/arrow-flight/arrow-flight-metrics.cpp \
   modules/arrow-flight/arrow-flight-worker.h \
   modules/arrow-flight/arrow-flight-worker.hpp \
   modules/arrow-flight/arrow-flight-worker.cpp
