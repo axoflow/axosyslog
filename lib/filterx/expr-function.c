@@ -382,7 +382,8 @@ filterx_function_args_new(GList *args, GError **error)
   self->positional_args = g_ptr_array_new_full(8, (GDestroyNotify) filterx_function_arg_free);
 
   gboolean has_named = FALSE;
-  for (GList *elem = args; elem; elem = elem->next)
+  GList *elem = args;
+  for (; elem; elem = elem->next)
     {
       FilterXFunctionArg *arg = (FilterXFunctionArg *) elem->data;
       if (!arg->name)
@@ -393,7 +394,7 @@ filterx_function_args_new(GList *args, GError **error)
                           "cannot set positional argument after a named argument");
               filterx_function_args_free(self);
               self = NULL;
-              goto exit;
+              break;
             }
           g_ptr_array_add(self->positional_args, arg);
         }
@@ -404,7 +405,8 @@ filterx_function_args_new(GList *args, GError **error)
         }
     }
 
-exit:
+  for (; elem; elem = elem->next)
+    filterx_function_arg_free((FilterXFunctionArg *) elem->data);
   g_list_free(args);
   return self;
 }

@@ -92,6 +92,7 @@ Test(cfg_parse_errors, failed_filterx_action_frees_what_it_owns)
     "log { filterx { x = enum(nosuch.thing); }; };",
     "log { filterx { x = \"${MSG\"; }; };",
     "log { filterx { x = nosuchfunction(1, 2); }; };",
+    "log { filterx { x = len(a=1, 2); }; };",
   };
 
   for (gint i = 0; i < G_N_ELEMENTS(configs); i++)
