@@ -31,6 +31,8 @@
 #include "grpc-dest.hpp"
 #include "protobuf-arena.hpp"
 
+#include <chrono>
+
 typedef struct GrpcDestWorker_ GrpcDestWorker;
 
 namespace syslogng {
@@ -49,6 +51,9 @@ public:
   virtual bool connect();
   virtual void disconnect();
 
+  bool reopen_channel_if_idle();
+  void mark_channel_used();
+
 protected:
   virtual void create_stubs() = 0;
   virtual void destroy_stubs() = 0;
@@ -65,6 +70,7 @@ protected:
   bool connected;
   SmartArena arena;
   std::shared_ptr<::grpc::Channel> channel;
+  std::chrono::steady_clock::time_point last_channel_use;
 };
 
 }
