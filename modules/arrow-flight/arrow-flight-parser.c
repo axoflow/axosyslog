@@ -49,6 +49,7 @@ static CfgLexerKeyword arrow_flight_keywords[] =
   { "keep_alive",    KW_KEEP_ALIVE },
   { "time",          KW_TIME },
   { "max_pings_without_data", KW_MAX_PINGS_WITHOUT_DATA },
+  { "idle_reconnect_timeout", KW_IDLE_RECONNECT_TIMEOUT },
   { "response_action", KW_RESPONSE_ACTION },
   { "disconnect",    KW_DISCONNECT },
   { "drop",          KW_DROP },
