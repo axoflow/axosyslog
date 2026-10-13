@@ -48,6 +48,14 @@ Test(filterx_double, test_double_repr_appends_a_long_value_and_trims_it)
   g_string_free(repr, TRUE);
 }
 
+Test(filterx_double, test_double_repr_keeps_the_exponent)
+{
+  GString *repr = g_string_new("");
+  cr_assert(double_repr(2.5e20, -1, repr));
+  cr_assert_str_eq(repr->str, "2.5e+20");
+  g_string_free(repr, TRUE);
+}
+
 Test(filterx_double, test_filterx_primitive_double_marshales_to_double_repr)
 {
   FilterXObject *fobj = filterx_double_new(36.07);

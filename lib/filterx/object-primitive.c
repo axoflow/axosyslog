@@ -212,13 +212,16 @@ double_repr(double dbl, gint prec, GString *repr)
 
       gchar *buf = repr->str + start;
       gchar *dot = strchr(buf, '.');
-      if (!dot && strchr(buf, 'e') == NULL)
+      gchar *exponent = strchr(buf, 'e');
+      if (!dot && !exponent)
         {
           /* no fractions, not scientific notation */
           g_string_append_len(repr, ".0", 2);
         }
-      else if (dot)
+      else if (dot && !exponent)
         {
+          /* %g already trimmed the scientific form, and the scan would eat
+           * the exponent's zeroes */
           gchar *last_useful_digit = dot + 1;
           for (gchar *c = last_useful_digit; *c; c++)
             {
