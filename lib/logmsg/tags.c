@@ -39,6 +39,29 @@ static GArray *log_tags;
 static GHashTable *log_tags_hash = NULL;
 static GMutex log_tags_lock;
 
+/* NOTE: needs both log_tags_lock and the stats lock */
+static void
+_tag_update_counter_registration(LogTag *tag, gboolean enable)
+{
+  StatsClusterKey sc_key;
+  StatsClusterLabel labels[] = { stats_cluster_label("id", tag->name) };
+
+  if (enable == !!(tag->counter))
+    return;
+
+  stats_cluster_single_key_set(&sc_key, METRIC(tagged_events_total), labels, G_N_ELEMENTS(labels));
+  stats_cluster_single_key_add_legacy_alias_with_name(&sc_key, SCS_TAG, tag->name, NULL, "processed");
+
+  if (enable)
+    {
+      stats_register_counter(3, &sc_key, SC_TYPE_SINGLE_VALUE, &tag->counter);
+    }
+  else
+    {
+      stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &tag->counter);
+    }
+}
+
 static guint
 _register_tag(const gchar *name, guint id)
 {
@@ -49,17 +72,6 @@ _register_tag(const gchar *name, guint id)
     0,
   };
 
-  /* NOTE: stats-level may not be set for calls that happen during
-   * config file parsing, those get fixed up by
-   * log_tags_reinit_stats() below */
-
-  stats_lock();
-  StatsClusterKey sc_key;
-  StatsClusterLabel labels[] = { stats_cluster_label("id", name) };
-  stats_cluster_single_key_set(&sc_key, METRIC(tagged_events_total), labels, G_N_ELEMENTS(labels));
-  stats_cluster_single_key_add_legacy_alias_with_name(&sc_key, SCS_TAG, name, NULL, "processed");
-  stats_register_counter(3, &sc_key, SC_TYPE_SINGLE_VALUE, &new_tag.counter);
-  stats_unlock();
 
   if (id >= log_tags->len)
     g_array_set_size(log_tags, id + 1);
@@ -68,6 +80,14 @@ _register_tag(const gchar *name, guint id)
 
   g_assert(elem->id == 0);
   *elem = new_tag;
+
+  /* NOTE: stats-level may not be set for calls that happen during
+   * config file parsing, those get fixed up by
+   * log_tags_reinit_stats() below */
+
+  stats_lock();
+  _tag_update_counter_registration(elem, stats_check_level(3));
+  stats_unlock();
 
   g_hash_table_insert(log_tags_hash, new_tag.name, GUINT_TO_POINTER(id + 1));
   return id;
@@ -208,19 +228,12 @@ log_tags_reinit_stats(void)
   g_mutex_lock(&log_tags_lock);
   stats_lock();
 
+  gboolean enable = stats_check_level(3);
   for (id = 0; id < log_tags->len; id++)
     {
       LogTag *elem = &g_array_index(log_tags, LogTag, id);
 
-      StatsClusterKey sc_key;
-      StatsClusterLabel labels[] = { stats_cluster_label("id", elem->name) };
-      stats_cluster_single_key_set(&sc_key, METRIC(tagged_events_total), labels, G_N_ELEMENTS(labels));
-      stats_cluster_single_key_add_legacy_alias_with_name(&sc_key, SCS_TAG, elem->name, NULL, "processed");
-
-      if (stats_check_level(3))
-        stats_register_counter(3, &sc_key, SC_TYPE_SINGLE_VALUE, &elem->counter);
-      else
-        stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &elem->counter);
+      _tag_update_counter_registration(elem, enable);
     }
 
   stats_unlock();
@@ -247,10 +260,7 @@ log_tags_global_deinit(void)
     {
       LogTag *elem = &g_array_index(log_tags, LogTag, id);
 
-      StatsClusterLabel labels[] = { stats_cluster_label("id", elem->name) };
-      stats_cluster_single_key_set(&sc_key, METRIC(tagged_events_total), labels, G_N_ELEMENTS(labels));
-      stats_cluster_single_key_add_legacy_alias_with_name(&sc_key, SCS_TAG, elem->name, NULL, "processed");
-      stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &elem->counter);
+      _tag_update_counter_registration(elem, FALSE);
       g_free(elem->name);
     }
   stats_unlock();
