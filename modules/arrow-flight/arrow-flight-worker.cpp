@@ -595,6 +595,10 @@ DestinationWorker::flush(LogThreadedFlushMode mode)
   result = LTR_SUCCESS;
 
 exit:
+  /* batch is only set once the builders are finished, earlier failures never reach the server. */
+  if (batch)
+    owner->metrics.insert_request_stats(status);
+
   this->prepare_batch();
   return result;
 }
