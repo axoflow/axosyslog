@@ -27,5 +27,14 @@
 #include "filterx/filterx-expr.h"
 
 FilterXExpr *filterx_expr_break(void);
+void filterx_expr_break_set_in_switch(FilterXExpr *s);
+
+FILTERX_EXPR_DECLARE_TYPE(break);
+
+static inline gboolean
+filterx_expr_is_break(FilterXExpr *expr)
+{
+  return expr && expr->type == FILTERX_EXPR_TYPE_NAME(break);
+}
 
 #endif

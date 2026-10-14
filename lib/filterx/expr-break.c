@@ -26,6 +26,12 @@
 #include "filterx/filterx-eval.h"
 #include "filterx/object-primitive.h"
 
+typedef struct _FilterXExprBreak
+{
+  FilterXExpr super;
+  gboolean in_switch;
+} FilterXExprBreak;
+
 static FilterXObject *
 _eval_break(FilterXExpr *s)
 {
@@ -36,21 +42,46 @@ _eval_break(FilterXExpr *s)
 }
 
 static gboolean
+_init(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXExprBreak *self = (FilterXExprBreak *) s;
+
+  if (!self->in_switch)
+    {
+      filterx_eval_push_error_static_info("Failed to initialize break", "break statement not within a switch");
+      return FALSE;
+    }
+
+  return filterx_expr_init_method(s, cfg);
+}
+
+static gboolean
 _break_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   return TRUE;
 }
 
+void
+filterx_expr_break_set_in_switch(FilterXExpr *s)
+{
+  FilterXExprBreak *self = (FilterXExprBreak *) s;
+
+  self->in_switch = TRUE;
+}
+
 FilterXExpr *
 filterx_expr_break(void)
 {
-  FilterXExpr *self = g_new0(FilterXExpr, 1);
-  filterx_expr_init_instance(self, "break", FXE_CONTROL);
-  self->walk_children = _break_walk;
-  self->eval = _eval_break;
+  FilterXExprBreak *self = g_new0(FilterXExprBreak, 1);
+  filterx_expr_init_instance(&self->super, FILTERX_EXPR_TYPE_NAME(break), FXE_CONTROL);
+  self->super.init = _init;
+  self->super.walk_children = _break_walk;
+  self->super.eval = _eval_break;
 #if SYSLOG_NG_ENABLE_JIT
-  self->infer_types = filterx_expr_infer_types_boolean_result;
+  self->super.infer_types = filterx_expr_infer_types_boolean_result;
 #endif
 
-  return self;
+  return &self->super;
 }
+
+FILTERX_EXPR_DEFINE_TYPE(break);

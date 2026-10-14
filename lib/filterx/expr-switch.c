@@ -28,6 +28,7 @@
 #include "object-string.h"
 #include "object-primitive.h"
 #include "filterx-eval.h"
+#include "expr-break.h"
 
 typedef struct _FilterXSwitch FilterXSwitch;
 typedef struct _FilterXSwitchCase FilterXSwitchCase;
@@ -459,6 +460,18 @@ _switch_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
 
 #endif
 
+static gboolean
+_mark_breaks_in_switch(FilterXExpr *parent, FilterXExpr **child, gpointer user_data)
+{
+  FilterXExpr *expr = *child;
+
+  if (filterx_expr_is_break(expr))
+    filterx_expr_break_set_in_switch(expr);
+  else if (!filterx_expr_is_switch(expr))
+    filterx_expr_walk_children(expr, _mark_breaks_in_switch, user_data);
+  return TRUE;
+}
+
 FilterXExpr *
 filterx_switch_new(FilterXExpr *selector, GList *body)
 {
@@ -479,6 +492,7 @@ filterx_switch_new(FilterXExpr *selector, GList *body)
   self->selector = selector;
   self->default_target = -1;
   _build_switch_table(self, body);
+  filterx_expr_walk_children(self->body, _mark_breaks_in_switch, NULL);
   return &self->super;
 }
 
