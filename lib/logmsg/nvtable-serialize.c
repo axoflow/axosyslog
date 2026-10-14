@@ -113,8 +113,11 @@ _read_metadata(SerializeArchive *sa, NVTableMetaData *meta_data)
 static gboolean
 _read_header(SerializeArchive *sa, NVTable **nvtable)
 {
-  NVTable *res = NULL;
-  guint32 size;
+  NVTable *res;
+  guint32 size, used;
+  guint16 index_size;
+  guint8 num_static_entries;
+  gsize min_size;
 
   g_assert(*nvtable == NULL);
 
@@ -124,16 +127,16 @@ _read_header(SerializeArchive *sa, NVTable **nvtable)
   if (size > NV_TABLE_MAX_BYTES)
     goto error;
 
-  res = (NVTable *) g_malloc(size);
-  res->size = size;
-
-  if (!serialize_read_uint32(sa, &res->used))
+  if (!serialize_read_uint32(sa, &used))
     goto error;
 
-  if (!serialize_read_uint16(sa, &res->index_size))
+  if (used > size)
     goto error;
 
-  if (!serialize_read_uint8(sa, &res->num_static_entries))
+  if (!serialize_read_uint16(sa, &index_size))
+    goto error;
+
+  if (!serialize_read_uint8(sa, &num_static_entries))
     goto error;
 
   /* static entries has to be known by this syslog-ng, if they are over
@@ -141,21 +144,29 @@ _read_header(SerializeArchive *sa, NVTable **nvtable)
    * entries don't contain names.  If there are less static entries, that
    * can be ok. */
 
-  if (res->num_static_entries > LM_V_MAX)
+  if (num_static_entries > LM_V_MAX)
     goto error;
 
-  /* validates self->used and self->index_size value as compared to "size" */
-  if (!nv_table_alloc_check(res, 0))
+  /* The writer's header can be smaller than ours (12 bytes up to 4.11), so
+   * a table it filled up does not fit in "size" here.  Entries are addressed
+   * from the top of the table, a larger table needs no other change. */
+  min_size = NV_TABLE_BOUND(sizeof(NVTable) + num_static_entries * sizeof(guint32) +
+                            index_size * sizeof(NVIndexEntry) + used);
+  if (min_size > NV_TABLE_MAX_BYTES)
     goto error;
 
+  size = MAX(size, min_size);
+  res = (NVTable *) g_malloc(size);
+  res->size = size;
+  res->used = used;
+  res->index_size = index_size;
+  res->num_static_entries = num_static_entries;
   res->borrowed = FALSE;
   res->ref_cnt = 1;
   *nvtable = res;
   return TRUE;
 
 error:
-  if (res)
-    g_free(res);
   return FALSE;
 }
 
