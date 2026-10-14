@@ -28,7 +28,8 @@
 gboolean cfg_source_print_region(const gchar *filename, gint line, gint column, gint offset);
 
 /* These functions are only available while the lexer is available, e.g. during config parsing */
-gboolean cfg_source_print_region_from_lexer(CfgLexer *lexer, CfgIncludeLevel *level, const CFG_LTYPE *yylloc);
+gboolean cfg_source_format_region_from_lexer(CfgLexer *lexer, CfgIncludeLevel *level, const CFG_LTYPE *yylloc,
+                                             GString *result);
 gboolean cfg_source_extract_token_text(CfgLexer *lexer, const CFG_LTYPE *yylloc, GString *result);
 
 #endif
