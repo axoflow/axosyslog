@@ -288,6 +288,20 @@ show_ose_license_info(ControlConnection *cc, GString *command, gpointer user_dat
                                 g_string_new("OK You are using the Open Source Edition of syslog-ng."));
 }
 
+static inline void
+_append_reload_errors(MainLoop *main_loop, GString *reply)
+{
+  GPtrArray *reload_errors = main_loop_reload_errors_get(main_loop);
+
+  for (gint i = 0; i < reload_errors->len; ++i)
+    {
+      if (i == 0)
+        g_string_append(reply, "\n\n");
+
+      g_string_append_printf(reply, "%s\n", (const gchar *) g_ptr_array_index(reload_errors, i));
+    }
+}
+
 static void
 _respond_config_reload_status(gint type, gpointer user_data)
 {
@@ -299,7 +313,10 @@ _respond_config_reload_status(gint type, gpointer user_data)
   if (main_loop_was_last_reload_successful(main_loop))
     reply = g_string_new("OK Config reload successful");
   else
-    reply = g_string_new("FAIL Config reload failed, reverted to previous config");
+    {
+      reply = g_string_new("FAIL Config reload failed, reverted to previous config");
+      _append_reload_errors(main_loop, reply);
+    }
 
   control_connection_send_reply(cc, reply);
 }
@@ -316,6 +333,7 @@ control_connection_reload(ControlConnection *cc, GString *command, gpointer user
     {
       GString *result = g_string_new("");
       g_string_printf(result, "FAIL %s, previous config remained intact", error->message);
+      _append_reload_errors(main_loop, result);
       g_clear_error(&error);
       control_connection_send_reply(cc, result);
       return;
