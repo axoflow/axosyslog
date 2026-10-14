@@ -109,18 +109,19 @@ _is_response_alive(GString *response)
 static gint
 _print_reply_to_stdout(GString *reply, gpointer user_data)
 {
-  gboolean first_response = *((gboolean *)user_data);
+  gboolean *first_response = (gboolean *) user_data;
   gint retval = 0;
 
   if (_is_response_alive(reply))
     return 0;
 
-  if (first_response)
+  if (*first_response)
     {
       if (_is_response_empty(reply))
         retval = 1;
       else
         retval = process_response_status(reply);
+      *first_response = FALSE;
     }
 
 

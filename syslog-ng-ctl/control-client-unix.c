@@ -135,8 +135,8 @@ control_client_read_reply(ControlClient *self, CommandResponseHandlerFunc respon
         break;
 
       g_string_assign(chunk, line);
-      if (retval == 0)
-        retval = response_handler(chunk, user_data);
+      gint rc = response_handler(chunk, user_data);
+      retval = retval || rc;
     }
 
   g_string_free(chunk, TRUE);
