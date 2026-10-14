@@ -141,6 +141,7 @@ struct _MainLoop
   gboolean cfg_inited;
   gboolean last_config_reload_successful;
   time_t last_config_reload_time;
+  GPtrArray *last_config_reload_errors;
 
   /* signal handling */
   struct iv_signal sighup_poll;
@@ -316,6 +317,15 @@ main_loop_reload_config_apply(gpointer user_data)
   main_loop_reload_config_finished(self);
 }
 
+static inline void
+_destroy_last_config_reload_errors(MainLoop *self)
+{
+  if (!self->last_config_reload_errors)
+    return;
+
+  g_ptr_array_free(self->last_config_reload_errors, TRUE);
+  self->last_config_reload_errors = NULL;
+}
 
 /* initiate configuration reload */
 gboolean
@@ -338,6 +348,10 @@ main_loop_reload_config_prepare(MainLoop *self, GError **error)
                   "Unable to trigger a reload while another reload attempt is in progress");
       return FALSE;
     }
+
+  _destroy_last_config_reload_errors(self);
+
+  self->last_config_reload_errors = g_ptr_array_new_with_free_func(g_free);
 
   service_management_publish_status("Reloading configuration");
   stats_counter_set(self->metrics.last_reload, (gsize) self->last_config_reload_time);
@@ -438,6 +452,21 @@ main_loop_verify_config(GString *result, MainLoop *self)
     g_string_assign(result, "Configuration file does not match active configuration");
 
   g_free(file_contents);
+}
+
+void
+main_loop_reload_errors_add(MainLoop *self, const gchar *msg)
+{
+  if (!self->last_config_reload_errors || !main_loop_is_main_thread())
+    return;
+
+  g_ptr_array_add(self->last_config_reload_errors, g_strdup(msg));
+}
+
+GPtrArray *
+main_loop_reload_errors_get(MainLoop *self)
+{
+  return self->last_config_reload_errors;
 }
 
 /************************************************************************************
@@ -807,6 +836,7 @@ main_loop_deinit(MainLoop *self)
   scratch_buffers_automatic_gc_deinit();
   g_mutex_clear(&workers_running_lock);
 
+  _destroy_last_config_reload_errors(self);
   _unregister_metrics(self);
 }
 
