@@ -265,6 +265,12 @@ main_loop_reload_config_revert(gpointer user_data)
   main_loop_reload_config_finished(self);
 }
 
+static void
+_stop_collecting_reload_errors(gint type, gpointer user_data)
+{
+  collect_reload_errors = FALSE;
+}
+
 /* called to apply the new configuration once all I/O worker threads have finished */
 static void
 main_loop_reload_config_apply(gpointer user_data)
@@ -293,6 +299,8 @@ main_loop_reload_config_apply(gpointer user_data)
    * */
 
   app_config_stopped();
+
+  collect_reload_errors = TRUE;
 
   self->last_config_reload_successful = cfg_init(self->new_config);
   if (!self->last_config_reload_successful)
@@ -724,6 +732,7 @@ main_loop_init(MainLoop *self, MainLoopOptions *options)
   main_loop_worker_init();
   main_loop_io_worker_init();
   main_loop_call_init();
+  register_application_hook(AH_CONFIG_POST_INIT, _stop_collecting_reload_errors, NULL, AHM_RUN_REPEAT);
 
   main_loop_init_events(self);
   IV_TIMER_INIT(&self->exit_force_timer);
