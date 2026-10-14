@@ -361,6 +361,9 @@ _eval_switch(FilterXExpr *s)
     target = self->default_target;
 
   FilterXObject *result = _eval_body(self, target);
+  FilterXEvalContext *context = filterx_eval_get_context();
+  if (context->eval_control_modifier == FXC_BREAK)
+    context->eval_control_modifier = FXC_UNSET;
   filterx_object_unref(selector);
   return result;
 }

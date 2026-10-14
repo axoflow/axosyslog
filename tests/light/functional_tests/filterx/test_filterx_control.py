@@ -670,3 +670,68 @@ def test_switch_range_case_double(config, syslog_ng):
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
     assert file_true.read_log() == "in-range"
+
+
+def test_switch_break_in_nested_block(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config,
+        filterx_expr_1=r"""
+            switch (${values.str}) {
+              case "string":
+                if (true) {
+                  result = "in-if";
+                  break;
+                };
+                result = "after-if-must-not-run";
+              case "match2":
+                result = "next-case-must-not-run";
+                break;
+              default:
+                result = "default-must-not-run";
+                break;
+            };
+            after_switch = "after-switch";
+            $MSG = result + " " + after_switch;
+        """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "in-if after-switch"
+
+
+def test_switch_nested_switch_break(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config,
+        filterx_expr_1=r"""
+            switch (${values.str}) {
+              case "string":
+                switch (${values.int}) {
+                  case 5:
+                    if (true) {
+                      result = "inner";
+                      break;
+                    };
+                    result = "inner-after-if-must-not-run";
+                  default:
+                    result = "inner-default-must-not-run";
+                    break;
+                };
+                marker = "outer-case-continued";
+                break;
+              case "match2":
+                marker = "outer-next-case-must-not-run";
+                break;
+              default:
+                marker = "outer-default-must-not-run";
+                break;
+            };
+            $MSG = result + " " + marker;
+        """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "inner outer-case-continued"

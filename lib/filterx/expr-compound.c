@@ -97,9 +97,6 @@ _is_control_modifier_set(FilterXEvalContext *context)
   if (G_UNLIKELY(context->eval_control_modifier != FXC_UNSET))
     {
       /* code flow modifier detected, short circuiting */
-      if (context->eval_control_modifier == FXC_BREAK)
-        context->eval_control_modifier = FXC_UNSET;
-
       return TRUE;
     }
 
