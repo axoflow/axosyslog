@@ -14,6 +14,9 @@ EXTRA_DIST += \
 	dbld/shell \
 	dbld/rules \
 	dbld/bootstrap	\
+	dbld/callgrind \
+	dbld/callgrind-samples.log \
+	dbld/callgrind-syslog-ng.conf \
 	dbld/make \
 	dbld/build.manifest	\
 	dbld/packages.manifest \
