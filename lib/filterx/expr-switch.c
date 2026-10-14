@@ -464,7 +464,7 @@ filterx_switch_new(FilterXExpr *selector, GList *body)
 {
   FilterXSwitch *self = g_new0(FilterXSwitch, 1);
 
-  filterx_expr_init_instance(&self->super, "switch", FXE_READ);
+  filterx_expr_init_instance(&self->super, FILTERX_EXPR_TYPE_NAME(switch), FXE_READ);
   self->super.init = _init;
   self->super.optimize = _optimize;
   self->super.eval = _eval_switch;
