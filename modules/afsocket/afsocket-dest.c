@@ -34,8 +34,47 @@
 #include "stats/stats-cluster-single.h"
 
 #include <string.h>
+#include <errno.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+
+static const gchar *connection_failure_reasons[AFSOCKET_DD_CONNECTION_FAILURE_MAX] =
+{
+  [AFSOCKET_DD_CONNECTION_FAILURE_REFUSED] = "refused",
+  [AFSOCKET_DD_CONNECTION_FAILURE_TIMEOUT] = "timeout",
+  [AFSOCKET_DD_CONNECTION_FAILURE_NO_ROUTE] = "no-route",
+  [AFSOCKET_DD_CONNECTION_FAILURE_RESET] = "reset",
+  [AFSOCKET_DD_CONNECTION_FAILURE_EOF] = "eof",
+  [AFSOCKET_DD_CONNECTION_FAILURE_RESOLVE] = "resolve",
+  [AFSOCKET_DD_CONNECTION_FAILURE_ERROR] = "error",
+};
+
+static AFSocketDestConnectionFailure
+_connection_failure_from_errno(gint error)
+{
+  switch (error)
+    {
+    case ECONNREFUSED:
+      return AFSOCKET_DD_CONNECTION_FAILURE_REFUSED;
+    case ETIMEDOUT:
+      return AFSOCKET_DD_CONNECTION_FAILURE_TIMEOUT;
+    case ENETUNREACH:
+    case EHOSTUNREACH:
+    case EHOSTDOWN:
+      return AFSOCKET_DD_CONNECTION_FAILURE_NO_ROUTE;
+    case ECONNRESET:
+    case EPIPE:
+      return AFSOCKET_DD_CONNECTION_FAILURE_RESET;
+    default:
+      return AFSOCKET_DD_CONNECTION_FAILURE_ERROR;
+    }
+}
+
+static void
+_count_connection_failure(AFSocketDestDriver *self, AFSocketDestConnectionFailure failure)
+{
+  stats_counter_inc(self->metrics.output_connection_failures[failure]);
+}
 
 
 void
@@ -280,7 +319,10 @@ afsocket_dd_connected(AFSocketDestDriver *self)
 
   LogProtoClient *proto = self->construct_proto(self, self->fd);
   if (!proto)
-    return FALSE;
+    {
+      _count_connection_failure(self, AFSOCKET_DD_CONNECTION_FAILURE_ERROR);
+      return FALSE;
+    }
 
   log_proto_client_restart_with_state(proto, cfg->state, afsocket_dd_format_connections_name(self));
   log_writer_reopen(self->writer, proto);
@@ -317,15 +359,18 @@ _afsocket_dd_connection_in_progress(AFSocketDestDriver *self)
     {
       if (getsockopt(self->fd, SOL_SOCKET, SO_ERROR, &error, &errorlen) == -1)
         {
+          gint getsockopt_error = errno;
+          _count_connection_failure(self, _connection_failure_from_errno(getsockopt_error));
           msg_error("getsockopt(SOL_SOCKET, SO_ERROR) failed for connecting socket",
                     evt_tag_int("fd", self->fd),
                     evt_tag_str("server", g_sockaddr_format(self->dest_addr, buf, sizeof(buf), GSA_FULL)),
-                    evt_tag_error(EVT_TAG_OSERROR),
+                    evt_tag_errno(EVT_TAG_OSERROR, getsockopt_error),
                     evt_tag_int("time_reopen", self->writer_options.time_reopen));
           goto error_reconnect;
         }
       if (error)
         {
+          _count_connection_failure(self, _connection_failure_from_errno(error));
           msg_error("Syslog connection failed",
                     evt_tag_int("fd", self->fd),
                     evt_tag_str("server", g_sockaddr_format(self->dest_addr, buf, sizeof(buf), GSA_FULL)),
@@ -362,11 +407,15 @@ afsocket_dd_start_connect(AFSocketDestDriver *self)
   if (!transport_mapper_open_socket(self->transport_mapper, self->socket_options, self->bind_addr, self->dest_addr,
                                     AFSOCKET_DIR_SEND, &sock))
     {
+      _count_connection_failure(self, AFSOCKET_DD_CONNECTION_FAILURE_ERROR);
       return FALSE;
     }
 
   if (!socket_options_setup_peer_socket(self->socket_options, sock, self->dest_addr))
-    return FALSE;
+    {
+      _count_connection_failure(self, AFSOCKET_DD_CONNECTION_FAILURE_ERROR);
+      return FALSE;
+    }
 
   rc = g_connect(sock, self->dest_addr);
   if (rc == G_IO_STATUS_NORMAL)
@@ -389,11 +438,13 @@ afsocket_dd_start_connect(AFSocketDestDriver *self)
   else
     {
       /* error establishing connection */
+      gint error = errno;
+      _count_connection_failure(self, _connection_failure_from_errno(error));
       msg_error("Connection failed",
                 evt_tag_int("fd", sock),
                 evt_tag_str("server", g_sockaddr_format(self->dest_addr, buf2, sizeof(buf2), GSA_FULL)),
                 evt_tag_str("local", g_sockaddr_format(self->bind_addr, buf1, sizeof(buf1), GSA_FULL)),
-                evt_tag_error(EVT_TAG_OSERROR));
+                evt_tag_errno(EVT_TAG_OSERROR, error));
       close(sock);
       return FALSE;
     }
@@ -404,7 +455,12 @@ afsocket_dd_start_connect(AFSocketDestDriver *self)
 void
 afsocket_dd_reconnect(AFSocketDestDriver *self)
 {
-  if (!afsocket_dd_setup_addresses(self) || !afsocket_dd_start_connect(self))
+  gboolean addresses_resolved = afsocket_dd_setup_addresses(self);
+
+  if (!addresses_resolved)
+    _count_connection_failure(self, AFSOCKET_DD_CONNECTION_FAILURE_RESOLVE);
+
+  if (!addresses_resolved || !afsocket_dd_start_connect(self))
     {
       msg_error("Initiating connection failed, reconnecting",
                 evt_tag_int("time_reopen", self->writer_options.time_reopen));
@@ -571,14 +627,22 @@ afsocket_dd_register_stats(AFSocketDestDriver *self)
     stats_cluster_label("driver", self->driver_name),
     stats_cluster_label("transport", self->transport_mapper->transport),
     stats_cluster_label("address", afsocket_dd_get_dest_name(self)),
+    stats_cluster_label("reason", NULL),
   };
+  const gsize reason_label = G_N_ELEMENTS(labels) - 1;
 
   gint level = log_pipe_is_internal(&self->super.super.super) ? STATS_LEVEL3 : STATS_LEVEL0;
   StatsClusterKey sc_key;
-  stats_cluster_single_key_set(&sc_key, METRIC(output_unreachable), labels, G_N_ELEMENTS(labels));
+  stats_cluster_single_key_set(&sc_key, METRIC(output_unreachable), labels, reason_label);
 
   stats_lock();
   stats_register_counter(level, &sc_key, SC_TYPE_SINGLE_VALUE, &self->metrics.output_unreachable);
+  for (gint i = 0; i < AFSOCKET_DD_CONNECTION_FAILURE_MAX; i++)
+    {
+      labels[reason_label] = stats_cluster_label("reason", connection_failure_reasons[i]);
+      stats_cluster_single_key_set(&sc_key, METRIC(output_connection_failures_total), labels, G_N_ELEMENTS(labels));
+      stats_register_counter(level, &sc_key, SC_TYPE_SINGLE_VALUE, &self->metrics.output_connection_failures[i]);
+    }
   stats_unlock();
 }
 
@@ -591,13 +655,21 @@ afsocket_dd_unregister_stats(AFSocketDestDriver *self)
     stats_cluster_label("driver", self->driver_name),
     stats_cluster_label("transport", self->transport_mapper->transport),
     stats_cluster_label("address", afsocket_dd_get_dest_name(self)),
+    stats_cluster_label("reason", NULL),
   };
+  const gsize reason_label = G_N_ELEMENTS(labels) - 1;
 
   StatsClusterKey sc_key;
-  stats_cluster_single_key_set(&sc_key, METRIC(output_unreachable), labels, G_N_ELEMENTS(labels));
+  stats_cluster_single_key_set(&sc_key, METRIC(output_unreachable), labels, reason_label);
 
   stats_lock();
   stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &self->metrics.output_unreachable);
+  for (gint i = 0; i < AFSOCKET_DD_CONNECTION_FAILURE_MAX; i++)
+    {
+      labels[reason_label] = stats_cluster_label("reason", connection_failure_reasons[i]);
+      stats_cluster_single_key_set(&sc_key, METRIC(output_connection_failures_total), labels, G_N_ELEMENTS(labels));
+      stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &self->metrics.output_connection_failures[i]);
+    }
   stats_unlock();
 }
 
@@ -791,6 +863,9 @@ afsocket_dd_notify(LogPipe *s, gint notify_code, gpointer user_data)
     {
     case NC_CLOSE:
     case NC_WRITE_ERROR:
+      _count_connection_failure(self, (notify_code == NC_CLOSE)
+                                ? AFSOCKET_DD_CONNECTION_FAILURE_EOF
+                                : _connection_failure_from_errno(log_writer_get_io_error(self->writer)));
       log_writer_reopen(self->writer, NULL);
 
       msg_notice((notify_code == NC_CLOSE) ? "Syslog connection closed" : "Syslog connection broken",
