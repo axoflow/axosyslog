@@ -62,20 +62,16 @@ DestinationWorker::~DestinationWorker()
 {
 }
 
-bool
-DestinationWorker::init()
+void
+DestinationWorker::create_stubs()
 {
-  if (!syslogng::grpc::DestWorker::init())
-    return false;
   this->stub = google::cloud::bigquery::storage::v1::BigQueryWrite().NewStub(this->channel);
-  return true;
 }
 
 void
-DestinationWorker::deinit()
+DestinationWorker::destroy_stubs()
 {
   this->stub.reset();
-  syslogng::grpc::DestWorker::deinit();
 }
 
 bool
@@ -94,10 +90,7 @@ DestinationWorker::connect()
   if (!this->construct_write_stream())
     return false;
 
-  this->batch_writer_ctx = std::make_unique<::grpc::ClientContext>();
-  this->prepare_context(*this->batch_writer_ctx.get());
-  this->batch_writer = this->stub->AppendRows(this->batch_writer_ctx.get());
-
+  this->open_append_rows_stream();
   this->prepare_batch();
 
   this->connected = true;
@@ -337,6 +330,36 @@ DestinationWorker::create_channel()
     }
 
   return channel_;
+}
+
+void
+DestinationWorker::open_append_rows_stream()
+{
+  this->batch_writer_ctx = std::make_unique<::grpc::ClientContext>();
+  this->prepare_context(*this->batch_writer_ctx.get());
+  this->batch_writer = this->stub->AppendRows(this->batch_writer_ctx.get());
+}
+
+bool
+DestinationWorker::reopen_channel()
+{
+  if (!syslogng::grpc::DestWorker::reopen_channel())
+    return false;
+
+  /* The old stream rides the idle connection: a graceful close could wait
+   * on a flow that a middlebox has already forgotten. */
+  this->batch_writer_ctx->TryCancel();
+  (void) this->batch_writer->Finish();
+  this->batch_writer.reset();
+  this->batch_writer_ctx.reset();
+  this->is_stream_open = false;
+
+  if (!this->construct_write_stream())
+    return false;
+
+  this->open_append_rows_stream();
+  this->current_batch->set_write_stream(this->write_stream.name());
+  return true;
 }
 
 bool

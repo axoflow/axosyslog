@@ -137,6 +137,16 @@ public:
     return this->keepalive_max_pings_without_data;
   }
 
+  void set_idle_reconnect_timeout(gint t)
+  {
+    this->idle_reconnect_timeout = t;
+  }
+
+  gint get_idle_reconnect_timeout() const
+  {
+    return this->idle_reconnect_timeout;
+  }
+
   LogTemplateOptions &get_template_options()
   {
     return this->template_options;
@@ -194,6 +204,7 @@ private:
   gint keepalive_time = -1;
   gint keepalive_timeout = -1;
   gint keepalive_max_pings_without_data = -1;
+  gint idle_reconnect_timeout = 0;
 };
 
 }

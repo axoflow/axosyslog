@@ -104,12 +104,14 @@ DestWorker::init()
   this->channel = this->create_channel();
   if (!this->channel)
     return false;
+  this->create_stubs();
   return log_threaded_dest_worker_init_method(&super->super);
 }
 
 void
 DestWorker::deinit()
 {
+  this->destroy_stubs();
   this->channel.reset();
   log_threaded_dest_worker_deinit_method(&super->super);
 }
@@ -123,6 +125,7 @@ DestWorker::connect()
   if (!this->channel->WaitForConnected(connect_timeout))
     return false;
 
+  this->mark_channel_used();
   this->connected = true;
   return true;
 }
@@ -133,6 +136,44 @@ DestWorker::disconnect()
   if (!this->connected)
     return;
   this->connected = false;
+}
+
+void
+DestWorker::mark_channel_used()
+{
+  this->last_channel_use = std::chrono::steady_clock::now();
+}
+
+/* create_channel_args() asks for a local subchannel pool, so the fresh
+ * channel cannot pick up the idle connection of another channel. */
+bool
+DestWorker::reopen_channel()
+{
+  auto fresh_channel = this->create_channel();
+  if (!fresh_channel)
+    return false;
+
+  this->destroy_stubs();
+  this->channel = fresh_channel;
+  this->create_stubs();
+  return true;
+}
+
+bool
+DestWorker::reopen_channel_if_idle()
+{
+  if (this->owner.idle_reconnect_timeout == 0)
+    return true;
+
+  if (std::chrono::steady_clock::now() - this->last_channel_use
+      < std::chrono::seconds(this->owner.idle_reconnect_timeout))
+    return true;
+
+  msg_debug("Reopening idle gRPC channel",
+            evt_tag_int("idle_reconnect_timeout", this->owner.idle_reconnect_timeout),
+            log_pipe_location_tag((LogPipe *) this->super->super.owner));
+
+  return this->reopen_channel();
 }
 
 void
@@ -212,7 +253,16 @@ LogThreadedResult
 _flush(LogThreadedDestWorker *s, LogThreadedFlushMode mode)
 {
   GrpcDestWorker *self = (GrpcDestWorker *) s;
-  return self->cpp->flush(mode);
+
+  if (s->batch_size == 0)
+    return self->cpp->flush(mode);
+
+  if (!self->cpp->reopen_channel_if_idle())
+    return LTR_NOT_CONNECTED;
+
+  LogThreadedResult result = self->cpp->flush(mode);
+  self->cpp->mark_channel_used();
+  return result;
 }
 
 static void

@@ -35,6 +35,7 @@
 #include <arrow/api.h>
 #include <arrow/flight/api.h>
 
+#include <chrono>
 #include <memory>
 #include <vector>
 
@@ -63,6 +64,7 @@ private:
   bool open_stream(const gchar *path);
   arrow::Status close_stream();
   bool create_builders();
+  bool reconnect_if_idle();
   gssize append_map_string_string(arrow::MapBuilder *mbuilder, const char *str, gssize len);
   gssize append_value(arrow::ArrayBuilder *builder, const std::shared_ptr<arrow::DataType> &type,
                       const char *str, gssize len);
@@ -78,6 +80,7 @@ private:
   std::string current_stream_path;
   std::string current_batch_path;
   size_t current_batch_bytes = 0;
+  std::chrono::steady_clock::time_point last_request_time;
 };
 
 }

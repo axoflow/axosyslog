@@ -39,24 +39,20 @@ using namespace opentelemetry::proto::trace::v1;
 
 /* C++ Implementations */
 
-bool
-DestWorker::init()
+void
+DestWorker::create_stubs()
 {
-  if (!syslogng::grpc::DestWorker::init())
-    return false;
   logs_service_stub = LogsService::NewStub(channel);
   metrics_service_stub = MetricsService::NewStub(channel);
   trace_service_stub = TraceService::NewStub(channel);
-  return true;
 }
 
 void
-DestWorker::deinit()
+DestWorker::destroy_stubs()
 {
   this->logs_service_stub.reset();
   this->metrics_service_stub.reset();
   this->trace_service_stub.reset();
-  syslogng::grpc::DestWorker::deinit();
 }
 
 bool
