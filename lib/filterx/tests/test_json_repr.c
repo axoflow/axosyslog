@@ -79,6 +79,46 @@ Test(filterx_json_repr, array_exceeding_legacy_max_tokens_is_parsed_successfully
   g_string_free(large, TRUE);
 }
 
+Test(filterx_json_repr, string_ending_in_backslash_does_not_hang, .timeout = 10)
+{
+  GError *error = NULL;
+  FilterXObject *obj = filterx_object_from_json("\"\\", 2, &error);
+
+  cr_assert_null(obj);
+  if (error)
+    g_error_free(error);
+}
+
+Test(filterx_json_repr, json_string_orphan_surrogate_does_not_overrun)
+{
+  GError *error = NULL;
+  /* the trailing backslash and comma are what drive the segment length
+   * negative, so the literal cannot be shortened */
+  FilterXObject *obj = filterx_object_from_json("\"\\udAba\\\\,\"", -1, &error);
+
+  cr_assert_not_null(obj);
+  filterx_object_unref(obj);
+  if (error)
+    g_error_free(error);
+}
+
+static void
+_assert_json_string_decodes_to(const gchar *json, const gchar *expected)
+{
+  FilterXObject *obj = filterx_object_from_json(json, -1, NULL);
+  cr_assert_not_null(obj);
+  assert_object_str_equals(obj, expected);
+  filterx_object_unref(obj);
+}
+
+Test(filterx_json_repr, json_string_unpaired_high_surrogates_are_replaced)
+{
+  _assert_json_string_decodes_to("\"\\uD800abc\\uDC00\"", "\xEF\xBF\xBD" "abc" "\xEF\xBF\xBD");
+  _assert_json_string_decodes_to("\"\\uD800\\uD800\\uDC00\"", "\xEF\xBF\xBD" "\xF0\x90\x80\x80");
+  _assert_json_string_decodes_to("\"\\uD800A\"", "\xEF\xBF\xBD" "A");
+  _assert_json_string_decodes_to("\"\\uD800\\u0041\"", "\xEF\xBF\xBD" "A");
+}
+
 static void
 setup(void)
 {

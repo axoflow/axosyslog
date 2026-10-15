@@ -134,7 +134,10 @@ filterx_expr_move_method(FilterXExpr *self)
     return NULL;
 
   if (!filterx_expr_unset(self))
-    return NULL;
+    {
+      filterx_object_unref(result);
+      return NULL;
+    }
 
   filterx_ref_unset_parent_container(result);
 

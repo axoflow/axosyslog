@@ -56,6 +56,44 @@ Test(wallclocktime, test_wall_clock_time_init)
   cr_assert(wall_clock_time_is_set(&wct) == FALSE);
 }
 
+Test(wallclocktime, test_strptime_week_zero_rolls_back_to_the_previous_year)
+{
+  /* %U week 0 makes tm_yday negative: the Sunday before 2200-01-01, a Wednesday */
+  WallClockTime wct = WALL_CLOCK_TIME_INIT;
+  cr_assert_not_null(wall_clock_time_strptime(&wct, "%C\n%U", "220"));
+  cr_assert_eq(wct.wct_year, 2199 - 1900);
+  cr_assert_eq(wct.wct_mon, 11);
+  cr_assert_eq(wct.wct_mday, 29);
+}
+
+Test(wallclocktime, test_strptime_epoch_past_time_max_fails)
+{
+  WallClockTime wct = WALL_CLOCK_TIME_INIT;
+  cr_assert_null(wall_clock_time_strptime(&wct, "%s", "9223372036854775808"));
+
+  const gchar *digits = "88888888888888888888";
+  gchar *end = wall_clock_time_strptime(&wct, "%s", digits);
+  cr_assert_eq(end, digits + 19, "the 20th digit must stay unparsed");
+}
+
+Test(wallclocktime, test_strptime_percent_g_needs_a_digit)
+{
+  WallClockTime wct = WALL_CLOCK_TIME_INIT;
+  cr_assert_null(wall_clock_time_strptime(&wct, "%G", ""));
+  cr_assert_str_empty(wall_clock_time_strptime(&wct, "%G", "2024"));
+}
+
+Test(wallclocktime, test_strptime_unmatched_month_name_fails_cleanly)
+{
+  /* %b must follow both a year and a day of month, or the post-processing that
+   * indexes start_of_month[] is skipped and the unset tm_mon is never read.
+   * The year must not be a leap year either, or the negative index aliases the
+   * previous row and stays in bounds. */
+  WallClockTime wct = WALL_CLOCK_TIME_INIT;
+  gchar *end = wall_clock_time_strptime(&wct, "%Y %d %b", "2007 30 Zzz");
+  cr_assert_null(end);
+}
+
 Test(wallclocktime, test_strptime_parses_broken_down_time)
 {
   WallClockTime wct = WALL_CLOCK_TIME_INIT;
