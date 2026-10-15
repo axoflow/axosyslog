@@ -28,6 +28,7 @@
 #include "object-string.h"
 #include "object-primitive.h"
 #include "filterx-eval.h"
+#include "expr-break.h"
 
 typedef struct _FilterXSwitch FilterXSwitch;
 typedef struct _FilterXSwitchCase FilterXSwitchCase;
@@ -360,6 +361,9 @@ _eval_switch(FilterXExpr *s)
     target = self->default_target;
 
   FilterXObject *result = _eval_body(self, target);
+  FilterXEvalContext *context = filterx_eval_get_context();
+  if (context->eval_control_modifier == FXC_BREAK)
+    context->eval_control_modifier = FXC_UNSET;
   filterx_object_unref(selector);
   return result;
 }
@@ -459,12 +463,24 @@ _switch_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
 
 #endif
 
+static gboolean
+_mark_breaks_in_switch(FilterXExpr *parent, FilterXExpr **child, gpointer user_data)
+{
+  FilterXExpr *expr = *child;
+
+  if (filterx_expr_is_break(expr))
+    filterx_expr_break_set_in_switch(expr);
+  else if (!filterx_expr_is_switch(expr))
+    filterx_expr_walk_children(expr, _mark_breaks_in_switch, user_data);
+  return TRUE;
+}
+
 FilterXExpr *
 filterx_switch_new(FilterXExpr *selector, GList *body)
 {
   FilterXSwitch *self = g_new0(FilterXSwitch, 1);
 
-  filterx_expr_init_instance(&self->super, "switch", FXE_READ);
+  filterx_expr_init_instance(&self->super, FILTERX_EXPR_TYPE_NAME(switch), FXE_READ);
   self->super.init = _init;
   self->super.optimize = _optimize;
   self->super.eval = _eval_switch;
@@ -479,6 +495,7 @@ filterx_switch_new(FilterXExpr *selector, GList *body)
   self->selector = selector;
   self->default_target = -1;
   _build_switch_table(self, body);
+  filterx_expr_walk_children(self->body, _mark_breaks_in_switch, NULL);
   return &self->super;
 }
 

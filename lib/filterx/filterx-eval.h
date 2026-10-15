@@ -49,7 +49,8 @@ typedef enum _FilterXEvalControl
   FXC_DROP,
   /* exit from the current filterx {} block with success (matched), accept the message */
   FXC_DONE,
-  /* exit from the current compound expression, continue execution with the next statement in the same filterx {} block */
+  /* exit from the innermost enclosing switch, continue execution with the statement after it,
+   * only valid inside a switch, enforced at init */
   FXC_BREAK,
 } FilterXEvalControl;
 

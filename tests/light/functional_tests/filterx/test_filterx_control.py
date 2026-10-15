@@ -296,28 +296,23 @@ def test_done(config, syslog_ng):
     assert file_true.read_log() == '{"$MESSAGE":"foo","var_wont_change":true}'
 
 
-def test_break(config, syslog_ng):
-    (file_true, file_false) = create_config(
+@ignore_asan_memleaks
+def test_break_outside_switch(config, syslog_ng):
+    _ = create_config(
         config,
         msg="foo",
         filterx_expr_1=r"""
             if ($MSG =~ 'foo') {
               declare var_wont_change = true;
               break;
-              var_wont_change = false; # This will be skipped
+              var_wont_change = false;
             };
             declare new_variable = true;
         """,
-        filterx_expr_2=r"""
-            $MSG = vars();
-            new_variable;
-        """,
     )
-    syslog_ng.start(config)
-
-    assert file_true.get_stats()["processed"] == 1
-    assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == '{"$MESSAGE":"foo","var_wont_change":true,"new_variable":true}'
+    with pytest.raises(Exception) as exec_info:
+        syslog_ng.start(config)
+    assert "syslog-ng is not running" in str(exec_info.value)
 
 
 def test_switch_right_case_is_picked_from_the_middle(config, syslog_ng):
@@ -675,3 +670,68 @@ def test_switch_range_case_double(config, syslog_ng):
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
     assert file_true.read_log() == "in-range"
+
+
+def test_switch_break_in_nested_block(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config,
+        filterx_expr_1=r"""
+            switch (${values.str}) {
+              case "string":
+                if (true) {
+                  result = "in-if";
+                  break;
+                };
+                result = "after-if-must-not-run";
+              case "match2":
+                result = "next-case-must-not-run";
+                break;
+              default:
+                result = "default-must-not-run";
+                break;
+            };
+            after_switch = "after-switch";
+            $MSG = result + " " + after_switch;
+        """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "in-if after-switch"
+
+
+def test_switch_nested_switch_break(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config,
+        filterx_expr_1=r"""
+            switch (${values.str}) {
+              case "string":
+                switch (${values.int}) {
+                  case 5:
+                    if (true) {
+                      result = "inner";
+                      break;
+                    };
+                    result = "inner-after-if-must-not-run";
+                  default:
+                    result = "inner-default-must-not-run";
+                    break;
+                };
+                marker = "outer-case-continued";
+                break;
+              case "match2":
+                marker = "outer-next-case-must-not-run";
+                break;
+              default:
+                marker = "outer-default-must-not-run";
+                break;
+            };
+            $MSG = result + " " + marker;
+        """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "inner outer-case-continued"
