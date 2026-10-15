@@ -164,11 +164,12 @@ log_filterx_pipe_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_o
     LogPathOptions local_path_options;
 
     path_options = log_path_options_chain(&local_path_options, path_options);
+    eval_context.path_options = path_options;
 
     msg_trace(">>>>>> filterx rule evaluation begin",
               evt_tag_str("rule", self->name),
               log_pipe_location_tag(s),
-              evt_tag_msg_reference(msg));
+              evt_tag_msg_reference(eval_context.msg));
 
     eval_res = filterx_eval_exec(&eval_context, self->block, self->jit_exec);
 
@@ -177,13 +178,13 @@ log_filterx_pipe_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_o
               evt_tag_str("rule", self->name),
               log_pipe_location_tag(s),
               evt_tag_int("dirty", filterx_scope_is_dirty(eval_context.scope)),
-              evt_tag_msg_reference(msg));
+              evt_tag_msg_reference(eval_context.msg));
 
     local_path_options.filterx_context = &eval_context;
     switch (eval_res)
       {
       case FXE_SUCCESS:
-        log_pipe_forward_msg(s, msg, path_options);
+        log_pipe_forward_msg(s, eval_context.msg, path_options);
         break;
 
       case FXE_FAILURE:
@@ -191,7 +192,7 @@ log_filterx_pipe_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_o
           (*path_options->matched) = FALSE;
       /* FALLTHROUGH */
       case FXE_DROP:
-        log_msg_drop(msg, path_options, AT_PROCESSED);
+        log_msg_drop(eval_context.msg, path_options, AT_PROCESSED);
         break;
 
       default:
