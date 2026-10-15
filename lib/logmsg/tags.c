@@ -48,6 +48,15 @@ _lookup_tag(LogTagId id)
   return g_atomic_pointer_get(&log_tags[id]);
 }
 
+/* tag-stats(auto) means stats level 3, like it always was */
+static gboolean
+_tag_stats_enabled(void)
+{
+  CfgYesNoAuto tag_stats = stats_tag_stats();
+
+  return tag_stats == CYNA_YES || (tag_stats == CYNA_AUTO && stats_check_level(3));
+}
+
 /* NOTE: needs both log_tags_lock and the stats lock */
 static void
 _tag_update_counter_registration(LogTag *tag, gboolean enable)
@@ -86,7 +95,7 @@ _register_tag(const gchar *name, guint id)
    * log_tags_reinit_stats() below */
 
   stats_lock();
-  _tag_update_counter_registration(tag, stats_check_level(3));
+  _tag_update_counter_registration(tag, _tag_stats_enabled());
   stats_unlock();
 
   g_hash_table_insert(log_tags_hash, tag->name, GUINT_TO_POINTER(id + 1));
@@ -225,7 +234,7 @@ log_tags_reinit_stats(void)
   g_mutex_lock(&log_tags_lock);
   stats_lock();
 
-  gboolean enable = stats_check_level(3);
+  gboolean enable = _tag_stats_enabled();
   for (guint id = 0; id < log_tags_num; id++)
     {
       LogTag *tag = log_tags[id];
