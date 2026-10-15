@@ -65,6 +65,14 @@ void set_cached_realtime(struct timespec *ts);
 void get_cached_realtime(struct timespec *ts);
 time_t get_cached_realtime_sec(void);
 
+/* In a thread with ivykis initialised, get_cached_realtime() defers the
+ * invalidation of the value it returns to an ivykis task, so every reader in
+ * the same event loop iteration sees the same time. A thread that initialised
+ * ivykis but never runs its loop would keep the value forever instead; such a
+ * thread disables the realtime cache once, after which every read hits the
+ * clock, as in threads without ivykis. */
+void disable_realtime_cache(void);
+
 TimeZoneInfo *cached_get_time_zone_info(const gchar *tz);
 
 void invalidate_timeutils_cache(void);
