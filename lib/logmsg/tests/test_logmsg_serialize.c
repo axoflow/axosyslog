@@ -33,7 +33,6 @@
 #include "cfg.h"
 #include "plugin.h"
 #include "logmsg/logmsg-serialize.h"
-#include "logmsg/nvtable-serialize.h"
 
 #define RAW_MSG "<132>1 2006-10-29T01:59:59.156+01:00 mymachine evntslog - - [exampleSDID@0 iut=\"3\" eventSource=\"Application\"] An application event log entry..."
 
@@ -313,6 +312,7 @@ Test(logmsg_serialize, existing_and_given_ts_processed)
 #include "messages/syslog-ng-3.29.1-msg.h"
 #include "messages/syslog-ng-3.30.1-msg.h"
 #include "messages/axosyslog-4.23.0-msg.h"
+#include "messages/axosyslog-4.11.0-full-nvtable-msg.h"
 
 
 static struct iovec test_deserialization_of_legacy_messages_params[] =
@@ -326,6 +326,7 @@ static struct iovec test_deserialization_of_legacy_messages_params[] =
   { serialized_message_3_28_1, sizeof(serialized_message_3_28_1) },
   { serialized_message_3_29_1, sizeof(serialized_message_3_29_1) },
   { serialized_message_3_30_1, sizeof(serialized_message_3_30_1) },
+  { serialized_message_axosyslog_4_11_0_full_nvtable, sizeof(serialized_message_axosyslog_4_11_0_full_nvtable) },
 };
 
 
@@ -343,80 +344,6 @@ StaticParameterizedTest(struct iovec *param, test_deserialization_of_legacy_mess
   _check_deserialized_message_all_fields(msg);
 
   log_msg_unref(msg);
-}
-
-static guint8 *
-_find_serialized_nvtable(GString *stream)
-{
-  guint32 magic;
-  memcpy(&magic, NV_TABLE_MAGIC_V2, sizeof(magic));
-  magic = GUINT32_TO_BE(magic);
-
-  guint8 *nvtable = memmem(stream->str, stream->len, &magic, sizeof(magic));
-  cr_assert(nvtable, ERROR_MSG);
-  return nvtable;
-}
-
-/* up to 4.11 the NVTable header was 12 bytes: this is the size of a table filled to its last byte */
-static void
-_set_nvtable_size_to_a_full_table_with_12_byte_header(GString *stream)
-{
-  guint8 *nvtable = _find_serialized_nvtable(stream);
-
-  guint32 used;
-  guint16 index_size;
-  memcpy(&used, nvtable + 9, sizeof(used));
-  memcpy(&index_size, nvtable + 13, sizeof(index_size));
-  guint8 num_static_entries = nvtable[15];
-
-  guint32 size = 12 + num_static_entries * sizeof(guint32) + GUINT16_FROM_BE(index_size) * sizeof(NVIndexEntry) +
-                 GUINT32_FROM_BE(used);
-  size = GUINT32_TO_BE(size);
-  memcpy(nvtable + 5, &size, sizeof(size));
-}
-
-Test(logmsg_serialize, deserialize_full_nvtable_with_12_byte_header)
-{
-  GString *stream = g_string_new("");
-  SerializeArchive *sa = _serialize_message_for_test(stream, RAW_MSG);
-  serialize_archive_free(sa);
-
-  _set_nvtable_size_to_a_full_table_with_12_byte_header(stream);
-
-  LogMessage *msg = _deserialize_message_from_string((guint8 *) stream->str, stream->len);
-  _check_deserialized_message_all_fields(msg);
-  for (gint i = 0; i < 32; i++)
-    {
-      gchar value_name[64];
-
-      g_snprintf(value_name, sizeof(value_name), ".SDATA.dynamic.field%d", i);
-      assert_log_message_value_by_name(msg, value_name, "value");
-
-      g_snprintf(value_name, sizeof(value_name), ".normal.dynamic.field%d", i);
-      assert_log_message_value_by_name(msg, value_name, "value");
-    }
-
-  log_msg_unref(msg);
-  g_string_free(stream, TRUE);
-}
-
-Test(logmsg_serialize, deserialize_rejects_nvtable_used_above_size)
-{
-  GString *stream = g_string_new("");
-  SerializeArchive *sa = _serialize_message_for_test(stream, RAW_MSG);
-  serialize_archive_free(sa);
-
-  guint8 *nvtable = _find_serialized_nvtable(stream);
-  guint32 used;
-  memcpy(&used, nvtable + 9, sizeof(used));
-  guint32 size = GUINT32_TO_BE(GUINT32_FROM_BE(used) - 4);
-  memcpy(nvtable + 5, &size, sizeof(size));
-
-  sa = serialize_string_archive_new(stream);
-  cr_assert_null(log_msg_deserialize(sa));
-
-  serialize_archive_free(sa);
-  g_string_free(stream, TRUE);
 }
 
 Test(logmsg_serialize, serialization_performance)
