@@ -691,6 +691,8 @@ log_msg_set_value_to_string(LogMessage *self, NVHandle handle, const gchar *lite
 
 void log_msg_rename_value(LogMessage *self, NVHandle from, NVHandle to);
 
+void log_msg_sdata_append_key_escaped(GString *result, const gchar *sstr, gssize len);
+void log_msg_sdata_append_escaped(GString *result, const gchar *sstr, gssize len);
 void log_msg_append_format_sdata(const LogMessage *self, GString *result, guint32 seq_num);
 void log_msg_format_sdata(const LogMessage *self, GString *result, guint32 seq_num);
 void log_msg_clear_sdata(LogMessage *self);
