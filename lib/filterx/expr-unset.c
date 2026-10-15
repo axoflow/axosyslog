@@ -105,6 +105,7 @@ filterx_function_unset_new(FilterXFunctionArgs *args, GError **error)
         {
           g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
                       "expected argument %d to be unsettable", (gint) i);
+          filterx_expr_unref(expr);
           goto error;
         }
       g_ptr_array_add(self->exprs, expr);

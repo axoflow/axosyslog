@@ -23,6 +23,7 @@ lib_filterx_tests_TESTS		 =              \
 		lib/filterx/tests/test_type_registry \
 		lib/filterx/tests/test_func_istype \
 		lib/filterx/tests/test_func_unset_empties \
+		lib/filterx/tests/test_expr_move \
 		lib/filterx/tests/test_func_flatten \
 		lib/filterx/tests/test_expr_regexp_search	\
 		lib/filterx/tests/test_expr_regexp_subst	\
@@ -47,6 +48,7 @@ lib_filterx_tests_TESTS		 =              \
 		lib/filterx/tests/test_object_subnet \
 		lib/filterx/tests/test_object_ip \
 		lib/filterx/tests/test_expr_arithmetic_operators \
+		lib/filterx/tests/test_expr_membership \
 		lib/filterx/tests/test_func_set_pri \
 		lib/filterx/tests/test_json_repr \
 		lib/filterx/tests/test_access_path \
@@ -128,6 +130,9 @@ lib_filterx_tests_test_func_istype_LDADD   = $(TEST_LDADD) $(JSON_LIBS)
 lib_filterx_tests_test_func_unset_empties_CFLAGS  = $(TEST_CFLAGS)
 lib_filterx_tests_test_func_unset_empties_LDADD   = $(TEST_LDADD) $(JSON_LIBS)
 
+lib_filterx_tests_test_expr_move_CFLAGS  = $(TEST_CFLAGS)
+lib_filterx_tests_test_expr_move_LDADD   = $(TEST_LDADD) $(JSON_LIBS)
+
 lib_filterx_tests_test_func_flatten_CFLAGS  = $(TEST_CFLAGS)
 lib_filterx_tests_test_func_flatten_LDADD   = $(TEST_LDADD) $(JSON_LIBS)
 
@@ -199,6 +204,9 @@ lib_filterx_tests_test_object_ip_LDADD   = $(TEST_LDADD) $(JSON_LIBS)
 
 lib_filterx_tests_test_expr_arithmetic_operators_CFLAGS  = $(TEST_CFLAGS)
 lib_filterx_tests_test_expr_arithmetic_operators_LDADD   = $(TEST_LDADD) $(JSON_LIBS)
+
+lib_filterx_tests_test_expr_membership_CFLAGS  = $(TEST_CFLAGS)
+lib_filterx_tests_test_expr_membership_LDADD   = $(TEST_LDADD) $(JSON_LIBS)
 
 lib_filterx_tests_test_func_set_pri_CFLAGS  = $(TEST_CFLAGS)
 lib_filterx_tests_test_func_set_pri_LDADD   = $(TEST_LDADD) $(JSON_LIBS)

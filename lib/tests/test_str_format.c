@@ -120,6 +120,10 @@ Test(test_str_format, format_int64_buffer)
   size = format_int64_into_padded_buffer(buf, sizeof(buf), 5, ' ', 10, -100);
   cr_expect_str_eq(buf, " -100");
   cr_expect_eq(size, 5);
+
+  size = format_int64_into_padded_buffer(buf, sizeof(buf), 0, ' ', 10, G_MININT64);
+  cr_expect_str_eq(buf, "-9223372036854775808");
+  cr_expect_eq(size, 20);
 }
 
 Test(test_str_format, format_int32_buffer)

@@ -329,8 +329,14 @@ static int jsmn_parse_string(jsmn_parser *parser, const char *js,
     }
 
     /* Backslash: Quoted symbol expected */
-    if (c == '\\' && parser->pos + 1 < len) {
+    if (c == '\\') {
       int i;
+
+      /* incomplete escape at end of buffer: bail out, else pos never advances */
+      if (parser->pos + 1 >= len) {
+        parser->pos = start;
+        return JSMN_ERROR_PART;
+      }
 
       escape_was_present = TRUE;
       parser->pos++;
