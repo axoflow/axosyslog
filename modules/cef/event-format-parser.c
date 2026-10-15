@@ -398,7 +398,7 @@ _extract_optional_args(FilterXFunctionEventFormatParser *self, FilterXFunctionAr
                                                          &exists);
   if (exists)
     {
-      if (len < 1 || !value)
+      if (len < 1 || !value || value[0] == '\0')
         {
           g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
                       EVENT_FORMAT_PARSER_ERR_EMPTY_STRING, EVENT_FORMAT_PARSER_ARG_NAME_VALUE_SEPARATOR);

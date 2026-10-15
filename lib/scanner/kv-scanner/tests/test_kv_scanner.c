@@ -270,6 +270,14 @@ Test(kv_scanner, incomplete_string_returns_no_pairs)
   _EXPECT_KV_PAIRS("foo");
 }
 
+Test(kv_scanner, nul_value_separator_returns_no_pairs)
+{
+  _EXPECT_KV_PAIRS_WITH_CONFIG(((ScannerConfig)
+  {
+    .kv_separator = 0
+  }), "foo=bar baz=qux");
+}
+
 Test(kv_scanner, name_equals_value_returns_a_pair)
 {
   _EXPECT_KV_PAIRS("foo=", { "foo", "" });

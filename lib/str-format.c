@@ -38,7 +38,8 @@ format_uint64_base10_rev(gchar *result, gsize result_len, gint sign, guint64 val
 
   if (sign && ((gint64) value) < 0)
     {
-      value = -((gint64) value);
+      /* unsigned negation, as INT64_MIN has no positive gint64 */
+      value = -value;
       negative = TRUE;
     }
 

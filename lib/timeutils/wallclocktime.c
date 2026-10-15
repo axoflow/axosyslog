@@ -531,7 +531,7 @@ recurse:
 #endif
         case 's': /* seconds since the epoch */
         {
-          time_t sse = 0;
+          uint64_t sse = 0;
           uint64_t rulim = TIME_MAX;
 
           if (*bp < '0' || *bp > '9')
@@ -546,10 +546,10 @@ recurse:
               sse += *bp++ - '0';
               rulim /= 10;
             }
-          while ((sse * 10 <= TIME_MAX) &&
+          while ((sse <= TIME_MAX / 10) &&
                  rulim && *bp >= '0' && *bp <= '9');
 
-          if (sse < 0 || (uint64_t)sse > TIME_MAX)
+          if (sse > TIME_MAX)
             {
               bp = NULL;
               continue;
@@ -601,9 +601,11 @@ recurse:
         case 'G': /* The year corresponding to the ISO week
          * number with century.
          */
-          do
+          /* test before advancing, or the scan reads past the NUL terminator */
+          if (!ch_isdigit(*bp))
+            return NULL;
+          while (ch_isdigit(*bp))
             bp++;
-          while (ch_isdigit(*bp));
           continue;
 
         case 'V': /* The ISO 8601:1988 week number as decimal */
@@ -812,6 +814,11 @@ out:
         }
     }
 
+  /* a failed conversion can leave a state flag set over a -1 field, which
+   * would index start_of_month[] below */
+  if (bp == NULL)
+    return NULL;
+
   if (!HAVE_YDAY(state) && HAVE_YEAR(state))
     {
       if (HAVE_MON(state) && HAVE_MDAY(state))
@@ -847,17 +854,26 @@ out:
       if (!HAVE_MON(state))
         {
           /* calculate month of day of year */
-          i = 0;
           isleap = isleap_sum(wct->tm.tm_year, TM_YEAR_BASE);
-          while (wct->tm.tm_yday >= start_of_month[isleap][i])
-            i++;
-          if (i > 12)
+
+          while (wct->tm.tm_yday < 0)
             {
-              i = 1;
+              wct->tm.tm_year--;
+              isleap = isleap_sum(wct->tm.tm_year, TM_YEAR_BASE);
+              wct->tm.tm_yday += start_of_month[isleap][12];
+            }
+
+          while (wct->tm.tm_yday >= start_of_month[isleap][12])
+            {
               wct->tm.tm_yday -= start_of_month[isleap][12];
               wct->tm.tm_year++;
+              isleap = isleap_sum(wct->tm.tm_year, TM_YEAR_BASE);
             }
-          wct->tm.tm_mon = i - 1;
+
+          i = 0;
+          while (i < 11 && wct->tm.tm_yday >= start_of_month[isleap][i + 1])
+            i++;
+          wct->tm.tm_mon = i;
           state |= S_MON;
         }
 

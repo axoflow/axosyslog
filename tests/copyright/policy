@@ -63,6 +63,7 @@ tests/light/pyproject.toml
 tests/light/pytest.ini
 tests/light/tox.ini
 tests/light/.pre-commit-config.yaml
+\.clusterfuzzlite/project\.yaml$
 tests/light/reports
 tests/light/shared_files/.*syslog-ng\.conf$
 .github/workflows/.*$
@@ -366,3 +367,4 @@ modules/http/http-parser.c
 modules/http/http-grammar.ym
 modules/correlation/group-lines.c
 modules/python-modules/syslogng/modules/webhook/source.py
+\.clusterfuzzlite/(Dockerfile|build\.sh)$

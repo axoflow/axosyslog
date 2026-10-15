@@ -68,6 +68,19 @@ Test(filterx_object, test_filterx_double_trailing_zeroes_are_removed)
   filterx_object_unref(fobj);
 }
 
+Test(filterx_object, test_filterx_integer_add_inplace_may_return_the_cached_operand)
+{
+  FilterXObject *n = filterx_integer_new(1);
+  FilterXObject *zero = filterx_integer_new(0);
+
+  FilterXObject *result = filterx_object_add_inplace(n, zero);
+  cr_assert_eq(result, n);
+
+  filterx_object_unref(result);
+  filterx_object_unref(zero);
+  filterx_object_unref(n);
+}
+
 static void
 setup(void)
 {
