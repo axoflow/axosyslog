@@ -293,6 +293,7 @@ stats_options_defaults(StatsOptions *options)
   options->lifetime = 600;
   options->max_dynamic = -1;
   options->syslog_stats = CYNA_AUTO;
+  options->tag_stats = CYNA_AUTO;
 }
 
 gboolean
@@ -327,5 +328,13 @@ stats_syslog_stats(void)
 {
   if (stats_options)
     return (stats_options->syslog_stats);
+  return CYNA_AUTO;
+}
+
+CfgYesNoAuto
+stats_tag_stats(void)
+{
+  if (stats_options)
+    return (stats_options->tag_stats);
   return CYNA_AUTO;
 }

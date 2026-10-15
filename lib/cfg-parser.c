@@ -104,6 +104,7 @@ static CfgLexerKeyword main_keywords[] =
   { "lifetime",           KW_LIFETIME },
   { "max_dynamics",       KW_MAX_DYNAMIC },
   { "syslog_stats",       KW_SYSLOG_STATS },
+  { "tag_stats",          KW_TAG_STATS },
   { "healthcheck_freq",   KW_HEALTHCHECK_FREQ},
   { "min_iw_size_per_reader", KW_MIN_IW_SIZE_PER_READER },
   { "flush_lines",        KW_FLUSH_LINES },
