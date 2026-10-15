@@ -121,7 +121,11 @@ stats_counter_get(StatsCounterItem *counter)
 static inline void
 stats_counter_set_time(StatsCounterItem *counter, gint64 value)
 {
-  stats_counter_set(counter, (gsize) MAX(0, value));
+  gsize new_value = (gsize) MAX(0, value);
+  if (counter && stats_counter_get(counter) == new_value)
+    return;
+
+  stats_counter_set(counter, new_value);
 }
 
 static inline gchar *
