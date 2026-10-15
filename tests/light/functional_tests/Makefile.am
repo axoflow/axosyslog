@@ -5,6 +5,7 @@ EXTRA_DIST += \
 	tests/light/functional_tests/config_change/test_confgen_network_load_balancer.py \
 	tests/light/functional_tests/config_change/test_manipulating_config_between_reload.py \
 	tests/light/functional_tests/config_change/test_python_custom_options.py \
+	tests/light/functional_tests/config_change/test_threaded_workers_start_after_config_init.py \
 	tests/light/functional_tests/config_change/test_warning_pragma.py \
 	tests/light/functional_tests/config_change/test_list_files.py \
 	tests/light/functional_tests/conftest.py \
