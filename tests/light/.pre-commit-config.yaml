@@ -25,3 +25,11 @@ repos:
     -   id: add-trailing-comma
         args: [--py36-plus]
         files: 'tests/light/'
+-   repo: local
+    hooks:
+    -   id: light-extra-dist-sync
+        name: light EXTRA_DIST lists are in sync with the tree
+        entry: tests/light/check_extra_dist.sh
+        language: script
+        pass_filenames: false
+        always_run: true
