@@ -41,8 +41,8 @@
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
 using namespace syslogng::grpc::otel::filterx;
-using opentelemetry::proto::common::v1::KeyValueList;
-using opentelemetry::proto::common::v1::AnyValue;
+using axosyslog::opentelemetry::proto::common::v1::KeyValueList;
+using axosyslog::opentelemetry::proto::common::v1::AnyValue;
 
 /* C++ Implementations */
 

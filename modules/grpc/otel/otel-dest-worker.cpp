@@ -33,9 +33,9 @@
 
 using namespace syslogng::grpc::otel;
 using namespace google::protobuf::util;
-using namespace opentelemetry::proto::logs::v1;
-using namespace opentelemetry::proto::metrics::v1;
-using namespace opentelemetry::proto::trace::v1;
+using namespace axosyslog::opentelemetry::proto::logs::v1;
+using namespace axosyslog::opentelemetry::proto::metrics::v1;
+using namespace axosyslog::opentelemetry::proto::trace::v1;
 
 /* C++ Implementations */
 
@@ -44,9 +44,9 @@ DestWorker::init()
 {
   if (!syslogng::grpc::DestWorker::init())
     return false;
-  logs_service_stub = LogsService::NewStub(channel);
-  metrics_service_stub = MetricsService::NewStub(channel);
-  trace_service_stub = TraceService::NewStub(channel);
+  logs_service_stub = std::make_unique<LogsServiceStub>(channel, LOGS_EXPORT_METHOD);
+  metrics_service_stub = std::make_unique<MetricsServiceStub>(channel, METRICS_EXPORT_METHOD);
+  trace_service_stub = std::make_unique<TraceServiceStub>(channel, TRACE_EXPORT_METHOD);
   return true;
 }
 

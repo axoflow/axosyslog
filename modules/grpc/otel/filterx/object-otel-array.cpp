@@ -36,7 +36,7 @@
 #include <stdexcept>
 
 using namespace syslogng::grpc::otel::filterx;
-using opentelemetry::proto::common::v1::AnyValue;
+using axosyslog::opentelemetry::proto::common::v1::AnyValue;
 
 /* C++ Implementations */
 

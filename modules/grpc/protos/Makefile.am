@@ -21,16 +21,28 @@ CLICKHOUSE_PROTO_BUILDDIR = $(GRPC_PROTOS_BUILDDIR)/clickhouse
 
 if ENABLE_GRPC
 
-OPENTELEMETRY_PROTO_PROTOC_FLAGS = $(PROTOC_GEN_GRPC_CPP_PLUGIN_FLAGS) --proto_path=$(OPENTELEMETRY_PROTO_SRCDIR) --cpp_out=$(OPENTELEMETRY_PROTO_BUILDDIR)
+OPENTELEMETRY_PROTO_PROTOC_FLAGS = $(PROTOC_GEN_GRPC_CPP_PLUGIN_FLAGS) --proto_path=$(OPENTELEMETRY_PROTO_BUILDDIR) --cpp_out=$(OPENTELEMETRY_PROTO_BUILDDIR)
 LOKI_PROTO_PROTOC_FLAGS = $(PROTOC_GEN_GRPC_CPP_PLUGIN_FLAGS) --proto_path=$(LOKI_PROTO_SRCDIR) --cpp_out=$(LOKI_PROTO_BUILDDIR)
 GOOGLEAPIS_PROTO_PROTOC_FLAGS = $(PROTOC_GEN_GRPC_CPP_PLUGIN_FLAGS) --proto_path=$(GOOGLEAPIS_PROTO_SRCDIR) --cpp_out=$(GOOGLEAPIS_PROTO_BUILDDIR)
 CLICKHOUSE_PROTO_PROTOC_FLAGS = $(PROTOC_GEN_GRPC_CPP_PLUGIN_FLAGS) --proto_path=$(CLICKHOUSE_PROTO_SRCDIR) --cpp_out=$(CLICKHOUSE_PROTO_BUILDDIR)
 
-modules/grpc/protos/otlp/%.grpc.pb.cc modules/grpc/protos/otlp/%.grpc.pb.h:
-	mkdir -p $(OPENTELEMETRY_PROTO_BUILDDIR)
-	$(PROTOC) $(OPENTELEMETRY_PROTO_PROTOC_FLAGS) --grpc-cpp_out=$(OPENTELEMETRY_PROTO_BUILDDIR) $*.proto
+OPENTELEMETRY_PROTO_PRIVATE_SOURCES = \
+  $(OPENTELEMETRY_PROTO_BUILDDIR)/axosyslog/opentelemetry/proto/collector/logs/v1/logs_service.proto \
+  $(OPENTELEMETRY_PROTO_BUILDDIR)/axosyslog/opentelemetry/proto/collector/metrics/v1/metrics_service.proto \
+  $(OPENTELEMETRY_PROTO_BUILDDIR)/axosyslog/opentelemetry/proto/collector/trace/v1/trace_service.proto \
+  $(OPENTELEMETRY_PROTO_BUILDDIR)/axosyslog/opentelemetry/proto/common/v1/common.proto \
+  $(OPENTELEMETRY_PROTO_BUILDDIR)/axosyslog/opentelemetry/proto/logs/v1/logs.proto \
+  $(OPENTELEMETRY_PROTO_BUILDDIR)/axosyslog/opentelemetry/proto/metrics/v1/metrics.proto \
+  $(OPENTELEMETRY_PROTO_BUILDDIR)/axosyslog/opentelemetry/proto/resource/v1/resource.proto \
+  $(OPENTELEMETRY_PROTO_BUILDDIR)/axosyslog/opentelemetry/proto/trace/v1/trace.proto
 
-modules/grpc/protos/otlp/%.pb.cc modules/grpc/protos/otlp/%.pb.h:
+# Foreign copies of these protos, e.g. an Arrow built with OpenTelemetry, share
+# the process-wide protobuf descriptor database, so ours must not reuse their names.
+modules/grpc/protos/otlp/axosyslog/%.proto: $(OPENTELEMETRY_PROTO_SRCDIR)/%.proto
+	mkdir -p $(@D)
+	sed -e 's,opentelemetry/proto/,axosyslog/opentelemetry/proto/,g' -e 's,opentelemetry\.proto\.,axosyslog.opentelemetry.proto.,g' $< > $@
+
+modules/grpc/protos/otlp/%.pb.cc modules/grpc/protos/otlp/%.pb.h: $(OPENTELEMETRY_PROTO_PRIVATE_SOURCES)
 	mkdir -p $(OPENTELEMETRY_PROTO_BUILDDIR)
 	$(PROTOC) $(OPENTELEMETRY_PROTO_PROTOC_FLAGS) $*.proto
 
@@ -59,28 +71,22 @@ modules/grpc/protos/clickhouse/%.pb.cc modules/grpc/protos/clickhouse/%.pb.h:
 	$(PROTOC) $(CLICKHOUSE_PROTO_PROTOC_FLAGS) $*.proto
 
 GRPC_PROTOS_BUILT_SOURCES = \
-  $(OPENTELEMETRY_PROTO_BUILDDIR)/opentelemetry/proto/collector/logs/v1/logs_service.grpc.pb.cc \
-  $(OPENTELEMETRY_PROTO_BUILDDIR)/opentelemetry/proto/collector/logs/v1/logs_service.grpc.pb.h \
-  $(OPENTELEMETRY_PROTO_BUILDDIR)/opentelemetry/proto/collector/logs/v1/logs_service.pb.cc \
-  $(OPENTELEMETRY_PROTO_BUILDDIR)/opentelemetry/proto/collector/logs/v1/logs_service.pb.h \
-  $(OPENTELEMETRY_PROTO_BUILDDIR)/opentelemetry/proto/collector/metrics/v1/metrics_service.grpc.pb.cc \
-  $(OPENTELEMETRY_PROTO_BUILDDIR)/opentelemetry/proto/collector/metrics/v1/metrics_service.grpc.pb.h \
-  $(OPENTELEMETRY_PROTO_BUILDDIR)/opentelemetry/proto/collector/metrics/v1/metrics_service.pb.cc \
-  $(OPENTELEMETRY_PROTO_BUILDDIR)/opentelemetry/proto/collector/metrics/v1/metrics_service.pb.h \
-  $(OPENTELEMETRY_PROTO_BUILDDIR)/opentelemetry/proto/collector/trace/v1/trace_service.grpc.pb.cc \
-  $(OPENTELEMETRY_PROTO_BUILDDIR)/opentelemetry/proto/collector/trace/v1/trace_service.grpc.pb.h \
-  $(OPENTELEMETRY_PROTO_BUILDDIR)/opentelemetry/proto/collector/trace/v1/trace_service.pb.cc \
-  $(OPENTELEMETRY_PROTO_BUILDDIR)/opentelemetry/proto/collector/trace/v1/trace_service.pb.h \
-  $(OPENTELEMETRY_PROTO_BUILDDIR)/opentelemetry/proto/common/v1/common.pb.cc \
-  $(OPENTELEMETRY_PROTO_BUILDDIR)/opentelemetry/proto/common/v1/common.pb.h \
-  $(OPENTELEMETRY_PROTO_BUILDDIR)/opentelemetry/proto/logs/v1/logs.pb.cc \
-  $(OPENTELEMETRY_PROTO_BUILDDIR)/opentelemetry/proto/logs/v1/logs.pb.h \
-  $(OPENTELEMETRY_PROTO_BUILDDIR)/opentelemetry/proto/metrics/v1/metrics.pb.cc \
-  $(OPENTELEMETRY_PROTO_BUILDDIR)/opentelemetry/proto/metrics/v1/metrics.pb.h \
-  $(OPENTELEMETRY_PROTO_BUILDDIR)/opentelemetry/proto/resource/v1/resource.pb.cc \
-  $(OPENTELEMETRY_PROTO_BUILDDIR)/opentelemetry/proto/resource/v1/resource.pb.h \
-  $(OPENTELEMETRY_PROTO_BUILDDIR)/opentelemetry/proto/trace/v1/trace.pb.cc \
-  $(OPENTELEMETRY_PROTO_BUILDDIR)/opentelemetry/proto/trace/v1/trace.pb.h \
+  $(OPENTELEMETRY_PROTO_BUILDDIR)/axosyslog/opentelemetry/proto/collector/logs/v1/logs_service.pb.cc \
+  $(OPENTELEMETRY_PROTO_BUILDDIR)/axosyslog/opentelemetry/proto/collector/logs/v1/logs_service.pb.h \
+  $(OPENTELEMETRY_PROTO_BUILDDIR)/axosyslog/opentelemetry/proto/collector/metrics/v1/metrics_service.pb.cc \
+  $(OPENTELEMETRY_PROTO_BUILDDIR)/axosyslog/opentelemetry/proto/collector/metrics/v1/metrics_service.pb.h \
+  $(OPENTELEMETRY_PROTO_BUILDDIR)/axosyslog/opentelemetry/proto/collector/trace/v1/trace_service.pb.cc \
+  $(OPENTELEMETRY_PROTO_BUILDDIR)/axosyslog/opentelemetry/proto/collector/trace/v1/trace_service.pb.h \
+  $(OPENTELEMETRY_PROTO_BUILDDIR)/axosyslog/opentelemetry/proto/common/v1/common.pb.cc \
+  $(OPENTELEMETRY_PROTO_BUILDDIR)/axosyslog/opentelemetry/proto/common/v1/common.pb.h \
+  $(OPENTELEMETRY_PROTO_BUILDDIR)/axosyslog/opentelemetry/proto/logs/v1/logs.pb.cc \
+  $(OPENTELEMETRY_PROTO_BUILDDIR)/axosyslog/opentelemetry/proto/logs/v1/logs.pb.h \
+  $(OPENTELEMETRY_PROTO_BUILDDIR)/axosyslog/opentelemetry/proto/metrics/v1/metrics.pb.cc \
+  $(OPENTELEMETRY_PROTO_BUILDDIR)/axosyslog/opentelemetry/proto/metrics/v1/metrics.pb.h \
+  $(OPENTELEMETRY_PROTO_BUILDDIR)/axosyslog/opentelemetry/proto/resource/v1/resource.pb.cc \
+  $(OPENTELEMETRY_PROTO_BUILDDIR)/axosyslog/opentelemetry/proto/resource/v1/resource.pb.h \
+  $(OPENTELEMETRY_PROTO_BUILDDIR)/axosyslog/opentelemetry/proto/trace/v1/trace.pb.cc \
+  $(OPENTELEMETRY_PROTO_BUILDDIR)/axosyslog/opentelemetry/proto/trace/v1/trace.pb.h \
   \
   $(LOKI_PROTO_BUILDDIR)/push.grpc.pb.cc \
   $(LOKI_PROTO_BUILDDIR)/push.grpc.pb.h \
@@ -168,13 +174,16 @@ modules_grpc_protos_libgrpc_protos_la_LIBADD = $(MODULE_DEPS_LIBS) $(PROTOBUF_LI
 EXTRA_modules_grpc_protos_libgrpc_protos_la_DEPENDENCIES = $(MODULE_DEPS_LIBS)
 
 CLEANFILES += \
-  $(GRPC_PROTOS_BUILT_SOURCES)
+  $(GRPC_PROTOS_BUILT_SOURCES) \
+  $(OPENTELEMETRY_PROTO_PRIVATE_SOURCES)
 
 BUILT_SOURCES += \
-  $(GRPC_PROTOS_BUILT_SOURCES)
+  $(GRPC_PROTOS_BUILT_SOURCES) \
+  $(OPENTELEMETRY_PROTO_PRIVATE_SOURCES)
 
 BUILT_SOURCES_EXCLUDE += \
-  $(GRPC_PROTOS_BUILT_SOURCES)
+  $(GRPC_PROTOS_BUILT_SOURCES) \
+  $(OPENTELEMETRY_PROTO_PRIVATE_SOURCES)
 
 endif
 

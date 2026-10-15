@@ -44,14 +44,14 @@
 
 #include "compat/cpp-end.h"
 
-#include "opentelemetry/proto/logs/v1/logs.pb.h"
+#include "axosyslog/opentelemetry/proto/logs/v1/logs.pb.h"
 
 #include <string.h>
 
 using namespace syslogng::grpc;
 using namespace syslogng::grpc::otel;
 using namespace google::protobuf;
-using namespace opentelemetry::proto::logs::v1;
+using namespace axosyslog::opentelemetry::proto::logs::v1;
 
 gpointer
 grpc_otel_filterx_enum_construct(Plugin *self)

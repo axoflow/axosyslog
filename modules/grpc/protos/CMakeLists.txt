@@ -19,9 +19,7 @@ set(OTEL_PROTO_SOURCES
   opentelemetry/proto/logs/v1/logs.proto
   opentelemetry/proto/metrics/v1/metrics.proto
   opentelemetry/proto/trace/v1/trace.proto
-  opentelemetry/proto/resource/v1/resource.proto)
-
-set(OTEL_PROTO_GRPC_SOURCES
+  opentelemetry/proto/resource/v1/resource.proto
   opentelemetry/proto/collector/logs/v1/logs_service.proto
   opentelemetry/proto/collector/metrics/v1/metrics_service.proto
   opentelemetry/proto/collector/trace/v1/trace_service.proto)
@@ -55,17 +53,30 @@ set(CLICKHOUSE_PROTO_GRPC_SOURCES
   clickhouse_grpc.proto
 )
 
+# Foreign copies of these protos, e.g. an Arrow built with OpenTelemetry, share
+# the process-wide protobuf descriptor database, so ours must not reuse their names.
+foreach(_proto ${OTEL_PROTO_SOURCES})
+  set(_private_proto ${OTEL_PROTO_BUILDDIR}/axosyslog/${_proto})
+  get_filename_component(_private_proto_dir ${_private_proto} DIRECTORY)
+  file(MAKE_DIRECTORY ${_private_proto_dir})
+  add_custom_command(
+    OUTPUT ${_private_proto}
+    COMMAND sed
+      -e "s,opentelemetry/proto/,axosyslog/opentelemetry/proto/,g"
+      -e "s,opentelemetry\\.proto\\.,axosyslog.opentelemetry.proto.,g"
+      ${OTEL_PROTO_SRCDIR}/${_proto} > ${_private_proto}
+    DEPENDS ${OTEL_PROTO_SRCDIR}/${_proto}
+    VERBATIM)
+  list(APPEND OTEL_PRIVATE_PROTO_SOURCES axosyslog/${_proto})
+  list(APPEND OTEL_PRIVATE_PROTO_FILES ${_private_proto})
+endforeach()
+
 protobuf_generate_cpp(
-  PROTO_PATH ${OTEL_PROTO_SRCDIR}
+  PROTO_PATH ${OTEL_PROTO_BUILDDIR}
   CPP_OUT ${OTEL_PROTO_BUILDDIR}
   OUT_SRCS OTEL_PROTO_GENERATED_SOURCES
-  PROTOS ${OTEL_PROTO_SOURCES})
-
-protobuf_generate_cpp_grpc(
-  PROTO_PATH ${OTEL_PROTO_SRCDIR}
-  CPP_OUT ${OTEL_PROTO_BUILDDIR}
-  OUT_SRCS OTEL_PROTO_GENERATED_GRPC_SOURCES
-  PROTOS ${OTEL_PROTO_GRPC_SOURCES})
+  PROTOS ${OTEL_PRIVATE_PROTO_SOURCES}
+  DEPENDS ${OTEL_PRIVATE_PROTO_FILES})
 
 protobuf_generate_cpp_grpc(
   PROTO_PATH ${LOKI_PROTO_SRCDIR}
@@ -99,7 +110,6 @@ protobuf_generate_cpp_grpc(
 
 add_library(grpc-protos SHARED
   ${OTEL_PROTO_GENERATED_SOURCES}
-  ${OTEL_PROTO_GENERATED_GRPC_SOURCES}
   ${LOKI_PROTO_GENERATED_GRPC_SOURCES}
   ${GOOGLEAPIS_PROTO_GENERATED_SOURCES}
   ${GOOGLEAPIS_PROTO_GENERATED_GRPC_SOURCES}

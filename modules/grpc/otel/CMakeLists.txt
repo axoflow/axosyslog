@@ -8,6 +8,7 @@ set(OTEL_CPP_SOURCES
   otel-source.h
   otel-source-services.hpp
   otel-servicecall.hpp
+  otel-services.hpp
   otel-logmsg-handles.cpp
   otel-logmsg-handles.hpp
   otel-logmsg-handles.h
