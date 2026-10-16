@@ -20,6 +20,7 @@
  *
  */
 
+#include "filterx/filterx-script.h"
 #include "resolved-configurable-paths.h"
 #include "mainloop.h"
 #include "apphook.h"
@@ -42,8 +43,78 @@ static const gchar *filterx_tool_intro =
   "AxoSyslog FilterX tool is an experimental utility for working with FilterX code interactively.\n"
   "It is work in progress.";
 
+typedef void (*FilterXScriptAction)(FilterXScript *script);
+
+static gboolean script_syntax_only;
+
+static GOptionEntry script_options[] =
+{
+  { "syntax-only", 's', 0, G_OPTION_ARG_NONE, &script_syntax_only, "Only parse the script and report whether it is valid", NULL },
+  { NULL },
+};
+
+static void
+_report_syntax_ok(FilterXScript *script)
+{
+  printf("Syntax OK\n");
+}
+
+static FilterXScriptAction
+_select_script_action(void)
+{
+  if (script_syntax_only)
+    return _report_syntax_ok;
+  return NULL;
+}
+
+static FilterXScript *
+_load_script_file(GlobalConfig *cfg, const gchar *fname)
+{
+  FilterXScript *script = filterx_script_new(cfg);
+
+  if (filterx_script_load_file(script, fname) && filterx_script_init(script))
+    return script;
+
+  filterx_script_free(script);
+  return NULL;
+}
+
+static void
+_unload_script(FilterXScript *script)
+{
+  filterx_script_deinit(script);
+  filterx_script_free(script);
+}
+
+static gint
+_script_main(GlobalConfig *cfg, gint argc, gchar *argv[])
+{
+  FilterXScriptAction action = _select_script_action();
+
+  if (!action)
+    {
+      fprintf(stderr, "Running a script is currently not implemented\n");
+      return 1;
+    }
+
+  if (argc != 2)
+    {
+      fprintf(stderr, "Expected exactly one FilterX script file\n");
+      return 1;
+    }
+
+  FilterXScript *script = _load_script_file(cfg, argv[1]);
+  if (!script)
+    return 1;
+
+  action(script);
+  _unload_script(script);
+  return 0;
+}
+
 static FilterXToolCommand commands[] =
 {
+  { "script", "Work with a FilterX script file", "<file>", script_options, _script_main },
   { NULL },
 };
 
