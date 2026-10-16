@@ -31,8 +31,4 @@
  * children. */
 struct json_object *filterx_expr_format_ast(FilterXExpr *expr);
 
-/* The pretty printed form of filterx_expr_format_ast(), the returned GString is
- * owned by the caller. */
-GString *filterx_expr_format_ast_string(FilterXExpr *expr);
-
 #endif
