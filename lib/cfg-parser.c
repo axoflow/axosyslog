@@ -24,6 +24,7 @@
 #include "cfg-parser.h"
 #include "cfg-grammar.h"
 #include "cfg-source.h"
+#include "mainloop.h"
 
 #include <string.h>
 #include <stdlib.h>
@@ -253,6 +254,7 @@ void
 report_syntax_error(CfgLexer *lexer, const CFG_LTYPE *yylloc, const char *what, const char *msg)
 {
   CfgIncludeLevel *level = &lexer->include_stack[lexer->include_depth], *from;
+  GString *report = g_string_new(NULL);
 
   for (from = level; from >= lexer->include_stack; from--)
     {
@@ -267,26 +269,31 @@ report_syntax_error(CfgLexer *lexer, const CFG_LTYPE *yylloc, const char *what, 
            * location.  */
 
           from_lloc = yylloc;
-          fprintf(stderr, "\nError parsing %s: %s\n\nIn %s:%d:%d-%d:%d:\n",
-                  what, msg,
-                  from_lloc->name,
-                  from_lloc->first_line,
-                  from_lloc->first_column,
-                  from_lloc->last_line,
-                  from_lloc->last_column);
+          g_string_append_printf(report, "Error parsing %s: %s\n\nIn %s:%d:%d-%d:%d:\n",
+                                 what, msg,
+                                 from_lloc->name,
+                                 from_lloc->first_line,
+                                 from_lloc->first_column,
+                                 from_lloc->last_line,
+                                 from_lloc->last_column);
         }
       else
         {
           from_lloc = &from->lloc;
-          fprintf(stderr, "Included from %s:%d:%d-%d:%d:\n", from_lloc->name,
-                  from_lloc->first_line,
-                  from_lloc->first_column,
-                  from_lloc->last_line,
-                  from_lloc->last_column);
+          g_string_append_printf(report, "Included from %s:%d:%d-%d:%d:\n", from_lloc->name,
+                                 from_lloc->first_line,
+                                 from_lloc->first_column,
+                                 from_lloc->last_line,
+                                 from_lloc->last_column);
         }
-      cfg_source_print_region_from_lexer(lexer, from, from_lloc);
-      fprintf(stderr, "\n");
+      cfg_source_format_region_from_lexer(lexer, from, from_lloc, report);
+      g_string_append_c(report, '\n');
     }
+
+  fputc('\n', stderr);
+  fputs(report->str, stderr);
+  main_loop_reload_errors_add(main_loop_get_instance(), report->str);
+  g_string_free(report, TRUE);
 }
 
 /* the debug flag for the main parser will be used for all parsers */
