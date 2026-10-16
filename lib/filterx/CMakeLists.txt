@@ -51,6 +51,7 @@ set(FILTERX_HEADERS
     filterx/filterx-ref.h
     filterx/filterx-scope.h
     filterx/filterx-scope-var-layout.h
+    filterx/filterx-script.h
     filterx/filterx-stashed-object.h
     filterx/filterx-type-inference.h
     filterx/filterx-type-inference-private.h
@@ -149,6 +150,7 @@ set(FILTERX_SOURCES
     filterx/filterx-ref.c
     filterx/filterx-scope.c
     filterx/filterx-scope-var-layout.c
+    filterx/filterx-script.c
     filterx/filterx-stashed-object.c
     filterx/filterx-type-inference.c
     filterx/filterx-variable.c

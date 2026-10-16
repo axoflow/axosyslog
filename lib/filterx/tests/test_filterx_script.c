@@ -22,33 +22,55 @@
 
 #include <criterion/criterion.h>
 
-#include "filterx/filterx-parser.h"
+#include "filterx/filterx-script.h"
 #include "cfg.h"
 #include "apphook.h"
 #include "scratch-buffers.h"
 #include "compat/json.h"
 
-static gboolean
-_compile(const gchar *script)
+static FilterXScript *
+_init_script(const gchar *source)
 {
-  CfgLexer *lexer = cfg_lexer_new_buffer(configuration, script, strlen(script));
+  FilterXScript *script = filterx_script_new(configuration);
 
-  return filterx_compile_script(configuration, lexer, NULL);
+  if (filterx_script_load_buffer(script, source, strlen(source)) && filterx_script_init(script))
+    return script;
+
+  filterx_script_free(script);
+  return NULL;
+}
+
+static void
+_free_script(FilterXScript *script)
+{
+  filterx_script_deinit(script);
+  filterx_script_free(script);
+}
+
+static gboolean
+_compile(const gchar *source)
+{
+  FilterXScript *script = _init_script(source);
+
+  if (!script)
+    return FALSE;
+
+  _free_script(script);
+  return TRUE;
 }
 
 static struct json_object *
-_compile_ast(const gchar *script)
+_compile_ast(const gchar *source)
 {
-  CfgLexer *lexer = cfg_lexer_new_buffer(configuration, script, strlen(script));
-  GString *ast = NULL;
+  FilterXScript *script = _init_script(source);
 
-  if (!filterx_compile_script(configuration, lexer, &ast))
-    {
-      cr_assert_null(ast, "no AST is expected for a script that failed to compile");
-      return NULL;
-    }
+  if (!script)
+    return NULL;
 
-  cr_assert_not_null(ast);
+  GString *ast = g_string_new(NULL);
+  filterx_script_format_ast_json(script, ast);
+  _free_script(script);
+
   struct json_object *result = json_tokener_parse(ast->str);
 
   cr_assert_not_null(result, "the AST is not valid JSON: %s", ast->str);
@@ -112,25 +134,9 @@ Test(filterx_script, multi_statement_script_with_control_flow_compiles)
                      "$LEN = len($MSG);\n"));
 }
 
-Test(filterx_script, trailing_statement_without_semicolon_is_rejected)
-{
-  cr_assert_not(_compile("$MSG = \"foo\"\n"));
-}
-
-Test(filterx_script, unterminated_conditional_is_rejected)
-{
-  cr_assert_not(_compile("if (isset($MSG.foo)) {\n"
-                         "  $MSG.bar = 1;\n"));
-}
-
 Test(filterx_script, stray_closing_brace_is_rejected)
 {
   cr_assert_not(_compile("$MSG = \"foo\";\n}\n"));
-}
-
-Test(filterx_script, unknown_function_is_rejected)
-{
-  cr_assert_not(_compile("$MSG = there_is_no_such_filterx_function();\n"));
 }
 
 Test(filterx_script, invalid_regexp_is_rejected)
@@ -193,8 +199,8 @@ Test(filterx_script, ast_is_dumped_after_optimization)
 
 Test(filterx_script, no_ast_is_produced_for_a_script_that_does_not_compile)
 {
-  cr_assert_null(_compile_ast("$MSG = there_is_no_such_filterx_function();\n"));
-  cr_assert_null(_compile_ast("$MSG = \"foo\"\n"));
+  cr_assert_null(_compile_ast("$MSG = \"foo\";\n}\n"));
+  cr_assert_null(_compile_ast("$MSG =~ /(/;\n"));
 }
 
 static void

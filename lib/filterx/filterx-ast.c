@@ -70,14 +70,3 @@ filterx_expr_format_ast(FilterXExpr *expr)
 
   return result;
 }
-
-GString *
-filterx_expr_format_ast_string(FilterXExpr *expr)
-{
-  struct json_object *root = filterx_expr_format_ast(expr);
-  GString *result = g_string_new(json_object_to_json_string_ext(root, JSON_C_TO_STRING_PRETTY));
-
-  json_object_put(root);
-
-  return result;
-}

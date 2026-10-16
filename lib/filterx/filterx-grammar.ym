@@ -128,7 +128,7 @@ _assign_location(FilterXExpr *expr, CfgLexer *lexer, CFG_LTYPE *lloc)
 %token KW_DEFAULT
 %token KW_DPATH
 
-/* only used/injected by filterx_compile_script() */
+/* never produced by the lexer, only injected by filterx-script.c */
 %token LL_FILTERX_VIRTUAL_TOPLEVEL
 
 %type <ptr> block

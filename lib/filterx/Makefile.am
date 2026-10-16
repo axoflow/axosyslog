@@ -56,6 +56,7 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/filterx-ref.h \
 	lib/filterx/filterx-scope.h \
 	lib/filterx/filterx-scope-var-layout.h \
+	lib/filterx/filterx-script.h \
 	lib/filterx/filterx-variable.h \
 	lib/filterx/filterx-weakrefs.h \
 	lib/filterx/filterx-dpath.h \
@@ -157,6 +158,7 @@ lib_filterx_libfilterx_la_SOURCES = \
 	lib/filterx/filterx-ref.c \
 	lib/filterx/filterx-scope-var-layout.c \
 	lib/filterx/filterx-scope.c \
+	lib/filterx/filterx-script.c \
 	lib/filterx/filterx-sequence.c \
 	lib/filterx/filterx-stashed-object.c \
 	lib/filterx/filterx-type-inference.c \
