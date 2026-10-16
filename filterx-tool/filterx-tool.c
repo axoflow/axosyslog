@@ -46,10 +46,12 @@ static const gchar *filterx_tool_intro =
 typedef void (*FilterXScriptAction)(FilterXScript *script);
 
 static gboolean script_syntax_only;
+static gboolean script_print_ast;
 
 static GOptionEntry script_options[] =
 {
   { "syntax-only", 's', 0, G_OPTION_ARG_NONE, &script_syntax_only, "Only parse the script and report whether it is valid", NULL },
+  { "print-ast", 0, 0, G_OPTION_ARG_NONE, &script_print_ast, "Print the abstract syntax tree of the script as JSON", NULL },
   { NULL },
 };
 
@@ -59,9 +61,21 @@ _report_syntax_ok(FilterXScript *script)
   printf("Syntax OK\n");
 }
 
+static void
+_print_ast(FilterXScript *script)
+{
+  GString *json = g_string_new(NULL);
+
+  filterx_script_format_ast_json(script, json);
+  printf("%s\n", json->str);
+  g_string_free(json, TRUE);
+}
+
 static FilterXScriptAction
 _select_script_action(void)
 {
+  if (script_print_ast)
+    return _print_ast;
   if (script_syntax_only)
     return _report_syntax_ok;
   return NULL;
