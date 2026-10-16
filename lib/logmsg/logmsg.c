@@ -22,6 +22,7 @@
  */
 
 #include "logmsg/logmsg.h"
+#include "logmsg/logmsg-free-queue.h"
 #include "str-utils.h"
 #include "str-repr/encode.h"
 #include "messages.h"
@@ -1298,6 +1299,7 @@ log_msg_alloc(gsize payload_size)
     msg->payload = nv_table_init_borrowed(((gchar *) msg) + payload_ofs, payload_space, LM_V_MAX);
 
   msg->num_nodes = nodes;
+  msg->origin_thread_id = log_msg_free_queue_get_current_id();
   log_msg_update_allocation(msg, alloc_size);
   return msg;
 }
@@ -1351,6 +1353,7 @@ log_msg_alloc_clone(LogMessage *original)
   memcpy(msg, original, sizeof(*msg));
   msg->allocated_bytes = 0;
   msg->num_nodes = nodes;
+  msg->origin_thread_id = log_msg_free_queue_get_current_id();
   log_msg_update_allocation(msg, alloc_size);
 
   return msg;
@@ -1478,13 +1481,13 @@ log_msg_new_mark(void)
 }
 
 /**
- * log_msg_free:
+ * log_msg_free_in_place:
  * @self: LogMessage instance
  *
- * Frees a LogMessage instance.
+ * Frees a LogMessage instance in the current thread.
  **/
 void
-_log_msg_free(LogMessage *self)
+log_msg_free_in_place(LogMessage *self)
 {
   if (log_msg_chk_flag(self, LF_STATE_OWN_PAYLOAD) && self->payload)
     nv_table_unref(self->payload);
@@ -1504,6 +1507,20 @@ _log_msg_free(LogMessage *self)
   stats_counter_sub(count_allocated_bytes, self->allocated_bytes);
 
   g_free(self);
+}
+
+/**
+ * _log_msg_free:
+ * @self: LogMessage instance
+ *
+ * Frees a LogMessage instance, either right away or by handing it back to
+ * the thread that allocated it.
+ **/
+void
+_log_msg_free(LogMessage *self)
+{
+  if (!log_msg_free_queue_push(self))
+    log_msg_free_in_place(self);
 }
 
 /**
