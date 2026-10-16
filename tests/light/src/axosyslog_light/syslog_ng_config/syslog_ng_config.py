@@ -59,6 +59,7 @@ from axosyslog_light.syslog_ng_config.statements.rewrite.rewrite import Set
 from axosyslog_light.syslog_ng_config.statements.rewrite.rewrite import SetPri
 from axosyslog_light.syslog_ng_config.statements.rewrite.rewrite import SetTag
 from axosyslog_light.syslog_ng_config.statements.sources.example_msg_generator_source import ExampleMsgGeneratorSource
+from axosyslog_light.syslog_ng_config.statements.sources.example_random_generator_source import ExampleRandomGeneratorSource
 from axosyslog_light.syslog_ng_config.statements.sources.file_source import FileSource
 from axosyslog_light.syslog_ng_config.statements.sources.inner_source import InnerSource
 from axosyslog_light.syslog_ng_config.statements.sources.internal_source import InternalSource
@@ -185,6 +186,9 @@ class SyslogNgConfig(object):
 
     def create_example_msg_generator_source(self, **options):
         return ExampleMsgGeneratorSource(self._stats_handler, self._prometheus_stats_handler, **options)
+
+    def create_example_random_generator_source(self, **options):
+        return ExampleRandomGeneratorSource(self._stats_handler, self._prometheus_stats_handler, **options)
 
     def create_internal_source(self, **options):
         return InternalSource(self._stats_handler, self._prometheus_stats_handler, **options)

@@ -35,48 +35,82 @@ typedef struct _LogTag
   StatsCounterItem *counter;
 } LogTag;
 
-static GArray *log_tags;
+static LogTag *log_tags[LOG_TAGS_MAX];
+static guint log_tags_num;
 static GHashTable *log_tags_hash = NULL;
 static GMutex log_tags_lock;
+
+static inline LogTag *
+_lookup_tag(LogTagId id)
+{
+  if (id >= LOG_TAGS_MAX)
+    return NULL;
+  return g_atomic_pointer_get(&log_tags[id]);
+}
+
+/* tag-stats(auto) means stats level 3, like it always was */
+static gboolean
+_tag_stats_enabled(void)
+{
+  CfgYesNoAuto tag_stats = stats_tag_stats();
+
+  return tag_stats == CYNA_YES || (tag_stats == CYNA_AUTO && stats_check_level(3));
+}
+
+/* NOTE: needs both log_tags_lock and the stats lock */
+static void
+_tag_update_counter_registration(LogTag *tag, gboolean enable)
+{
+  StatsClusterKey sc_key;
+  StatsClusterLabel labels[] = { stats_cluster_label("id", tag->name) };
+
+  if (enable == !!(tag->counter))
+    return;
+
+  stats_cluster_single_key_set(&sc_key, METRIC(tagged_events_total), labels, G_N_ELEMENTS(labels));
+  stats_cluster_single_key_add_legacy_alias_with_name(&sc_key, SCS_TAG, tag->name, NULL, "processed");
+
+  if (enable)
+    {
+      stats_register_counter(3, &sc_key, SC_TYPE_SINGLE_VALUE, &tag->counter);
+    }
+  else
+    {
+      stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &tag->counter);
+    }
+}
 
 static guint
 _register_tag(const gchar *name, guint id)
 {
-  LogTag new_tag =
-  {
-    .id = id,
-    .name = g_strdup(name),
-    0,
-  };
+  g_assert(id < LOG_TAGS_MAX);
+  g_assert(log_tags[id] == NULL);
+
+  LogTag *tag = g_new0(LogTag, 1);
+  tag->id = id;
+  tag->name = g_strdup(name);
 
   /* NOTE: stats-level may not be set for calls that happen during
    * config file parsing, those get fixed up by
    * log_tags_reinit_stats() below */
 
   stats_lock();
-  StatsClusterKey sc_key;
-  StatsClusterLabel labels[] = { stats_cluster_label("id", name) };
-  stats_cluster_single_key_set(&sc_key, METRIC(tagged_events_total), labels, G_N_ELEMENTS(labels));
-  stats_cluster_single_key_add_legacy_alias_with_name(&sc_key, SCS_TAG, name, NULL, "processed");
-  stats_register_counter(3, &sc_key, SC_TYPE_SINGLE_VALUE, &new_tag.counter);
+  _tag_update_counter_registration(tag, _tag_stats_enabled());
   stats_unlock();
 
-  if (id >= log_tags->len)
-    g_array_set_size(log_tags, id + 1);
+  g_hash_table_insert(log_tags_hash, tag->name, GUINT_TO_POINTER(id + 1));
+  if (id >= log_tags_num)
+    log_tags_num = id + 1;
 
-  LogTag *elem = &g_array_index(log_tags, LogTag, id);
-
-  g_assert(elem->id == 0);
-  *elem = new_tag;
-
-  g_hash_table_insert(log_tags_hash, new_tag.name, GUINT_TO_POINTER(id + 1));
+  /* publish last, so that lockless readers only ever see a complete tag */
+  g_atomic_pointer_set(&log_tags[id], tag);
   return id;
 }
 
 static guint
 _register_new_tag(const gchar *name)
 {
-  guint id = log_tags->len;
+  guint id = log_tags_num;
   return _register_tag(name, id);
 }
 
@@ -110,7 +144,7 @@ log_tags_get_by_name(const gchar *name)
   gpointer key = g_hash_table_lookup(log_tags_hash, name);
   if (!key)
     {
-      if (log_tags->len < LOG_TAGS_MAX - 1)
+      if (log_tags_num < LOG_TAGS_MAX - 1)
         {
           id = _register_new_tag(name);
         }
@@ -155,72 +189,58 @@ log_tags_register_predefined_tag(const gchar *name, LogTagId id)
 const gchar *
 log_tags_get_by_id(LogTagId id)
 {
-  gchar *name = NULL;
+  LogTag *tag = _lookup_tag(id);
 
-  g_mutex_lock(&log_tags_lock);
-
-  if (id < log_tags->len)
-    name = g_array_index(log_tags, LogTag, id).name;
-
-  g_mutex_unlock(&log_tags_lock);
-
-  return name;
+  return tag ? tag->name : NULL;
 }
 
 void
 log_tags_inc_counter(LogTagId id)
 {
-  g_mutex_lock(&log_tags_lock);
+  LogTag *tag = _lookup_tag(id);
 
-  if (id < log_tags->len)
-    stats_counter_inc(g_array_index(log_tags, LogTag, id).counter);
-
-  g_mutex_unlock(&log_tags_lock);
+  if (tag)
+    stats_counter_inc(tag->counter);
 }
 
 void
 log_tags_dec_counter(LogTagId id)
 {
-  /* Reader lock because the log_tag_list is not written */
-  g_mutex_lock(&log_tags_lock);
+  LogTag *tag = _lookup_tag(id);
 
-  if (id < log_tags->len)
-    stats_counter_dec(g_array_index(log_tags, LogTag, id).counter);
-
-  g_mutex_unlock(&log_tags_lock);
+  if (tag)
+    stats_counter_dec(tag->counter);
 }
 
 /*
- * NOTE: this is called at cfg_init() time to update the set of counters we
- * have.  If stats-level is decreased, we should unregister everything we
- * had earlier. If increased we need to register them again.
+ * NOTE: this is called from the AH_CONFIG_CHANGED hook to update the set of
+ * counters we have.  If stats-level is decreased, we should unregister
+ * everything we had earlier. If increased we need to register them again.
  *
  * log_tags_get_by_name() will also try to register the counter for calls
  * that are _after_ cfg_init().  Early calls to log_tags_get_by_name() will
  * not see a proper stats-level() in the global variable here.  Those will
  * get handled by this function.
+ *
+ * The counter pointers are rewritten here while log_tags_inc_counter() and
+ * friends read them without a lock.  That is safe because the hook runs
+ * before the threaded workers of the new configuration are started and
+ * while the main loop is not processing messages, so no message is in
+ * flight.
  */
 void
 log_tags_reinit_stats(void)
 {
-  gint id;
-
   g_mutex_lock(&log_tags_lock);
   stats_lock();
 
-  for (id = 0; id < log_tags->len; id++)
+  gboolean enable = _tag_stats_enabled();
+  for (guint id = 0; id < log_tags_num; id++)
     {
-      LogTag *elem = &g_array_index(log_tags, LogTag, id);
+      LogTag *tag = log_tags[id];
 
-      StatsClusterKey sc_key;
-      StatsClusterLabel labels[] = { stats_cluster_label("id", elem->name) };
-      stats_cluster_single_key_set(&sc_key, METRIC(tagged_events_total), labels, G_N_ELEMENTS(labels));
-      stats_cluster_single_key_add_legacy_alias_with_name(&sc_key, SCS_TAG, elem->name, NULL, "processed");
-
-      if (stats_check_level(3))
-        stats_register_counter(3, &sc_key, SC_TYPE_SINGLE_VALUE, &elem->counter);
-      else
-        stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &elem->counter);
+      if (tag)
+        _tag_update_counter_registration(tag, enable);
     }
 
   stats_unlock();
@@ -231,7 +251,6 @@ void
 log_tags_global_init(void)
 {
   log_tags_hash = g_hash_table_new(g_str_hash, g_str_equal);
-  log_tags = g_array_new(FALSE, TRUE, sizeof(LogTag));
 
   register_application_hook(AH_CONFIG_CHANGED, (ApplicationHookFunc) log_tags_reinit_stats, NULL, AHM_RUN_REPEAT);
 }
@@ -240,19 +259,21 @@ void
 log_tags_global_deinit(void)
 {
   g_hash_table_destroy(log_tags_hash);
+  log_tags_hash = NULL;
 
   stats_lock();
-  StatsClusterKey sc_key;
-  for (guint id = 0; id < log_tags->len; id++)
+  for (guint id = 0; id < log_tags_num; id++)
     {
-      LogTag *elem = &g_array_index(log_tags, LogTag, id);
+      LogTag *tag = log_tags[id];
 
-      StatsClusterLabel labels[] = { stats_cluster_label("id", elem->name) };
-      stats_cluster_single_key_set(&sc_key, METRIC(tagged_events_total), labels, G_N_ELEMENTS(labels));
-      stats_cluster_single_key_add_legacy_alias_with_name(&sc_key, SCS_TAG, elem->name, NULL, "processed");
-      stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &elem->counter);
-      g_free(elem->name);
+      if (!tag)
+        continue;
+
+      _tag_update_counter_registration(tag, FALSE);
+      g_free(tag->name);
+      g_free(tag);
+      log_tags[id] = NULL;
     }
   stats_unlock();
-  g_array_free(log_tags, TRUE);
+  log_tags_num = 0;
 }

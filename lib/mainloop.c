@@ -238,6 +238,10 @@ main_loop_reload_config_finished(MainLoop *self)
   app_config_changed();
   self->new_config = NULL;
   self->old_config = NULL;
+
+  /* the configuration is in place and all hooks have run: the threaded
+   * workers may start processing messages now */
+  cfg_post_config_init(self->current_configuration);
 }
 
 static void
@@ -828,6 +832,7 @@ main_loop_run(MainLoop *self)
       debugger_start(self, self->current_configuration);
     }
   app_running();
+  cfg_post_config_init(self->current_configuration);
   iv_main();
   service_management_publish_status("Shutting down...");
 }
