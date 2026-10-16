@@ -167,6 +167,7 @@ _construct_worker(LogThreadedSourceDriver *s, gint worker_index)
   worker->thread_deinit = _worker_thread_deinit;
   worker->run = _worker_run;
   worker->request_exit = _worker_request_exit;
+  worker->runs_event_loop = TRUE;
 
   return worker;
 }

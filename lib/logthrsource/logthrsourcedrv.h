@@ -65,6 +65,12 @@ struct _LogThreadedSourceWorker
   void (*run)(LogThreadedSourceWorker *self);
   void (*request_exit)(LogThreadedSourceWorker *self);
   void (*wakeup)(LogThreadedSourceWorker *self);
+
+  /* set when run() hands the thread to iv_main(): the event loop then keeps
+   * the cached wall clock time fresh, otherwise the framework disables the
+   * realtime cache for the thread, so that a message created after a
+   * blocking call gets the current time */
+  gboolean runs_event_loop;
 };
 
 struct _LogThreadedSourceDriver

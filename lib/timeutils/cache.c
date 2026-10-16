@@ -51,6 +51,7 @@ TLS_BLOCK_START
    * iv_now is tracking a monotonic time */
   struct timespec current_realtime;
   struct iv_task invalidate_time_task;
+  gboolean realtime_cache_disabled;
   gint local_gencounter;
   struct
   {
@@ -93,6 +94,7 @@ static gboolean faking_time;
 
 #define current_realtime     __tls_deref(current_realtime)
 #define invalidate_time_task __tls_deref(invalidate_time_task)
+#define realtime_cache_disabled __tls_deref(realtime_cache_disabled)
 #define local_gencounter     __tls_deref(local_gencounter)
 #define cache                __tls_deref(cache)
 #define state                __tls_deref(state)
@@ -249,6 +251,12 @@ set_cached_realtime(struct timespec *ts)
   faking_time = TRUE;
 }
 
+void
+disable_realtime_cache(void)
+{
+  realtime_cache_disabled = TRUE;
+}
+
 static void
 _validate_current_time(void)
 {
@@ -263,7 +271,7 @@ _invalidate_current_time(void)
 {
   if (G_UNLIKELY(faking_time))
     return;
-  else if (iv_inited())
+  else if (iv_inited() && !realtime_cache_disabled)
     {
       if (invalidate_time_task.handler == NULL)
         {
