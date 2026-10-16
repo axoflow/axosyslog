@@ -5,6 +5,7 @@ EXTRA_DIST += lib/logmsg/CMakeLists.txt
 logmsginclude_HEADERS =     \
  lib/logmsg/gsockaddr-serialize.h           \
  lib/logmsg/logmsg.h                        \
+ lib/logmsg/logmsg-free-queue.h             \
  lib/logmsg/serialization.h                 \
  lib/logmsg/logmsg-serialize.h              \
  lib/logmsg/logmsg-serialize-fixup.h        \
@@ -21,6 +22,7 @@ logmsginclude_HEADERS =     \
 logmsg_sources =                       \
  lib/logmsg/gsockaddr-serialize.c      \
  lib/logmsg/logmsg.c                   \
+ lib/logmsg/logmsg-free-queue.c        \
  lib/logmsg/logmsg-serialize.c         \
  lib/logmsg/logmsg-serialize-fixup.c   \
  lib/logmsg/nvhandle-descriptors.c     \
