@@ -22,6 +22,7 @@
  */
 
 #include "logthrfetcherdrv.h"
+#include "logmsg/logmsg-free-queue.h"
 #include "messages.h"
 #include "timeutils/misc.h"
 
@@ -97,6 +98,8 @@ _worker_thread_init(LogThreadedSourceWorker *w)
 
   iv_event_register(&control->shutdown_event);
 
+  log_msg_free_queue_thread_start();
+
   msg_trace("Fetcher thread_init()", _tag_driver(control));
   if (control->thread_init)
     control->thread_init(control);
@@ -111,6 +114,7 @@ _worker_thread_deinit(LogThreadedSourceWorker *w)
   msg_trace("Fetcher thread_deinit()", _tag_driver(control));
   if (control->thread_deinit)
     control->thread_deinit(control);
+  log_msg_free_queue_thread_stop();
   iv_event_unregister(&control->shutdown_event);
 }
 
