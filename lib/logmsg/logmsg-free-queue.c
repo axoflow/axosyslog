@@ -75,7 +75,15 @@ typedef struct _LogMessageFreeBatch
 
 /* indexed by the (one based) worker thread id, 0 is never used.  This
  * provides access to the free-queue of the "origin" threads */
-static LogMessageFreeQueue *queues[MAIN_LOOP_MAX_WORKER_THREADS + 1];
+typedef struct _LogMessageFreeQueueTable LogMessageFreeQueueTable;
+struct _LogMessageFreeQueueTable
+{
+  LogMessageFreeQueueTable *superseded;
+  gsize size;
+  LogMessageFreeQueue *queues[];
+};
+
+static LogMessageFreeQueueTable *queues_table;
 static GMutex queues_lock;
 
 TLS_BLOCK_START
@@ -141,7 +149,34 @@ _queue_wakeup(gpointer user_data)
 static inline LogMessageFreeQueue *
 _queue_lookup(guint16 id)
 {
-  return g_atomic_pointer_get(&queues[id]);
+  LogMessageFreeQueueTable *table = g_atomic_pointer_get(&queues_table);
+
+  if (!table || id >= table->size)
+    return NULL;
+  return g_atomic_pointer_get(&table->queues[id]);
+}
+
+/* the queues lock must be held */
+static LogMessageFreeQueueTable *
+_queue_table_grow(guint16 id)
+{
+  LogMessageFreeQueueTable *old = queues_table;
+  gsize size = MAX((gsize) id + 1, (gsize) main_loop_worker_get_max_number_of_threads() + 1);
+  LogMessageFreeQueueTable *table = g_malloc0(sizeof(*table) + size * sizeof(table->queues[0]));
+
+  table->size = size;
+  table->superseded = old;
+  if (old)
+    memcpy(table->queues, old->queues, old->size * sizeof(table->queues[0]));
+  g_atomic_pointer_set(&queues_table, table);
+  return table;
+}
+
+static void
+_queue_free(LogMessageFreeQueue *self)
+{
+  g_mutex_clear(&self->lock);
+  g_free(self);
 }
 
 /* runs in the origin thread at startup */
@@ -151,7 +186,12 @@ _queue_lookup_or_create(guint16 id)
   LogMessageFreeQueue *self;
 
   g_mutex_lock(&queues_lock);
-  self = _queue_lookup(id);
+  LogMessageFreeQueueTable *table = queues_table;
+
+  if (!table || id >= table->size)
+    table = _queue_table_grow(id);
+
+  self = table->queues[id];
   if (!self)
     {
       self = g_new0(LogMessageFreeQueue, 1);
@@ -160,7 +200,7 @@ _queue_lookup_or_create(guint16 id)
       IV_EVENT_INIT(&self->wakeup);
       self->wakeup.cookie = self;
       self->wakeup.handler = _queue_wakeup;
-      g_atomic_pointer_set(&queues[id], self);
+      g_atomic_pointer_set(&table->queues[id], self);
     }
   g_mutex_unlock(&queues_lock);
   return self;
@@ -335,4 +375,35 @@ log_msg_free_queue_thread_stop(void)
   iv_event_unregister(&queue->wakeup);
 
   current_id = 0;
+}
+
+void
+log_msg_free_queue_global_init(void)
+{
+}
+
+/* to be called once all worker threads exited, as the lookup is lock-free */
+void
+log_msg_free_queue_global_deinit(void)
+{
+  LogMessageFreeQueueTable *table = queues_table;
+
+  queues_table = NULL;
+  if (!table)
+    return;
+
+  /* the newest table holds every queue, the superseded ones a prefix of it */
+  for (gsize i = 0; i < table->size; i++)
+    {
+      if (table->queues[i])
+        _queue_free(table->queues[i]);
+    }
+
+  while (table)
+    {
+      LogMessageFreeQueueTable *superseded = table->superseded;
+
+      g_free(table);
+      table = superseded;
+    }
 }

@@ -30,4 +30,7 @@ void log_msg_free_queue_thread_stop(void);
 guint16 log_msg_free_queue_get_current_id(void);
 gboolean log_msg_free_queue_push(LogMessage *msg);
 
+void log_msg_free_queue_global_init(void);
+void log_msg_free_queue_global_deinit(void);
+
 #endif

@@ -1744,6 +1744,7 @@ log_msg_register_stats(void)
 void
 log_msg_global_init(void)
 {
+  log_msg_free_queue_global_init();
   log_msg_registry_init();
   log_tags_global_init();
   log_msg_tags_init();
@@ -1764,6 +1765,7 @@ log_msg_get_handle_name(NVHandle handle, gssize *length)
 void
 log_msg_global_deinit(void)
 {
+  log_msg_free_queue_global_deinit();
   log_tags_global_deinit();
   log_msg_registry_deinit();
 }
