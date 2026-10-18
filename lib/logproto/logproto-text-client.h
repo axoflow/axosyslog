@@ -49,11 +49,13 @@ typedef struct _LogProtoTextClient
 
 LogProtoStatus log_proto_text_client_post_with_prefix(LogProtoClient *s, const guchar *prefix, gsize prefix_len,
                                                       const guchar *msg, gsize msg_len, gboolean *consumed);
+LogProtoStatus log_proto_text_client_flush_method(LogProtoClient *s);
 LogProtoStatus log_proto_text_client_post_method(LogProtoClient *s, LogMessage *logmsg, const guchar *msg,
                                                  gsize msg_len, gboolean *consumed);
 void log_proto_text_client_init(LogProtoTextClient *self, LogTransport *transport,
                                 const LogProtoClientOptions *options,
                                 gboolean batching_supported);
+void log_proto_text_client_set_batch_size(LogProtoTextClient *self, gint batch_size);
 LogProtoClient *log_proto_text_client_new(LogTransport *transport, const LogProtoClientOptions *options);
 
 LogProtoClient *log_proto_unidirectional_text_client_new(LogTransport *transport, const LogProtoClientOptions *options);
