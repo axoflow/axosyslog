@@ -62,6 +62,8 @@ struct _LogTransportMock
   gint write_buffer_index;
   gint current_value_ndx;
   gsize write_chunk_limit;
+  /* the errno the next write fails with, 0 if it succeeds */
+  gint write_error;
   /* position within the current I/O chunk */
   gint current_iov_pos;
   gboolean input_is_a_stream;
@@ -200,6 +202,12 @@ log_transport_mock_set_write_chunk_limit(LogTransportMock *self, gsize chunk_lim
   self->write_chunk_limit = chunk_limit;
 }
 
+void
+log_transport_mock_inject_write_error(LogTransportMock *self, gint error_code)
+{
+  self->write_error = error_code;
+}
+
 gssize
 log_transport_mock_read_method(LogTransport *s, gpointer buf, gsize count, LogTransportAuxData *aux)
 {
@@ -254,6 +262,13 @@ log_transport_mock_write_method(LogTransport *s, const gpointer buf, gsize count
 {
   LogTransportMock *self = (LogTransportMock *)s;
   data_t data;
+
+  if (self->write_error)
+    {
+      errno = self->write_error;
+      self->write_error = 0;
+      return -1;
+    }
 
   if (self->write_chunk_limit && self->write_chunk_limit < count)
     count = self->write_chunk_limit;
