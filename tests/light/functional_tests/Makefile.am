@@ -6,16 +6,30 @@ EXTRA_DIST += \
 	tests/light/functional_tests/config_change/test_manipulating_config_between_reload.py \
 	tests/light/functional_tests/config_change/test_python_custom_options.py \
 	tests/light/functional_tests/config_change/test_warning_pragma.py \
+	tests/light/functional_tests/config_change/test_list_files.py \
 	tests/light/functional_tests/conftest.py \
 	tests/light/functional_tests/destination_drivers/arrow_flight_destination/test_arrow_flight_destination.py \
 	tests/light/functional_tests/destination_drivers/bigquery_destination/test_bigquery_destination.py \
+	tests/light/functional_tests/destination_drivers/clickhouse_destination/inputs_and_outputs_for_complex_types.py \
+	tests/light/functional_tests/destination_drivers/clickhouse_destination/test_clickhouse_complex_types.py \
+	tests/light/functional_tests/destination_drivers/clickhouse_destination/test_clickhouse_connection_options.py \
+	tests/light/functional_tests/destination_drivers/clickhouse_destination/test_clickhouse_schema_options.py \
+	tests/light/functional_tests/destination_drivers/clickhouse_destination/test_clickhouse_tls.py \
 	tests/light/functional_tests/destination_drivers/example_destination/test_example_destination.py \
 	tests/light/functional_tests/destination_drivers/google_destination/test_google_destination.py \
 	tests/light/functional_tests/destination_drivers/network_destination/disk_buffer/test_disk_buffer_capacity_change.py \
+	tests/light/functional_tests/destination_drivers/network_destination/disk_buffer/test_disk_buffer_crash_recovery.py \
+	tests/light/functional_tests/destination_drivers/network_destination/disk_buffer/helper_functions.py \
+	tests/light/functional_tests/destination_drivers/network_destination/disk_buffer/test_abandoned_disk_buffer.py \
+	tests/light/functional_tests/destination_drivers/network_destination/disk_buffer/test_non_reliable_disk_buffer.py \
 	tests/light/functional_tests/destination_drivers/network_destination/test_altp_destination.py \
 	tests/light/functional_tests/destination_drivers/network_destination/test_kept_alive_tls_connection_doing_handshake_after_reload.py \
 	tests/light/functional_tests/destination_drivers/network_destination/test_network_destination_transport.py \
+	tests/light/functional_tests/destination_drivers/network_destination/test_kept_alive_tls_connection_doing_handshake_after_reload.py \
+	tests/light/functional_tests/destination_drivers/network_destination/test_network_destination_transport.py \
+	tests/light/functional_tests/destination_drivers/network_destination/test_tls_destination_write_batching.py \
 	tests/light/functional_tests/destination_drivers/opentelemetry_destination/test_opentelemetry_destination_batching.py \
+	tests/light/functional_tests/destination_drivers/http/test_http_destination.py \
 	tests/light/functional_tests/destination_drivers/python_destination/test_python_destination.py \
 	tests/light/functional_tests/destination_drivers/s3_destination/test_s3_destination.py \
 	tests/light/functional_tests/destination_drivers/snmp_destination/general/test_snmp_destination_acceptance.py \
@@ -37,10 +51,12 @@ EXTRA_DIST += \
 	tests/light/functional_tests/filterx/test_filterx_cache_json_file.py \
 	tests/light/functional_tests/filterx/test_filterx_control.py \
 	tests/light/functional_tests/filterx/test_filterx_cow.py \
+	tests/light/functional_tests/filterx/test_filterx_destructuring_assignment.py \
 	tests/light/functional_tests/filterx/test_filterx_dict.py \
 	tests/light/functional_tests/filterx/test_filterx_types.py \
 	tests/light/functional_tests/filterx/test_filterx_failure_info.py \
 	tests/light/functional_tests/filterx/test_filterx_funcs.py \
+	tests/light/functional_tests/filterx/test_filterx_pipeline_smoke.py \
 	tests/light/functional_tests/filterx/test_filterx_scope.py \
 	tests/light/functional_tests/filterx/test_filterx_update_metric.py \
 	tests/light/functional_tests/filterx/test_filterx.py \
@@ -85,16 +101,21 @@ EXTRA_DIST += \
 	tests/light/functional_tests/source_drivers/internal_source/test_internal_acceptance.py \
 	tests/light/functional_tests/source_drivers/network_source/proxyprotocol/test_pp_acceptance.py \
 	tests/light/functional_tests/source_drivers/network_source/proxyprotocol/test_pp_reload.py \
+	tests/light/functional_tests/source_drivers/network_source/proxyprotocol/test_pp_udp_oob_read.py \
 	tests/light/functional_tests/source_drivers/network_source/proxyprotocol/test_pp_with_multiple_clients.py \
 	tests/light/functional_tests/source_drivers/network_source/proxyprotocol/test_pp_with_simple_tcp_connection.py \
 	tests/light/functional_tests/source_drivers/network_source/proxyprotocol/test_pp_with_syslog_proto.py \
 	tests/light/functional_tests/source_drivers/network_source/test_altp_source.py \
+	tests/light/functional_tests/source_drivers/network_source/test_client_port.py \
 	tests/light/functional_tests/source_drivers/network_source/test_network_transports.py \
+	tests/light/functional_tests/source_drivers/network_source/test_static_and_dynamic_window.py \
+	tests/light/functional_tests/source_drivers/network_source/test_splunk_s2s_self_loop.py \
 	tests/light/functional_tests/source_drivers/network_source/test_syslog_parser_timestamp_spinning.py \
 	tests/light/functional_tests/source_drivers/network_source/test_transport_error_metrics.py \
 	tests/light/functional_tests/source_drivers/network_source/text_with_nuls/test_embedded_nul.py \
 	tests/light/functional_tests/source_drivers/network_source/text_with_nuls/test_nul_terminated.py \
 	tests/light/functional_tests/source_drivers/opentelemetry_source/test_opentelemetry_source_acceptance.py \
+	tests/light/functional_tests/source_drivers/opentelemetry_source/test_opentelemetry_source_tls.py \
 	tests/light/functional_tests/source_drivers/syslog_source/auto/test_auto_proto.py \
 	tests/light/functional_tests/source_drivers/syslog_source/test_syslog_transports.py \
 	tests/light/functional_tests/source_drivers/test_input_ordering.py \
