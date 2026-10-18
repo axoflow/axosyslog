@@ -30,17 +30,24 @@
 
 G_STATIC_ASSERT(LOG_TRANSPORT_RA_BUFFER_SIZE >= RFC6587_MAX_FRAME_LEN_DIGITS + 1);
 
+enum
+{
+  LPAS_FAILURE,
+  LPAS_NEED_MORE_DATA,
+  LPAS_SUCCESS,
+};
+
 typedef struct _LogProtoAutoServer
 {
   LogProtoServer super;
   StatsClusterKeyBuilder *kb;
 } LogProtoAutoServer;
 
-static inline gboolean
-_is_frame_octet_count(const gchar *detect_buffer, gsize detect_buffer_len, gboolean *need_more_data)
+static inline gint
+_is_frame_octet_count(const gchar *detect_buffer, gsize detect_buffer_len)
 {
   if (!ch_isdigit(detect_buffer[0]))
-    return FALSE;
+    return LPAS_FAILURE;
 
   for (gsize i = 1; i < detect_buffer_len; i++)
     {
@@ -48,13 +55,12 @@ _is_frame_octet_count(const gchar *detect_buffer, gsize detect_buffer_len, gbool
         continue;
 
       if (detect_buffer[i] == ' ')
-        return TRUE;
+        return LPAS_SUCCESS;
 
-      return FALSE;
+      return LPAS_FAILURE;
     }
 
-  *need_more_data = TRUE;
-  return TRUE;
+  return LPAS_NEED_MORE_DATA;
 }
 
 static LogProtoServer *
@@ -62,15 +68,16 @@ _construct_detected_proto(LogProtoAutoServer *self, const gchar *detect_buffer, 
 {
   gint fd = self->super.transport_stack.fd;
 
-  gboolean need_more_data = FALSE;
-  if (_is_frame_octet_count(detect_buffer, detect_buffer_len, &need_more_data))
+  switch (_is_frame_octet_count(detect_buffer, detect_buffer_len))
     {
-      if (need_more_data)
-        return NULL;
-
+    case LPAS_NEED_MORE_DATA:
+      return NULL;
+    case LPAS_SUCCESS:
       msg_debug("Auto-detected octet-counted-framing, using framed protocol",
                 evt_tag_int("fd", fd));
       return log_proto_framed_server_new(NULL, self->super.options, self->kb);
+    default:
+      break;
     }
 
   if (detect_buffer[0] == '<')
