@@ -22,9 +22,12 @@
  */
 
 #include "filterx-func-format-syslog.h"
+#include "filterx-func-format-sdata.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/object-string.h"
 #include "filterx/object-extractor.h"
+#include "filterx/object-null.h"
+#include "filterx/filterx-mapping.h"
 #include "hostname.h"
 #include "timeutils/unixtime.h"
 #include "timeutils/wallclocktime.h"
@@ -34,7 +37,8 @@
 #include "scratch-buffers.h"
 
 #define FILTERX_FUNC_FORMAT_SYSLOG_5424_USAGE "Usage: format_syslog_5424(message, add_octet_count=false, pri=expr, " \
-                                              "timestamp=expr, host=expr, program=expr, pid=expr, msgid=expr)"
+                                              "timestamp=expr, host=expr, program=expr, pid=expr, msgid=expr, " \
+                                              "sdata=expr)"
 
 typedef struct FilterXFunctionFormatSyslog5424_
 {
@@ -46,6 +50,7 @@ typedef struct FilterXFunctionFormatSyslog5424_
   FilterXExpr *program_expr;
   FilterXExpr *pid_expr;
   FilterXExpr *msgid_expr;
+  FilterXExpr *sdata_expr;
   FilterXExpr *message_expr;
 } FilterXFunctionFormatSyslog5424;
 
@@ -189,6 +194,49 @@ _get_msgid(FilterXFunctionFormatSyslog5424 *self, const gchar **msgid, gsize *ms
   return msgid_obj;
 }
 
+static inline FilterXObject *
+_get_sdata(FilterXFunctionFormatSyslog5424 *self)
+{
+  if (!self->sdata_expr)
+    return NULL;
+
+  FilterXObject *sdata_obj = filterx_expr_eval_typed(self->sdata_expr);
+  if (!sdata_obj)
+    filterx_eval_clear_errors();
+
+  return sdata_obj;
+}
+
+static gboolean
+_append_sdata(GString *buffer, FilterXObject *sdata_obj)
+{
+  if (sdata_obj && !filterx_object_is_type(sdata_obj, &FILTERX_TYPE_NAME(null)))
+    {
+      const gchar *sdata_str;
+      gsize sdata_str_len;
+      if (filterx_object_extract_string_ref(sdata_obj, &sdata_str, &sdata_str_len))
+        {
+          if (sdata_str_len)
+            g_string_append_len(buffer, sdata_str, sdata_str_len);
+          else
+            g_string_append_c(buffer, '-');
+          return TRUE;
+        }
+
+      if (filterx_object_is_type_or_ref(sdata_obj, &FILTERX_TYPE_NAME(mapping)))
+        return filterx_format_sdata_append(buffer, sdata_obj);
+
+      filterx_eval_push_error_info_printf("Failed to evaluate format_syslog_5424()",
+                                          "sdata must be a string or a dict, got: %s. "
+                                          FILTERX_FUNC_FORMAT_SYSLOG_5424_USAGE,
+                                          filterx_object_get_type_name(sdata_obj));
+      return FALSE;
+    }
+
+  g_string_append_c(buffer, '-');
+  return TRUE;
+}
+
 static inline void
 _prepend_octet_count(GString *buffer)
 {
@@ -240,10 +288,13 @@ _format_syslog_5424_eval(FilterXExpr *s)
   gsize msgid_len = 0;
   FilterXObject *msgid_obj = _get_msgid(self, &msgid, &msgid_len);
 
+  FilterXObject *sdata_obj = _get_sdata(self);
+  gsize sdata_len_hint = sdata_obj ? 256 : 1;
+
   /*                    OCT _   <   PRI >   1   _   TS   _   HOST       _   PROGRAM       _   PID       _ */
   gsize expected_size = 6 + 1 + 1 + 3 + 1 + 1 + 1 + 32 + 1 + host_len + 1 + program_len + 1 + pid_len + 1 +
-                        msgid_len + 1 + logmsg->num_sdata * 64 + 1 + 1 + message_len + 1 + 64;
-  /*                    MSGID       _   (SDATA or                -)  _   MESSAGE       NL  "for good measure" */
+                        msgid_len + 1 + sdata_len_hint + 1 + 1 + message_len + 1 + 64;
+  /*                    MSGID       _   (SDATA or        -)  _   MESSAGE       NL  "for good measure" */
 
   /* PRI */
   GString *buffer = g_string_sized_new(expected_size);
@@ -275,10 +326,11 @@ _format_syslog_5424_eval(FilterXExpr *s)
   g_string_append_c(buffer, ' ');
 
   /* SDATA */
-  if (logmsg->num_sdata)
-    log_msg_append_format_sdata(logmsg, buffer, 0);
-  else
-    g_string_append_c(buffer, '-');
+  if (!_append_sdata(buffer, sdata_obj))
+    {
+      g_string_free(buffer, TRUE);
+      goto exit;
+    }
 
   g_string_append_c(buffer, ' ');
 
@@ -292,6 +344,9 @@ _format_syslog_5424_eval(FilterXExpr *s)
   result = filterx_string_new_take(buffer->str, buffer->len);
 
   g_string_free(buffer, FALSE);
+
+exit:
+  filterx_object_unref(sdata_obj);
   filterx_object_unref(message_obj);
   filterx_object_unref(msgid_obj);
   filterx_object_unref(pid_obj);
@@ -314,6 +369,7 @@ _format_syslog_5424_free(FilterXExpr *s)
   filterx_expr_unref(self->program_expr);
   filterx_expr_unref(self->pid_expr);
   filterx_expr_unref(self->msgid_expr);
+  filterx_expr_unref(self->sdata_expr);
   filterx_expr_unref(self->message_expr);
   filterx_function_free_method(&self->super);
 }
@@ -331,6 +387,7 @@ _format_syslog_5424_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_da
     &self->program_expr,
     &self->pid_expr,
     &self->msgid_expr,
+    &self->sdata_expr,
     &self->message_expr,
   };
 
@@ -382,7 +439,7 @@ _format_syslog_5424_extract_arguments(FilterXFunctionFormatSyslog5424 *self, Fil
   self->program_expr = filterx_function_args_get_named_expr(args, "program");
   self->pid_expr = filterx_function_args_get_named_expr(args, "pid");
   self->msgid_expr = filterx_function_args_get_named_expr(args, "msgid");
-  /* SDATA is only supported from $SDATA, currently */
+  self->sdata_expr = filterx_function_args_get_named_expr(args, "sdata");
 
   if (!_format_syslog_5424_extract_add_octet_count_argument(self, args, error))
     return FALSE;
