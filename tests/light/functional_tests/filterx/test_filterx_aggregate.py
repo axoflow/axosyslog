@@ -61,6 +61,52 @@ log {{
     return network_source, file_destination
 
 
+def create_junction_config(config, port_allocator, aggregate_call):
+    network_source = config.create_network_source(port=port_allocator(), flags="no-parse")
+    file_destination = config.create_file_destination(file_name="output.log", template="'$MSG\n'")
+    file_destination2 = config.create_file_destination(file_name="output2.log", template="'$MSG\n'")
+
+    raw_config = f"""
+@version: {config.get_version()}
+
+options {{ stats(level(1)); }};
+
+source s_net {{
+    {render_statement(network_source)};
+}};
+
+destination d_file {{
+    {render_statement(file_destination)};
+}};
+
+destination d_file2 {{
+    {render_statement(file_destination2)};
+}};
+
+log {{
+    source(s_net);
+    filterx {{
+        input = parse_json($MSG);
+        (status, values) = {aggregate_call};
+        declare result = {{"status": status, "values": values}};
+    }};
+    junction {{
+        channel {{
+            filterx {{
+                $MSG = format_json(result);
+            }};
+            destination(d_file);
+        }};
+        channel {{
+            destination(d_file2);
+        }};
+    }};
+}};
+"""
+    config.set_raw_config(raw_config)
+    return network_source, file_destination
+
+
 def send_messages(network_source, messages):
     network_source.write_logs([json.dumps(message) for message in messages])
 
@@ -476,3 +522,20 @@ def test_without_id_argument_state_does_not_survive_a_config_reload(config, port
     # starts fresh at 1, NOT 2 -- no id means no carry-over across a reload
     results_after = read_results(file_destination_after, 2)
     assert results_after[1] == {"status": "absorbed", "values": {"cnt": 1}}
+
+
+@pytest.mark.timing
+def test_timeout_replay_survives_a_junction_after_the_aggregate_block(config, port_allocator, syslog_ng):
+    network_source, file_destination = create_junction_config(
+        config, port_allocator,
+        'aggregate(key=(input["key"]), values={"cnt": input["cnt"]}, timeout=1)',
+    )
+    syslog_ng.start(config)
+
+    send_messages(network_source, [{"key": "host-a", "cnt": 7}])
+
+    results = read_results(file_destination, 1)
+    assert results[0] == {"status": "absorbed", "values": {"cnt": 7}}
+
+    results = read_results(file_destination, 1)
+    assert results[0] == {"status": "timeout", "values": {"cnt": 7}}
