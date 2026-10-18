@@ -6,6 +6,7 @@ EXTRA_DIST += \
 	tests/light/functional_tests/config_change/test_manipulating_config_between_reload.py \
 	tests/light/functional_tests/config_change/test_python_custom_options.py \
 	tests/light/functional_tests/config_change/test_warning_pragma.py \
+	tests/light/functional_tests/config_change/test_list_files.py \
 	tests/light/functional_tests/conftest.py \
 	tests/light/functional_tests/destination_drivers/arrow_flight_destination/test_arrow_flight_destination.py \
 	tests/light/functional_tests/destination_drivers/bigquery_destination/test_bigquery_destination.py \
@@ -17,6 +18,7 @@ EXTRA_DIST += \
 	tests/light/functional_tests/destination_drivers/example_destination/test_example_destination.py \
 	tests/light/functional_tests/destination_drivers/google_destination/test_google_destination.py \
 	tests/light/functional_tests/destination_drivers/network_destination/disk_buffer/test_disk_buffer_capacity_change.py \
+	tests/light/functional_tests/destination_drivers/network_destination/disk_buffer/test_disk_buffer_crash_recovery.py \
 	tests/light/functional_tests/destination_drivers/network_destination/disk_buffer/helper_functions.py \
 	tests/light/functional_tests/destination_drivers/network_destination/disk_buffer/test_abandoned_disk_buffer.py \
 	tests/light/functional_tests/destination_drivers/network_destination/disk_buffer/test_non_reliable_disk_buffer.py \
@@ -49,6 +51,7 @@ EXTRA_DIST += \
 	tests/light/functional_tests/filterx/test_filterx_cache_json_file.py \
 	tests/light/functional_tests/filterx/test_filterx_control.py \
 	tests/light/functional_tests/filterx/test_filterx_cow.py \
+	tests/light/functional_tests/filterx/test_filterx_destructuring_assignment.py \
 	tests/light/functional_tests/filterx/test_filterx_dict.py \
 	tests/light/functional_tests/filterx/test_filterx_types.py \
 	tests/light/functional_tests/filterx/test_filterx_failure_info.py \
@@ -106,6 +109,7 @@ EXTRA_DIST += \
 	tests/light/functional_tests/source_drivers/network_source/test_client_port.py \
 	tests/light/functional_tests/source_drivers/network_source/test_network_transports.py \
 	tests/light/functional_tests/source_drivers/network_source/test_static_and_dynamic_window.py \
+	tests/light/functional_tests/source_drivers/network_source/test_splunk_s2s_self_loop.py \
 	tests/light/functional_tests/source_drivers/network_source/test_syslog_parser_timestamp_spinning.py \
 	tests/light/functional_tests/source_drivers/network_source/test_transport_error_metrics.py \
 	tests/light/functional_tests/source_drivers/network_source/text_with_nuls/test_embedded_nul.py \
