@@ -58,7 +58,7 @@ Test(file_writer, write_single_message_and_flush_is_expected_to_dump_the_payload
 
   log_proto_client_set_client_flow_control(fw, &flow_control_funcs);
 
-  status = log_proto_client_post(fw, msg, (guchar *) g_strdup(payload), strlen(payload) + 1, &consumed);
+  status = log_proto_client_post(fw, msg, (const guchar *) payload, strlen(payload) + 1, &consumed);
   cr_assert(status == LPS_SUCCESS);
   cr_assert(consumed == TRUE);
 
@@ -81,7 +81,7 @@ Test(file_writer, batches_of_messages_should_be_flushed_to_the_output)
   log_proto_client_set_client_flow_control(fw, &flow_control_funcs);
   for (gint i = 0; i < MESSAGE_COUNT; i++)
     {
-      status = log_proto_client_post(fw, msg, (guchar *) g_strdup(payload), strlen(payload) + 1, &consumed);
+      status = log_proto_client_post(fw, msg, (const guchar *) payload, strlen(payload) + 1, &consumed);
       cr_assert(status == LPS_SUCCESS);
       cr_assert(consumed == TRUE);
     }
@@ -110,7 +110,7 @@ Test(file_writer, messages_should_be_flushed_automatically_once_we_reach_batch_s
   log_proto_client_set_client_flow_control(fw, &flow_control_funcs);
   for (gint i = 0; i < BATCH_SIZE - 1; i++)
     {
-      status = log_proto_client_post(fw, msg, (guchar *) g_strdup(payload), strlen(payload) + 1, &consumed);
+      status = log_proto_client_post(fw, msg, (const guchar *) payload, strlen(payload) + 1, &consumed);
       cr_assert(status == LPS_SUCCESS);
       cr_assert(consumed == TRUE);
     }
@@ -119,7 +119,7 @@ Test(file_writer, messages_should_be_flushed_automatically_once_we_reach_batch_s
   cr_assert_eq(count, 0);
 
   /* Push an extra item, which causes the BATCH_SIZE limit to be reached. There's an automatic flush in this case. */
-  status = log_proto_client_post(fw, msg, (guchar *) g_strdup(payload), strlen(payload) + 1, &consumed);
+  status = log_proto_client_post(fw, msg, (const guchar *) payload, strlen(payload) + 1, &consumed);
   cr_assert(status == LPS_SUCCESS);
   cr_assert(consumed == TRUE);
 
@@ -139,7 +139,7 @@ Test(file_writer, batches_of_messages_are_flushed_even_if_the_underlying_transpo
   log_proto_client_set_client_flow_control(fw, &flow_control_funcs);
   for (gint i = 0; i < BATCH_SIZE; i++)
     {
-      status = log_proto_client_post(fw, msg, (guchar *) g_strdup(payload), strlen(payload) + 1, &consumed);
+      status = log_proto_client_post(fw, msg, (const guchar *) payload, strlen(payload) + 1, &consumed);
       cr_assert(status == LPS_SUCCESS, "status=%d", status);
       cr_assert(consumed == TRUE);
     }

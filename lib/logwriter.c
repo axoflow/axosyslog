@@ -1137,14 +1137,6 @@ log_writer_broken(LogWriter *self, gint notify_code)
   log_pipe_notify(self->control, notify_code, self);
 }
 
-static void
-log_writer_realloc_line_buffer(LogWriter *self)
-{
-  self->line_buffer->str = g_malloc(self->line_buffer->allocated_len);
-  self->line_buffer->str[0] = 0;
-  self->line_buffer->len = 0;
-}
-
 /*
  * Write messages to the underlying file descriptor using the installed
  * LogProtoClient instance.  This is called whenever the output is ready to accept
@@ -1201,25 +1193,17 @@ log_writer_write_message(LogWriter *self, LogMessage *msg, LogPathOptions *path_
   if (self->line_buffer->len)
     {
       msg_len = self->line_buffer->len;
-      LogProtoStatus status = log_proto_client_post(self->proto, msg, (guchar *)self->line_buffer->str,
+      LogProtoStatus status = log_proto_client_post(self->proto, msg, (const guchar *) self->line_buffer->str,
                                                     self->line_buffer->len,
                                                     &consumed);
 
       self->partial_write = (status == LPS_PARTIAL);
 
-      if (consumed)
-        log_writer_realloc_line_buffer(self);
-
       if (status == LPS_ERROR)
         {
           if ((self->options->options & LWO_IGNORE_ERRORS) != 0)
             {
-              if (!consumed)
-                {
-                  g_free(self->line_buffer->str);
-                  log_writer_realloc_line_buffer(self);
-                  consumed = TRUE;
-                }
+              consumed = TRUE;
             }
           else
             {
