@@ -183,7 +183,7 @@ log_proto_file_writer_flush(LogProtoClient *s)
 
 /*
  * log_proto_file_writer_post:
- * @msg: formatted log message to send (this might be consumed by this function)
+ * @msg: formatted log message to send, copied if it is consumed
  * @msg_len: length of @msg
  * @consumed: pointer to a gboolean that gets set if the message was consumed by this function
  * @error: error information, if any
@@ -193,7 +193,8 @@ log_proto_file_writer_flush(LogProtoClient *s)
  * successfully sent this message, or if it should be resent by the caller.
  **/
 static LogProtoStatus
-log_proto_file_writer_post(LogProtoClient *s, LogMessage *logmsg, guchar *msg, gsize msg_len, gboolean *consumed)
+log_proto_file_writer_post(LogProtoClient *s, LogMessage *logmsg, const guchar *msg, gsize msg_len,
+                           gboolean *consumed)
 {
   LogProtoFileWriter *self = (LogProtoFileWriter *)s;
   LogProtoStatus result;
@@ -213,7 +214,7 @@ log_proto_file_writer_post(LogProtoClient *s, LogMessage *logmsg, guchar *msg, g
     }
 
   /* register the new message */
-  self->buffer[self->buf_count].iov_base = (void *) msg;
+  self->buffer[self->buf_count].iov_base = g_memdup2(msg, msg_len);
   self->buffer[self->buf_count].iov_len = msg_len;
   ++self->buf_count;
   self->sum_len += msg_len;

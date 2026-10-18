@@ -65,11 +65,8 @@ static gboolean
 _post(LogProtoClient *proto, const gchar *msg)
 {
   gboolean consumed = FALSE;
-  guchar *copy = (guchar *) g_strdup(msg);
 
-  cr_assert_neq(log_proto_client_post(proto, NULL, copy, strlen(msg), &consumed), LPS_ERROR);
-  if (!consumed)
-    g_free(copy);
+  cr_assert_neq(log_proto_client_post(proto, NULL, (const guchar *) msg, strlen(msg), &consumed), LPS_ERROR);
   return consumed;
 }
 
@@ -133,6 +130,22 @@ Test(text_client, messages_are_batched_up_to_flush_lines)
   cr_assert_eq(counters.rewound, 0);
 }
 
+Test(text_client, flush_lines_is_capped_to_the_max_batch)
+{
+  LogTransport *transport = log_transport_mock_stream_new(NULL, 0);
+  LogProtoClient *proto = _construct(log_proto_text_client_new, transport, LOG_PROTO_TEXT_CLIENT_MAX_BATCH * 4);
+
+  for (gint i = 0; i < LOG_PROTO_TEXT_CLIENT_MAX_BATCH - 1; i++)
+    cr_assert(_post(proto, "a\n"));
+  cr_assert_eq(counters.acked, 0);
+
+  cr_assert(_post(proto, "a\n"));
+  cr_assert_eq(counters.acked, LOG_PROTO_TEXT_CLIENT_MAX_BATCH);
+
+  log_proto_client_free(proto);
+  cr_assert_eq(counters.rewound, 0);
+}
+
 Test(text_client, flush_writes_an_incomplete_batch)
 {
   LogTransport *transport = log_transport_mock_stream_new(NULL, 0);
@@ -159,6 +172,33 @@ Test(text_client, short_writes_are_completed_in_order)
 
   _assert_written((LogTransportMock *) transport, "first\nsecond\nthird\nfourth\nfifth\n");
   cr_assert_eq(counters.acked, 5);
+
+  log_proto_client_free(proto);
+  cr_assert_eq(counters.rewound, 0);
+}
+
+Test(text_client, no_message_is_accepted_until_a_short_write_completes)
+{
+  LogTransport *transport = log_transport_mock_stream_new(NULL, 0);
+  log_transport_mock_set_write_chunk_limit((LogTransportMock *) transport, 2);
+  LogProtoClient *proto = _construct(log_proto_text_client_new, transport, 2);
+
+  cr_assert(_post(proto, "ab\n"));
+  cr_assert(_post(proto, "cd\n"));
+  _assert_written((LogTransportMock *) transport, "ab");
+  cr_assert_eq(counters.acked, 0);
+
+  cr_assert_not(_post(proto, "ef\n"), "the pending data must not change until it is written");
+  _assert_written((LogTransportMock *) transport, "\nc");
+  cr_assert_eq(counters.acked, 1);
+
+  cr_assert(_post(proto, "ef\n"), "accepted once the pending data is written");
+  _assert_written((LogTransportMock *) transport, "d\n");
+  cr_assert_eq(counters.acked, 2);
+
+  _flush(proto);
+  _assert_written((LogTransportMock *) transport, "ef\n");
+  cr_assert_eq(counters.acked, 3);
 
   log_proto_client_free(proto);
   cr_assert_eq(counters.rewound, 0);
