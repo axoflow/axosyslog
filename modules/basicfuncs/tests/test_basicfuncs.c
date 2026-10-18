@@ -171,6 +171,20 @@ Test(basicfuncs, test_cond_funcs)
   assert_template_format_with_context("$(or)", "");
 }
 
+Test(basicfuncs, test_cond_funcs_keep_user_defined_globals)
+{
+  /* stands in for the lexer of the main configuration being read */
+  CfgLexer *lexer = cfg_lexer_new_buffer(configuration, "", 0);
+  configuration->lexer = lexer;
+
+  cfg_args_set(configuration->globals, "include-path", "/custom/include");
+  assert_template_format_with_context("$(if 'facility(local3)' alma korte)", "alma");
+  cr_assert_str_eq(cfg_args_get(configuration->globals, "include-path"), "/custom/include");
+
+  configuration->lexer = NULL;
+  cfg_lexer_free(lexer);
+}
+
 Test(basicfuncs, test_str_funcs)
 {
   assert_template_format("$(ipv4-to-int $SOURCEIP)", "168496141");
