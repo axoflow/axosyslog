@@ -28,102 +28,66 @@
 
 #include <string.h>
 #include <errno.h>
-#include <sys/uio.h>
 #include <unistd.h>
 
 typedef struct _LogProtoFileWriter
 {
   LogProtoClient super;
-  guchar *partial;
-  gsize partial_len, partial_pos;
-  gint partial_messages;
-  gint buf_size;
-  gint buf_count;
-  gint fd;
-  gsize sum_len;
   gboolean fsync;
-  struct iovec buffer[0];
+
+  /* messages accepted by post() but not acked yet, stored back-to-back so
+   * that a single write() sends all of them */
+  struct
+  {
+    GString *data;
+    gsize written;
+    gsize *msg_lens;
+    gint size;
+    gint count;
+    /* the messages at the front that have been written completely */
+    gint acked;
+    gsize acked_len;
+  } batch;
 } LogProtoFileWriter;
 
-static inline gboolean
-_flush_partial(LogProtoFileWriter *self, LogProtoStatus *status)
+/* keep the buffer of a regular batch, but release the one that a batch of
+ * oversized messages left behind */
+#define FILE_WRITER_BATCH_BUFFER_MAX (1024 * 1024)
+
+static void
+_reset_batch(LogProtoFileWriter *self)
 {
-  /* there is still some data from the previous file writing process */
-
-  gint len = self->partial_len - self->partial_pos;
-  gssize rc = log_transport_stack_write(&self->super.transport_stack, self->partial + self->partial_pos, len);
-
-  if (rc > 0 && self->fsync)
-    fsync(self->fd);
-
-  if (rc < 0)
+  if (self->batch.data->allocated_len > FILE_WRITER_BATCH_BUFFER_MAX)
     {
-      if (errno == EINTR || errno == EAGAIN)
-        {
-          *status = LPS_SUCCESS;
-          return FALSE;
-        }
-
-      log_proto_client_msg_rewind(&self->super);
-      msg_error("I/O error occurred while writing",
-                evt_tag_int("fd", self->super.transport_stack.fd),
-                evt_tag_error(EVT_TAG_OSERROR));
-
-      *status = LPS_ERROR;
-      return FALSE;
+      g_string_free(self->batch.data, TRUE);
+      self->batch.data = g_string_sized_new(0);
     }
-
-  if (rc != len)
+  else
     {
-      self->partial_pos += rc;
-      *status = LPS_PARTIAL;
-      return FALSE;
+      g_string_truncate(self->batch.data, 0);
     }
-
-  log_proto_client_msg_ack(&self->super, self->partial_messages);
-  g_free(self->partial);
-  self->partial = NULL;
-  self->partial_messages = 0;
-  return TRUE;
+  self->batch.written = 0;
+  self->batch.count = 0;
+  self->batch.acked = 0;
+  self->batch.acked_len = 0;
 }
 
-static inline void
-_process_partial_write(LogProtoFileWriter *self, gsize written)
+/* ack the messages that have been written completely since the last call */
+static void
+_ack_written(LogProtoFileWriter *self)
 {
-  /* partial success: not everything has been written out */
+  gint num_acked = 0;
 
-  /* look for the first chunk that has been cut */
-  gsize sum = self->buffer[0].iov_len; /* sum is the cumulated length of the already processed items */
-  gint i = 0;
-  while (written > sum)
-    sum += self->buffer[++i].iov_len;
-
-  gsize first_non_written_msg_chunk_len = sum - written;
-  self->partial_len = first_non_written_msg_chunk_len;
-  gint first_non_written_chunk_index = i;
-  ++i;
-
-  /* add the lengths of the following messages */
-  while (i < self->buf_count)
-    self->partial_len += self->buffer[i++].iov_len;
-
-  /* allocate and copy the remaining data */
-  self->partial = (guchar *)g_malloc(self->partial_len);
-  gsize ofs = first_non_written_msg_chunk_len;
-  gsize pos = self->buffer[first_non_written_chunk_index].iov_len - ofs;
-  memcpy(self->partial, (guchar *) self->buffer[first_non_written_chunk_index].iov_base + pos, ofs);
-  i = first_non_written_chunk_index + 1;
-  while (i < self->buf_count)
+  while (self->batch.acked < self->batch.count &&
+         self->batch.acked_len + self->batch.msg_lens[self->batch.acked] <= self->batch.written)
     {
-      memcpy(self->partial + ofs, self->buffer[i].iov_base, self->buffer[i].iov_len);
-      ofs += self->buffer[i].iov_len;
-      ++i;
+      self->batch.acked_len += self->batch.msg_lens[self->batch.acked];
+      self->batch.acked++;
+      num_acked++;
     }
 
-  self->partial_pos = 0;
-  self->partial_messages = self->buf_count - first_non_written_chunk_index;
-
-  log_proto_client_msg_ack(&self->super, self->buf_count - self->partial_messages);
+  if (num_acked)
+    log_proto_client_msg_ack(&self->super, num_acked);
 }
 
 /*
@@ -139,45 +103,40 @@ log_proto_file_writer_flush(LogProtoClient *s)
 {
   LogProtoFileWriter *self = (LogProtoFileWriter *)s;
 
-  if (self->partial)
-    {
-      LogProtoStatus partial_flush_status;
-      if (!_flush_partial(self, &partial_flush_status))
-        return partial_flush_status;
-    }
-
   /* we might be called from log_writer_deinit() without having a buffer at all */
-  if (self->buf_count == 0)
+  if (self->batch.count == 0)
     return LPS_SUCCESS;
 
-  gssize rc = log_transport_stack_writev(&self->super.transport_stack, self->buffer, self->buf_count);
-
-  if (rc > 0 && self->fsync)
-    fsync(self->super.transport_stack.fd);
-
-  if (rc < 0)
+  gsize len = self->batch.data->len - self->batch.written;
+  if (len > 0)
     {
-      if (errno == EINTR || errno == EAGAIN)
-        return LPS_SUCCESS;
+      gssize rc = log_transport_stack_write(&self->super.transport_stack,
+                                            self->batch.data->str + self->batch.written, len);
 
-      log_proto_client_msg_rewind(&self->super);
-      msg_error("I/O error occurred while writing",
-                evt_tag_int("fd", self->super.transport_stack.fd),
-                evt_tag_error(EVT_TAG_OSERROR));
-      return LPS_ERROR;
+      if (rc > 0 && self->fsync)
+        fsync(self->super.transport_stack.fd);
+
+      if (rc < 0)
+        {
+          if (errno == EINTR || errno == EAGAIN)
+            return LPS_SUCCESS;
+
+          /* the rewound messages are posted again, don't keep them */
+          log_proto_client_msg_rewind(&self->super);
+          _reset_batch(self);
+          msg_error("I/O error occurred while writing",
+                    evt_tag_int("fd", self->super.transport_stack.fd),
+                    evt_tag_error(EVT_TAG_OSERROR));
+          return LPS_ERROR;
+        }
+      self->batch.written += rc;
     }
 
-  if (rc != self->sum_len)
-    _process_partial_write(self, rc);
-  else
-    log_proto_client_msg_ack(&self->super, self->buf_count);
+  _ack_written(self);
+  if (self->batch.written < self->batch.data->len)
+    return LPS_PARTIAL;
 
-  /* free the previous message strings (the remaining part has been copied to the partial buffer) */
-  for (gint i = 0; i < self->buf_count; ++i)
-    g_free(self->buffer[i].iov_base);
-  self->buf_count = 0;
-  self->sum_len = 0;
-
+  _reset_batch(self);
   return LPS_SUCCESS;
 }
 
@@ -200,28 +159,26 @@ log_proto_file_writer_post(LogProtoClient *s, LogMessage *logmsg, const guchar *
   LogProtoStatus result;
 
   *consumed = FALSE;
-  if (self->buf_count >= self->buf_size || self->partial)
+  if (self->batch.count >= self->batch.size || self->batch.written > 0)
     {
       result = log_proto_file_writer_flush(s);
-      if (result != LPS_SUCCESS || self->buf_count >= self->buf_size || self->partial)
+      if (result != LPS_SUCCESS || self->batch.count >= self->batch.size || self->batch.written > 0)
         {
           /* don't consume a new message if flush failed OR if we couldn't
            * progress in flush() to empty the outgoing buffer (either
-           * buffers or partial)
+           * full or partially written)
            */
           return result;
         }
     }
 
   /* register the new message */
-  self->buffer[self->buf_count].iov_base = g_memdup2(msg, msg_len);
-  self->buffer[self->buf_count].iov_len = msg_len;
-  ++self->buf_count;
-  self->sum_len += msg_len;
+  g_string_append_len(self->batch.data, (const gchar *) msg, msg_len);
+  self->batch.msg_lens[self->batch.count++] = msg_len;
 
   *consumed = TRUE;
 
-  if (self->buf_count == self->buf_size)
+  if (self->batch.count == self->batch.size)
     {
       /* we have reached the max buffer size -> we need to write the messages */
       return log_proto_file_writer_flush(s);
@@ -241,7 +198,21 @@ log_proto_file_writer_poll_prepare(LogProtoClient *s, GIOCondition *cond, GIOCon
   /* if there's no pending I/O in the transport layer, then we want to do a write */
   if (*cond == 0)
     *cond = G_IO_OUT;
-  return self->buf_count > 0 || self->partial;
+  return self->batch.count > 0;
+}
+
+static void
+log_proto_file_writer_free(LogProtoClient *s)
+{
+  LogProtoFileWriter *self = (LogProtoFileWriter *) s;
+
+  /* the messages that were not written completely are only held by the
+   * flow-control backlog, rewind them so they are not lost */
+  if (self->batch.count > self->batch.acked)
+    log_proto_client_msg_rewind(&self->super);
+  g_string_free(self->batch.data, TRUE);
+  g_free(self->batch.msg_lens);
+  log_proto_client_free_method(s);
 }
 
 LogProtoClient *
@@ -250,21 +221,17 @@ log_proto_file_writer_new(LogTransport *transport, const LogProtoClientOptions *
   if (flush_lines == 0)
     /* the flush-lines option has not been specified, use a default value */
     flush_lines = 1;
-#ifdef IOV_MAX
-  if (flush_lines > IOV_MAX)
-    /* limit the flush_lines according to the current platform */
-    flush_lines = IOV_MAX;
-#endif
 
-  /* allocate the structure with the proper number of items at the end */
-  LogProtoFileWriter *self = (LogProtoFileWriter *)g_malloc0(sizeof(LogProtoFileWriter) + sizeof(
-      struct iovec)*flush_lines);
+  LogProtoFileWriter *self = g_new0(LogProtoFileWriter, 1);
 
   log_proto_client_init(&self->super, transport, options);
-  self->buf_size = flush_lines;
+  self->batch.size = flush_lines;
+  self->batch.data = g_string_sized_new(0);
+  self->batch.msg_lens = g_new0(gsize, flush_lines);
   self->fsync = fsync_;
   self->super.poll_prepare = log_proto_file_writer_poll_prepare;
   self->super.post = log_proto_file_writer_post;
   self->super.flush = log_proto_file_writer_flush;
+  self->super.free_fn = log_proto_file_writer_free;
   return &self->super;
 }
