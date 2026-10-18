@@ -401,9 +401,13 @@ _aggregate_elem(FilterXObject *key, FilterXObject *incoming, gpointer user_data)
         }
     }
 
+  FilterXObject *durable_incoming = filterx_object_ref(incoming);
+  filterx_eval_retain_object(&durable_incoming, FX_RETAIN_DECOUPLE_CONFIG);
+
   FilterXObject *existing = filterx_object_get_subscript(ctx->target, key);
-  FilterXObject *new_value = aggregate(existing, incoming, aux_state);
+  FilterXObject *new_value = aggregate(existing, durable_incoming, aux_state);
   filterx_object_unref(existing);
+  filterx_object_unref(durable_incoming);
 
   if (!new_value)
     return FALSE;

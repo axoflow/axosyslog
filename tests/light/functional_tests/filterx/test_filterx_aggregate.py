@@ -539,3 +539,34 @@ def test_timeout_replay_survives_a_junction_after_the_aggregate_block(config, po
 
     results = read_results(file_destination, 1)
     assert results[0] == {"status": "timeout", "values": {"cnt": 7}}
+
+
+def test_nested_values_keyed_by_message_content_survive_the_next_message(config, port_allocator, syslog_ng):
+    network_source = config.create_network_source(port=port_allocator(), flags="no-parse")
+    file_destination = config.create_file_destination(file_name="output.log", template="'$MSG\n'")
+
+    config.set_raw_config(f"""
+@version: {config.get_version()}
+
+source s_net {{
+    {render_statement(network_source)};
+}};
+
+log {{
+    source(s_net);
+    filterx {{
+        t = regexp_search($MSG, /type=(?<t>[A-Z]+)/).t;
+        (status, values) = aggregate(key=("k"), values={{"records": {{t: $MSG}}}}, timeout=3600);
+        $MSG = format_json(values);
+    }};
+    destination {{ {render_statement(file_destination)}; }};
+}};
+""")
+    syslog_ng.start(config)
+
+    messages = ["type=SYSCALL msg=1", "type=PATH msg=2", "type=EOE msg=3"]
+    network_source.write_logs(messages)
+
+    assert read_results(file_destination, 3)[2] == {
+        "records": {"SYSCALL": messages[0], "PATH": messages[1], "EOE": messages[2]},
+    }
