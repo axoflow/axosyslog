@@ -24,64 +24,36 @@
 #include "logproto-text-client.h"
 #include "messages.h"
 
-#define LPFCS_FRAME_SEND    0
-#define LPFCS_MESSAGE_SEND  1
-
-typedef struct _LogProtoFramedClient
-{
-  LogProtoTextClient super;
-  guchar frame_hdr_buf[9];
-} LogProtoFramedClient;
+/* the longest frame header is "9999999 " */
+#define FRAME_HEADER_MAX 9
 
 static LogProtoStatus
-log_proto_framed_client_post(LogProtoClient *s, LogMessage *logmsg, guchar *msg, gsize msg_len, gboolean *consumed)
+log_proto_framed_client_post(LogProtoClient *s, LogMessage *logmsg, const guchar *msg, gsize msg_len,
+                             gboolean *consumed)
 {
-  LogProtoFramedClient *self = (LogProtoFramedClient *) s;
-  gint frame_hdr_len;
-  LogProtoStatus status;
+  guchar frame_hdr[FRAME_HEADER_MAX];
+  gsize orig_msg_len = msg_len;
 
   if (msg_len > 9999999)
-    {
-      static const guchar *warn_msg;
+    msg_len = 9999999;
 
-      if (warn_msg != msg)
-        {
-          msg_warning("Error, message length too large for framed protocol, truncated",
-                      evt_tag_int("length", msg_len));
-          warn_msg = msg;
-        }
-      msg_len = 9999999;
-    }
+  gint frame_hdr_len = g_snprintf((gchar *) frame_hdr, sizeof(frame_hdr), "%" G_GSIZE_FORMAT " ", msg_len);
+  LogProtoStatus status = log_proto_text_client_post_with_prefix(s, frame_hdr, frame_hdr_len, msg, msg_len, consumed);
 
-  status = LPS_SUCCESS;
-  while (status == LPS_SUCCESS && !(*consumed) && self->super.partial == NULL)
-    {
-      switch (self->super.state)
-        {
-        case LPFCS_FRAME_SEND:
-          frame_hdr_len = g_snprintf((gchar *) self->frame_hdr_buf, sizeof(self->frame_hdr_buf), "%" G_GSIZE_FORMAT" ", msg_len);
-          status = log_proto_text_client_submit_write(s, self->frame_hdr_buf, frame_hdr_len, NULL, LPFCS_MESSAGE_SEND);
-          break;
-        case LPFCS_MESSAGE_SEND:
-          *consumed = TRUE;
-          status = log_proto_text_client_submit_write(s, msg, msg_len, (GDestroyNotify) g_free, LPFCS_FRAME_SEND);
-          break;
-        default:
-          g_assert_not_reached();
-        }
-    }
-
+  /* only once the message is accepted, so a retried message warns once */
+  if (*consumed && orig_msg_len != msg_len)
+    msg_warning("Error, message length too large for framed protocol, truncated",
+                evt_tag_int("length", orig_msg_len));
   return status;
 }
 
 LogProtoClient *
 log_proto_framed_client_new(LogTransport *transport, const LogProtoClientOptions *options)
 {
-  LogProtoFramedClient *self = g_new0(LogProtoFramedClient, 1);
+  LogProtoTextClient *self = g_new0(LogProtoTextClient, 1);
 
-  log_proto_text_client_init(&self->super, transport, options, FALSE);
-  self->super.super.post = log_proto_framed_client_post;
-  self->super.state = LPFCS_FRAME_SEND;
+  log_proto_text_client_init(self, transport, options, TRUE);
+  self->super.post = log_proto_framed_client_post;
 
-  return &self->super.super;
+  return &self->super;
 }

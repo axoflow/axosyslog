@@ -65,11 +65,8 @@ static gboolean
 _post(LogProtoClient *proto, const gchar *msg)
 {
   gboolean consumed = FALSE;
-  guchar *copy = (guchar *) g_strdup(msg);
 
-  cr_assert_neq(log_proto_client_post(proto, NULL, copy, strlen(msg), &consumed), LPS_ERROR);
-  if (!consumed)
-    g_free(copy);
+  cr_assert_neq(log_proto_client_post(proto, NULL, (const guchar *) msg, strlen(msg), &consumed), LPS_ERROR);
   return consumed;
 }
 
@@ -115,6 +112,7 @@ Test(framed_client, messages_are_framed)
   _flush(proto);
 
   _assert_written((LogTransportMock *) transport, "3 abc2 de5 fghij");
+  cr_assert_eq(counters.acked, 3);
 
   log_proto_client_free(proto);
 }
@@ -130,8 +128,29 @@ Test(framed_client, short_writes_keep_the_frames_intact)
   _flush(proto);
 
   _assert_written((LogTransportMock *) transport, "3 abc11 defghijklmn1 o2 pq");
+  cr_assert_eq(counters.acked, 4);
 
   log_proto_client_free(proto);
+}
+
+Test(framed_client, a_message_is_acked_once_its_frame_is_written_completely)
+{
+  LogTransport *transport = log_transport_mock_stream_new(NULL, 0);
+  log_transport_mock_set_write_chunk_limit((LogTransportMock *) transport, 2);
+  LogProtoClient *proto = _construct(log_proto_framed_client_new, transport, 1);
+
+  cr_assert(_post(proto, "abc"));
+  _assert_written((LogTransportMock *) transport, "3 ");
+  cr_assert_eq(counters.acked, 0, "the message must not be acked once only its header is written");
+
+  cr_assert_neq(log_proto_client_flush(proto), LPS_ERROR);
+  cr_assert_eq(counters.acked, 0);
+  cr_assert_neq(log_proto_client_flush(proto), LPS_ERROR);
+  _assert_written((LogTransportMock *) transport, "abc");
+  cr_assert_eq(counters.acked, 1);
+
+  log_proto_client_free(proto);
+  cr_assert_eq(counters.rewound, 0);
 }
 
 static void
