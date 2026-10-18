@@ -745,6 +745,7 @@ void log_msg_stats_global_init(void);
 void log_msg_registry_foreach(GHFunc func, gpointer user_data);
 
 gint log_msg_lookup_time_stamp_name(const gchar *name);
+void log_msg_update_allocation(LogMessage *self, gssize delta);
 
 static inline gsize
 log_msg_get_size(LogMessage *self)

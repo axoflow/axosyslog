@@ -163,7 +163,7 @@ static StatsCounterItem *count_sdata_updates;
 static StatsCounterItem *count_allocated_bytes;
 static GPrivate priv_macro_value = G_PRIVATE_INIT(__free_macro_value);
 
-static inline void
+void
 log_msg_update_allocation(LogMessage *self, gssize delta)
 {
   self->allocated_bytes += delta;

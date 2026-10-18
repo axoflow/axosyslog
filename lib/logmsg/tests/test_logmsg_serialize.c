@@ -33,6 +33,8 @@
 #include "cfg.h"
 #include "plugin.h"
 #include "logmsg/logmsg-serialize.h"
+#include "stats/stats-registry.h"
+#include "stats/stats-cluster-single.h"
 
 #define RAW_MSG "<132>1 2006-10-29T01:59:59.156+01:00 mymachine evntslog - - [exampleSDID@0 iut=\"3\" eventSource=\"Application\"] An application event log entry..."
 
@@ -173,6 +175,44 @@ Test(logmsg_serialize, serialize)
   log_msg_unref(msg);
   serialize_archive_free(sa);
   g_string_free(stream, TRUE);
+}
+
+static StatsCounterItem *
+_register_allocated_bytes_gauge(void)
+{
+  configuration->stats_options.level = STATS_LEVEL1;
+  stats_reinit(&configuration->stats_options);
+  app_running();
+
+  StatsClusterKey sc_key;
+  stats_cluster_single_key_set(&sc_key, METRIC(events_allocated_bytes), NULL, 0);
+  stats_cluster_single_key_add_legacy_alias(&sc_key, SCS_GLOBAL, "msg_allocated_bytes", NULL);
+
+  stats_lock();
+  StatsCounterItem *counter = stats_get_counter(&sc_key, SC_TYPE_SINGLE_VALUE);
+  stats_unlock();
+
+  cr_assert(counter, ERROR_MSG);
+  return counter;
+}
+
+Test(logmsg_serialize, deserialization_keeps_allocated_bytes_in_step)
+{
+  StatsCounterItem *allocated_bytes = _register_allocated_bytes_gauge();
+  gsize before = stats_counter_get(allocated_bytes);
+
+  GString *stream = g_string_new("");
+  SerializeArchive *sa = _serialize_message_for_test(stream, RAW_MSG);
+  LogMessage *msg = log_msg_deserialize(sa);
+  cr_assert(msg, ERROR_MSG);
+
+  log_msg_unref(msg);
+  serialize_archive_free(sa);
+  g_string_free(stream, TRUE);
+
+  cr_assert_eq(stats_counter_get(allocated_bytes), before,
+               "allocated bytes gauge drifted: before=%" G_GSIZE_FORMAT ", after=%" G_GSIZE_FORMAT,
+               before, stats_counter_get(allocated_bytes));
 }
 
 static LogMessage *
