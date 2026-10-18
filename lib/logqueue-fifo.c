@@ -23,6 +23,7 @@
 
 #include "logqueue.h"
 #include "logpipe.h"
+#include "logsource.h"
 #include "messages.h"
 #include "serialize.h"
 #include "stats/stats-registry.h"
@@ -513,8 +514,10 @@ log_queue_fifo_ack_backlog(LogQueue *s, guint rewind_count)
 {
   LogQueueFifo *self = (LogQueueFifo *) s;
   LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
+  gsize acked_size = 0;
   gint pos;
 
+  log_source_ack_batch_begin();
   for (pos = 0; pos < rewind_count && self->backlog_queue.len > 0; pos++)
     {
       LogMessageQueueNode *node;
@@ -522,7 +525,7 @@ log_queue_fifo_ack_backlog(LogQueue *s, guint rewind_count)
 
       iv_list_del(&node->list);
       self->backlog_queue.len--;
-      log_queue_memory_usage_sub(&self->super, log_msg_get_size(node->msg));
+      acked_size += log_msg_get_size(node->msg);
 
       if (!node->flow_control_requested)
         self->backlog_queue.non_flow_controlled_len--;
@@ -531,6 +534,10 @@ log_queue_fifo_ack_backlog(LogQueue *s, guint rewind_count)
       log_msg_ack(node->msg, &path_options, AT_PROCESSED);
       log_msg_free_queue_node(node);
     }
+  log_source_ack_batch_end();
+
+  if (pos > 0)
+    log_queue_memory_usage_sub(&self->super, acked_size);
 }
 
 /*
