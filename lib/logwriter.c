@@ -26,6 +26,7 @@
 #include "stats/stats-registry.h"
 #include "stats/aggregator/stats-aggregator-registry.h"
 #include "stats/stats-cluster-single.h"
+#include "stats/stats-counter-batch.h"
 #include "stats/aggregator/stats-aggregator.h"
 #include "stats/stats-compat.h"
 #include "hostname.h"
@@ -867,7 +868,7 @@ log_writer_queue(LogPipe *s, LogMessage *lm, const LogPathOptions *path_options)
       log_writer_postpone_mark_timer(self);
     }
 
-  stats_counter_inc(self->metrics.processed_messages);
+  stats_counter_inc_batched(self->metrics.processed_messages);
   log_queue_push_tail(self->queue, lm, path_options);
 }
 
