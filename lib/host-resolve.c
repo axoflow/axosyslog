@@ -368,6 +368,7 @@ resolve_sockaddr_to_inet_or_inet6_hostname(gsize *result_len, GSockAddr *saddr,
       hname = resolve_address_using_gethostbyaddr(saddr, hostname_buffer, sizeof(hostname_buffer));
 #endif
       positive = (hname != NULL);
+      _attempt_to_invalidate_iv_now();
     }
 
   if (!hname)
@@ -384,16 +385,9 @@ resolve_sockaddr_to_inet_or_inet6_hostname(gsize *result_len, GSockAddr *saddr,
 const gchar *
 resolve_sockaddr_to_hostname(gsize *result_len, GSockAddr *saddr, const HostResolveOptions *host_resolve_options)
 {
-  const gchar *res;
-
   if (is_sockaddr_local(saddr))
-    res = resolve_sockaddr_to_local_hostname(result_len, saddr, host_resolve_options);
-  else
-    res = resolve_sockaddr_to_inet_or_inet6_hostname(result_len, saddr, host_resolve_options);
-
-  _attempt_to_invalidate_iv_now();
-
-  return res;
+    return resolve_sockaddr_to_local_hostname(result_len, saddr, host_resolve_options);
+  return resolve_sockaddr_to_inet_or_inet6_hostname(result_len, saddr, host_resolve_options);
 }
 
 /****************************************************************************
