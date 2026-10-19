@@ -23,6 +23,7 @@
 
 #include "logreader.h"
 #include "stats/stats-cluster-single.h"
+#include "stats/stats-counter-batch.h"
 #include "mainloop-call.h"
 #include "ack-tracker/ack_tracker.h"
 #include "ack-tracker/ack_tracker_factory.h"
@@ -379,7 +380,9 @@ log_reader_work_perform(void *s, gpointer arg)
 {
   LogReader *self = (LogReader *) s;
 
+  stats_counter_batch_begin();
   self->notify_code = log_reader_fetch_log(self);
+  stats_counter_batch_end();
 }
 
 static void
