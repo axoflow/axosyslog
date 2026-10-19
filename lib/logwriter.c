@@ -86,6 +86,14 @@ struct _LogWriter
 
     StatsAggregator *max_message_size;
     StatsAggregator *average_messages_size;
+    /* sizes of the messages written by the current flush, they are added
+     * to the aggregators above at its end */
+    struct
+    {
+      gsize count;
+      gsize sum;
+      gsize max;
+    } pending_msg_sizes;
     StatsAggregator *CPS;
     StatsClusterKey *message_latency_key;
     StatsAggregator *message_latency;
@@ -1166,10 +1174,25 @@ log_writer_flush_finalize(LogWriter *self)
 }
 
 static void
+log_writer_apply_pending_msg_sizes(LogWriter *self)
+{
+  if (self->metrics.pending_msg_sizes.count == 0)
+    return;
+
+  stats_aggregator_add_data_point(self->metrics.max_message_size, self->metrics.pending_msg_sizes.max);
+  stats_aggregator_add_data_points(self->metrics.average_messages_size, self->metrics.pending_msg_sizes.sum,
+                                   self->metrics.pending_msg_sizes.count);
+  self->metrics.pending_msg_sizes.count = 0;
+  self->metrics.pending_msg_sizes.sum = 0;
+  self->metrics.pending_msg_sizes.max = 0;
+}
+
+static void
 log_writer_update_message_stats(LogWriter *self, const LogMessage *msg, gsize msg_len)
 {
-  stats_aggregator_add_data_point(self->metrics.max_message_size, msg_len);
-  stats_aggregator_add_data_point(self->metrics.average_messages_size, msg_len);
+  self->metrics.pending_msg_sizes.count++;
+  self->metrics.pending_msg_sizes.sum += msg_len;
+  self->metrics.pending_msg_sizes.max = MAX(self->metrics.pending_msg_sizes.max, msg_len);
 
   if (!self->metrics.message_latency)
     return;
@@ -1292,6 +1315,8 @@ log_writer_flush(LogWriter *self, LogWriterFlushMode flush_mode)
    * infinite loop, since the reader will cease to produce new messages when
    * main_loop_io_worker_job_quit() is set. */
 
+  /* the counters updated for every message are applied once at the end */
+  stats_counter_batch_begin();
   while ((!main_loop_worker_job_quit() || flush_mode == LW_FLUSH_FORCE) && !write_error)
     {
       LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
@@ -1310,8 +1335,10 @@ log_writer_flush(LogWriter *self, LogWriterFlushMode flush_mode)
       scratch_buffers_reclaim_marked(mark);
 
       if (!write_error)
-        stats_counter_inc(self->metrics.written_messages);
+        stats_counter_inc_batched(self->metrics.written_messages);
     }
+  log_writer_apply_pending_msg_sizes(self);
+  stats_counter_batch_end();
 
   if (write_error)
     return LPS_ERROR;
