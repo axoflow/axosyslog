@@ -4,7 +4,8 @@ lib_timeutils_tests_TESTS		= \
 	lib/timeutils/tests/test_cache		\
 	lib/timeutils/tests/test_wallclocktime	\
 	lib/timeutils/tests/test_unixtime	\
-	lib/timeutils/tests/test_misc
+	lib/timeutils/tests/test_misc		\
+	lib/timeutils/tests/test_format
 
 check_PROGRAMS				+= ${lib_timeutils_tests_TESTS}
 
@@ -41,6 +42,11 @@ lib_timeutils_tests_test_unixtime_LDADD	= \
 lib_timeutils_tests_test_misc_SOURCES	= lib/timeutils/tests/test_misc.c
 lib_timeutils_tests_test_misc_CFLAGS	= $(TEST_CFLAGS) -I$(top_srcdir)/lib/timeutils
 lib_timeutils_tests_test_misc_LDADD	= \
+	$(TEST_LDADD)
+
+lib_timeutils_tests_test_format_SOURCES	= lib/timeutils/tests/test_format.c
+lib_timeutils_tests_test_format_CFLAGS	= $(TEST_CFLAGS) -I$(top_srcdir)/lib/timeutils
+lib_timeutils_tests_test_format_LDADD	= \
 	$(TEST_LDADD)
 
 EXTRA_DIST += lib/timeutils/tests/CMakeLists.txt
