@@ -1,5 +1,6 @@
 lib_stats_tests_TESTS		 = \
-	lib/stats/tests/test_stats_cluster
+	lib/stats/tests/test_stats_cluster \
+	lib/stats/tests/test_stats_counter_batch
 
 EXTRA_DIST += lib/stats/tests/CMakeLists.txt
 
@@ -10,6 +11,9 @@ lib_stats_tests_test_stats_cluster_CFLAGS	= $(TEST_CFLAGS) \
 lib_stats_tests_test_stats_cluster_LDADD	= $(TEST_LDADD)
 lib_stats_tests_test_stats_cluster_SOURCES	= 		\
 	lib/stats/tests/test_stats_cluster.c
+
+lib_stats_tests_test_stats_counter_batch_CFLAGS	= $(TEST_CFLAGS)
+lib_stats_tests_test_stats_counter_batch_LDADD	= $(TEST_LDADD)
 
 stats_test_extra_modules			= \
 	$(PREOPEN_SYSLOGFORMAT)
