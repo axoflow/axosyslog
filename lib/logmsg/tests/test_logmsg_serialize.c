@@ -180,7 +180,7 @@ Test(logmsg_serialize, serialize)
 static StatsCounterItem *
 _register_allocated_bytes_gauge(void)
 {
-  configuration->stats_options.level = STATS_LEVEL1;
+  configuration->stats_options.level = STATS_LEVEL3;
   stats_reinit(&configuration->stats_options);
   app_running();
 
