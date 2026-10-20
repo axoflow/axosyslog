@@ -35,6 +35,7 @@ typedef struct _LogFilterXPipe
   FilterXExpr *block;
   FilterXScopeVariableLayout *scope_var_layout;
   FilterXJITExecFunc jit_exec;
+  gpointer *jit_ptr_table;
 } LogFilterXPipe;
 
 static inline const gchar *
@@ -116,6 +117,10 @@ _setup_jit_exec(LogPipe *s)
   LogFilterXPipe *self = (LogFilterXPipe *) s;
   GlobalConfig *cfg = log_pipe_get_config(s);
 
+  /* both point into the FilterXJIT of the previous config generation, drop them before anything can return */
+  self->jit_exec = NULL;
+  self->jit_ptr_table = NULL;
+
   FilterXJIT *jit = filterx_config_get(cfg)->jit;
   if (!jit)
     return TRUE;
@@ -134,6 +139,7 @@ _setup_jit_exec(LogPipe *s)
     }
 
   self->jit_exec = (FilterXJITExecFunc) addr;
+  self->jit_ptr_table = filterx_jit_get_block_ptr_table(jit, _jit_block_name(self, block_name, G_N_ELEMENTS(block_name)));
   return TRUE;
 }
 
@@ -145,6 +151,9 @@ log_filterx_pipe_deinit(LogPipe *s)
 
   filterx_scope_variable_layout_free(self->scope_var_layout);
   self->scope_var_layout = NULL;
+
+  self->jit_exec = NULL;
+  self->jit_ptr_table = NULL;
 
   filterx_expr_deinit(self->block, cfg);
   return TRUE;
@@ -170,7 +179,7 @@ log_filterx_pipe_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_o
               log_pipe_location_tag(s),
               evt_tag_msg_reference(msg));
 
-    eval_res = filterx_eval_exec(&eval_context, self->block, self->jit_exec);
+    eval_res = filterx_eval_exec(&eval_context, self->block, self->jit_exec, self->jit_ptr_table);
 
     msg_trace("<<<<<< filterx rule evaluation result",
               filterx_format_eval_result(eval_res),
