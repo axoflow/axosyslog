@@ -39,6 +39,17 @@ struct _ArrowFlightDestDriver
   DestinationDriver *cpp;
 };
 
+static const std::map<ArrowFlightDestResponse, arrow::StatusCode> AFDR_TO_ARROW_STATUSCODE_MAPPING =
+{
+  { AFDR_INVALID, arrow::StatusCode::Invalid },
+  { AFDR_IO_ERROR, arrow::StatusCode::IOError },
+  { AFDR_CANCELLED, arrow::StatusCode::Cancelled },
+  { AFDR_UNKNOWN_ERROR, arrow::StatusCode::UnknownError },
+  { AFDR_KEY_ERROR, arrow::StatusCode::KeyError },
+  { AFDR_ALREADY_EXISTS, arrow::StatusCode::AlreadyExists },
+  { AFDR_NOT_IMPLEMENTED, arrow::StatusCode::NotImplemented },
+};
+
 
 DestinationDriver::DestinationDriver(ArrowFlightDestDriver *s) : super(s)
 {
@@ -109,6 +120,69 @@ DestinationDriver::format_persist_name()
   return persist_name;
 }
 
+bool
+DestinationDriver::handle_response(const arrow::Status &status, LogThreadedResult *ltr)
+{
+  auto it = this->response_actions.find(status.code());
+  if (it == this->response_actions.end())
+    return false;
+
+  const char *action_as_string;
+  bool debug_log = false;
+
+  switch (it->second)
+    {
+    case AFDRA_DISCONNECT:
+      action_as_string = "disconnect";
+      *ltr = LTR_NOT_CONNECTED;
+      break;
+
+    case AFDRA_DROP:
+      action_as_string = "drop";
+      *ltr = LTR_DROP;
+      break;
+
+    case AFDRA_RETRY:
+      action_as_string = "retry";
+      *ltr = LTR_ERROR;
+      break;
+
+    case AFDRA_SUCCESS:
+      action_as_string = "success";
+      debug_log = true;
+      *ltr = LTR_SUCCESS;
+      break;
+
+    default:
+      g_assert_not_reached();
+    }
+
+  if (debug_log)
+    {
+      msg_debug("arrow-flight: handled by response-action()",
+                evt_tag_str("action", action_as_string),
+                evt_tag_str("url", this->url.c_str()),
+                evt_tag_int("error_code", int(status.code())),
+                evt_tag_str("error_message", status.message().c_str()),
+                evt_tag_str("error_details", status.detail() ? status.detail()->ToString().c_str() : ""),
+                evt_tag_str("driver", this->super->super.super.super.id),
+                log_pipe_location_tag(&this->super->super.super.super.super));
+    }
+  else
+    {
+      msg_notice("arrow-flight: handled by response-action()",
+                 evt_tag_str("action", action_as_string),
+                 evt_tag_str("url", this->url.c_str()),
+                 evt_tag_int("error_code", int(status.code())),
+                 evt_tag_str("error_message", status.message().c_str()),
+                 evt_tag_str("error_details", status.detail() ? status.detail()->ToString().c_str() : ""),
+                 evt_tag_str("driver", this->super->super.super.super.id),
+                 log_pipe_location_tag(&this->super->super.super.super.super));
+    }
+
+  return true;
+}
+
 /* C Wrappers */
 
 syslog_ng::arrow_flight::DestinationDriver *
@@ -176,6 +250,14 @@ arrow_flight_dd_set_keepalive_max_pings(LogDriver *d, gint p)
 {
   ArrowFlightDestDriver *self = (ArrowFlightDestDriver *) d;
   self->cpp->set_keepalive_max_pings(p);
+}
+
+void
+arrow_flight_dd_set_response_action(LogDriver *d, ArrowFlightDestResponse response,
+                                    ArrowFlightDestResponseAction action)
+{
+  ArrowFlightDestDriver *self = (ArrowFlightDestDriver *) d;
+  self->cpp->set_response_action(AFDR_TO_ARROW_STATUSCODE_MAPPING.at(response), action);
 }
 
 void
