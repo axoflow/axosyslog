@@ -352,7 +352,7 @@ DestWorker::should_initiate_flush()
 LogThreadedResult
 DestWorker::insert(LogMessage *msg)
 {
-  MessageType type = get_message_type(msg);
+  MessageType type = formatter.get_message_type(msg);
   switch (type)
     {
     case MessageType::LOG:

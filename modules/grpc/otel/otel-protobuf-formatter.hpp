@@ -34,6 +34,9 @@
 #include "opentelemetry/proto/metrics/v1/metrics.pb.h"
 #include "opentelemetry/proto/trace/v1/trace.pb.h"
 
+#include <string>
+#include <unordered_map>
+
 namespace syslogng {
 namespace grpc {
 namespace otel {
@@ -45,8 +48,6 @@ enum MessageType : int
   METRIC,
   SPAN,
 };
-
-MessageType get_message_type(LogMessage *msg);
 
 using google::protobuf::RepeatedPtrField;
 
@@ -71,8 +72,9 @@ using opentelemetry::proto::trace::v1::Span;
 class ProtobufFormatter
 {
 public:
-  ProtobufFormatter(GlobalConfig *cfg);
+  ProtobufFormatter(GlobalConfig *cfg, const std::string &nv_prefix = "");
 
+  MessageType get_message_type(LogMessage *msg);
   static void get_metadata_for_syslog_ng(Resource &resource, std::string &resource_schema_url,
                                          InstrumentationScope &scope, std::string &scope_schema_url);
   bool get_metadata(LogMessage *msg, Resource &resource, std::string &resource_schema_url,
@@ -84,6 +86,8 @@ public:
   bool format(LogMessage *msg, Span &span);
 
 private:
+  NVHandle prefixed_handle(NVHandle default_handle);
+
   void get_and_set_repeated_KeyValues(LogMessage *msg, const char *prefix, RepeatedPtrField<KeyValue> *key_values);
   bool get_resource_and_schema_url(LogMessage *msg, Resource &resource, std::string &schema_url);
   bool get_scope_and_schema_url(LogMessage *msg, InstrumentationScope &scope, std::string &schema_url);
@@ -110,6 +114,8 @@ private:
 
 private:
   GlobalConfig *cfg;
+  std::string nv_prefix;
+  std::unordered_map<NVHandle, NVHandle> prefixed_handles;
 };
 
 }
