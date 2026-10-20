@@ -505,6 +505,7 @@ DestinationWorker::flush(LogThreadedFlushMode mode)
   arrow::Status status;
   int64_t batch_bytes = 0;
   const gchar *path = this->current_batch_path.c_str();
+  const gchar *error_message = NULL;
 
   if (this->get_batch_size() == 0)
     return LTR_SUCCESS;
@@ -539,24 +540,15 @@ DestinationWorker::flush(LogThreadedFlushMode mode)
   status = this->writer->WriteRecordBatch(*batch);
   if (!status.ok())
     {
-      msg_error("arrow-flight: Failed to write record batch",
-                evt_tag_str("error", status.ToString().c_str()),
-                log_pipe_location_tag(&this->super->super.owner->super.super.super));
-      result = this->map_status_to_result(status);
-      /* Stream is likely broken on the server side; drop it so the next flush opens a fresh one. */
-      (void) this->close_stream();
-      goto exit;
+      error_message = "arrow-flight: Failed to write record batch";
+      goto server_error;
     }
 
   status = this->metadata_reader->ReadMetadata(&ack);
   if (!status.ok())
     {
-      msg_error("arrow-flight: Failed to read ack",
-                evt_tag_str("error", status.ToString().c_str()),
-                log_pipe_location_tag(&this->super->super.owner->super.super.super));
-      result = this->map_status_to_result(status);
-      (void) this->close_stream();
-      goto exit;
+      error_message = "arrow-flight: Failed to read ack";
+      goto server_error;
     }
 
   if (!ack)
@@ -568,20 +560,27 @@ DestinationWorker::flush(LogThreadedFlushMode mode)
        * Close() will suffice as we want to close the stream anyways.
        */
       status = this->close_stream();
-      if (!status.ok())
-        {
-          msg_error("arrow-flight: Server error during flush",
-                    evt_tag_str("error", status.ToString().c_str()),
-                    log_pipe_location_tag(&this->super->super.owner->super.super.super));
-          result = this->map_status_to_result(status);
-        }
-      else
+      if (status.ok())
         {
           result = LTR_NOT_CONNECTED;
+          goto exit;
         }
-      goto exit;
+      error_message = "arrow-flight: Server error during flush";
+      goto server_error;
     }
 
+  goto delivered;
+
+server_error:
+  msg_error(error_message,
+            evt_tag_str("error", status.ToString().c_str()),
+            log_pipe_location_tag(&this->super->super.owner->super.super.super));
+  result = this->map_status_to_result(status);
+  /* Stream is likely broken on the server side; drop it so the next flush opens a fresh one. */
+  (void) this->close_stream();
+  goto exit;
+
+delivered:
   status = arrow::ipc::GetRecordBatchSize(*batch, &batch_bytes);
   if (status.ok())
     {
