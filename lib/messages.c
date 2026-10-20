@@ -24,6 +24,7 @@
 #include "messages.h"
 #include "timeutils/cache.h"
 #include "logmsg/logmsg.h"
+#include "mainloop.h"
 
 #include <stdio.h>
 #include <unistd.h>
@@ -58,6 +59,7 @@ gboolean debug_flag = 0;
 gboolean verbose_flag = 0;
 gboolean trace_flag = 0;
 gboolean log_stderr = FALSE;
+gboolean collect_reload_errors = FALSE;
 gboolean skip_timestamp_on_stderr = FALSE;
 static MsgPostFunc msg_post_func;
 static EVTCONTEXT *evt_context;
@@ -210,6 +212,23 @@ void
 msg_event_suppress_recursions_and_send(EVTREC *e)
 {
   msg_event_send_with_suppression(e, msg_limit_internal_message);
+}
+
+static void
+_record_reload_error(EVTREC *e)
+{
+  gchar *msg = evt_format(e);
+  main_loop_reload_errors_add(main_loop_get_instance(), msg);
+  free(msg);
+}
+
+void
+msg_event_suppress_recursions_and_send_error(EVTREC *e)
+{
+  if (G_UNLIKELY(collect_reload_errors))
+    _record_reload_error(e);
+
+  msg_event_suppress_recursions_and_send(e);
 }
 
 void

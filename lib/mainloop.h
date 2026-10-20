@@ -75,6 +75,8 @@ gboolean main_loop_reload_config_prepare(MainLoop *self, GError **error);
 void main_loop_reload_config_commence(MainLoop *self);
 void main_loop_reload_config(MainLoop *self);
 void main_loop_verify_config(GString *result, MainLoop *self);
+void main_loop_reload_errors_add(MainLoop *self, const gchar *msg);
+GPtrArray *main_loop_reload_errors_get(MainLoop *self);
 gboolean main_loop_is_terminating(MainLoop *self);
 void main_loop_exit(MainLoop *self);
 void main_loop_exit_force(MainLoop *self);

@@ -33,6 +33,7 @@ extern int debug_flag;
 extern int verbose_flag;
 extern int trace_flag;
 extern int log_stderr;
+extern int collect_reload_errors;
 
 typedef void (*MsgPostFunc)(LogMessage *msg);
 
@@ -42,6 +43,7 @@ EVTREC *msg_event_create_from_desc(gint prio, const char *desc);
 void msg_event_free(EVTREC *e);
 void msg_event_send(EVTREC *e);
 void msg_event_suppress_recursions_and_send(EVTREC *e);
+void msg_event_suppress_recursions_and_send_error(EVTREC *e);
 void msg_event_print_event_to_stderr(EVTREC *e);
 
 
@@ -69,7 +71,7 @@ void msg_add_option_group(GOptionContext *ctx);
 #define msg_fatal(desc, tags...)    CAPTURE_ERRNO(\
     msg_event_suppress_recursions_and_send(msg_event_create(EVT_PRI_CRIT, desc, ##tags, NULL )))
 #define msg_error(desc, tags...)    CAPTURE_ERRNO(\
-    msg_event_suppress_recursions_and_send(msg_event_create(EVT_PRI_ERR, desc, ##tags, NULL )))
+    msg_event_suppress_recursions_and_send_error(msg_event_create(EVT_PRI_ERR, desc, ##tags, NULL )))
 #define msg_warning(desc, tags...)  CAPTURE_ERRNO(\
     msg_event_suppress_recursions_and_send(msg_event_create(EVT_PRI_WARNING, desc, ##tags, NULL )))
 #define msg_notice(desc, tags...)   CAPTURE_ERRNO(\

@@ -38,23 +38,24 @@ _format_source_prefix(gchar *line_prefix, gsize line_prefix_len, gint lineno, gb
 }
 
 static void
-_print_underline(const gchar *line, gint whitespace_before, gint number_of_carets)
+_format_underline(GString *result, const gchar *line, gint whitespace_before, gint number_of_carets)
 {
   for (gint i = 0; i < whitespace_before && line[i]; i++)
     {
-      fprintf(stderr, "%c", line[i] == '\t' ? '\t' : ' ');
+      g_string_append_c(result, line[i] == '\t' ? '\t' : ' ');
     }
 
   /* NOTE: sometimes the yylloc has zero characters, print a caret even in
    * this case, that's why i == 0 is there */
 
   for (gint i = 0; i == 0 || i < number_of_carets; i++)
-    fprintf(stderr, "^");
-  fprintf(stderr, "\n");
+    g_string_append_c(result, '^');
+  g_string_append_c(result, '\n');
 }
 
 static void
-_print_underlined_source_block(const CFG_LTYPE *yylloc, gchar **lines, gsize num_lines, gint start_line)
+_format_underlined_source_block(GString *result, const CFG_LTYPE *yylloc, gchar **lines, gsize num_lines,
+                                gint start_line)
 {
   gint line_ndx;
   gchar line_prefix[12];
@@ -69,18 +70,18 @@ _print_underlined_source_block(const CFG_LTYPE *yylloc, gchar **lines, gsize num
       _format_source_prefix(line_prefix, sizeof(line_prefix), lineno,
                             lineno >= yylloc->first_line && lineno <= yylloc->last_line);
 
-      fprintf(stderr, "%-8s%s%s", line_prefix, line, line_ends_with_newline ? "" : "\n");
+      g_string_append_printf(result, "%-8s%s%s", line_prefix, line, line_ends_with_newline ? "" : "\n");
 
       if (lineno == yylloc->first_line)
         {
           /* print the underline right below the source line we just printed */
-          fprintf(stderr, "%-8s", line_prefix);
+          g_string_append_printf(result, "%-8s", line_prefix);
 
           gboolean multi_line = yylloc->first_line != yylloc->last_line;
 
-          _print_underline(line, yylloc->first_column - 1,
-                           multi_line ? strlen(&line[yylloc->first_column]) + 1
-                           : yylloc->last_column - yylloc->first_column);
+          _format_underline(result, line, yylloc->first_column - 1,
+                            multi_line ? strlen(&line[yylloc->first_column]) + 1
+                            : yylloc->last_column - yylloc->first_column);
         }
     }
 }
@@ -88,7 +89,7 @@ _print_underlined_source_block(const CFG_LTYPE *yylloc, gchar **lines, gsize num
 /* print a region of text from the configuration file.  This can also be
  * used once the lexer was finished, e.g. it does not use CfgLexer at all */
 static void
-_print_source_region_from_file(const gchar *filename, const CFG_LTYPE *yylloc, gint start_line)
+_format_source_region_from_file(GString *result, const gchar *filename, const CFG_LTYPE *yylloc, gint start_line)
 {
   FILE *f;
   gint lineno = 0;
@@ -118,7 +119,7 @@ _print_source_region_from_file(const gchar *filename, const CFG_LTYPE *yylloc, g
       fclose(f);
     }
   if (context->len > 0)
-    _print_underlined_source_block(yylloc, (gchar **) context->pdata, context->len, start_line);
+    _format_underlined_source_block(result, yylloc, (gchar **) context->pdata, context->len, start_line);
 
   g_free(buf);
   g_ptr_array_foreach(context, (GFunc) g_free, NULL);
@@ -133,7 +134,11 @@ cfg_source_print_region(const gchar *filename, gint line, gint column, gint star
   yylloc.name = filename;
   yylloc.first_line = yylloc.last_line = line;
   yylloc.first_column = yylloc.last_column = column;
-  _print_source_region_from_file(yylloc.name, &yylloc, start_line);
+
+  GString *result = g_string_new(NULL);
+  _format_source_region_from_file(result, yylloc.name, &yylloc, start_line);
+  fputs(result->str, stderr);
+  g_string_free(result, TRUE);
   return TRUE;
 }
 
@@ -144,8 +149,8 @@ cfg_source_print_region(const gchar *filename, gint line, gint column, gint star
  *    file_*    => tracks file related information
  */
 static void
-_print_source_text_from_lexer(CfgLexer *lexer, CfgIncludeLevel *level,
-                              const CFG_LTYPE *file_lloc, const CFG_LTYPE *buf_lloc)
+_format_source_text_from_lexer(GString *result, CfgLexer *lexer, CfgIncludeLevel *level,
+                               const CFG_LTYPE *file_lloc, const CFG_LTYPE *buf_lloc)
 {
   gchar **buffer_lines = level->original_lines;
   gint buffer_num_lines = level->num_original_lines;
@@ -169,8 +174,9 @@ _print_source_text_from_lexer(CfgLexer *lexer, CfgIncludeLevel *level,
   if (buffer_end_index > buffer_num_lines)
     buffer_end_index = buffer_num_lines;
 
-  _print_underlined_source_block(file_lloc, &buffer_lines[buffer_start_index], buffer_end_index - buffer_start_index,
-                                 file_lloc->first_line - range_backwards);
+  _format_underlined_source_block(result, file_lloc, &buffer_lines[buffer_start_index],
+                                  buffer_end_index - buffer_start_index,
+                                  file_lloc->first_line - range_backwards);
 }
 
 static void
@@ -189,19 +195,19 @@ _cache_file_contents(CfgLexer *lexer, CfgIncludeLevel *level, const gchar *filen
 }
 
 gboolean
-cfg_source_print_region_from_lexer(CfgLexer *lexer, CfgIncludeLevel *level, const CFG_LTYPE *yylloc)
+cfg_source_format_region_from_lexer(CfgLexer *lexer, CfgIncludeLevel *level, const CFG_LTYPE *yylloc, GString *result)
 {
   if (level->include_type == CFGI_FILE)
     {
       _cache_file_contents(lexer, level, yylloc->name);
-      _print_source_text_from_lexer(lexer, level, yylloc, yylloc);
+      _format_source_text_from_lexer(result, lexer, level, yylloc, yylloc);
     }
   else if (level->include_type == CFGI_BUFFER)
     {
       CFG_LTYPE buf_lloc = *yylloc;
       cfg_lexer_undo_set_file_location(lexer, &buf_lloc);
 
-      _print_source_text_from_lexer(lexer, level, yylloc, &buf_lloc);
+      _format_source_text_from_lexer(result, lexer, level, yylloc, &buf_lloc);
     }
   return TRUE;
 }
