@@ -35,6 +35,7 @@
 #include <grpcpp/server.h>
 
 #include <list>
+#include <string>
 
 namespace syslogng {
 namespace grpc {
@@ -49,8 +50,19 @@ public:
   const char *generate_persist_name();
   LogThreadedDestWorker *construct_worker(int worker_index);
 
+  void set_prefix(const char *prefix_)
+  {
+    prefix.assign(prefix_);
+  }
+  const std::string &get_prefix() const
+  {
+    return prefix;
+  }
+
 protected:
   friend class DestWorker;
+
+  std::string prefix;
 };
 
 }

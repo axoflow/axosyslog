@@ -58,6 +58,7 @@
 %token KW_MODE
 %token KW_LOGMESSAGE
 %token KW_FILTERX_DICT
+%token KW_PREFIX
 
 %type <ptr> source_otel
 %type <num> source_otel_mode
@@ -136,6 +137,7 @@ destination_otel_options
 
 destination_otel_option
   : grpc_dest_general_option
+  | KW_PREFIX '(' string ')' { otel_dd_set_prefix(last_driver, $3); free($3); }
   ;
 
 destination_syslog_ng_otlp
@@ -152,7 +154,7 @@ destination_syslog_ng_otlp_options
   ;
 
 destination_syslog_ng_otlp_option
-  : destination_otel_option
+  : grpc_dest_general_option
   ;
 
 /* INCLUDE_RULES */
