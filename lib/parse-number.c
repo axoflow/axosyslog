@@ -108,22 +108,34 @@ _validate_unit(gchar unit_char)
 static gboolean
 _process_exponent(gchar exponent_char, gint64 *d, gint multiplier)
 {
+  gint steps;
+
   switch (exponent_char)
     {
     case 'G':
     case 'g':
-      (*d) *= multiplier;
+      steps = 3;
+      break;
     case 'm':
     case 'M':
-      (*d) *= multiplier;
+      steps = 2;
+      break;
     case 'K':
     case 'k':
-      (*d) *= multiplier;
+      steps = 1;
+      break;
     case 0:
       return TRUE;
     default:
       return FALSE;
     }
+
+  for (gint i = 0; i < steps; i++)
+    {
+      if (__builtin_mul_overflow(*d, multiplier, d))
+        return FALSE;
+    }
+  return TRUE;
 }
 
 static gboolean

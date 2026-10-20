@@ -1,0 +1,47 @@
+name: ClusterFuzzLite PR fuzzing
+
+on:
+  pull_request:
+    # The harnesses also reach the config lexer, logmsg and the shared string
+    # and number helpers, so all of lib/ is in scope. The parse_* and
+    # format_csv harnesses call the filterx functions of the four modules.
+    paths:
+      - 'lib/**'
+      - 'configure.ac'
+      - 'modules/xml/**'
+      - 'modules/cef/**'
+      - 'modules/kvformat/**'
+      - 'modules/csvparser/**'
+      - '.clusterfuzzlite/**'
+      - '.github/workflows/clusterfuzzlite-pr.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fuzzing:
+    name: Fuzz changed code (${{ matrix.sanitizer }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        sanitizer: [address, undefined]
+    steps:
+      - name: Build fuzzers
+        uses: google/clusterfuzzlite/actions/build_fuzzers@884713a6c30a92e5e8544c39945cd7cb630abcd1 # v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          language: c
+          sanitizer: ${{ matrix.sanitizer }}
+      - name: Run fuzzers
+        uses: google/clusterfuzzlite/actions/run_fuzzers@884713a6c30a92e5e8544c39945cd7cb630abcd1 # v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          fuzz-seconds: 300
+          mode: 'code-change'
+          sanitizer: ${{ matrix.sanitizer }}

@@ -47,6 +47,9 @@
 #            --image=NAME          dbld only: build in the axosyslog-dbld-NAME container
 #                                  (e.g. almalinux-8) instead of dbld's DEFAULT_IMAGE.
 #                                  A tree bootstrapped in another image needs --clean.
+#            --fuzz                build the libFuzzer harnesses under
+#                                  lib/filterx/tests/fuzz/ (cmake/autotools only;
+#                                  needs clang and a sanitizer)
 #            --build-dir=NAME      build in NAME/ instead of build/ (cmake/autotools
 #                                  only; a single dir name at the checkout root, so
 #                                  a JIT and a --no-jit tree can live side by side).
@@ -80,6 +83,7 @@ NO_JIT=0
 LLVM_STATIC=0
 NO_CPP=0
 NO_LLD=0
+FUZZ=0
 BUILD_SUBDIR=""
 DBLD_IMAGE=""
 DO_CHECK=0
@@ -147,6 +151,7 @@ while [ $# -gt 0 ]; do
     --llvm-static)  LLVM_STATIC=1 ;;
     --no-cpp)       NO_CPP=1 ;;
     --no-lld)       NO_LLD=1 ;;
+    --fuzz)         FUZZ=1 ;;
     --build-dir=*)  BUILD_SUBDIR="${1#*=}"; [ -n "$BUILD_SUBDIR" ] || fail "--build-dir= needs a value" ;;
     --build-dir)    shift; [ $# -gt 0 ] || fail "--build-dir needs a value"; BUILD_SUBDIR="$1" ;;
     --image=*)      DBLD_IMAGE="${1#*=}"; [ -n "$DBLD_IMAGE" ] || fail "--image= needs a value" ;;
@@ -224,6 +229,18 @@ fi
 
 if [ "$DO_CLANGD" -eq 1 ] && [ "$MODE" != autotools ]; then
   fail "--clangd is autotools-only; the cmake build always exports the compile DB"
+fi
+
+if [ "$FUZZ" -eq 1 ]; then
+  case "$MODE" in
+    cmake|autotools) ;;
+    *) fail "--fuzz is cmake/autotools only ($MODE builds a release/packaging tree)" ;;
+  esac
+  case "$CC" in
+    *clang*) ;;
+    *) fail "--fuzz needs clang (CC=$CC has no -fsanitize=fuzzer)" ;;
+  esac
+  [ "$SANITIZER" = none ] && fail "--fuzz needs a sanitizer; an uninstrumented harness reports nothing"
 fi
 
 if [ "$MODE" = dbld ] && [ "$DO_INSTALL" -eq 0 ]; then
@@ -370,6 +387,7 @@ build_autotools() {
   [ "$NO_JIT" -eq 1 ] && extra+=(--disable-jit)
   [ "$LLVM_STATIC" -eq 1 ] && extra+=(--with-llvm-linking=static)
   [ "$NO_CPP" -eq 1 ] && extra+=(--disable-cpp)
+  [ "$FUZZ" -eq 1 ] && extra+=(--enable-fuzzing)
 
   if [ "$CLEAN" -eq 1 ]; then
     say "clean: wiping ${BUILD#"$ROOT"/}/"
@@ -419,6 +437,8 @@ build_cmake() {
   local jitflag=()
   [ "$NO_JIT" -eq 1 ] && jitflag=(-DENABLE_JIT=OFF)
   [ "$NO_CPP" -eq 1 ] && jitflag+=(-DENABLE_CPP=OFF)
+  local fuzzflag=()
+  [ "$FUZZ" -eq 1 ] && fuzzflag=(-DENABLE_FUZZING=ON)
   local lldflag=()
   if [ "$NO_LLD" -eq 0 ]; then
     local kind
@@ -439,6 +459,7 @@ build_cmake() {
       -DCMAKE_C_COMPILER="$CC" -DCMAKE_CXX_COMPILER="$CXX" \
       -DSANITIZER="$san" \
       "${jitflag[@]}" \
+      "${fuzzflag[@]}" \
       "${lldflag[@]}" \
       -DCMAKE_BUILD_TYPE=Debug -DENABLE_EXTRA_WARNINGS=ON \
       -DENABLE_JAVA=OFF -DENABLE_JAVA_MODULES=OFF -DENABLE_LIBUNWIND=ON \

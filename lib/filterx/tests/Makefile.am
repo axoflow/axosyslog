@@ -23,6 +23,7 @@ lib_filterx_tests_TESTS		 =              \
 		lib/filterx/tests/test_type_registry \
 		lib/filterx/tests/test_func_istype \
 		lib/filterx/tests/test_func_unset_empties \
+		lib/filterx/tests/test_expr_move \
 		lib/filterx/tests/test_func_flatten \
 		lib/filterx/tests/test_expr_regexp_search	\
 		lib/filterx/tests/test_expr_regexp_subst	\
@@ -47,12 +48,14 @@ lib_filterx_tests_TESTS		 =              \
 		lib/filterx/tests/test_object_subnet \
 		lib/filterx/tests/test_object_ip \
 		lib/filterx/tests/test_expr_arithmetic_operators \
+		lib/filterx/tests/test_expr_membership \
 		lib/filterx/tests/test_func_set_pri \
 		lib/filterx/tests/test_json_repr \
 		lib/filterx/tests/test_access_path \
 		lib/filterx/tests/test_type_inference
 
 EXTRA_DIST += lib/filterx/tests/CMakeLists.txt
+EXTRA_DIST += lib/filterx/tests/fuzz/CMakeLists.txt
 
 check_PROGRAMS				+= ${lib_filterx_tests_TESTS}
 
@@ -128,6 +131,9 @@ lib_filterx_tests_test_func_istype_LDADD   = $(TEST_LDADD) $(JSON_LIBS)
 lib_filterx_tests_test_func_unset_empties_CFLAGS  = $(TEST_CFLAGS)
 lib_filterx_tests_test_func_unset_empties_LDADD   = $(TEST_LDADD) $(JSON_LIBS)
 
+lib_filterx_tests_test_expr_move_CFLAGS  = $(TEST_CFLAGS)
+lib_filterx_tests_test_expr_move_LDADD   = $(TEST_LDADD) $(JSON_LIBS)
+
 lib_filterx_tests_test_func_flatten_CFLAGS  = $(TEST_CFLAGS)
 lib_filterx_tests_test_func_flatten_LDADD   = $(TEST_LDADD) $(JSON_LIBS)
 
@@ -200,8 +206,101 @@ lib_filterx_tests_test_object_ip_LDADD   = $(TEST_LDADD) $(JSON_LIBS)
 lib_filterx_tests_test_expr_arithmetic_operators_CFLAGS  = $(TEST_CFLAGS)
 lib_filterx_tests_test_expr_arithmetic_operators_LDADD   = $(TEST_LDADD) $(JSON_LIBS)
 
+lib_filterx_tests_test_expr_membership_CFLAGS  = $(TEST_CFLAGS)
+lib_filterx_tests_test_expr_membership_LDADD   = $(TEST_LDADD) $(JSON_LIBS)
+
 lib_filterx_tests_test_func_set_pri_CFLAGS  = $(TEST_CFLAGS)
 lib_filterx_tests_test_func_set_pri_LDADD   = $(TEST_LDADD) $(JSON_LIBS)
 
 lib_filterx_tests_test_json_repr_CFLAGS  = $(TEST_CFLAGS)
 lib_filterx_tests_test_json_repr_LDADD   = $(TEST_LDADD) $(JSON_LIBS)
+
+# Not check_PROGRAMS: the fuzzing engine supplies main(), and these
+# must not run under `make check`.
+if ENABLE_FUZZING
+noinst_PROGRAMS += lib/filterx/tests/fuzz/fuzz_parse_json
+noinst_PROGRAMS += lib/filterx/tests/fuzz/fuzz_regexp
+noinst_PROGRAMS += lib/filterx/tests/fuzz/fuzz_decode
+noinst_PROGRAMS += lib/filterx/tests/fuzz/fuzz_typecast
+noinst_PROGRAMS += lib/filterx/tests/fuzz/fuzz_str
+noinst_PROGRAMS += lib/filterx/tests/fuzz/fuzz_parse_xml
+noinst_PROGRAMS += lib/filterx/tests/fuzz/fuzz_parse_cef
+noinst_PROGRAMS += lib/filterx/tests/fuzz/fuzz_parse_kv
+noinst_PROGRAMS += lib/filterx/tests/fuzz/fuzz_parse_csv
+noinst_PROGRAMS += lib/filterx/tests/fuzz/fuzz_digest
+noinst_PROGRAMS += lib/filterx/tests/fuzz/fuzz_strptime
+noinst_PROGRAMS += lib/filterx/tests/fuzz/fuzz_repr
+noinst_PROGRAMS += lib/filterx/tests/fuzz/fuzz_expr
+noinst_PROGRAMS += lib/filterx/tests/fuzz/fuzz_message_value
+noinst_PROGRAMS += lib/filterx/tests/fuzz/fuzz_format_csv
+
+lib_filterx_tests_fuzz_fuzz_parse_json_CFLAGS  = $(TEST_CFLAGS)
+lib_filterx_tests_fuzz_fuzz_parse_json_LDFLAGS = $(LIB_FUZZING_ENGINE)
+lib_filterx_tests_fuzz_fuzz_parse_json_LDADD   = $(top_builddir)/lib/libsyslog-ng.la $(TOOL_DEPS_LIBS) $(JSON_LIBS)
+
+lib_filterx_tests_fuzz_fuzz_regexp_CFLAGS  = $(TEST_CFLAGS)
+lib_filterx_tests_fuzz_fuzz_regexp_LDFLAGS = $(LIB_FUZZING_ENGINE)
+lib_filterx_tests_fuzz_fuzz_regexp_LDADD   = $(top_builddir)/lib/libsyslog-ng.la $(TOOL_DEPS_LIBS) $(JSON_LIBS)
+
+lib_filterx_tests_fuzz_fuzz_decode_CFLAGS  = $(TEST_CFLAGS)
+lib_filterx_tests_fuzz_fuzz_decode_LDFLAGS = $(LIB_FUZZING_ENGINE)
+lib_filterx_tests_fuzz_fuzz_decode_LDADD   = $(top_builddir)/lib/libsyslog-ng.la $(TOOL_DEPS_LIBS) $(JSON_LIBS)
+
+lib_filterx_tests_fuzz_fuzz_typecast_CFLAGS  = $(TEST_CFLAGS)
+lib_filterx_tests_fuzz_fuzz_typecast_LDFLAGS = $(LIB_FUZZING_ENGINE)
+lib_filterx_tests_fuzz_fuzz_typecast_LDADD   = $(top_builddir)/lib/libsyslog-ng.la $(TOOL_DEPS_LIBS) $(JSON_LIBS)
+
+lib_filterx_tests_fuzz_fuzz_str_CFLAGS  = $(TEST_CFLAGS)
+lib_filterx_tests_fuzz_fuzz_str_LDFLAGS = $(LIB_FUZZING_ENGINE)
+lib_filterx_tests_fuzz_fuzz_str_LDADD   = $(top_builddir)/lib/libsyslog-ng.la $(TOOL_DEPS_LIBS) $(JSON_LIBS)
+
+lib_filterx_tests_fuzz_fuzz_parse_xml_CFLAGS  = $(TEST_CFLAGS) -I$(top_srcdir)/modules/xml
+lib_filterx_tests_fuzz_fuzz_parse_xml_LDFLAGS = $(LIB_FUZZING_ENGINE) \
+	-dlpreopen $(top_builddir)/modules/xml/libxml.la
+lib_filterx_tests_fuzz_fuzz_parse_xml_LDADD   = $(top_builddir)/lib/libsyslog-ng.la $(TOOL_DEPS_LIBS) $(JSON_LIBS)
+EXTRA_lib_filterx_tests_fuzz_fuzz_parse_xml_DEPENDENCIES = $(top_builddir)/modules/xml/libxml.la
+
+lib_filterx_tests_fuzz_fuzz_parse_cef_CFLAGS  = $(TEST_CFLAGS) -I$(top_srcdir)/modules/cef
+lib_filterx_tests_fuzz_fuzz_parse_cef_LDFLAGS = $(LIB_FUZZING_ENGINE) \
+	-dlpreopen $(top_builddir)/modules/cef/libcef.la
+lib_filterx_tests_fuzz_fuzz_parse_cef_LDADD   = $(top_builddir)/lib/libsyslog-ng.la $(TOOL_DEPS_LIBS) $(JSON_LIBS)
+EXTRA_lib_filterx_tests_fuzz_fuzz_parse_cef_DEPENDENCIES = $(top_builddir)/modules/cef/libcef.la
+
+lib_filterx_tests_fuzz_fuzz_parse_kv_CFLAGS  = $(TEST_CFLAGS) -I$(top_srcdir)/modules/kvformat
+lib_filterx_tests_fuzz_fuzz_parse_kv_LDFLAGS = $(LIB_FUZZING_ENGINE) \
+	-dlpreopen $(top_builddir)/modules/kvformat/libkvformat.la
+lib_filterx_tests_fuzz_fuzz_parse_kv_LDADD   = $(top_builddir)/lib/libsyslog-ng.la $(TOOL_DEPS_LIBS) $(JSON_LIBS)
+EXTRA_lib_filterx_tests_fuzz_fuzz_parse_kv_DEPENDENCIES = $(top_builddir)/modules/kvformat/libkvformat.la
+
+lib_filterx_tests_fuzz_fuzz_parse_csv_CFLAGS  = $(TEST_CFLAGS) -I$(top_srcdir)/modules/csvparser
+lib_filterx_tests_fuzz_fuzz_parse_csv_LDFLAGS = $(LIB_FUZZING_ENGINE) \
+	-dlpreopen $(top_builddir)/modules/csvparser/libcsvparser.la
+lib_filterx_tests_fuzz_fuzz_parse_csv_LDADD   = $(top_builddir)/lib/libsyslog-ng.la $(TOOL_DEPS_LIBS) $(JSON_LIBS)
+EXTRA_lib_filterx_tests_fuzz_fuzz_parse_csv_DEPENDENCIES = $(top_builddir)/modules/csvparser/libcsvparser.la
+
+lib_filterx_tests_fuzz_fuzz_digest_CFLAGS  = $(TEST_CFLAGS)
+lib_filterx_tests_fuzz_fuzz_digest_LDFLAGS = $(LIB_FUZZING_ENGINE)
+lib_filterx_tests_fuzz_fuzz_digest_LDADD   = $(top_builddir)/lib/libsyslog-ng.la $(TOOL_DEPS_LIBS) $(JSON_LIBS)
+
+lib_filterx_tests_fuzz_fuzz_strptime_CFLAGS  = $(TEST_CFLAGS)
+lib_filterx_tests_fuzz_fuzz_strptime_LDFLAGS = $(LIB_FUZZING_ENGINE)
+lib_filterx_tests_fuzz_fuzz_strptime_LDADD   = $(top_builddir)/lib/libsyslog-ng.la $(TOOL_DEPS_LIBS) $(JSON_LIBS)
+
+lib_filterx_tests_fuzz_fuzz_repr_CFLAGS  = $(TEST_CFLAGS)
+lib_filterx_tests_fuzz_fuzz_repr_LDFLAGS = $(LIB_FUZZING_ENGINE)
+lib_filterx_tests_fuzz_fuzz_repr_LDADD   = $(top_builddir)/lib/libsyslog-ng.la $(TOOL_DEPS_LIBS) $(JSON_LIBS)
+
+lib_filterx_tests_fuzz_fuzz_expr_CFLAGS  = $(TEST_CFLAGS)
+lib_filterx_tests_fuzz_fuzz_expr_LDFLAGS = $(LIB_FUZZING_ENGINE)
+lib_filterx_tests_fuzz_fuzz_expr_LDADD   = $(top_builddir)/lib/libsyslog-ng.la $(TOOL_DEPS_LIBS) $(JSON_LIBS)
+
+lib_filterx_tests_fuzz_fuzz_message_value_CFLAGS  = $(TEST_CFLAGS)
+lib_filterx_tests_fuzz_fuzz_message_value_LDFLAGS = $(LIB_FUZZING_ENGINE)
+lib_filterx_tests_fuzz_fuzz_message_value_LDADD   = $(top_builddir)/lib/libsyslog-ng.la $(TOOL_DEPS_LIBS) $(JSON_LIBS)
+
+lib_filterx_tests_fuzz_fuzz_format_csv_CFLAGS  = $(TEST_CFLAGS) -I$(top_srcdir)/modules/csvparser
+lib_filterx_tests_fuzz_fuzz_format_csv_LDFLAGS = $(LIB_FUZZING_ENGINE) \
+	-dlpreopen $(top_builddir)/modules/csvparser/libcsvparser.la
+lib_filterx_tests_fuzz_fuzz_format_csv_LDADD   = $(top_builddir)/lib/libsyslog-ng.la $(TOOL_DEPS_LIBS) $(JSON_LIBS)
+EXTRA_lib_filterx_tests_fuzz_fuzz_format_csv_DEPENDENCIES = $(top_builddir)/modules/csvparser/libcsvparser.la
+endif

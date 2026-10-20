@@ -41,6 +41,10 @@ _is_valid_key_character(gchar c)
 static inline const gchar *
 _locate_separator(KVScanner *self, const gchar *start)
 {
+  /* a NUL separator makes strchr() match the input's terminator, so the scan
+   * runs past it */
+  if (G_UNLIKELY(self->value_separator == 0))
+    return NULL;
   return strchr(start, self->value_separator);
 }
 
