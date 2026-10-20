@@ -105,6 +105,17 @@ struct _LogSource
 
   } metrics;
 
+  /* the name resolved for the last peer address, reused within the same
+   * second to avoid a DNS cache lookup for every message of a connection */
+  struct
+  {
+    gint64 sec;
+    guint32 saddr_len;
+    struct sockaddr_storage saddr;
+    gsize name_len;
+    gchar name[256];
+  } resolved_peer;
+
   /* these are shared between the input/output threads and bouncing back and forth */
   guint32 last_ack_count;
   guint32 ack_count;

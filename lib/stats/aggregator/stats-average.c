@@ -32,9 +32,9 @@ typedef struct
 } StatsAggregatorAverage;
 
 static inline void
-_inc_count(StatsAggregatorAverage *self)
+_add_count(StatsAggregatorAverage *self, gsize count)
 {
-  atomic_gssize_inc(&self->count);
+  atomic_gssize_add(&self->count, count);
 }
 
 static inline void
@@ -56,20 +56,26 @@ _get_count(StatsAggregatorAverage *self)
 }
 
 static void
-_add_data_point(StatsAggregator *s, gsize value)
+_add_data_points(StatsAggregator *s, gsize sum, gsize count)
 {
   StatsAggregatorAverage *self = (StatsAggregatorAverage *)s;
   /*
    * this function isn't truely atomic, reset might set count to zero
    * and we want to avoid zero division
    */
-  gsize sum = _get_sum(self) + value;
-  gsize divisor = _get_count(self) + 1;
+  gsize total_sum = _get_sum(self) + sum;
+  gsize divisor = _get_count(self) + count;
 
-  stats_counter_set(self->super.output_counter, sum/divisor);
+  stats_counter_set(self->super.output_counter, total_sum/divisor);
 
-  _add_sum(self, value);
-  _inc_count(self);
+  _add_sum(self, sum);
+  _add_count(self, count);
+}
+
+static void
+_add_data_point(StatsAggregator *s, gsize value)
+{
+  _add_data_points(s, value, 1);
 }
 
 static void
@@ -85,6 +91,7 @@ static void
 _set_virtual_function(StatsAggregatorAverage *self )
 {
   self->super.add_data_point = _add_data_point;
+  self->super.add_data_points = _add_data_points;
   self->super.reset = _reset;
 }
 
