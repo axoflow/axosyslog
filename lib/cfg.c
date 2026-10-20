@@ -564,7 +564,9 @@ cfg_run_parser(GlobalConfig *self, CfgLexer *lexer, CfgParser *parser, gpointer 
   old_lexer = self->lexer;
   self->lexer = lexer;
 
-  cfg_set_global_paths(self);
+  gboolean nested_parse = old_lexer != NULL;
+  if (!nested_parse)
+    cfg_set_global_paths(self);
 
   res = cfg_parser_parse(parser, lexer, result, arg);
 
