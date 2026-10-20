@@ -74,6 +74,15 @@ DestDriver::construct_worker(int worker_index)
   return &worker->super;
 }
 
+/* C Wrappers */
+
+void
+otel_dd_set_prefix(LogDriver *s, const gchar *prefix)
+{
+  DestDriver *self = (DestDriver *) ((GrpcDestDriver *) s)->cpp;
+  self->set_prefix(prefix);
+}
+
 LogDriver *
 otel_dd_new(GlobalConfig *cfg)
 {

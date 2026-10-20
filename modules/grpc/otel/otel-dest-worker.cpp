@@ -83,7 +83,7 @@ DestWorker::DestWorker(GrpcDestWorker *s)
     trace_service_request(arena.CreateMessage<ExportTraceServiceRequest>()),
     trace_service_response(arena.CreateMessage<ExportTraceServiceResponse>()),
     spans_current_batch_bytes(0),
-    formatter(s->super.owner->super.super.super.cfg)
+    formatter(s->super.owner->super.super.super.cfg, static_cast<DestDriver &>(owner).get_prefix())
 {
 }
 
