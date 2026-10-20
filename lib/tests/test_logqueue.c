@@ -384,6 +384,60 @@ Test(logqueue, log_queue_fifo_should_drop_only_non_flow_controlled_messages_thre
   log_queue_unref(q);
 }
 
+static gint queued_before_flush_len, queued_at_flush_len, queued_after_flush_len;
+
+static gpointer
+_long_input_queue_feed_thread(gpointer args)
+{
+  LogQueue *q = args;
+  LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
+  path_options.ack_needed = TRUE;
+
+  iv_init();
+  main_loop_worker_thread_start(MLW_ASYNC_WORKER);
+
+  fed_messages = 0;
+  acked_messages = 0;
+  feed_empty_messages(q, &path_options, 1023);
+  queued_before_flush_len = stats_counter_get(q->metrics.shared.queued_messages);
+  feed_empty_messages(q, &path_options, 1);
+  queued_at_flush_len = stats_counter_get(q->metrics.shared.queued_messages);
+  feed_empty_messages(q, &path_options, 10);
+  queued_after_flush_len = stats_counter_get(q->metrics.shared.queued_messages);
+
+  main_loop_worker_invoke_batch_callbacks();
+  main_loop_worker_thread_stop();
+  iv_deinit();
+  return NULL;
+}
+
+Test(logqueue, log_queue_fifo_flushes_long_input_queues)
+{
+  main_loop_worker_allocate_thread_space(1);
+  main_loop_worker_finalize_thread_space();
+
+  StatsClusterKeyBuilder *driver_sck_builder = stats_cluster_key_builder_new();
+  StatsClusterKeyBuilder *queue_sck_builder = stats_cluster_key_builder_new();
+  LogQueue *q = log_queue_fifo_new(OVERFLOW_SIZE, NULL, STATS_LEVEL0, driver_sck_builder, queue_sck_builder);
+  stats_cluster_key_builder_free(driver_sck_builder);
+  stats_cluster_key_builder_free(queue_sck_builder);
+
+  GThread *thread = g_thread_new(NULL, _long_input_queue_feed_thread, q);
+  g_thread_join(thread);
+
+  cr_assert_eq(queued_before_flush_len, 0, "the input queue is not propagated before it gets long");
+  cr_assert_eq(queued_at_flush_len, 1024, "a long input queue is propagated without waiting for the batch to end");
+  cr_assert_eq(queued_after_flush_len, 1024);
+  cr_assert_eq(stats_counter_get(q->metrics.shared.queued_messages), 1034);
+
+  send_some_messages(q, 1034, TRUE);
+  cr_assert_eq(fed_messages, acked_messages,
+               "did not receive enough acknowledgements: fed_messages=%d, acked_messages=%d",
+               fed_messages, acked_messages);
+
+  log_queue_unref(q);
+}
+
 Test(logqueue, log_queue_fifo_multiple_queues)
 {
   const gint fifo_size = 1;
