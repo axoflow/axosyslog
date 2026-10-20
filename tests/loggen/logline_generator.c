@@ -33,6 +33,7 @@
 #include <glib.h>
 
 static char line_buf_template[MAX_MESSAGE_LENGTH + 1];
+static int line_buf_template_len = 0;
 static int pos_timestamp1 = 0;
 static int pos_timestamp2 = 0;
 static int pos_seq = 0;
@@ -92,8 +93,20 @@ prepare_log_line_template(int syslog_proto, int framing, int message_length, cha
 
   line_buf_template[hdr_len + message_length - 1] = '\n';
   line_buf_template[hdr_len + message_length] = 0;
+  line_buf_template_len = hdr_len + message_length;
 
   return linelen;
+}
+
+/* snprintf("%0*u") without the cost of printf, @value is truncated to @width digits */
+static void
+format_zero_padded(char *dst, int width, gsize value)
+{
+  for (int i = width - 1; i >= 0; i--)
+    {
+      dst[i] = '0' + value % 10;
+      value /= 10;
+    }
 }
 
 int
@@ -111,12 +124,12 @@ generate_log_line(ThreadData *thread_context,
     }
 
   /* make a copy of logline template */
-  memcpy(buffer, line_buf_template, buffer_length < MAX_MESSAGE_LENGTH ? buffer_length : MAX_MESSAGE_LENGTH);
+  int line_len = MIN(line_buf_template_len, buffer_length);
+  memcpy(buffer, line_buf_template, line_len);
 
   /* create time stamps */
   struct timeval now;
   struct tm tm;
-  static int len;
 
   gint64 check_seq = rate / 10;
   if (check_seq > 1000)
@@ -127,26 +140,21 @@ generate_log_line(ThreadData *thread_context,
       if (now.tv_sec != thread_context->ts_formatted.tv_sec)
         {
           localtime_r(&now.tv_sec, &tm);
-          len = strftime(thread_context->stamp, sizeof(thread_context->stamp), "%Y-%m-%dT%H:%M:%S", &tm);
+          thread_context->stamp_datetime_len = strftime(thread_context->stamp, sizeof(thread_context->stamp),
+                                                        "%Y-%m-%dT%H:%M:%S", &tm);
           thread_context->ts_formatted = now;
 
           if (syslog_proto)
             format_timezone_offset_with_colon(thread_context->stamp, sizeof(thread_context->stamp), &tm);
+          thread_context->stamp_len = strlen(thread_context->stamp);
         }
     }
 
-  memcpy(&buffer[pos_timestamp2], thread_context->stamp, len);
-  memcpy(&buffer[pos_timestamp1], thread_context->stamp, strlen(thread_context->stamp));
+  memcpy(&buffer[pos_timestamp2], thread_context->stamp, thread_context->stamp_datetime_len);
+  memcpy(&buffer[pos_timestamp1], thread_context->stamp, thread_context->stamp_len);
 
-  /* print sequence number to logline */
-  char intbuf[16];
-  snprintf(intbuf, sizeof(intbuf), "%010" G_GSIZE_FORMAT, seq);
-  memcpy(&buffer[pos_seq], intbuf, 10);
+  format_zero_padded(&buffer[pos_seq], 10, seq);
+  format_zero_padded(&buffer[pos_thread_id], 4, thread_id);
 
-  /* print thread id */
-  char thread_id_buff[5];
-  snprintf(thread_id_buff, sizeof(thread_id_buff), "%04d", thread_id);
-  memcpy(&buffer[pos_thread_id], thread_id_buff, 4);
-
-  return strlen(buffer);
+  return line_len;
 }
