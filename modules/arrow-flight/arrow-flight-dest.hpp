@@ -25,6 +25,7 @@
 #define ARROW_FLIGHT_DEST_HPP
 
 #include "arrow-flight-dest.h"
+#include "arrow-flight-metrics.hpp"
 
 #include "compat/cpp-start.h"
 #include "template/templates.h"
@@ -181,6 +182,8 @@ public:
   {
     return this->arrow_schema;
   }
+
+  DestDriverMetrics metrics;
 
 private:
   ArrowFlightDestDriver *super;

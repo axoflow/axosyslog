@@ -409,7 +409,7 @@ DestinationWorker::format_path(LogMessage *msg)
   return this->buffer->str;
 }
 
-bool
+arrow::Status
 DestinationWorker::open_stream(const gchar *path)
 {
   (void) this->close_stream();
@@ -424,14 +424,14 @@ DestinationWorker::open_stream(const gchar *path)
       msg_error("arrow-flight: DoPut failed",
                 evt_tag_str("error", put_result.status().ToString().c_str()),
                 log_pipe_location_tag(&this->super->super.owner->super.super.super));
-      return false;
+      return put_result.status();
     }
 
   this->writer = std::move(put_result->writer);
   this->metadata_reader = std::move(put_result->reader);
   this->current_stream_path = path;
 
-  return true;
+  return arrow::Status::OK();
 }
 
 arrow::Status
@@ -529,7 +529,8 @@ DestinationWorker::flush(LogThreadedFlushMode mode)
 
   if (!this->writer || this->current_stream_path != path)
     {
-      if (!this->open_stream(path))
+      status = this->open_stream(path);
+      if (!status.ok())
         {
           result = LTR_NOT_CONNECTED;
           goto exit;
@@ -577,13 +578,13 @@ DestinationWorker::flush(LogThreadedFlushMode mode)
         }
       else
         {
+          status = arrow::Status::IOError("Stream closed without an ack");
           result = LTR_NOT_CONNECTED;
         }
       goto exit;
     }
 
-  status = arrow::ipc::GetRecordBatchSize(*batch, &batch_bytes);
-  if (status.ok())
+  if (arrow::ipc::GetRecordBatchSize(*batch, &batch_bytes).ok())
     {
       log_threaded_dest_worker_written_bytes_add(&this->super->super, batch_bytes);
       log_threaded_dest_driver_insert_batch_length_stats(this->super->super.owner, batch_bytes);
@@ -594,6 +595,10 @@ DestinationWorker::flush(LogThreadedFlushMode mode)
   result = LTR_SUCCESS;
 
 exit:
+  /* batch is only set once the builders are finished, earlier failures never reach the server. */
+  if (batch)
+    owner->metrics.insert_request_stats(status);
+
   this->prepare_batch();
   return result;
 }
