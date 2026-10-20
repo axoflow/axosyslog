@@ -67,8 +67,22 @@
 %token KW_KEEP_ALIVE
 %token KW_TIME
 %token KW_MAX_PINGS_WITHOUT_DATA
+%token KW_RESPONSE_ACTION
+%token KW_DISCONNECT
+%token KW_DROP
+%token KW_RETRY
+%token KW_SUCCESS
+%token KW_INVALID
+%token KW_IO_ERROR
+%token KW_CANCELLED
+%token KW_UNKNOWN_ERROR
+%token KW_KEY_ERROR
+%token KW_ALREADY_EXISTS
+%token KW_NOT_IMPLEMENTED
 
 %type <ptr> arrow_flight_dest
+%type <num> arrow_flight_dest_response
+%type <num> arrow_flight_dest_response_action
 
 %%
 
@@ -100,6 +114,7 @@ arrow_flight_dest_option
     }
   | KW_KEEP_ALIVE '(' arrow_flight_keepalive_options ')'
   | KW_SCHEMA '(' arrow_flight_schema_fields ')'
+  | KW_RESPONSE_ACTION '(' arrow_flight_dest_response_action_items ')'
   | threaded_dest_driver_general_option
   | threaded_dest_driver_workers_option
   | threaded_dest_driver_batch_option
@@ -115,6 +130,35 @@ arrow_flight_keepalive_option
   : KW_TIME '(' nonnegative_integer ')' { arrow_flight_dd_set_keepalive_time(last_driver, $3); }
   | KW_TIMEOUT '(' nonnegative_integer ')' { arrow_flight_dd_set_keepalive_timeout(last_driver, $3); }
   | KW_MAX_PINGS_WITHOUT_DATA '(' nonnegative_integer ')' { arrow_flight_dd_set_keepalive_max_pings(last_driver, $3); }
+  ;
+
+arrow_flight_dest_response_action_items
+  : arrow_flight_dest_response_action_item arrow_flight_dest_response_action_items
+  |
+  ;
+
+arrow_flight_dest_response_action_item
+  : arrow_flight_dest_response LL_ARROW arrow_flight_dest_response_action
+    {
+      arrow_flight_dd_set_response_action(last_driver, $1, $3);
+    }
+  ;
+
+arrow_flight_dest_response
+  : KW_INVALID { $$ = AFDR_INVALID; }
+  | KW_IO_ERROR { $$ = AFDR_IO_ERROR; }
+  | KW_CANCELLED { $$ = AFDR_CANCELLED; }
+  | KW_UNKNOWN_ERROR { $$ = AFDR_UNKNOWN_ERROR; }
+  | KW_KEY_ERROR { $$ = AFDR_KEY_ERROR; }
+  | KW_ALREADY_EXISTS { $$ = AFDR_ALREADY_EXISTS; }
+  | KW_NOT_IMPLEMENTED { $$ = AFDR_NOT_IMPLEMENTED; }
+  ;
+
+arrow_flight_dest_response_action
+  : KW_DISCONNECT { $$ = AFDRA_DISCONNECT; }
+  | KW_DROP { $$ = AFDRA_DROP; }
+  | KW_RETRY { $$ = AFDRA_RETRY; }
+  | KW_SUCCESS { $$ = AFDRA_SUCCESS; }
   ;
 
 arrow_flight_schema_fields
