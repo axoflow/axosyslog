@@ -31,6 +31,8 @@
 #include "cfg.h"
 #include "stats/stats-counter.h"
 #include "logsource.h"
+#include "timeutils/cache.h"
+#include "timeutils/misc.h"
 
 typedef struct _TestThreadedSourceDriver
 {
@@ -39,6 +41,8 @@ typedef struct _TestThreadedSourceDriver
   gboolean suspended;
   gboolean exit_requested;
   gboolean blocking_post;
+  gboolean check_realtime;
+  gboolean realtime_advanced;
 
   GList *pending_msgs;
 } TestThreadedSourceDriver;
@@ -49,6 +53,7 @@ MainLoop *main_loop;
 static void _worker_request_exit(LogThreadedSourceWorker *s);
 static void _worker_run_simple(LogThreadedSourceWorker *s);
 static void _worker_run_using_blocking_posts(LogThreadedSourceWorker *s);
+static void _worker_run_checking_realtime(LogThreadedSourceWorker *s);
 
 static const gchar *
 _generate_persist_name(const LogPipe *s)
@@ -102,7 +107,9 @@ _construct_worker(LogThreadedSourceDriver *s, gint worker_index)
   log_threaded_source_worker_init_instance(worker, s, worker_index);
 
   worker->request_exit = _worker_request_exit;
-  if (self->blocking_post)
+  if (self->check_realtime)
+    worker->run = _worker_run_checking_realtime;
+  else if (self->blocking_post)
     worker->run = _worker_run_using_blocking_posts;
   else
     worker->run = _worker_run_simple;
@@ -217,6 +224,20 @@ _worker_run_simple(LogThreadedSourceWorker *s)
     }
 }
 
+/* A worker that blocks without running an event loop: the time read after
+ * the block must not be the one cached before it. */
+static void
+_worker_run_checking_realtime(LogThreadedSourceWorker *s)
+{
+  TestThreadedSourceDriver *driver = (TestThreadedSourceDriver *) s->control;
+  struct timespec before, after;
+
+  get_cached_realtime(&before);
+  g_usleep(2000);
+  get_cached_realtime(&after);
+  driver->realtime_advanced = timespec_diff_nsec(&after, &before) > 0;
+}
+
 static void
 _worker_request_exit(LogThreadedSourceWorker *s)
 {
@@ -255,6 +276,19 @@ Test(logthrsourcedrv, test_threaded_source_blocking_post)
   StatsCounterItem *recvd_messages = _get_source(s)->metrics.recvd_messages;
   cr_assert(stats_counter_get(recvd_messages) == 10);
   cr_assert(s->exit_requested);
+
+  destroy_test_threaded_source(s);
+}
+
+Test(logthrsourcedrv, test_threaded_source_worker_sees_the_time_advance_across_a_block)
+{
+  TestThreadedSourceDriver *s = create_threaded_source();
+  s->check_realtime = TRUE;
+
+  start_test_threaded_source(s);
+  request_exit_and_wait_for_stop(s);
+
+  cr_assert(s->realtime_advanced, "the realtime cache must be disabled in a worker without an event loop");
 
   destroy_test_threaded_source(s);
 }

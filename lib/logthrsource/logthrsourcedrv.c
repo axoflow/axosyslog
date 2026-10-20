@@ -144,6 +144,9 @@ _worker_thread_init(MainLoopThreadedWorker *s)
 
   g_atomic_int_set(&self->under_termination, FALSE);
 
+  if (!self->runs_event_loop)
+    disable_realtime_cache();
+
   if (self->thread_init)
     return self->thread_init(self);
   return TRUE;
@@ -202,7 +205,8 @@ _worker_thread_request_exit(MainLoopThreadedWorker *s)
             evt_tag_str("driver", self->control->super.super.id),
             evt_tag_int("worker_index", self->worker_index));
   g_atomic_int_set(&self->under_termination, TRUE);
-  self->request_exit(self);
+  if (self->request_exit)
+    self->request_exit(self);
   _worker_wakeup(&self->super);
 }
 

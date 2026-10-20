@@ -23,7 +23,10 @@
 #include "libtest/fake-time.h"
 
 #include "timeutils/cache.h"
+#include "timeutils/misc.h"
 #include "apphook.h"
+
+#include <iv.h>
 
 Test(test_cache, test_cached_localtime_no_dst)
 {
@@ -151,3 +154,43 @@ teardown(void)
 }
 
 TestSuite(test_cache, .init = setup, .fini = teardown);
+
+/* The realtime cache's behaviour depends on the real clock, so these tests
+ * run with app_startup() only, which initialises ivykis for the test thread
+ * but never runs its loop, the same situation a threaded source worker is in. */
+
+static void
+setup_realtime(void)
+{
+  app_startup();
+  cr_assert(iv_inited());
+}
+
+TestSuite(test_cache_realtime, .init = setup_realtime, .fini = teardown);
+
+Test(test_cache_realtime, deferred_invalidation_keeps_the_value_until_the_event_loop_runs)
+{
+  struct timespec first, second;
+
+  get_cached_realtime(&first);
+  g_usleep(2000);
+  get_cached_realtime(&second);
+  cr_assert_eq(timespec_diff_nsec(&second, &first), 0,
+               "the invalidation is deferred to an ivykis task, which never runs here");
+}
+
+Test(test_cache_realtime, disabled_realtime_cache_hits_the_clock_on_every_read)
+{
+  struct timespec first, second, third;
+
+  get_cached_realtime(&first);
+  disable_realtime_cache();
+
+  /* the value cached before disabling is still handed out once */
+  get_cached_realtime(&second);
+  cr_assert_eq(timespec_diff_nsec(&second, &first), 0);
+
+  g_usleep(2000);
+  get_cached_realtime(&third);
+  cr_assert_gt(timespec_diff_nsec(&third, &first), 0, "the read after the sleep must hit the clock again");
+}
