@@ -456,6 +456,10 @@ DestinationWorker::close_stream()
 LogThreadedResult
 DestinationWorker::map_status_to_result(const arrow::Status &status)
 {
+  LogThreadedResult result;
+  if (this->get_owner()->handle_response(status, &result))
+    return result;
+
   if (status.ok())
     return LTR_SUCCESS;
 
@@ -572,13 +576,16 @@ DestinationWorker::flush(LogThreadedFlushMode mode)
   goto delivered;
 
 server_error:
-  msg_error(error_message,
-            evt_tag_str("error", status.ToString().c_str()),
-            log_pipe_location_tag(&this->super->super.owner->super.super.super));
   result = this->map_status_to_result(status);
   /* Stream is likely broken on the server side; drop it so the next flush opens a fresh one. */
   (void) this->close_stream();
-  goto exit;
+  if (result != LTR_SUCCESS)
+    {
+      msg_error(error_message,
+                evt_tag_str("error", status.ToString().c_str()),
+                log_pipe_location_tag(&this->super->super.owner->super.super.super));
+      goto exit;
+    }
 
 delivered:
   status = arrow::ipc::GetRecordBatchSize(*batch, &batch_bytes);
