@@ -234,6 +234,9 @@ log_template_compiler_process_arg_list(LogTemplateCompiler *self, GPtrArray *res
       if (*self->cursor == '\\')
         {
           self->cursor++;
+          /* trailing backslash: fall-through would step past the NUL */
+          if (!*self->cursor)
+            break;
         }
       else if (*self->cursor == '(')
         {

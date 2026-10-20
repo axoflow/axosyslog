@@ -211,6 +211,21 @@ Test(filterx_func_parse_cef, test_forced_empty_value_separator)
   g_error_free(error);
 }
 
+Test(filterx_func_parse_cef, test_nul_value_separator_is_rejected)
+{
+  const gchar *input = "CEF:0|Microsoft|MSExchange|4.0 SP1|15345|foo=bar";
+  GError *error = NULL;
+  FilterXFunctionArg *nul_sep = filterx_function_arg_new(EVENT_FORMAT_PARSER_ARG_NAME_VALUE_SEPARATOR,
+                                                         filterx_literal_new(filterx_string_new("\0X", 2)));
+  FilterXExpr *func = _new_parser(_assert_create_args(0, _create_msg_arg(input), nul_sep, NULL), &error);
+
+  cr_assert_not_null(error);
+  cr_assert_null(func);
+
+  filterx_expr_unref(func);
+  g_error_free(error);
+}
+
 static void
 setup(void)
 {

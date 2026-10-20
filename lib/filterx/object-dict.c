@@ -672,7 +672,7 @@ _filterx_dict_is_member_of(FilterXObject *s, FilterXObject *member)
     }
 
   if (!self->table)
-    return FALSE;
+    return filterx_boolean_new(FALSE);
 
   return filterx_boolean_new(_table_isset(self->table, member));
 }

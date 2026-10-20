@@ -113,16 +113,8 @@ filterx_type_init(FilterXType *type)
 FilterXObject *
 filterx_object_add_inplace_method(FilterXObject *self, FilterXObject *container, FilterXObject *object)
 {
-  FilterXObject *result = filterx_object_add(self, object);
-
-  /* NOTE: inmutable objects are not to change @self, rather they will
-   * return a new object.  This assumption may be lifted later (when the
-   * object is not shared), in that case this assert should be removed.
-   * Mutable objects are handled differently though FilterXRef, see the
-   * implementation of add/inline_add there.  */
-
-  g_assert(result != self);
-  return result;
+  /* cached immutable singletons are shared, so the result may be @self */
+  return filterx_object_add(self, object);
 }
 
 void

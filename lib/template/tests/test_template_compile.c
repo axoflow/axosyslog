@@ -398,4 +398,12 @@ teardown(void)
   app_shutdown();
 }
 
+Test(template_compile, test_template_function_with_a_trailing_backslash_fails)
+{
+  GError *error = NULL;
+
+  cr_assert_not(log_template_compile(template, "$(echo \\", &error));
+  g_clear_error(&error);
+}
+
 TestSuite(template_compile, .init = setup, .fini = teardown);
