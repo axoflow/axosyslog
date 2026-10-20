@@ -336,19 +336,33 @@ cfg_init(GlobalConfig *cfg)
 
   _run_module_post_cfg_inits(cfg);
   app_config_post_init();
-
-  if (cfg_is_dry_run(cfg))
-    return TRUE;
-
-  /*
-   * TLDR: A half-initialized pipeline turned out to be really hard to deinitialize
-   * correctly when dedicated source/destination threads are spawned (because we
-   * would have to wait for workers to stop and guarantee some internal
-   * task/timer/fdwatch ordering in ivykis during this action).
-   * See: https://github.com/syslog-ng/syslog-ng/pull/3176#issuecomment-638849597
-   */
-  g_assert(cfg_tree_post_config_init(&cfg->tree));
   return TRUE;
+}
+
+/*
+ * Run the post_config_init hooks of the pipeline, which start the worker
+ * threads of the threaded sources and destinations.
+ *
+ * This is deliberately not part of cfg_init(): a worker thread starts
+ * processing messages the moment it is started, while everything that
+ * follows cfg_init() in the main loop assumes that no message is in flight
+ * yet. So this is only called once all of that is done.
+ *
+ * TLDR: A half-initialized pipeline turned out to be really hard to
+ * deinitialize correctly when dedicated source/destination threads are
+ * spawned (because we would have to wait for workers to stop and guarantee
+ * some internal task/timer/fdwatch ordering in ivykis during this action).
+ * For this reason this function aborts if the post_config_init() hook fails.
+ *
+ * See: https://github.com/syslog-ng/syslog-ng/pull/3176#issuecomment-638849597
+ */
+void
+cfg_post_config_init(GlobalConfig *cfg)
+{
+  if (cfg_is_dry_run(cfg))
+    return;
+
+  g_assert(cfg_tree_post_config_init(&cfg->tree));
 }
 
 gboolean

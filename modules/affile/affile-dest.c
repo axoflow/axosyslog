@@ -95,8 +95,7 @@ struct _AFFileDestWriter
   gchar *filename;
   LogWriter *writer;
   time_t last_msg_stamp;
-  time_t last_open_stamp;
-  gboolean reopen_pending, queue_pending;
+  gboolean queue_pending;
 };
 
 static gchar *
@@ -111,6 +110,7 @@ affile_dw_format_persist_name(AFFileDestWriter *self)
 }
 
 static void affile_dd_reap_writer(AFFileDestDriver *self, AFFileDestWriter *dw);
+static void affile_dw_close(AFFileDestWriter *self);
 
 static void
 affile_dw_reap(AFFileDestWriter *self)
@@ -118,6 +118,14 @@ affile_dw_reap(AFFileDestWriter *self)
   AFFileDestDriver *owner = self->owner;
 
   main_loop_assert_main_thread();
+
+  if (!owner->filename_is_a_template)
+    {
+      /* the single writer of a non-template file is never reaped, its
+       * file is closed instead, see affile_dd_queue() for the reason */
+      affile_dw_close(self);
+      return;
+    }
 
   g_mutex_lock(&owner->lock);
   if (!log_writer_has_pending_writes((LogWriter *) self->writer) && !self->queue_pending)
@@ -142,7 +150,6 @@ affile_dw_reopen(AFFileDestWriter *self)
               evt_tag_str("filename", self->filename),
               evt_tag_str("symlink_as", self->owner->symlink_as));
 
-  self->last_open_stamp = self->last_msg_stamp;
   if (self->owner->overwrite_if_older > 0 &&
       stat(self->filename, &st) == 0 &&
       st.st_mtime < time(NULL) - self->owner->overwrite_if_older)
@@ -274,6 +281,24 @@ affile_dw_deinit(LogPipe *s)
 }
 
 /*
+ * Called for NC_CLOSE events for the single writer of a non-templated file
+ * destination. The reopen is managed by the LogWriter in a thread-safe manner.
+ */
+static void
+affile_dw_close(AFFileDestWriter *self)
+{
+  main_loop_assert_main_thread();
+
+  if (log_writer_has_pending_writes(self->writer))
+    return;
+
+  msg_verbose("Destination timed out, closing file",
+              evt_tag_str("filename", self->filename));
+
+  log_writer_close(self->writer);
+}
+
+/*
  * NOTE: the caller (e.g. AFFileDestDriver) holds a reference to @self, thus
  * @self may _never_ be freed, even if the reaper timer is elapsed in the
  * main thread.
@@ -282,24 +307,11 @@ static void
 affile_dw_queue(LogPipe *s, LogMessage *lm, const LogPathOptions *path_options)
 {
   AFFileDestWriter *self = (AFFileDestWriter *) s;
+  time_t now = get_cached_realtime_sec();
 
-  g_mutex_lock(&self->lock);
-  self->last_msg_stamp = get_cached_realtime_sec();
-  if (self->last_open_stamp == 0)
-    self->last_open_stamp = self->last_msg_stamp;
-
-  if (!log_writer_opened(self->writer) &&
-      !self->reopen_pending &&
-      (self->last_open_stamp < self->last_msg_stamp - self->owner->writer_options.time_reopen))
-    {
-      self->reopen_pending = TRUE;
-      /* if the file couldn't be opened, try it again every time_reopen seconds */
-      g_mutex_unlock(&self->lock);
-      affile_dw_reopen(self);
-      g_mutex_lock(&self->lock);
-      self->reopen_pending = FALSE;
-    }
-  g_mutex_unlock(&self->lock);
+  /* racy update: worst case the reap timer runs an iteration late */
+  if (self->last_msg_stamp != now)
+    self->last_msg_stamp = now;
 
   log_pipe_forward_msg(&self->super, lm, path_options);
 }
@@ -485,16 +497,12 @@ affile_dd_reap_writer(AFFileDestDriver *self, AFFileDestWriter *dw)
 
   main_loop_assert_main_thread();
 
-  if (self->filename_is_a_template)
-    {
-      /* remove from hash table */
-      g_hash_table_remove(self->writer_hash, dw->filename);
-    }
-  else
-    {
-      g_assert(dw == self->single_writer);
-      self->single_writer = NULL;
-    }
+  /* the single writer of a non-template file is closed instead of being
+   * reaped, see affile_dw_reap() */
+  g_assert(self->filename_is_a_template);
+
+  /* remove from hash table */
+  g_hash_table_remove(self->writer_hash, dw->filename);
 
   LogQueue *queue = log_writer_get_queue(writer);
   log_pipe_deinit(&dw->super);
@@ -669,7 +677,7 @@ affile_dd_open_writer(gpointer args[])
             {
               log_pipe_ref(&next->super);
               g_mutex_lock(&self->lock);
-              self->single_writer = next;
+              g_atomic_pointer_set(&self->single_writer, next);
               g_mutex_unlock(&self->lock);
             }
           else
@@ -739,23 +747,18 @@ affile_dd_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_options)
 
   if (!self->filename_is_a_template)
     {
-
-      /* we need to lock single_writer in order to get a reference and
-       * make sure it is not a stale pointer by the time we ref it */
-
-      g_mutex_lock(&self->lock);
-      if (!self->single_writer)
+      next = g_atomic_pointer_get(&self->single_writer);
+      if (G_LIKELY(next))
         {
-          g_mutex_unlock(&self->lock);
-          next = main_loop_call((void *(*)(void *)) affile_dd_open_writer, args, TRUE);
+          /* do not take a ref to next just to satisfy the deliver path below */
+          log_msg_add_ack(msg, path_options);
+          log_pipe_queue(&next->super, log_msg_ref(msg), path_options);
+          log_dest_driver_queue_method(s, msg, path_options);
+          return;
         }
-      else
-        {
-          next = self->single_writer;
-          next->queue_pending = TRUE;
-          log_pipe_ref(&next->super);
-          g_mutex_unlock(&self->lock);
-        }
+
+      /* Create single_writer in the main thread */
+      next = main_loop_call((void *(*)(void *)) affile_dd_open_writer, args, TRUE);
     }
   else
     {
