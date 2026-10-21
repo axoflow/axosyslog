@@ -30,6 +30,7 @@
 
 #include "otel-servicecall.hpp"
 #include "otel-source.hpp"
+#include "otel-ack-barrier.hpp"
 #include "otel-protobuf-parser.hpp"
 #include "otel-logmsg-handles.hpp"
 #include "filterx/otel-field-converter.hpp"
@@ -37,10 +38,12 @@
 #include "compat/cpp-start.h"
 #include "transport/tls-session.h"
 #include "filterx/filterx-eval.h"
+#include "ack-tracker/ack_tracker.h"
 #include "compat/cpp-end.h"
 
 #include <grpcpp/grpcpp.h>
 #include <grpc/grpc_security_constants.h>
+
 
 namespace syslogng {
 namespace grpc {
@@ -63,6 +66,7 @@ class AsyncServiceCall final : public AsyncServiceCallInterface
 {
 public:
   void Proceed(bool ok) override;
+  void post(LogMessage *msg, FilterXEvalContext *filterx_context = nullptr);
 
 public:
   AsyncServiceCall(SourceWorker &worker_, S *service_, ::grpc::ServerCompletionQueue *cq_)
@@ -71,12 +75,26 @@ public:
     service->RequestExport(&ctx, &request, &responder, cq, cq, this);
   }
 
+  ~AsyncServiceCall()
+  {
+    if (ack_barrier)
+      ack_barrier->unref();
+  }
+
+private:
+  void finish(const ::grpc::Status &final_status);
+  void finish_once_acked();
+  void post_replacement();
+
 private:
   SourceWorker &worker;
   S *service;
   ::grpc::ServerAsyncResponseWriter<Res> responder;
   Req request;
   Res response;
+  ::grpc::Status response_status;
+  AckBarrier *ack_barrier = nullptr;
+  bool replacement_posted = false;
 
   ::grpc::ServerCompletionQueue *cq;
   ::grpc::ServerContext ctx;
@@ -133,7 +151,7 @@ namespace otel {
 /* a separate function, so the scope FILTERX_EVAL_BEGIN_CONTEXT allocates with
  * g_alloca() is freed per log record, not accumulated for the whole request */
 static gboolean
-_post_log_record_as_filterx_dicts(SourceWorker &worker, FilterXScopeVariableLayout *layout, LogMessage *msg,
+_post_log_record_as_filterx_dicts(LogsServiceCall &call, FilterXScopeVariableLayout *layout, LogMessage *msg,
                                   const Resource &resource, const InstrumentationScope &scope,
                                   const LogRecord &log_record)
 {
@@ -150,7 +168,7 @@ _post_log_record_as_filterx_dicts(SourceWorker &worker, FilterXScopeVariableLayo
       _filterx_inject_var(eval_context.scope, layout, "log",
                           otel_protobuf_message_to_filterx_dict(log_record));
     if (converted)
-      worker.blocking_post(msg, &eval_context);
+      call.post(msg, &eval_context);
   }
   FILTERX_EVAL_END_CONTEXT(eval_context);
 
@@ -161,17 +179,57 @@ _post_log_record_as_filterx_dicts(SourceWorker &worker, FilterXScopeVariableLayo
 }
 }
 
+template <class S, class Req, class Res> void
+syslogng::grpc::otel::AsyncServiceCall<S, Req, Res>::post(LogMessage *msg, FilterXEvalContext *filterx_context)
+{
+  AckTracker *ack_tracker = worker.super->super.super.ack_tracker;
+
+  ack_barrier->add_bookmark(ack_tracker_request_bookmark(ack_tracker));
+  worker.blocking_post(msg, filterx_context);
+}
+
+template <class S, class Req, class Res> void
+syslogng::grpc::otel::AsyncServiceCall<S, Req, Res>::finish(const ::grpc::Status &final_status)
+{
+  responder.Finish(response, final_status, this);
+}
+
+template <class S, class Req, class Res> void
+syslogng::grpc::otel::AsyncServiceCall<S, Req, Res>::post_replacement()
+{
+  new AsyncServiceCall(worker, service, cq);
+  replacement_posted = true;
+}
+
+template <class S, class Req, class Res> void
+syslogng::grpc::otel::AsyncServiceCall<S, Req, Res>::finish_once_acked()
+{
+  status = SEND_RESPONSE;
+
+  if (ack_barrier->seal())
+    {
+      finish(response_status);
+      return;
+    }
+
+  /* a parked call must not hold back the next request of its service, nor
+   * keep the payload of its own */
+  request.Clear();
+  post_replacement();
+}
+
 template <> void
 syslogng::grpc::otel::TraceServiceCall::Proceed(bool ok)
 {
   if (status == SEND_RESPONSE || !ok)
     {
-      new TraceServiceCall(worker, service, cq);
+      if (!replacement_posted)
+        post_replacement();
       delete this;
       return;
     }
 
-  ::grpc::Status response_status = ::grpc::Status::OK;
+  ack_barrier = new AckBarrier([this] { finish(response_status); });
 
   TLSPeerInfo peer_info = { 0 };
   _extract_peer_info(ctx, &peer_info);
@@ -203,7 +261,7 @@ syslogng::grpc::otel::TraceServiceCall::Proceed(bool ok)
                                                  scope_spans_schema_url);
               ProtobufParser::store_raw(msg, span);
               _store_peer_info(msg, peer_info);
-              worker.blocking_post(msg);
+              post(msg);
 
               msgs_in_fetch_round++;
               if (msgs_in_fetch_round == worker.get_owner().get_fetch_limit())
@@ -218,8 +276,7 @@ syslogng::grpc::otel::TraceServiceCall::Proceed(bool ok)
   if (msgs_in_fetch_round != 0)
     log_threaded_source_worker_close_batch(&worker.super->super);
 
-  status = SEND_RESPONSE;
-  responder.Finish(response, response_status, this);
+  finish_once_acked();
 }
 
 template <> void
@@ -227,13 +284,14 @@ syslogng::grpc::otel::LogsServiceCall::Proceed(bool ok)
 {
   if (status == SEND_RESPONSE || !ok)
     {
-      new LogsServiceCall(worker, service, cq);
+      if (!replacement_posted)
+        post_replacement();
       delete this;
       return;
     }
 
   SourceDriver &owner = static_cast<SourceDriver &>(worker.get_owner());
-  ::grpc::Status response_status = ::grpc::Status::OK;
+  ack_barrier = new AckBarrier([this] { finish(response_status); });
 
   TLSPeerInfo peer_info = { 0 };
   _extract_peer_info(ctx, &peer_info);
@@ -278,20 +336,20 @@ syslogng::grpc::otel::LogsServiceCall::Proceed(bool ok)
                                                           scope_logs_schema_url))
                 {
                   ProtobufParser::store_syslog_ng(msg, log_record);
-                  worker.blocking_post(msg);
+                  post(msg);
                 }
               else if (owner.mode == OSM_LOGMESSAGE)
                 {
                   ProtobufParser::store_raw_metadata(msg, ctx.peer(), resource, resource_logs_schema_url, scope,
                                                      scope_logs_schema_url);
                   ProtobufParser::store_raw(msg, log_record);
-                  worker.blocking_post(msg);
+                  post(msg);
                 }
               else
                 {
                   ProtobufParser::store_peer_address(msg, ctx.peer());
 
-                  if (!_post_log_record_as_filterx_dicts(worker, filterx_scope_var_layout, msg,
+                  if (!_post_log_record_as_filterx_dicts(*this, filterx_scope_var_layout, msg,
                                                          resource, scope, log_record))
                     {
                       msg_error("opentelemetry: failed to convert log record to FilterX dicts, dropping message");
@@ -315,8 +373,7 @@ syslogng::grpc::otel::LogsServiceCall::Proceed(bool ok)
 
   filterx_scope_variable_layout_free(filterx_scope_var_layout);
 
-  status = SEND_RESPONSE;
-  responder.Finish(response, response_status, this);
+  finish_once_acked();
 }
 
 template <> void
@@ -324,12 +381,13 @@ syslogng::grpc::otel::MetricsServiceCall::Proceed(bool ok)
 {
   if (status == SEND_RESPONSE || !ok)
     {
-      new MetricsServiceCall(worker, service, cq);
+      if (!replacement_posted)
+        post_replacement();
       delete this;
       return;
     }
 
-  ::grpc::Status response_status = ::grpc::Status::OK;
+  ack_barrier = new AckBarrier([this] { finish(response_status); });
 
   TLSPeerInfo peer_info = { 0 };
   _extract_peer_info(ctx, &peer_info);
@@ -361,7 +419,7 @@ syslogng::grpc::otel::MetricsServiceCall::Proceed(bool ok)
                                                  scope_metrics_schema_url);
               ProtobufParser::store_raw(msg, metric);
               _store_peer_info(msg, peer_info);
-              worker.blocking_post(msg);
+              post(msg);
 
               msgs_in_fetch_round++;
               if (msgs_in_fetch_round == worker.get_owner().get_fetch_limit())
@@ -376,8 +434,7 @@ syslogng::grpc::otel::MetricsServiceCall::Proceed(bool ok)
   if (msgs_in_fetch_round != 0)
     log_threaded_source_worker_close_batch(&worker.super->super);
 
-  status = SEND_RESPONSE;
-  responder.Finish(response, response_status, this);
+  finish_once_acked();
 }
 
 #endif

@@ -27,6 +27,7 @@
 #include "compat/cpp-start.h"
 #include "messages.h"
 #include "cfg.h"
+#include "ack-tracker/ack_tracker_factory.h"
 #include "compat/cpp-end.h"
 
 #include <string>
@@ -321,6 +322,7 @@ otel_sd_new(GlobalConfig *cfg)
   self->super.reload_keep_alive = TRUE;
   self->super.reload_save = otel_sd_reload_save;
   self->super.reload_restore = otel_sd_reload_restore;
+  self->super.worker_options.ack_tracker_factory = instant_ack_tracker_factory_new();
 
   self->cpp = new SourceDriver(self);
   return &self->super.super.super;
