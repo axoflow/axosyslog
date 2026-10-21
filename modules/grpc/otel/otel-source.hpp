@@ -87,6 +87,7 @@ public:
   bool init() override;
   void run() override;
   void request_exit() override;
+  void shutdown_queue();
 
 private:
   friend TraceServiceCall;
@@ -96,6 +97,7 @@ private:
 
 private:
   std::unique_ptr<::grpc::ServerCompletionQueue> cq;
+  bool queue_drained = false;
   bool service_calls_registered;
   ::grpc::Alarm stop_scheduler;
   StopEventCall stop_call;
