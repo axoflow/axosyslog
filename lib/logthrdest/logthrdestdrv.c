@@ -1753,6 +1753,10 @@ _format_seqnum_persist_name(LogThreadedDestDriver *self)
 static gboolean
 _create_workers(LogThreadedDestDriver *self, gint stats_level, StatsClusterKeyBuilder *driver_sck_builder)
 {
+  /* compat mode has a single, embedded worker instance: _construct_worker()
+   * would hand out the same instance for every index */
+  g_assert(!_is_worker_compat_mode(self) || self->num_workers == 1);
+
   /* free previous workers array if set to cope with num_workers change */
   g_free(self->workers);
   self->workers = g_new0(LogThreadedDestWorker *, self->num_workers);
