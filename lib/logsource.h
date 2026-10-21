@@ -160,6 +160,9 @@ void log_source_wakeup(LogSource *self);
 void log_source_flow_control_adjust(LogSource *self, guint32 window_size_increment);
 void log_source_flow_control_adjust_when_suspended(LogSource *self, guint32 window_size_increment);
 void log_source_flow_control_suspend(LogSource *self);
+void log_source_ack_batch_begin(void);
+void log_source_ack_batch_end(void);
+void log_source_release_acked_msg(LogSource *self, AckType ack_type);
 void log_source_disable_bookmark_saving(LogSource *self);
 
 void log_source_enable_dynamic_window(LogSource *self, DynamicWindowPool *window_ctr);

@@ -23,6 +23,7 @@
 
 #include "logqueue.h"
 #include "logpipe.h"
+#include "logsource.h"
 #include "messages.h"
 #include "serialize.h"
 #include "stats/stats-registry.h"
@@ -71,6 +72,10 @@ QueueType log_queue_fifo_type = "FIFO";
  *   - the tail of the queue is only manipulated from the input threads
  *
  */
+
+/* propagate the per-thread input queue to the wait queue once it is this
+ * long, the check runs on every 128th item, so keep it a multiple of that */
+#define INPUT_QUEUE_FLUSH_LEN 1024
 
 typedef struct _InputQueue
 {
@@ -320,15 +325,15 @@ log_queue_fifo_push_tail(LogQueue *s, LogMessage *msg, const LogPathOptions *pat
   if (thread_index >= self->num_input_queues)
     thread_index = -1;
 
-  /* NOTE: we don't use high-water marks for now, as log_fetch_limit
-   * limits the number of items placed on the per-thread input queue
-   * anyway, and any sane number decreased the performance measurably.
+  /* NOTE: per-thread input queues collect the items that a single poll
+   * iteration produces, and once the reader is finished (either because
+   * the input is depleted or because of log_fetch_limit / window_size) the
+   * whole bunch is propagated to the "wait" queue.
    *
-   * This means that per-thread input queues contain _all_ items that
-   * a single poll iteration produces. And once the reader is finished
-   * (either because the input is depleted or because of
-   * log_fetch_limit / window_size) the whole bunch is propagated to
-   * the "wait" queue.
+   * With a large log_fetch_limit that would keep the consumer waiting and
+   * let the batch grow out of the cache, so the input queue is also
+   * propagated once it reaches INPUT_QUEUE_FLUSH_LEN items or gets older
+   * than 100msec.
    */
 
   if (thread_index >= 0)
@@ -368,14 +373,14 @@ log_queue_fifo_push_tail(LogQueue *s, LogMessage *msg, const LogPathOptions *pat
           gint64 input_queue_age_msec =
             unix_time_diff_in_msec(&msg->timestamps[LM_TS_RECVD], &self->input_queues[thread_index].first_message_recvd);
 
-          flush_input_queue = input_queue_age_msec > 100;
+          flush_input_queue = qlen >= INPUT_QUEUE_FLUSH_LEN || input_queue_age_msec > 100;
         }
       log_msg_unref(msg);
 
       if (flush_input_queue)
         {
-          /* if the input queue is more than 100msec old, let's do an
-           * explicit flush to avoid starving the consumer */
+          /* if the input queue is too long or more than 100msec old, let's
+           * do an explicit flush to avoid starving the consumer */
           log_queue_fifo_move_input(self, thread_index);
         }
       return;
@@ -513,8 +518,10 @@ log_queue_fifo_ack_backlog(LogQueue *s, guint rewind_count)
 {
   LogQueueFifo *self = (LogQueueFifo *) s;
   LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
+  gsize acked_size = 0;
   gint pos;
 
+  log_source_ack_batch_begin();
   for (pos = 0; pos < rewind_count && self->backlog_queue.len > 0; pos++)
     {
       LogMessageQueueNode *node;
@@ -522,7 +529,7 @@ log_queue_fifo_ack_backlog(LogQueue *s, guint rewind_count)
 
       iv_list_del(&node->list);
       self->backlog_queue.len--;
-      log_queue_memory_usage_sub(&self->super, log_msg_get_size(node->msg));
+      acked_size += log_msg_get_size(node->msg);
 
       if (!node->flow_control_requested)
         self->backlog_queue.non_flow_controlled_len--;
@@ -531,6 +538,10 @@ log_queue_fifo_ack_backlog(LogQueue *s, guint rewind_count)
       log_msg_ack(node->msg, &path_options, AT_PROCESSED);
       log_msg_free_queue_node(node);
     }
+  log_source_ack_batch_end();
+
+  if (pos > 0)
+    log_queue_memory_usage_sub(&self->super, acked_size);
 }
 
 /*
