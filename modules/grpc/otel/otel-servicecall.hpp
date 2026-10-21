@@ -46,6 +46,7 @@ class AsyncServiceCallInterface
 {
 public:
   virtual void Proceed(bool ok) = 0;
+  virtual void FinishUnavailable() {}
   virtual ~AsyncServiceCallInterface() = default;
 };
 

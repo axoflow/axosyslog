@@ -242,6 +242,11 @@ syslogng::grpc::otel::SourceWorker::shutdown_queue()
 bool
 syslogng::grpc::otel::SourceWorker::init()
 {
+  {
+    std::lock_guard<std::mutex> lock(this->parked_calls_lock);
+    this->exiting = false;
+  }
+
   if (this->service_calls_registered)
     return true;
 
@@ -281,9 +286,36 @@ syslogng::grpc::otel::SourceWorker::run()
     }
 }
 
+bool
+syslogng::grpc::otel::SourceWorker::park(AsyncServiceCallInterface *call)
+{
+  std::lock_guard<std::mutex> lock(this->parked_calls_lock);
+
+  if (this->exiting)
+    return false;
+
+  this->parked_calls.insert(call);
+  return true;
+}
+
+void
+syslogng::grpc::otel::SourceWorker::unpark(AsyncServiceCallInterface *call)
+{
+  std::lock_guard<std::mutex> lock(this->parked_calls_lock);
+  this->parked_calls.erase(call);
+}
+
 void
 syslogng::grpc::otel::SourceWorker::request_exit()
 {
+  {
+    std::lock_guard<std::mutex> lock(this->parked_calls_lock);
+    this->exiting = true;
+    /* under the lock: unpark() takes it before a call deletes itself, so the swept calls stay alive */
+    for (AsyncServiceCallInterface *call : this->parked_calls)
+      call->FinishUnavailable();
+  }
+
   this->stop_scheduler.Set(this->cq.get(), gpr_inf_past(GPR_CLOCK_MONOTONIC), &this->stop_call);
 }
 

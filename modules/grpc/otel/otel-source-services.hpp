@@ -44,6 +44,7 @@
 #include <grpcpp/grpcpp.h>
 #include <grpc/grpc_security_constants.h>
 
+#include <atomic>
 
 namespace syslogng {
 namespace grpc {
@@ -66,6 +67,7 @@ class AsyncServiceCall final : public AsyncServiceCallInterface
 {
 public:
   void Proceed(bool ok) override;
+  void FinishUnavailable() override;
   void post(LogMessage *msg, FilterXEvalContext *filterx_context = nullptr);
 
 public:
@@ -77,8 +79,11 @@ public:
 
   ~AsyncServiceCall()
   {
-    if (ack_barrier)
-      ack_barrier->unref();
+    if (!ack_barrier)
+      return;
+
+    ack_barrier->detach();
+    ack_barrier->unref();
   }
 
 private:
@@ -94,6 +99,7 @@ private:
   Res response;
   ::grpc::Status response_status;
   AckBarrier *ack_barrier = nullptr;
+  std::atomic<bool> response_sent{false};
   bool replacement_posted = false;
 
   ::grpc::ServerCompletionQueue *cq;
@@ -188,10 +194,20 @@ syslogng::grpc::otel::AsyncServiceCall<S, Req, Res>::post(LogMessage *msg, Filte
   worker.blocking_post(msg, filterx_context);
 }
 
+/* once per call: the last acknowledgement and request_exit() race for it */
 template <class S, class Req, class Res> void
 syslogng::grpc::otel::AsyncServiceCall<S, Req, Res>::finish(const ::grpc::Status &final_status)
 {
+  if (response_sent.exchange(true))
+    return;
+
   responder.Finish(response, final_status, this);
+}
+
+template <class S, class Req, class Res> void
+syslogng::grpc::otel::AsyncServiceCall<S, Req, Res>::FinishUnavailable()
+{
+  finish(::grpc::Status(::grpc::StatusCode::UNAVAILABLE, "Server is unavailable"));
 }
 
 template <class S, class Req, class Res> void
@@ -212,6 +228,12 @@ syslogng::grpc::otel::AsyncServiceCall<S, Req, Res>::finish_once_acked()
       return;
     }
 
+  if (!worker.park(this))
+    {
+      FinishUnavailable();
+      return;
+    }
+
   /* a parked call must not hold back the next request of its service, nor
    * keep the payload of its own */
   request.Clear();
@@ -223,6 +245,7 @@ syslogng::grpc::otel::TraceServiceCall::Proceed(bool ok)
 {
   if (status == SEND_RESPONSE || !ok)
     {
+      worker.unpark(this);
       if (!replacement_posted)
         post_replacement();
       delete this;
@@ -284,6 +307,7 @@ syslogng::grpc::otel::LogsServiceCall::Proceed(bool ok)
 {
   if (status == SEND_RESPONSE || !ok)
     {
+      worker.unpark(this);
       if (!replacement_posted)
         post_replacement();
       delete this;
@@ -381,6 +405,7 @@ syslogng::grpc::otel::MetricsServiceCall::Proceed(bool ok)
 {
   if (status == SEND_RESPONSE || !ok)
     {
+      worker.unpark(this);
       if (!replacement_posted)
         post_replacement();
       delete this;
