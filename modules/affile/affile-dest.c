@@ -278,10 +278,10 @@ affile_dw_deinit(LogPipe *s)
  * @self may _never_ be freed, even if the reaper timer is elapsed in the
  * main thread.
  */
-static void
-affile_dw_queue(LogPipe *s, LogMessage *lm, const LogPathOptions *path_options)
+static gboolean
+affile_dw_reopen_if_needed(AFFileDestWriter *self)
 {
-  AFFileDestWriter *self = (AFFileDestWriter *) s;
+  gboolean opened;
 
   g_mutex_lock(&self->lock);
   self->last_msg_stamp = get_cached_realtime_sec();
@@ -299,8 +299,18 @@ affile_dw_queue(LogPipe *s, LogMessage *lm, const LogPathOptions *path_options)
       g_mutex_lock(&self->lock);
       self->reopen_pending = FALSE;
     }
+  opened = log_writer_opened(self->writer);
   g_mutex_unlock(&self->lock);
 
+  return opened;
+}
+
+static void
+affile_dw_queue(LogPipe *s, LogMessage *lm, const LogPathOptions *path_options)
+{
+  AFFileDestWriter *self = (AFFileDestWriter *) s;
+
+  affile_dw_reopen_if_needed(self);
   log_pipe_forward_msg(&self->super, lm, path_options);
 }
 
@@ -730,6 +740,21 @@ affile_dd_open_writer(gpointer args[])
   return NULL;
 }
 
+/* a file destination is unreachable on a destination-failover path if its
+ * file could not be opened: either the writer could not be created at all,
+ * or its file is still closed after the reopen attempt due at this point */
+static gboolean
+affile_dd_reject_if_unreachable(AFFileDestWriter *next, LogMessage *msg, const LogPathOptions *path_options)
+{
+  if (!path_options->destination_failover || (next && affile_dw_reopen_if_needed(next)))
+    return FALSE;
+
+  if (path_options->matched)
+    *path_options->matched = FALSE;
+  log_msg_drop(msg, path_options, AT_PROCESSED);
+  return TRUE;
+}
+
 static void
 affile_dd_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_options)
 {
@@ -785,6 +810,17 @@ affile_dd_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_options)
         }
       g_string_free(filename, TRUE);
     }
+
+  if (affile_dd_reject_if_unreachable(next, msg, path_options))
+    {
+      if (next)
+        {
+          next->queue_pending = FALSE;
+          log_pipe_unref(&next->super);
+        }
+      return;
+    }
+
   if (next)
     {
       log_msg_add_ack(msg, path_options);
