@@ -19,6 +19,9 @@ axosyslog-build autotools  # release/packaging build instead
   build-tree `build/syslog-ng/syslog-ng` — the latter misses runtime libraries
   and does not match how syslog-ng really executes (module path, persist/control
   sockets). `axosyslog-build` installs and runs from the prefix for you.
+- **dbld builds always use the devshell image**: pass `--image=devshell`
+  instead of relying on dbld's `DEFAULT_IMAGE`, which may lack
+  development headers (e.g. valgrind).
 - **Every mode works from a linked git worktree**, dbld included: `dbld/rules`
   mounts a worktree at its host path (plus the main checkout's `.git`) and
   symlinks `/source` to it, so the relative submodule paths git records still
