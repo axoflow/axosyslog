@@ -105,8 +105,8 @@ SourceDriver::generate_persist_name()
 
   /* worker scaling during reload is not supported, hence num_workers is here */
   if (this->super->super.super.super.super.persist_name)
-    g_snprintf(persist_name, sizeof(persist_name), "opentelemetry.%s",
-               this->super->super.super.super.super.persist_name);
+    g_snprintf(persist_name, sizeof(persist_name), "opentelemetry.%s(%d)",
+               this->super->super.super.super.super.persist_name, this->super->super.num_workers);
   else
     g_snprintf(persist_name, sizeof(persist_name), "opentelemetry(%s, %d)",
                this->get_unique_id_fragment().c_str(), this->super->super.num_workers);
