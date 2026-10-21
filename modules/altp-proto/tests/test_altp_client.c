@@ -504,15 +504,12 @@ _process_in(AltpTestSender *self)
   return status;
 }
 
-/* Hand a message over the way log_writer_write_message() does: the proto takes ownership of the payload. */
+/* Hand a message over the way log_writer_write_message() does. */
 static LogProtoStatus
 _post(AltpTestSender *self, const gchar *payload, gboolean *consumed)
 {
-  guchar *msg = (guchar *) g_strdup(payload);
-  LogProtoStatus status = log_proto_client_post(self->proto, NULL, msg, strlen(payload), consumed);
-
-  if (!*consumed)
-    g_free(msg);
+  LogProtoStatus status = log_proto_client_post(self->proto, NULL, (const guchar *) payload, strlen(payload),
+                                                consumed);
 
   _collect_written(self);
 

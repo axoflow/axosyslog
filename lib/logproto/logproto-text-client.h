@@ -25,29 +25,32 @@
 
 #include "logproto-client.h"
 
-#include <sys/uio.h>
-
 typedef struct _LogProtoTextClient
 {
   LogProtoClient super;
-  gint state, next_state;
-  guchar *partial;
-  GDestroyNotify partial_free;
-  gsize partial_len, partial_pos;
 
+  /* messages accepted by post() but not acked yet, stored back-to-back so
+   * that a single write() sends all of them */
   struct
   {
-    struct iovec *iov;
+    GString *data;
+    gsize written;
+    gsize *msg_lens;
     gint size;
     gint count;
-    gsize partial_pos;
+    /* the messages at the front that have been written completely */
+    gint acked;
+    gsize acked_len;
+    /* a write left data behind: accept nothing until it is written, a
+     * blocked SSL_write() must be repeated with the same buffer */
+    gboolean draining;
   } batch;
 } LogProtoTextClient;
 
-LogProtoStatus log_proto_text_client_submit_write(LogProtoClient *s, guchar *msg, gsize msg_len,
-                                                  GDestroyNotify msg_free, gint next_state);
-LogProtoStatus log_proto_text_client_post_method(LogProtoClient *s, LogMessage *logmsg, guchar *msg, gsize msg_len,
-                                                 gboolean *consumed);
+LogProtoStatus log_proto_text_client_post_with_prefix(LogProtoClient *s, const guchar *prefix, gsize prefix_len,
+                                                      const guchar *msg, gsize msg_len, gboolean *consumed);
+LogProtoStatus log_proto_text_client_post_method(LogProtoClient *s, LogMessage *logmsg, const guchar *msg,
+                                                 gsize msg_len, gboolean *consumed);
 void log_proto_text_client_init(LogProtoTextClient *self, LogTransport *transport,
                                 const LogProtoClientOptions *options,
                                 gboolean batching_supported);
@@ -55,6 +58,6 @@ LogProtoClient *log_proto_text_client_new(LogTransport *transport, const LogProt
 
 LogProtoClient *log_proto_unidirectional_text_client_new(LogTransport *transport, const LogProtoClientOptions *options);
 
-#define log_proto_text_client_free_method log_proto_client_free_method
+void log_proto_text_client_free_method(LogProtoClient *s);
 
 #endif

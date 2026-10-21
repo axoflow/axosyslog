@@ -282,7 +282,7 @@ Test(splunk_s2s_roundtrip, codec_preserves_events_across_the_metadata_and_size_m
     {
       LogMessage *msg = _msg_new(cases[i].index, cases[i].source, cases[i].sourcetype, cases[i].host, 1700000000 + i);
       gboolean consumed = FALSE;
-      cr_assert_eq(log_proto_client_post(client, msg, (guchar *) g_strdup(cases[i].payload),
+      cr_assert_eq(log_proto_client_post(client, msg, (const guchar *) cases[i].payload,
                                          strlen(cases[i].payload), &consumed), LPS_SUCCESS);
       cr_assert(consumed);
       log_msg_unref(msg);
@@ -376,8 +376,10 @@ Test(splunk_s2s_roundtrip, live_session_delivers_events_and_flows_acks_back)
       LogMessage *msg = _msg_new("idx", "src", "st", "h", 1700000000 + i);
       gboolean consumed = FALSE;
       gchar *payload = g_strdup_printf("event %d", i);
-      cr_assert_eq(log_proto_client_post(client, msg, (guchar *) payload, strlen(payload), &consumed), LPS_SUCCESS);
+      cr_assert_eq(log_proto_client_post(client, msg, (const guchar *) payload, strlen(payload), &consumed),
+                   LPS_SUCCESS);
       cr_assert(consumed);
+      g_free(payload);
       log_msg_unref(msg);
     }
   _pump(client_transport, server_transport);
