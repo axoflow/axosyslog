@@ -41,4 +41,5 @@ axosyslog-build autotools  # release/packaging build instead
   configure result otherwise. In dbld mode `--clean` also empties
   `dbld/install/`, which `dbld/rules clean` leaves alone; a monolithic binary
   would otherwise dlopen the shared modules a previous dynamic build left
-  there and abort on doubly registered protobuf extensions.
+  there and abort on doubly registered protobuf extensions. The runtime data
+  in `dbld/install/etc/` and `dbld/install/var/` is kept.
