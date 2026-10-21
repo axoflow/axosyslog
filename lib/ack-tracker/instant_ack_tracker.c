@@ -26,24 +26,63 @@
 #include "bookmark.h"
 #include "syslog-ng.h"
 
-typedef struct _InstantAckRecord
+typedef struct _InstantAckRecord InstantAckRecord;
+
+struct _InstantAckRecord
 {
   AckRecord super;
-  void *padding;
-} InstantAckRecord;
+  InstantAckRecord *next_free;
+};
 
 typedef struct _InstantAckTracker
 {
   AckTracker super;
   InstantAckRecord *pending_ack_record;
+  /* the records of acknowledged messages, a lock-free stack: the acking
+   * threads push, the source thread takes them all at once */
+  InstantAckRecord *free_list;
 } InstantAckTracker;
+
+static void
+_free_list_push(InstantAckTracker *self, InstantAckRecord *record)
+{
+  InstantAckRecord *head;
+
+  do
+    {
+      head = g_atomic_pointer_get(&self->free_list);
+      record->next_free = head;
+    }
+  while (!g_atomic_pointer_compare_and_exchange(&self->free_list, head, record));
+}
+
+static InstantAckRecord *
+_free_list_take_all(InstantAckTracker *self)
+{
+  return g_atomic_pointer_exchange((gpointer *) &self->free_list, NULL);
+}
+
+static void
+_ack_records_free(InstantAckRecord *record)
+{
+  while (record)
+    {
+      InstantAckRecord *next = record->next_free;
+
+      g_free(record);
+      record = next;
+    }
+}
 
 static Bookmark *
 _request_bookmark(AckTracker *s)
 {
   InstantAckTracker *self = (InstantAckTracker *)s;
   if (!self->pending_ack_record)
-    self->pending_ack_record = g_new0(InstantAckRecord, 1);
+    {
+      _ack_records_free(_free_list_take_all(self));
+      self->pending_ack_record = g_new0(InstantAckRecord, 1);
+    }
 
   return &(self->pending_ack_record->super.bookmark);
 }
@@ -66,11 +105,11 @@ _save_bookmark(LogMessage *msg)
 }
 
 static void
-_ack_record_free(AckRecord *s)
+_ack_record_free(InstantAckTracker *self, AckRecord *s)
 {
   bookmark_destroy(&s->bookmark);
 
-  g_free(s);
+  _free_list_push(self, (InstantAckRecord *) s);
 }
 
 static void
@@ -79,7 +118,7 @@ _manage_msg_ack(AckTracker *s, LogMessage *msg, AckType ack_type)
   InstantAckTracker *self = (InstantAckTracker *)s;
 
   _save_bookmark(msg);
-  _ack_record_free(msg->ack_record);
+  _ack_record_free(self, msg->ack_record);
   log_source_flow_control_adjust(self->super.source, 1);
 
   if (ack_type == AT_SUSPENDED)
@@ -93,6 +132,8 @@ static void
 _free(AckTracker *s)
 {
   InstantAckTracker *self = (InstantAckTracker *)s;
+
+  _ack_records_free(_free_list_take_all(self));
   if (self->pending_ack_record)
     g_free(self->pending_ack_record);
 
