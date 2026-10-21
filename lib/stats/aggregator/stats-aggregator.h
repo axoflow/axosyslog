@@ -32,6 +32,7 @@ typedef struct _StatsAggregator StatsAggregator;
 struct _StatsAggregator
 {
   void (*add_data_point)(StatsAggregator *self, gsize value);
+  void (*add_data_points)(StatsAggregator *self, gsize sum, gsize count);
   void (*aggregate)(StatsAggregator *self);
   void (*reset)(StatsAggregator *self);
   void (*free_fn)(StatsAggregator *self);
@@ -53,6 +54,24 @@ stats_aggregator_add_data_point(StatsAggregator *self, gsize value)
 {
   if (self && self->add_data_point)
     self->add_data_point(self, value);
+}
+
+/* add @count data points summing up to @sum, for aggregators that only care
+ * about their sum (e.g. average).  Others get @count times the mean. */
+static inline void
+stats_aggregator_add_data_points(StatsAggregator *self, gsize sum, gsize count)
+{
+  if (!self || count == 0)
+    return;
+
+  if (self->add_data_points)
+    {
+      self->add_data_points(self, sum, count);
+      return;
+    }
+
+  for (gsize i = 0; i < count; i++)
+    stats_aggregator_add_data_point(self, sum / count);
 }
 
 static inline void

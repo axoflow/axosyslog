@@ -26,6 +26,7 @@
 #include "stats/stats-registry.h"
 #include "stats/aggregator/stats-aggregator-registry.h"
 #include "stats/stats-cluster-single.h"
+#include "stats/stats-counter-batch.h"
 #include "stats/aggregator/stats-aggregator.h"
 #include "stats/stats-compat.h"
 #include "hostname.h"
@@ -67,8 +68,6 @@ struct _LogWriter
   LogPipe super;
   LogQueue *queue;
   guint32 flags:31;
-  gint32 seq_num;
-  gboolean partial_write;
 
   struct
   {
@@ -85,6 +84,14 @@ struct _LogWriter
 
     StatsAggregator *max_message_size;
     StatsAggregator *average_messages_size;
+    /* sizes of the messages written by the current flush, they are added
+     * to the aggregators above at its end */
+    struct
+    {
+      gsize count;
+      gsize sum;
+      gsize max;
+    } pending_msg_sizes;
     StatsAggregator *CPS;
     StatsClusterKey *message_latency_key;
     StatsAggregator *message_latency;
@@ -105,9 +112,13 @@ struct _LogWriter
   gchar *stats_id;
 
   struct iv_fd fd_watch;
+  gint32 seq_num;
+  gboolean partial_write;
+
   struct iv_timer suspend_timer;
   struct iv_task immed_io_task;
   struct iv_event queue_filled;
+  gboolean closed;
   MainLoopIOWorkerJob io_job;
   GMutex suppress_lock;
   MlBatchedTimer suppress_timer;
@@ -412,6 +423,16 @@ log_writer_queue_filled(gpointer s)
   LogWriter *self = (LogWriter *) s;
 
   main_loop_assert_main_thread();
+
+  if (self->closed)
+    {
+      /* closed by the owner and we received data into our queue, we need to
+       * trigger a reopen. */
+
+      self->closed = FALSE;
+      log_pipe_notify(self->control, NC_REOPEN_REQUIRED, self);
+      return;
+    }
 
   /*
    * NOTE: This theory is somewhat questionable, e.g. I'm not 100% sure it
@@ -867,7 +888,7 @@ log_writer_queue(LogPipe *s, LogMessage *lm, const LogPathOptions *path_options)
       log_writer_postpone_mark_timer(self);
     }
 
-  stats_counter_inc(self->metrics.processed_messages);
+  stats_counter_inc_batched(self->metrics.processed_messages);
   log_queue_push_tail(self->queue, lm, path_options);
 }
 
@@ -1137,14 +1158,6 @@ log_writer_broken(LogWriter *self, gint notify_code)
   log_pipe_notify(self->control, notify_code, self);
 }
 
-static void
-log_writer_realloc_line_buffer(LogWriter *self)
-{
-  self->line_buffer->str = g_malloc(self->line_buffer->allocated_len);
-  self->line_buffer->str[0] = 0;
-  self->line_buffer->len = 0;
-}
-
 /*
  * Write messages to the underlying file descriptor using the installed
  * LogProtoClient instance.  This is called whenever the output is ready to accept
@@ -1165,10 +1178,25 @@ log_writer_flush_finalize(LogWriter *self)
 }
 
 static void
+log_writer_apply_pending_msg_sizes(LogWriter *self)
+{
+  if (self->metrics.pending_msg_sizes.count == 0)
+    return;
+
+  stats_aggregator_add_data_point(self->metrics.max_message_size, self->metrics.pending_msg_sizes.max);
+  stats_aggregator_add_data_points(self->metrics.average_messages_size, self->metrics.pending_msg_sizes.sum,
+                                   self->metrics.pending_msg_sizes.count);
+  self->metrics.pending_msg_sizes.count = 0;
+  self->metrics.pending_msg_sizes.sum = 0;
+  self->metrics.pending_msg_sizes.max = 0;
+}
+
+static void
 log_writer_update_message_stats(LogWriter *self, const LogMessage *msg, gsize msg_len)
 {
-  stats_aggregator_add_data_point(self->metrics.max_message_size, msg_len);
-  stats_aggregator_add_data_point(self->metrics.average_messages_size, msg_len);
+  self->metrics.pending_msg_sizes.count++;
+  self->metrics.pending_msg_sizes.sum += msg_len;
+  self->metrics.pending_msg_sizes.max = MAX(self->metrics.pending_msg_sizes.max, msg_len);
 
   if (!self->metrics.message_latency)
     return;
@@ -1201,25 +1229,17 @@ log_writer_write_message(LogWriter *self, LogMessage *msg, LogPathOptions *path_
   if (self->line_buffer->len)
     {
       msg_len = self->line_buffer->len;
-      LogProtoStatus status = log_proto_client_post(self->proto, msg, (guchar *)self->line_buffer->str,
+      LogProtoStatus status = log_proto_client_post(self->proto, msg, (const guchar *) self->line_buffer->str,
                                                     self->line_buffer->len,
                                                     &consumed);
 
       self->partial_write = (status == LPS_PARTIAL);
 
-      if (consumed)
-        log_writer_realloc_line_buffer(self);
-
       if (status == LPS_ERROR)
         {
           if ((self->options->options & LWO_IGNORE_ERRORS) != 0)
             {
-              if (!consumed)
-                {
-                  g_free(self->line_buffer->str);
-                  log_writer_realloc_line_buffer(self);
-                  consumed = TRUE;
-                }
+              consumed = TRUE;
             }
           else
             {
@@ -1291,6 +1311,8 @@ log_writer_flush(LogWriter *self, LogWriterFlushMode flush_mode)
    * infinite loop, since the reader will cease to produce new messages when
    * main_loop_io_worker_job_quit() is set. */
 
+  /* the counters updated for every message are applied once at the end */
+  stats_counter_batch_begin();
   while ((!main_loop_worker_job_quit() || flush_mode == LW_FLUSH_FORCE) && !write_error)
     {
       LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
@@ -1309,8 +1331,10 @@ log_writer_flush(LogWriter *self, LogWriterFlushMode flush_mode)
       scratch_buffers_reclaim_marked(mark);
 
       if (!write_error)
-        stats_counter_inc(self->metrics.written_messages);
+        stats_counter_inc_batched(self->metrics.written_messages);
     }
+  log_writer_apply_pending_msg_sizes(self);
+  stats_counter_batch_end();
 
   if (write_error)
     return LPS_ERROR;
@@ -1653,6 +1677,7 @@ log_writer_set_proto(LogWriter *self, LogProtoClient *proto)
 
   if (proto)
     {
+      self->closed = FALSE;
       LogProtoClientFlowControlFuncs flow_control_funcs;
       flow_control_funcs.ack_callback = log_writer_msg_ack;
       flow_control_funcs.rewind_callback = log_writer_msg_rewind_cb;
@@ -1732,6 +1757,35 @@ log_writer_reopen_deferred(gpointer s)
 
   if (proto)
     log_writer_start_watches(self);
+}
+
+/*
+ * Close the output of the writer without tearing the writer down and
+ * without arming the reopen timer. Once closed, an NC_REOPEN_REQUIRED
+ * is triggered if new data arrives.
+ */
+void
+log_writer_close(LogWriter *self)
+{
+  gint timeout_msec = 0;
+
+  main_loop_assert_main_thread();
+  g_assert(!self->io_job.working);
+
+  log_writer_stop_watches(self);
+
+  if (self->partial_write)
+    log_queue_rewind_backlog_all(self->queue);
+
+  log_writer_free_proto(self);
+  log_writer_set_proto(self, NULL);
+  self->closed = TRUE;
+
+  /* wake us up (in the main thread) when the queue has data */
+  if (log_queue_check_items(self->queue, &timeout_msec,
+                            (LogQueuePushNotifyFunc) log_writer_schedule_update_watches, self, NULL)
+      || timeout_msec)
+    log_writer_schedule_update_watches(self);
 }
 
 /*

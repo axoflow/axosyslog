@@ -122,7 +122,7 @@ test_pipe_init(void)
 }
 
 void
-test_pipe_ack_messages(TestPipe *pipe, gsize ack_count)
+test_pipe_ack_messages_with_type(TestPipe *pipe, gsize ack_count, AckType ack_type)
 {
   for (gsize i = 0; i < ack_count; ++i)
     {
@@ -131,8 +131,14 @@ test_pipe_ack_messages(TestPipe *pipe, gsize ack_count)
       pipe->messages_count--;
 
       LogPathOptions path_options = { .ack_needed = TRUE };
-      log_msg_drop(msg, &path_options, AT_PROCESSED);
+      log_msg_drop(msg, &path_options, ack_type);
     }
+}
+
+void
+test_pipe_ack_messages(TestPipe *pipe, gsize ack_count)
+{
+  test_pipe_ack_messages_with_type(pipe, ack_count, AT_PROCESSED);
 }
 
 void
@@ -145,11 +151,14 @@ test_pipe_destroy(TestPipe *pipe)
 }
 
 
+static gint resolve_count;
+
 const gchar *
 MOCK_FUNCTION(resolve_sockaddr_to_hostname)(gsize *result_len, GSockAddr *saddr,
                                             const HostResolveOptions *host_resolve_options)
 {
   static const gchar *test_hostname = "resolved-test-host";
+  resolve_count++;
   *result_len = strlen(test_hostname);
   return test_hostname;
 }
@@ -200,6 +209,50 @@ StaticParameterizedTest(MangleHostnameParams *test_params, test_mangle_hostname_
   cr_assert_str_eq(actual_hostname, test_params->expected_hostname);
 
   log_msg_unref(msg);
+  test_source_destroy(source);
+}
+
+static void
+_mangle_hostname_of_msg_from(LogSource *source, const gchar *ip, gint64 recvd_sec)
+{
+  LogMessage *msg = log_msg_new_empty();
+
+  msg->timestamps[LM_TS_RECVD].ut_sec = recvd_sec;
+  if (ip)
+    {
+      GSockAddr *saddr = g_sockaddr_inet_new(ip, 514);
+      log_msg_set_saddr(msg, saddr);
+      g_sockaddr_unref(saddr);
+    }
+  log_source_mangle_hostname(source, msg);
+  cr_assert_str_eq(log_msg_get_value(msg, LM_V_HOST_FROM, NULL), "resolved-test-host");
+  log_msg_unref(msg);
+}
+
+Test(log_source, test_peer_hostname_is_resolved_once_per_address_and_second)
+{
+  LogSource *source = test_source_init(&source_options);
+
+  resolve_count = 0;
+  _mangle_hostname_of_msg_from(source, "10.0.0.1", 1000);
+  _mangle_hostname_of_msg_from(source, "10.0.0.1", 1000);
+  cr_assert_eq(resolve_count, 1);
+
+  _mangle_hostname_of_msg_from(source, "10.0.0.2", 1000);
+  cr_assert_eq(resolve_count, 2);
+
+  _mangle_hostname_of_msg_from(source, "10.0.0.2", 1001);
+  _mangle_hostname_of_msg_from(source, "10.0.0.2", 1001);
+  cr_assert_eq(resolve_count, 3);
+
+  _mangle_hostname_of_msg_from(source, NULL, 1001);
+  _mangle_hostname_of_msg_from(source, NULL, 1001);
+  cr_assert_eq(resolve_count, 4);
+
+  log_source_set_options(source, &source_options, TEST_STATS_ID, NULL, TRUE, NULL);
+  _mangle_hostname_of_msg_from(source, NULL, 1001);
+  cr_assert_eq(resolve_count, 5);
+
   test_source_destroy(source);
 }
 
@@ -431,6 +484,45 @@ Test(log_source, test_wakeup_small_window)
 
   test_pipe_ack_messages(next_pipe, 1);
   cr_assert_eq(((TestSource *) source)->wakeup_count, 1);
+
+  test_pipe_destroy(next_pipe);
+  test_source_destroy(source);
+}
+
+Test(log_source, test_acks_in_a_batch_are_applied_at_its_end)
+{
+  source_options.init_window_size = 20;
+
+  LogSource *source = test_source_init(&source_options);
+  TestPipe *next_pipe = test_pipe_init();
+  log_pipe_append(&source->super, &next_pipe->super);
+  gint ref_cnt = g_atomic_counter_get(&source->super.ref_cnt);
+
+  _post_messages(source, 20);
+  cr_assert_eq(g_atomic_counter_get(&source->super.ref_cnt), ref_cnt + 20);
+
+  log_source_ack_batch_begin();
+  log_source_ack_batch_begin();
+  test_pipe_ack_messages(next_pipe, 10);
+  log_source_ack_batch_end();
+  cr_assert_eq(window_size_counter_get(&source->window_size, NULL), 0, "acks are deferred until the outermost end");
+  cr_assert_eq(g_atomic_counter_get(&source->super.ref_cnt), ref_cnt + 20);
+  log_source_ack_batch_end();
+
+  cr_assert_eq(window_size_counter_get(&source->window_size, NULL), 10);
+  cr_assert_eq(g_atomic_counter_get(&source->super.ref_cnt), ref_cnt + 10);
+  cr_assert_eq(((TestSource *) source)->wakeup_count, 1);
+
+  log_source_ack_batch_begin();
+  test_pipe_ack_messages(next_pipe, 5);
+  test_pipe_ack_messages_with_type(next_pipe, 1, AT_SUSPENDED);
+  cr_assert_eq(window_size_counter_get(&source->window_size, NULL), 16,
+               "a suspended ack flushes the pending ones before it");
+  test_pipe_ack_messages(next_pipe, 4);
+  log_source_ack_batch_end();
+
+  cr_assert_eq(window_size_counter_get(&source->window_size, NULL), 20);
+  cr_assert_eq(g_atomic_counter_get(&source->super.ref_cnt), ref_cnt);
 
   test_pipe_destroy(next_pipe);
   test_source_destroy(source);

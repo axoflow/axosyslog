@@ -5,6 +5,7 @@ set(STATS_HEADERS
     stats/stats-compat.h
     stats/stats-control.h
     stats/stats-counter.h
+    stats/stats-counter-batch.h
     stats/stats-cluster.h
     stats/stats-csv.h
     stats/stats-log.h
@@ -23,6 +24,7 @@ set(STATS_SOURCES
     stats/stats.c
     stats/stats-control.c
     stats/stats-cluster.c
+    stats/stats-counter-batch.c
     stats/stats-csv.c
     stats/stats-log.c
     stats/stats-prometheus.c

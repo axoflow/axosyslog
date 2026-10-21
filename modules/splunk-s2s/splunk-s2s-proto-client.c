@@ -576,7 +576,7 @@ _encode_event(LogProtoSplunkS2SClient *self, LogMessage *msg, guint64 event_id, 
 }
 
 static LogProtoStatus
-log_proto_splunk_s2s_client_post(LogProtoClient *s, LogMessage *logmsg, guchar *msg, gsize msg_len,
+log_proto_splunk_s2s_client_post(LogProtoClient *s, LogMessage *logmsg, const guchar *msg, gsize msg_len,
                                  gboolean *consumed)
 {
   LogProtoSplunkS2SClient *self = (LogProtoSplunkS2SClient *) s;
@@ -602,7 +602,6 @@ log_proto_splunk_s2s_client_post(LogProtoClient *s, LogMessage *logmsg, guchar *
     return LPS_PARTIAL;
 
   _encode_event(self, logmsg, self->next_event_id++, msg, msg_len);
-  g_free(msg);
   *consumed = TRUE;
 
   status = _flush_out_buf(self);

@@ -23,6 +23,7 @@
 
 #include "logqueue.h"
 #include "logpipe.h"
+#include "logsource.h"
 #include "messages.h"
 #include "serialize.h"
 #include "stats/stats-registry.h"
@@ -35,6 +36,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
+#include <stdlib.h>
 #include <iv_thread.h>
 
 QueueType log_queue_fifo_type = "FIFO";
@@ -72,15 +74,29 @@ QueueType log_queue_fifo_type = "FIFO";
  *
  */
 
+/* Per-thread input queue.  Each input thread writes its own slot on every
+ * push without taking a lock, so the slots must not share cache lines with
+ * each other (or with the queue header, which the output thread writes):
+ * otherwise the cores would ping-pong the line on every message even though
+ * no data is actually shared.  The struct is kept at exactly one cache line
+ * and the slot array is aligned to a cache line boundary at allocation. */
+
+#define INPUT_QUEUE_ALIGNMENT 64
+
+/* propagate the per-thread input queue to the wait queue once it is this
+ * long, the check runs on every 128th item, so keep it a multiple of that */
+#define INPUT_QUEUE_FLUSH_LEN 1024
+
 typedef struct _InputQueue
 {
   struct iv_list_head items;
   WorkerBatchCallback cb;
   guint32 len;
   guint32 non_flow_controlled_len;
-  UnixTime first_message_recvd;
   gsize total_size;
-} InputQueue;
+} __attribute__((aligned(INPUT_QUEUE_ALIGNMENT))) InputQueue;
+
+G_STATIC_ASSERT(sizeof(InputQueue) == INPUT_QUEUE_ALIGNMENT);
 
 typedef struct _OverflowQueue
 {
@@ -93,12 +109,10 @@ typedef struct _LogQueueFifo
 {
   LogQueue super;
 
-  /* scalable qoverflow implementation */
-  OverflowQueue output_queue;
-  OverflowQueue wait_queue;
-  OverflowQueue backlog_queue; /* entries that were sent but not acked yet */
-
+  /* These are read only by the input threads.  Keep it away from the queue
+   * state below */
   gint log_fifo_size;
+  gint num_input_queues;
 
   struct
   {
@@ -106,9 +120,25 @@ typedef struct _LogQueueFifo
     StatsCounterItem *capacity;
   } metrics;
 
-  gint num_input_queues;
+  /* scalable qoverflow implementation, each of the three queues on its own
+   * cache line(s) according to who writes them */
+
+  /* input and output threads under super.lock, once per input batch */
+  OverflowQueue wait_queue __attribute__((aligned(INPUT_QUEUE_ALIGNMENT)));
+
+  /* output thread only, on every message */
+  OverflowQueue output_queue __attribute__((aligned(INPUT_QUEUE_ALIGNMENT)));
+  OverflowQueue backlog_queue; /* entries that were sent but not acked yet */
+
   InputQueue input_queues[0];
 } LogQueueFifo;
+
+/* the output thread's queues must not share a line with the fields the input threads read */
+G_STATIC_ASSERT(G_STRUCT_OFFSET(LogQueueFifo, output_queue) / INPUT_QUEUE_ALIGNMENT
+                > G_STRUCT_OFFSET(LogQueueFifo, num_input_queues) / INPUT_QUEUE_ALIGNMENT);
+G_STATIC_ASSERT(G_STRUCT_OFFSET(LogQueueFifo, backlog_queue) / INPUT_QUEUE_ALIGNMENT
+                == G_STRUCT_OFFSET(LogQueueFifo, output_queue) / INPUT_QUEUE_ALIGNMENT);
+G_STATIC_ASSERT(G_STRUCT_OFFSET(LogQueueFifo, input_queues) % INPUT_QUEUE_ALIGNMENT == 0);
 
 /* NOTE: this is inherently racy. If the LogQueue->lock is taken, then the
  * race is limited to the changes in output_queue queue changes.
@@ -294,6 +324,14 @@ _message_has_to_be_dropped(LogQueueFifo *self, const LogPathOptions *path_option
          && log_queue_fifo_get_non_flow_controlled_length(self) >= self->log_fifo_size;
 }
 
+static inline const UnixTime *
+_input_queue_first_message_recvd(InputQueue *input_queue)
+{
+  LogMessageQueueNode *first = iv_list_entry(input_queue->items.next, LogMessageQueueNode, list);
+
+  return &first->msg->timestamps[LM_TS_RECVD];
+}
+
 /**
  * Assumed to be called from one of the input threads. If the thread_index
  * cannot be determined, the item is put directly in the wait queue.
@@ -320,15 +358,15 @@ log_queue_fifo_push_tail(LogQueue *s, LogMessage *msg, const LogPathOptions *pat
   if (thread_index >= self->num_input_queues)
     thread_index = -1;
 
-  /* NOTE: we don't use high-water marks for now, as log_fetch_limit
-   * limits the number of items placed on the per-thread input queue
-   * anyway, and any sane number decreased the performance measurably.
+  /* NOTE: per-thread input queues collect the items that a single poll
+   * iteration produces, and once the reader is finished (either because
+   * the input is depleted or because of log_fetch_limit / window_size) the
+   * whole bunch is propagated to the "wait" queue.
    *
-   * This means that per-thread input queues contain _all_ items that
-   * a single poll iteration produces. And once the reader is finished
-   * (either because the input is depleted or because of
-   * log_fetch_limit / window_size) the whole bunch is propagated to
-   * the "wait" queue.
+   * With a large log_fetch_limit that would keep the consumer waiting and
+   * let the batch grow out of the cache, so the input queue is also
+   * propagated once it reaches INPUT_QUEUE_FLUSH_LEN items or gets older
+   * than 100msec.
    */
 
   if (thread_index >= 0)
@@ -346,7 +384,6 @@ log_queue_fifo_push_tail(LogQueue *s, LogMessage *msg, const LogPathOptions *pat
 
           main_loop_worker_register_batch_callback(&self->input_queues[thread_index].cb);
           log_queue_ref(&self->super);
-          self->input_queues[thread_index].first_message_recvd = msg->timestamps[LM_TS_RECVD];
         }
 
       log_msg_write_protect(msg);
@@ -366,16 +403,17 @@ log_queue_fifo_push_tail(LogQueue *s, LogMessage *msg, const LogPathOptions *pat
            */
 
           gint64 input_queue_age_msec =
-            unix_time_diff_in_msec(&msg->timestamps[LM_TS_RECVD], &self->input_queues[thread_index].first_message_recvd);
+            unix_time_diff_in_msec(&msg->timestamps[LM_TS_RECVD],
+                                   _input_queue_first_message_recvd(&self->input_queues[thread_index]));
 
-          flush_input_queue = input_queue_age_msec > 100;
+          flush_input_queue = qlen >= INPUT_QUEUE_FLUSH_LEN || input_queue_age_msec > 100;
         }
       log_msg_unref(msg);
 
       if (flush_input_queue)
         {
-          /* if the input queue is more than 100msec old, let's do an
-           * explicit flush to avoid starving the consumer */
+          /* if the input queue is too long or more than 100msec old, let's
+           * do an explicit flush to avoid starving the consumer */
           log_queue_fifo_move_input(self, thread_index);
         }
       return;
@@ -513,8 +551,10 @@ log_queue_fifo_ack_backlog(LogQueue *s, guint rewind_count)
 {
   LogQueueFifo *self = (LogQueueFifo *) s;
   LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
+  gsize acked_size = 0;
   gint pos;
 
+  log_source_ack_batch_begin();
   for (pos = 0; pos < rewind_count && self->backlog_queue.len > 0; pos++)
     {
       LogMessageQueueNode *node;
@@ -522,7 +562,7 @@ log_queue_fifo_ack_backlog(LogQueue *s, guint rewind_count)
 
       iv_list_del(&node->list);
       self->backlog_queue.len--;
-      log_queue_memory_usage_sub(&self->super, log_msg_get_size(node->msg));
+      acked_size += log_msg_get_size(node->msg);
 
       if (!node->flow_control_requested)
         self->backlog_queue.non_flow_controlled_len--;
@@ -531,6 +571,10 @@ log_queue_fifo_ack_backlog(LogQueue *s, guint rewind_count)
       log_msg_ack(node->msg, &path_options, AT_PROCESSED);
       log_msg_free_queue_node(node);
     }
+  log_source_ack_batch_end();
+
+  if (pos > 0)
+    log_queue_memory_usage_sub(&self->super, acked_size);
 }
 
 /*
@@ -700,7 +744,12 @@ log_queue_fifo_new(gint log_fifo_size, const gchar *persist_name, gint stats_lev
   LogQueueFifo *self;
 
   gint max_threads = main_loop_worker_get_max_number_of_threads();
-  self = g_malloc0(sizeof(LogQueueFifo) + max_threads * sizeof(self->input_queues[0]));
+  gsize size = sizeof(LogQueueFifo) + max_threads * sizeof(InputQueue);
+
+  void *mem;
+  if (posix_memalign(&mem, INPUT_QUEUE_ALIGNMENT, size) != 0)
+    g_error("%s: failed to allocate %" G_GSIZE_FORMAT " bytes", G_STRLOC, size);
+  self = memset(mem, 0, size);
 
   if (queue_sck_builder)
     {
