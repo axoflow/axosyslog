@@ -1,5 +1,12 @@
 add_unit_test(
   CRITERION
+  TARGET test_otel_ack_barrier
+  SOURCES test-otel-ack-barrier.cpp
+  INCLUDES ${OTEL_PROTO_BUILDDIR} ${PROJECT_SOURCE_DIR}/modules/grpc/common
+  DEPENDS otel-cpp)
+
+add_unit_test(
+  CRITERION
   TARGET test_otel_protobuf_parser
   SOURCES test-otel-protobuf-parser.cpp
   INCLUDES ${OTEL_PROTO_BUILDDIR} ${PROJECT_SOURCE_DIR}/modules/grpc/common
