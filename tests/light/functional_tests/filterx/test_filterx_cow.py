@@ -741,3 +741,51 @@ def test_dict_to_pairs_value_child_writes_land_in_the_pair(config, syslog_ng):
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
     assert file_true.read_log() == """[{"key":"key_1","value":{"nested":"changed"}}]"""
+
+
+def test_set_timestamp_and_set_pri_do_not_leak_into_sibling_paths(config, syslog_ng):
+    template = "'$ISODATE $PRI\n'"
+    file_a = config.create_file_destination(file_name="dest-a.log", template=template)
+    file_b = config.create_file_destination(file_name="dest-b.log", template=template)
+
+    config.set_raw_config(f"""
+@version: {config.get_version()}
+
+options {{ stats(level(1)); }};
+
+source genmsg {{
+    example-msg-generator(num(1) template("foobar"));
+}};
+
+destination dest_a {{
+    {render_statement(file_a)};
+}};
+
+destination dest_b {{
+    {render_statement(file_b)};
+}};
+
+log {{
+    source(genmsg);
+    filterx {{
+        set_timestamp(strptime("2010-01-01T00:00:00 +0000", "%Y-%m-%dT%H:%M:%S %z"));
+        set_pri(100);
+    }};
+    log {{
+        filterx {{
+            set_timestamp(strptime("2000-01-01T00:00:00 +0000", "%Y-%m-%dT%H:%M:%S %z"));
+            set_pri(10);
+        }};
+        destination(dest_a);
+    }};
+    log {{
+        destination(dest_b);
+    }};
+}};
+""")
+    syslog_ng.start(config)
+
+    assert file_a.get_stats()["processed"] == 1
+    assert file_b.get_stats()["processed"] == 1
+    assert file_a.read_log() == "2000-01-01T00:00:00+00:00 10"
+    assert file_b.read_log() == "2010-01-01T00:00:00+00:00 100"

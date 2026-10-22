@@ -427,6 +427,17 @@ filterx_eval_end_context(FilterXEvalContext *context)
   filterx_eval_set_context(context->previous_context);
 }
 
+LogMessage *
+filterx_eval_make_message_writable(FilterXEvalContext *context)
+{
+  if (log_msg_is_write_protected(context->msg))
+    {
+      g_assert(context->path_options);
+      filterx_scope_set_message(context->scope, log_msg_make_writable(&context->msg, context->path_options));
+    }
+  return context->msg;
+}
+
 void
 filterx_eval_begin_restricted_context(FilterXEvalContext *context, FilterXEnvironment *env)
 {

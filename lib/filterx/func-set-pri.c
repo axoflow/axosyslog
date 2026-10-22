@@ -63,8 +63,7 @@ _set_pri_eval(FilterXExpr *s)
 
   filterx_object_unref(pri_obj);
 
-  FilterXEvalContext *context = filterx_eval_get_context();
-  LogMessage *msg = context->msg;
+  LogMessage *msg = filterx_eval_make_message_writable(filterx_eval_get_context());
 
   msg->pri = pri_val;
 
