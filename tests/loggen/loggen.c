@@ -609,6 +609,7 @@ main(int argc, char *argv[])
       ERROR("error while opening input file. exit.\n");
       return 1;
     }
+  global_plugin_option.input_may_block = read_from_file && file_reader_input_may_block();
 
   init_logline_generator(plugin_array);
 

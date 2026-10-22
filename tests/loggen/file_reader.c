@@ -25,6 +25,7 @@
 
 #include <stdio.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <string.h>
 
@@ -87,6 +88,16 @@ int init_file_reader(int nr_threads)
       DEBUG("file (%s) opened for reading\n", read_file_name);
     }
   return 1;
+}
+
+gboolean file_reader_input_may_block(void)
+{
+  struct stat st;
+
+  if (!source || !source[0] || fstat(fileno(source[0]), &st) < 0)
+    return FALSE;
+
+  return !S_ISREG(st.st_mode);
 }
 
 void close_file_reader(int nr_threads)

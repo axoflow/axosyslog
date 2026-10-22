@@ -367,7 +367,8 @@ active_thread_func(gpointer user_data)
   if (sock_type_s)
     sock_type = SOCK_STREAM;
 
-  gsize batch_size = sock_type == SOCK_STREAM ? STREAM_BATCH_SIZE : 0;
+  /* a pipe or a terminal blocks the read, don't hold back messages meanwhile */
+  gsize batch_size = sock_type == SOCK_STREAM && !option->input_may_block ? STREAM_BATCH_SIZE : 0;
   char *message = g_malloc0(batch_size + MAX_MESSAGE_LENGTH + 1);
   gsize batch_len = 0;
   GArray *msg_lens = g_array_new(FALSE, FALSE, sizeof(gint));

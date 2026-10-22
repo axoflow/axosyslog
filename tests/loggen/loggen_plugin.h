@@ -48,6 +48,7 @@ typedef struct _plugin_option
   gint64 rate;
   int rate_burst_start;
   int reconnect;
+  gboolean input_may_block;
   gboolean proxied;
   gint proxy_version;
   char *proxy_src_ip;
