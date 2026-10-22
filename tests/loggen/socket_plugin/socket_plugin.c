@@ -418,12 +418,15 @@ active_thread_func(gpointer user_data)
 
   while (fd>0 && thread_run && !connection_error)
     {
-      if (thread_check_exit_criteria(thread_context))
-        break;
+      gboolean exit_criteria_met = thread_check_exit_criteria(thread_context);
 
-      /* thread_check_time_bucket() may sleep, don't hold back messages meanwhile */
-      if (batch_len > 0 && !option->perf && thread_context->buckets <= 0)
+      /* flush before thread_check_time_bucket() may sleep, and before leaving */
+      if (batch_len > 0 && (exit_criteria_met || (!option->perf && thread_context->buckets <= 0)))
         connection_error = send_batch(fd, thread_context, message, &batch_len, msg_lens);
+
+      /* a failed flush uncounts its unsent messages, so a -n run is not done yet */
+      if (exit_criteria_met && (!connection_error || option->number_of_messages == 0))
+        break;
 
       if (!connection_error && thread_check_time_bucket(thread_context))
         continue;
