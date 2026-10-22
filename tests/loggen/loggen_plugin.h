@@ -48,6 +48,7 @@ typedef struct _plugin_option
   gint64 rate;
   int rate_burst_start;
   int reconnect;
+  gboolean input_may_block;
   gboolean proxied;
   gint proxy_version;
   char *proxy_src_ip;
@@ -74,6 +75,9 @@ typedef struct _thread_data
   /* timestamp  cache for logline generator */
   struct timeval ts_formatted;
   char stamp[32];
+  /* the length of the date and time part of stamp, and of the whole of it */
+  int stamp_datetime_len;
+  int stamp_len;
 } ThreadData;
 
 typedef GOptionEntry *(*get_option_func)(void);

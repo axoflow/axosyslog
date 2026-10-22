@@ -45,13 +45,18 @@ static void           stop(PluginOption *option);
 static gboolean wait_with_timeout(PluginOption *option, gint timeout_usec);
 static gpointer       active_thread_func(gpointer user_data);
 static gpointer       idle_thread_func(gpointer user_data);
-static gboolean       send_msg(int fd, char *msg, size_t msg_len);
+static gboolean       send_batch(int fd, ThreadData *thread_context, char *batch, gsize *batch_len,
+                                 GArray *msg_lens);
 static ssize_t        send_plain(int fd, void *buf, size_t length);
 static gint           get_thread_count(void);
 static void           set_generate_message(generate_message_func gen_message);
 static GOptionEntry  *get_options(void);
 static gboolean       is_plugin_activated(void);
 static GPtrArray      *thread_array = NULL;
+
+/* messages to stream sockets are sent in batches of this size: a send()
+ * per message would make loggen slower than the receiver */
+#define STREAM_BATCH_SIZE (64 * 1024)
 
 static gboolean thread_run;
 static generate_message_func generate_message;
@@ -362,7 +367,11 @@ active_thread_func(gpointer user_data)
   if (sock_type_s)
     sock_type = SOCK_STREAM;
 
-  char *message = g_malloc0(MAX_MESSAGE_LENGTH+1);
+  /* a pipe or a terminal blocks the read, don't hold back messages meanwhile */
+  gsize batch_size = sock_type == SOCK_STREAM && !option->input_may_block ? STREAM_BATCH_SIZE : 0;
+  char *message = g_malloc0(batch_size + MAX_MESSAGE_LENGTH + 1);
+  gsize batch_len = 0;
+  GArray *msg_lens = g_array_new(FALSE, FALSE, sizeof(gint));
 
   int fd;
   if (unix_socket_x)
@@ -409,10 +418,17 @@ active_thread_func(gpointer user_data)
 
   while (fd>0 && thread_run && !connection_error)
     {
-      if (thread_check_exit_criteria(thread_context))
+      gboolean exit_criteria_met = thread_check_exit_criteria(thread_context);
+
+      /* flush before thread_check_time_bucket() may sleep, and before leaving */
+      if (batch_len > 0 && (exit_criteria_met || (!option->perf && thread_context->buckets <= 0)))
+        connection_error = send_batch(fd, thread_context, message, &batch_len, msg_lens);
+
+      /* a failed flush uncounts its unsent messages, so a -n run is not done yet */
+      if (exit_criteria_met && (!connection_error || option->number_of_messages == 0))
         break;
 
-      if (thread_check_time_bucket(thread_context))
+      if (!connection_error && thread_check_time_bucket(thread_context))
         continue;
 
       if (!generate_message)
@@ -421,23 +437,25 @@ active_thread_func(gpointer user_data)
           break;
         }
 
-      int str_len = generate_message(message, MAX_MESSAGE_LENGTH, thread_context, count++);
-
-      if (str_len < 0)
+      if (!connection_error)
         {
-          ERROR("can't generate more log lines. end of input file?\n");
-          break;
-        }
+          int str_len = generate_message(message + batch_len, MAX_MESSAGE_LENGTH, thread_context, count++);
 
-      connection_error = send_msg(fd, message, str_len);
+          if (str_len < 0)
+            {
+              ERROR("can't generate more log lines. end of input file?\n");
+              break;
+            }
 
-      if(!connection_error)
-        {
+          /* counted when queued, so that the exit criteria see them */
+          batch_len += str_len;
+          g_array_append_val(msg_lens, str_len);
           thread_context->sent_messages++;
           thread_context->sent_bytes += str_len;
           thread_context->buckets--;
 
-          atomic_gssize_add(&option->global_sent_messages, 1);
+          if (batch_len >= batch_size)
+            connection_error = send_batch(fd, thread_context, message, &batch_len, msg_lens);
         }
 
       if(connection_error && option->reconnect && thread_run)
@@ -469,6 +487,11 @@ active_thread_func(gpointer user_data)
             }
         }
     }
+  if (fd > 0 && !connection_error && batch_len > 0)
+    send_batch(fd, thread_context, message, &batch_len, msg_lens);
+
+  g_array_free(msg_lens, TRUE);
+
   DEBUG("thread (%s,%p) finished\n", socket_loggen_plugin_info.name, g_thread_self());
 
   g_free((gpointer)message);
@@ -493,22 +516,38 @@ active_thread_func(gpointer user_data)
   return NULL;
 }
 
+/* returns TRUE on error, and forgets about the batch either way.
+ * Messages that were completely sent before the error stay counted. */
 static gboolean
-send_msg(int fd, char *msg, size_t msg_len)
+send_batch(int fd, ThreadData *thread_context, char *batch, gsize *batch_len, GArray *msg_lens)
 {
-  ssize_t sent = 0;
-  while (sent < msg_len)
+  gsize sent = 0;
+
+  while (sent < *batch_len)
     {
-      ssize_t rc = send_plain(fd, msg + sent, msg_len - sent);
+      ssize_t rc = send_plain(fd, batch + sent, *batch_len - sent);
       if (rc < 0)
         {
           ERROR("error sending buffer on %d (rc=%zd)\n", fd, rc);
           errno = ECONNABORTED;
-          return TRUE;
+          break;
         }
       sent += rc;
     }
-  return FALSE;
+
+  guint delivered_count = msg_lens->len;
+  gsize delivered_len = *batch_len;
+  while (delivered_len > sent)
+    delivered_len -= g_array_index(msg_lens, gint, --delivered_count);
+
+  thread_context->sent_messages -= msg_lens->len - delivered_count;
+  thread_context->sent_bytes -= *batch_len - delivered_len;
+  atomic_gssize_add(&thread_context->option->global_sent_messages, delivered_count);
+
+  gboolean connection_error = sent < *batch_len;
+  *batch_len = 0;
+  g_array_set_size(msg_lens, 0);
+  return connection_error;
 }
 
 static ssize_t

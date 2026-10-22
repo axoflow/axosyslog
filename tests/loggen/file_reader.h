@@ -78,6 +78,7 @@ typedef struct _SyslogMsgElements
 GOptionEntry *get_file_reader_options(void);
 int read_next_message_from_file(char *buf, int buflen, int syslog_proto, int thread_index);
 int init_file_reader(int nr_threads);
+gboolean file_reader_input_may_block(void);
 void close_file_reader(int nr_threads);
 
 #endif
