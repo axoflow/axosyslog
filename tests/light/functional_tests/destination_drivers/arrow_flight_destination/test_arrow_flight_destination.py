@@ -447,3 +447,24 @@ def test_arrow_flight_destination_temporary_error(config, syslog_ng, port_alloca
     assert wait_until_true(lambda: arrow_flight_destination.get_stats().get("written", 0) == num_messages)
     assert arrow_flight_destination.get_stats()["dropped"] == 0
     assert arrow_flight_destination.get_row_count(ARROW_FLIGHT_PATH) == num_messages
+
+
+def test_arrow_flight_destination_idle_reconnect(config, syslog_ng, port_allocator):
+    custom_msg = f"test message {uuid.uuid4()}"
+    generator_source = config.create_example_msg_generator_source(num=2, freq=2, template=stringify(custom_msg))
+
+    options = {
+        **ARROW_FLIGHT_OPTIONS,
+        "batch-lines": 1,
+        "idle-reconnect-timeout": 1,
+    }
+    arrow_flight_destination = config.create_arrow_flight_destination(port=port_allocator(), **options)
+    config.create_logpath(statements=[generator_source, arrow_flight_destination])
+
+    arrow_flight_destination.start_listener()
+    syslog_ng.start(config)
+
+    assert wait_until_true(lambda: arrow_flight_destination.get_stats().get("written", 0) == 2)
+    assert arrow_flight_destination.get_stats()["dropped"] == 0
+    assert arrow_flight_destination.get_row_count(ARROW_FLIGHT_PATH) == 2
+    assert arrow_flight_destination.get_stream_count(ARROW_FLIGHT_PATH) == 2

@@ -125,6 +125,10 @@ DestinationWorker::connect()
     client_options.generic_options.emplace_back("grpc.http2.max_pings_without_data",
                                                 owner->get_keepalive_max_pings());
   client_options.generic_options.emplace_back("grpc.keepalive_permit_without_calls", 1);
+  /* Without it, the reconnect after idle-reconnect-timeout() could pick up the
+   * same idle connection from the subchannel pool shared with other workers. */
+  if (owner->get_idle_reconnect_timeout() != 0)
+    client_options.generic_options.emplace_back("grpc.use_local_subchannel_pool", 1);
 
   auto client_result = arrow::flight::FlightClient::Connect(this->location, client_options);
   if (!client_result.ok())
@@ -136,8 +140,27 @@ DestinationWorker::connect()
       return false;
     }
   this->client = std::move(*client_result);
+  this->last_request_time = std::chrono::steady_clock::now();
 
   return this->create_builders();
+}
+
+bool
+DestinationWorker::reconnect_if_idle()
+{
+  gint idle_reconnect_timeout = this->get_owner()->get_idle_reconnect_timeout();
+  if (idle_reconnect_timeout == 0)
+    return true;
+
+  if (std::chrono::steady_clock::now() - this->last_request_time < std::chrono::seconds(idle_reconnect_timeout))
+    return true;
+
+  msg_debug("arrow-flight: Reconnecting idle connection",
+            evt_tag_int("idle_reconnect_timeout", idle_reconnect_timeout),
+            log_pipe_location_tag(&this->super->super.owner->super.super.super));
+
+  this->disconnect();
+  return this->connect();
 }
 
 void
@@ -504,7 +527,8 @@ DestinationWorker::flush(LogThreadedFlushMode mode)
   std::shared_ptr<arrow::Buffer> ack;
   arrow::Status status;
   int64_t batch_bytes = 0;
-  const gchar *path = this->current_batch_path.c_str();
+  /* A copy, as reconnect_if_idle() clears current_batch_path. */
+  const std::string path = this->current_batch_path;
 
   if (this->get_batch_size() == 0)
     return LTR_SUCCESS;
@@ -527,9 +551,16 @@ DestinationWorker::flush(LogThreadedFlushMode mode)
 
   batch = arrow::RecordBatch::Make(owner->get_arrow_schema(), this->get_batch_size(), arrays);
 
+  /* The builders are finished by now, so the reconnect cannot lose any of the batch. */
+  if (!this->reconnect_if_idle())
+    {
+      result = LTR_NOT_CONNECTED;
+      goto exit;
+    }
+
   if (!this->writer || this->current_stream_path != path)
     {
-      if (!this->open_stream(path))
+      if (!this->open_stream(path.c_str()))
         {
           result = LTR_NOT_CONNECTED;
           goto exit;
@@ -594,6 +625,7 @@ DestinationWorker::flush(LogThreadedFlushMode mode)
   result = LTR_SUCCESS;
 
 exit:
+  this->last_request_time = std::chrono::steady_clock::now();
   this->prepare_batch();
   return result;
 }

@@ -45,8 +45,8 @@ public:
 
 protected:
   bool connect() override;
-  bool init() override;
-  void deinit() override;
+  void create_stubs() override;
+  void destroy_stubs() override;
 
 private:
   bool insert_query_data_from_protovar(LogMessage *msg);
