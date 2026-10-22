@@ -647,7 +647,7 @@ _custom_map_http_result(HTTPDestinationWorker *self, const gchar *url, HttpRespo
   return LTR_MAX;
 }
 
-static gboolean
+static CURLcode
 _curl_perform_request(HTTPDestinationWorker *self, const gchar *url)
 {
   HTTPDestinationDriver *owner = (HTTPDestinationDriver *) self->super.owner;
@@ -687,10 +687,9 @@ _curl_perform_request(HTTPDestinationWorker *self, const gchar *url)
                 evt_tag_int("worker_index", self->super.worker_index),
                 evt_tag_str("driver", owner->super.super.super.id),
                 log_pipe_location_tag(&owner->super.super.super.super));
-      return FALSE;
     }
 
-  return TRUE;
+  return ret;
 }
 
 static gboolean
@@ -767,13 +766,84 @@ _update_status_code_metrics(HTTPDestinationWorker *self, const gchar *url, glong
   stats_counter_inc(counter);
 }
 
+/* The reasons are shared with connection_failure_reasons in
+ * modules/afsocket/afsocket-dest.c, so cross-driver queries break on a rename or split.
+ * "connect" covers what curl does not split into refused and no-route, "tls" has no socket counterpart.
+ */
+static const gchar *
+_connection_failure_reason(CURLcode code)
+{
+  switch (code)
+    {
+    case CURLE_COULDNT_RESOLVE_HOST:
+    case CURLE_COULDNT_RESOLVE_PROXY:
+      return "resolve";
+    case CURLE_COULDNT_CONNECT:
+      return "connect";
+    case CURLE_OPERATION_TIMEDOUT:
+      return "timeout";
+    case CURLE_SEND_ERROR:
+    case CURLE_RECV_ERROR:
+    case CURLE_GOT_NOTHING:
+    case CURLE_PARTIAL_FILE:
+      return "reset";
+    case CURLE_SSL_CONNECT_ERROR:
+    case CURLE_PEER_FAILED_VERIFICATION:
+    case CURLE_SSL_CERTPROBLEM:
+    case CURLE_SSL_CIPHER:
+    case CURLE_SSL_CACERT_BADFILE:
+    case CURLE_SSL_ISSUER_ERROR:
+#if LIBCURL_VERSION_NUM >= 0x072700
+    case CURLE_SSL_PINNEDPUBKEYNOTMATCH:
+#endif
+#if LIBCURL_VERSION_NUM >= 0x072900
+    case CURLE_SSL_INVALIDCERTSTATUS:
+#endif
+      return "tls";
+    default:
+      return "error";
+    }
+}
+
+static void
+_update_connection_failure_metrics(HTTPDestinationWorker *self, const gchar *url, const gchar *reason)
+{
+  gint level = log_pipe_is_internal(&self->super.owner->super.super.super) ? STATS_LEVEL3 : STATS_LEVEL1;
+
+  dyn_metrics_store_reset_labels_cache(self->metrics.cache);
+
+  StatsClusterLabel *url_label = dyn_metrics_store_cache_label(self->metrics.cache);
+  *url_label = stats_cluster_label("url", url);
+
+  StatsClusterLabel *reason_label = dyn_metrics_store_cache_label(self->metrics.cache);
+  *reason_label = stats_cluster_label("reason", reason);
+
+  StatsClusterLabel *driver_label = dyn_metrics_store_cache_label(self->metrics.cache);
+  *driver_label = stats_cluster_label("driver", "http");
+
+  StatsClusterLabel *id_label = dyn_metrics_store_cache_label(self->metrics.cache);
+  *id_label = stats_cluster_label("id", self->super.owner->super.super.id);
+
+  StatsClusterKey key;
+  stats_cluster_single_key_set(&key, METRIC(output_connection_failures_total),
+                               dyn_metrics_store_get_cached_labels(self->metrics.cache),
+                               dyn_metrics_store_get_cached_labels_len(self->metrics.cache));
+
+  StatsCounterItem *counter = dyn_metrics_store_retrieve_counter(self->metrics.cache, &key, level);
+  stats_counter_inc(counter);
+}
+
 static LogThreadedResult
 _flush_on_target(HTTPDestinationWorker *self, const gchar *url)
 {
   HTTPDestinationDriver *owner = (HTTPDestinationDriver *) self->super.owner;
 
-  if (!_curl_perform_request(self, url))
-    return LTR_NOT_CONNECTED;
+  CURLcode ret = _curl_perform_request(self, url);
+  if (ret != CURLE_OK)
+    {
+      _update_connection_failure_metrics(self, url, _connection_failure_reason(ret));
+      return LTR_NOT_CONNECTED;
+    }
 
   glong http_code = 0;
 
