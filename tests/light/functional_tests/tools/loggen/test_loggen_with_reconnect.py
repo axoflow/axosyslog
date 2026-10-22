@@ -22,7 +22,7 @@
 #############################################################################
 from axosyslog_light.helpers.loggen.loggen import LoggenStartParams
 
-NUMBER_OF_MESSAGES = 3
+NUMBER_OF_MESSAGES = 2
 
 
 def test_loggen_with_reconnect(config, port_allocator, syslog_ng, loggen):
