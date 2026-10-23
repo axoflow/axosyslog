@@ -26,6 +26,8 @@
 #include "afinter.h"
 #include "cfg-tree.h"
 #include "messages.h"
+#include "metrics/metric-names.h"
+#include "stats/stats-cluster-logpipe.h"
 
 #include <string.h>
 
@@ -325,6 +327,55 @@ log_dest_driver_queue_method(LogPipe *s, LogMessage *msg, const LogPathOptions *
   log_pipe_forward_msg(s, msg, path_options);
 }
 
+/* @driver_sck_builder is the one the queues of this destination were
+ * acquired with, so the counter ends up next to their output_events_total
+ * counters, sharing their legacy alias.  The counter is shared by every
+ * queue of the destination, only the first call registers it. */
+void
+log_dest_driver_register_rejected_counter(LogDestDriver *self, gint stats_level,
+                                          StatsClusterKeyBuilder *driver_sck_builder)
+{
+  if (self->rejected_messages_key)
+    return;
+
+  stats_cluster_key_builder_push(driver_sck_builder);
+  {
+    stats_cluster_key_builder_set_name(driver_sck_builder, METRIC(output_events_total));
+    self->rejected_messages_key = stats_cluster_key_builder_build_logpipe(driver_sck_builder);
+  }
+  stats_cluster_key_builder_pop(driver_sck_builder);
+
+  stats_lock();
+  stats_register_counter(stats_level, self->rejected_messages_key, SC_TYPE_REJECTED, &self->rejected_messages);
+  stats_unlock();
+}
+
+static void
+_log_dest_driver_unregister_rejected_counter(LogDestDriver *self)
+{
+  if (!self->rejected_messages_key)
+    return;
+
+  stats_lock();
+  stats_unregister_counter(self->rejected_messages_key, SC_TYPE_REJECTED, &self->rejected_messages);
+  stats_unlock();
+
+  stats_cluster_key_free(self->rejected_messages_key);
+  self->rejected_messages_key = NULL;
+}
+
+/* the destination is unreachable and the message is on a
+ * flags(destination-failover) path with another alternative to try: refuse
+ * it instead of buffering, see log_multiplexer_queue() */
+void
+log_dest_driver_reject_message(LogDestDriver *self, LogMessage *msg, const LogPathOptions *path_options)
+{
+  if (path_options->matched)
+    *path_options->matched = FALSE;
+  stats_counter_inc(self->rejected_messages);
+  log_msg_drop(msg, path_options, AT_PROCESSED);
+}
+
 static gboolean
 log_dest_driver_pre_init_method(LogPipe *s)
 {
@@ -408,6 +459,7 @@ log_dest_driver_deinit_method(LogPipe *s)
   _log_dest_driver_release_queues(self);
 
   _log_dest_driver_unregister_counters(self);
+  _log_dest_driver_unregister_rejected_counter(self);
 
   if (!log_driver_deinit_method(s))
     return FALSE;
@@ -435,6 +487,7 @@ log_dest_driver_free(LogPipe *s)
 
   /* half-initialized pipes can't release their queue in deinit() */
   _log_dest_driver_release_queues(self);
+  _log_dest_driver_unregister_rejected_counter(self);
 
   log_driver_free(s);
 }

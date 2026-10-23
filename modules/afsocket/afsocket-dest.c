@@ -632,6 +632,7 @@ afsocket_dd_setup_writer(AFSocketDestDriver *self)
   LogQueue *queue = log_dest_driver_acquire_queue(&self->super, afsocket_dd_format_qfile_name(self),
                                                   stats_level, driver_sck_builder, queue_sck_builder);
   log_writer_set_queue(self->writer, queue);
+  log_dest_driver_register_rejected_counter(&self->super, stats_level, driver_sck_builder);
 
   stats_cluster_key_builder_free(queue_sck_builder);
   stats_cluster_key_builder_free(driver_sck_builder);
@@ -827,9 +828,7 @@ afsocket_dd_reject_if_unreachable(AFSocketDestDriver *self, LogMessage *msg, con
   if (!path_options->destination_failover || !g_atomic_int_get(&self->currently_unreachable))
     return FALSE;
 
-  if (path_options->matched)
-    *path_options->matched = FALSE;
-  log_msg_drop(msg, path_options, AT_PROCESSED);
+  log_dest_driver_reject_message(&self->super, msg, path_options);
   return TRUE;
 }
 

@@ -1548,9 +1548,7 @@ log_threaded_dest_driver_queue(LogPipe *s, LogMessage *msg,
 
   if (!dw)
     {
-      if (path_options->matched)
-        *path_options->matched = FALSE;
-      log_msg_drop(msg, path_options, AT_PROCESSED);
+      log_dest_driver_reject_message(&self->super, msg, path_options);
       return;
     }
 
@@ -1752,6 +1750,7 @@ _register_driver_stats(LogThreadedDestDriver *self, StatsClusterKeyBuilder *kb)
       }
   }
   stats_unlock();
+  log_dest_driver_register_rejected_counter(&self->super, level, kb);
   _register_driver_aggregated_stats(self);
 }
 

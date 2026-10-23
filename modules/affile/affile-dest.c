@@ -230,6 +230,7 @@ affile_dw_init(LogPipe *s)
   LogQueue *queue = log_dest_driver_acquire_queue(&self->owner->super, affile_dw_format_persist_name(self),
                                                   stats_level, driver_sck_builder, queue_sck_builder);
   log_writer_set_queue(self->writer, queue);
+  log_dest_driver_register_rejected_counter(&self->owner->super, stats_level, driver_sck_builder);
 
   stats_cluster_key_builder_free(driver_sck_builder);
   stats_cluster_key_builder_free(queue_sck_builder);
@@ -744,14 +745,13 @@ affile_dd_open_writer(gpointer args[])
  * file could not be opened: either the writer could not be created at all,
  * or its file is still closed after the reopen attempt due at this point */
 static gboolean
-affile_dd_reject_if_unreachable(AFFileDestWriter *next, LogMessage *msg, const LogPathOptions *path_options)
+affile_dd_reject_if_unreachable(AFFileDestDriver *self, AFFileDestWriter *next, LogMessage *msg,
+                                const LogPathOptions *path_options)
 {
   if (!path_options->destination_failover || (next && affile_dw_reopen_if_needed(next)))
     return FALSE;
 
-  if (path_options->matched)
-    *path_options->matched = FALSE;
-  log_msg_drop(msg, path_options, AT_PROCESSED);
+  log_dest_driver_reject_message(&self->super, msg, path_options);
   return TRUE;
 }
 
@@ -811,7 +811,7 @@ affile_dd_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_options)
       g_string_free(filename, TRUE);
     }
 
-  if (affile_dd_reject_if_unreachable(next, msg, path_options))
+  if (affile_dd_reject_if_unreachable(self, next, msg, path_options))
     {
       if (next)
         {
