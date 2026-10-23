@@ -26,6 +26,7 @@ from pathlib import Path
 import pytest
 from axosyslog_light.common.file import File
 from axosyslog_light.syslog_ng_config.statement_group import StatementGroup
+from axosyslog_light.syslog_ng_ctl.prometheus_stats_handler import MetricFilter
 
 NUM_MESSAGES = 10
 SHAPES = ["nested-final", "if-else"]
@@ -107,6 +108,11 @@ def _read_lines(path, count):
         output_file.close()
 
 
+def _rejected_counts(config):
+    samples = config.get_prometheus_samples([MetricFilter("syslogng_output_events_total", {"result": "rejected"})])
+    return [int(sample.value) for sample in samples if sample.value]
+
+
 class _NamedDestinationReference(StatementGroup):
     """destination(name); referencing a destination defined in the preamble"""
 
@@ -177,6 +183,8 @@ def test_destination_failover_network_fails_over_and_back(config, syslog_ng, por
     failback_messages = _messages("failback")
     source.write_logs(_syslog_lines(failback_messages))
     assert len(primary.read_until_logs(failback_messages)) == NUM_MESSAGES
+    # only the messages sent while the primary was unreachable
+    assert _rejected_counts(config) == [NUM_MESSAGES]
 
     syslog_ng.stop()
     assert not any(message in line for line in secondary.read_all() for message in failback_messages)
@@ -199,9 +207,12 @@ def test_destination_failover_threaded_destination_fails_over(config, syslog_ng,
     messages = _messages("failover")
     source.write_logs(_syslog_lines(messages))
     assert len(secondary.read_until_logs(messages)) == NUM_MESSAGES
+    assert _rejected_counts(config) == [NUM_MESSAGES]
 
 
 def test_destination_failover_file_destination_fails_over(config, syslog_ng, port_allocator):
+    # file() registers its counters from stats(level(1))
+    config.update_global_options(stats_level=1)
     source = config.create_network_source(ip="localhost", port=port_allocator(), transport="tcp")
     # no create-dirs(), so the file cannot be opened
     primary = config.create_file_destination(file_name="missing-dir/primary.log")
@@ -213,6 +224,7 @@ def test_destination_failover_file_destination_fails_over(config, syslog_ng, por
     messages = _messages("failover")
     source.write_logs(_syslog_lines(messages))
     assert len(secondary.read_until_logs(messages)) == NUM_MESSAGES
+    assert _rejected_counts(config) == [NUM_MESSAGES]
 
     syslog_ng.stop()
     assert not Path("missing-dir").exists()
