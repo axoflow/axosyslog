@@ -4,12 +4,14 @@ set(HTTP_HEADERS
     http/http-message.h
     http/http-message-internal.h
     http/http-parser.h
+    http/http-ack-state.h
     http/logproto-http-server.h
     PARENT_SCOPE)
 
 set(HTTP_SOURCES
     http/http-message.c
     http/http-parser.c
+    http/http-ack-state.c
     http/logproto-http-server.c
     http/source/http-source.c
     http/source/http-source-grammar-internal.c

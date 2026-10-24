@@ -107,6 +107,7 @@ EXTRA_DIST += \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/parsers/parser.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/rewrite/__init__.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/rewrite/rewrite.py \
+	tests/light/src/axosyslog_light/syslog_ng_config/statements/sources/ehttp_source.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/sources/example_msg_generator_source.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/sources/file_source.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/sources/__init__.py \
