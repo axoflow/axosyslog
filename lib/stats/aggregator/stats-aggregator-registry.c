@@ -263,6 +263,34 @@ stats_register_aggregator_hist(gint level, StatsClusterKey *sc_key,
 }
 
 void
+stats_register_aggregator_hist_with_legacy(gint level, StatsClusterKey *sc_key,
+                                           gint min_bucket, gint num_buckets,
+                                           StatsClusterKey *legacy_average_key, StatsClusterKey *legacy_maximum_key,
+                                           StatsAggregator **aggr)
+{
+  g_assert(stats_aggregator_locked);
+
+  if (!stats_check_level(level))
+    {
+      *aggr = NULL;
+      return;
+    }
+
+  if (!_is_in_table(sc_key))
+    {
+      *aggr = stats_aggregator_histogram_with_legacy_new(level, sc_key, min_bucket, num_buckets,
+                                                         legacy_average_key, legacy_maximum_key);
+      _insert_to_table(*aggr);
+    }
+  else
+    {
+      *aggr = _get_from_table(sc_key);
+    }
+
+  stats_aggregator_start(*aggr);
+}
+
+void
 stats_unregister_aggregator(StatsAggregator **aggr)
 {
   g_assert(stats_aggregator_locked);
