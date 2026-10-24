@@ -1,6 +1,7 @@
 set(LOGMSG_HEADERS
     logmsg/gsockaddr-serialize.h
     logmsg/logmsg.h
+    logmsg/logmsg-free-queue.h
     logmsg/logmsg-serialize.h
     logmsg/logmsg-serialize-fixup.h
     logmsg/nvhandle-descriptors.h
@@ -17,6 +18,7 @@ set(LOGMSG_HEADERS
 set(LOGMSG_SOURCES
     logmsg/gsockaddr-serialize.c
     logmsg/logmsg.c
+    logmsg/logmsg-free-queue.c
     logmsg/logmsg-serialize.c
     logmsg/logmsg-serialize-fixup.c
     logmsg/nvhandle-descriptors.c
