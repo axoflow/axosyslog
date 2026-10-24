@@ -34,6 +34,7 @@
 typedef struct OtelDestDriver_ OtelDestDriver;
 
 LogDriver *otel_dd_new(GlobalConfig *cfg);
+void otel_dd_set_prefix(LogDriver *s, const gchar *prefix);
 
 #include "compat/cpp-end.h"
 

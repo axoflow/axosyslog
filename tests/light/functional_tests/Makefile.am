@@ -29,6 +29,7 @@ EXTRA_DIST += \
 	tests/light/functional_tests/destination_drivers/network_destination/test_network_destination_transport.py \
 	tests/light/functional_tests/destination_drivers/network_destination/test_tls_destination_write_batching.py \
 	tests/light/functional_tests/destination_drivers/opentelemetry_destination/test_opentelemetry_destination_batching.py \
+	tests/light/functional_tests/destination_drivers/opentelemetry_destination/test_opentelemetry_destination_prefix.py \
 	tests/light/functional_tests/destination_drivers/http/test_http_destination.py \
 	tests/light/functional_tests/destination_drivers/python_destination/test_python_destination.py \
 	tests/light/functional_tests/destination_drivers/s3_destination/test_s3_destination.py \
