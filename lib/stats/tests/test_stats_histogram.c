@@ -24,6 +24,7 @@
 #include "apphook.h"
 #include "scratch-buffers.h"
 #include "stats/stats-registry.h"
+#include "stats/stats-counter-batch.h"
 #include "stats/stats-cluster-hist.h"
 #include "stats/stats-prometheus.h"
 #include "stats/aggregator/stats-aggregator-registry.h"
@@ -88,6 +89,26 @@ Test(stats_histogram, tracks_sum_count_maximum_and_buckets)
 
   stats_aggregator_add_data_point(aggr, 2);
   cr_assert_eq(_get_value(aggr, SC_TYPE_HIST_MAXIMUM), 2);
+
+  _unregister_histogram(aggr);
+}
+
+Test(stats_histogram, counters_are_updated_at_the_end_of_a_counter_batch)
+{
+  StatsAggregator *aggr = _register_histogram("test_histogram");
+
+  stats_counter_batch_begin();
+  stats_aggregator_add_data_point(aggr, 3);
+  stats_aggregator_add_data_point(aggr, 4);
+  cr_assert_eq(_get_value(aggr, SC_TYPE_HIST_COUNT), 0);
+  cr_assert_eq(_get_value(aggr, SC_TYPE_HIST_SUM), 0);
+  cr_assert_eq(_get_value(aggr, SC_TYPE_HIST_BUCKET2), 0);
+  cr_assert_eq(_get_value(aggr, SC_TYPE_HIST_MAXIMUM), 4, "the maximum is not batched");
+  stats_counter_batch_end();
+
+  cr_assert_eq(_get_value(aggr, SC_TYPE_HIST_COUNT), 2);
+  cr_assert_eq(_get_value(aggr, SC_TYPE_HIST_SUM), 7);
+  cr_assert_eq(_get_value(aggr, SC_TYPE_HIST_BUCKET2), 2);
 
   _unregister_histogram(aggr);
 }
