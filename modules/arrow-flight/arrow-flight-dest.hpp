@@ -28,6 +28,7 @@
 
 #include "compat/cpp-start.h"
 #include "template/templates.h"
+#include "logthrdest/logthrdestdrv.h"
 #include "compat/cpp-end.h"
 
 #include <arrow/type.h>
@@ -36,6 +37,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <map>
 
 namespace syslog_ng {
 namespace arrow_flight {
@@ -75,6 +77,7 @@ public:
   bool init();
   bool deinit();
   const gchar *format_persist_name();
+  bool handle_response(const arrow::Status &status, LogThreadedResult *ltr);
 
   void set_url(std::string u)
   {
@@ -137,6 +140,11 @@ public:
     return this->keepalive_max_pings_without_data;
   }
 
+  void set_response_action(arrow::StatusCode status_code, ArrowFlightDestResponseAction action)
+  {
+    this->response_actions[status_code] = action;
+  }
+
   LogTemplateOptions &get_template_options()
   {
     return this->template_options;
@@ -194,6 +202,7 @@ private:
   gint keepalive_time = -1;
   gint keepalive_timeout = -1;
   gint keepalive_max_pings_without_data = -1;
+  std::map<arrow::StatusCode, ArrowFlightDestResponseAction> response_actions;
 };
 
 }

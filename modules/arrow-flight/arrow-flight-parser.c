@@ -49,6 +49,18 @@ static CfgLexerKeyword arrow_flight_keywords[] =
   { "keep_alive",    KW_KEEP_ALIVE },
   { "time",          KW_TIME },
   { "max_pings_without_data", KW_MAX_PINGS_WITHOUT_DATA },
+  { "response_action", KW_RESPONSE_ACTION },
+  { "disconnect",    KW_DISCONNECT },
+  { "drop",          KW_DROP },
+  { "retry",         KW_RETRY },
+  { "success",       KW_SUCCESS },
+  { "invalid",       KW_INVALID },
+  { "io_error",      KW_IO_ERROR },
+  { "cancelled",     KW_CANCELLED },
+  { "unknown_error", KW_UNKNOWN_ERROR },
+  { "key_error",     KW_KEY_ERROR },
+  { "already_exists", KW_ALREADY_EXISTS },
+  { "not_implemented", KW_NOT_IMPLEMENTED },
   { NULL }
 };
 

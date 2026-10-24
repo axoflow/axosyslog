@@ -447,3 +447,102 @@ def test_arrow_flight_destination_temporary_error(config, syslog_ng, port_alloca
     assert wait_until_true(lambda: arrow_flight_destination.get_stats().get("written", 0) == num_messages)
     assert arrow_flight_destination.get_stats()["dropped"] == 0
     assert arrow_flight_destination.get_row_count(ARROW_FLIGHT_PATH) == num_messages
+
+
+def test_arrow_flight_destination_response_action_drop(config, syslog_ng, port_allocator):
+    num_messages = 5
+    file_source = config.create_file_source(file_name="input.log", flags="no-parse")
+    options = {
+        **ARROW_FLIGHT_OPTIONS,
+        "batch-lines": 1,
+        "response-action": "io-error => drop",
+    }
+    arrow_flight_destination = config.create_arrow_flight_destination(port=port_allocator(), **options)
+    config.create_logpath(statements=[file_source, arrow_flight_destination])
+
+    arrow_flight_destination.start_listener()
+    arrow_flight_destination.respond_with_error(pa.ArrowIOError("simulated temporary error"))
+    syslog_ng.start(config)
+
+    file_source.write_logs([f"message-{i}" for i in range(num_messages)])
+
+    assert wait_until_true(lambda: syslog_ng.is_message_in_console_log("handled by response-action()"))
+    assert wait_until_true(lambda: arrow_flight_destination.get_stats().get("dropped", 0) == num_messages)
+    assert arrow_flight_destination.get_stats()["written"] == 0
+    assert arrow_flight_destination.get_row_count(ARROW_FLIGHT_PATH) == 0
+
+
+def test_arrow_flight_destination_response_action_disconnect(config, syslog_ng, port_allocator):
+    num_messages = 5
+    custom_msg = f"test message {uuid.uuid4()}"
+    file_source = config.create_file_source(file_name="input.log", flags="no-parse")
+    options = {
+        **ARROW_FLIGHT_OPTIONS,
+        "batch-lines": 1,
+        "time-reopen": 1,
+        "response-action": "invalid => disconnect",
+    }
+    arrow_flight_destination = config.create_arrow_flight_destination(port=port_allocator(), **options)
+    config.create_logpath(statements=[file_source, arrow_flight_destination])
+
+    arrow_flight_destination.start_listener()
+    arrow_flight_destination.respond_with_error(pa.ArrowInvalid("simulated permanent error"))
+    syslog_ng.start(config)
+
+    file_source.write_logs([custom_msg] * num_messages)
+
+    assert wait_until_true(lambda: syslog_ng.is_message_in_console_log("handled by response-action()"))
+
+    arrow_flight_destination.stop_responding_with_error()
+
+    assert wait_until_true(lambda: arrow_flight_destination.get_stats().get("written", 0) == num_messages)
+    assert arrow_flight_destination.get_stats()["dropped"] == 0
+    assert arrow_flight_destination.get_row_count(ARROW_FLIGHT_PATH) == num_messages
+
+
+def test_arrow_flight_destination_response_action_retry(config, syslog_ng, port_allocator):
+    num_messages = 2
+    file_source = config.create_file_source(file_name="input.log", flags="no-parse")
+    options = {
+        **ARROW_FLIGHT_OPTIONS,
+        "batch-lines": 1,
+        "time-reopen": 1,
+        "retries": 2,
+        "response-action": "invalid => retry",
+    }
+    arrow_flight_destination = config.create_arrow_flight_destination(port=port_allocator(), **options)
+    config.create_logpath(statements=[file_source, arrow_flight_destination])
+
+    arrow_flight_destination.start_listener()
+    arrow_flight_destination.respond_with_error(pa.ArrowInvalid("simulated permanent error"))
+    syslog_ng.start(config)
+
+    file_source.write_logs([f"message-{i}" for i in range(num_messages)])
+
+    assert wait_until_true(lambda: syslog_ng.is_message_in_console_log("handled by response-action()"))
+    assert wait_until_true(lambda: arrow_flight_destination.get_stats().get("dropped", 0) == num_messages)
+    assert arrow_flight_destination.get_stats()["written"] == 0
+    assert arrow_flight_destination.get_row_count(ARROW_FLIGHT_PATH) == 0
+
+
+def test_arrow_flight_destination_response_action_success(config, syslog_ng, port_allocator):
+    num_messages = 5
+    file_source = config.create_file_source(file_name="input.log", flags="no-parse")
+    options = {
+        **ARROW_FLIGHT_OPTIONS,
+        "batch-lines": 1,
+        "response-action": "invalid => success",
+    }
+    arrow_flight_destination = config.create_arrow_flight_destination(port=port_allocator(), **options)
+    config.create_logpath(statements=[file_source, arrow_flight_destination])
+
+    arrow_flight_destination.start_listener()
+    arrow_flight_destination.respond_with_error(pa.ArrowInvalid("simulated permanent error"))
+    syslog_ng.start(config)
+
+    file_source.write_logs([f"message-{i}" for i in range(num_messages)])
+
+    assert wait_until_true(lambda: syslog_ng.is_message_in_console_log("handled by response-action()"))
+    assert wait_until_true(lambda: arrow_flight_destination.get_stats().get("written", 0) == num_messages)
+    assert arrow_flight_destination.get_stats()["dropped"] == 0
+    assert arrow_flight_destination.get_row_count(ARROW_FLIGHT_PATH) == 0

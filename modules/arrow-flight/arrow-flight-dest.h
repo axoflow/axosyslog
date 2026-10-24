@@ -30,6 +30,25 @@
 #include "driver.h"
 #include "template/templates.h"
 
+typedef enum
+{
+  AFDRA_DISCONNECT,
+  AFDRA_DROP,
+  AFDRA_RETRY,
+  AFDRA_SUCCESS,
+} ArrowFlightDestResponseAction;
+
+typedef enum
+{
+  AFDR_INVALID,
+  AFDR_IO_ERROR,
+  AFDR_CANCELLED,
+  AFDR_UNKNOWN_ERROR,
+  AFDR_KEY_ERROR,
+  AFDR_ALREADY_EXISTS,
+  AFDR_NOT_IMPLEMENTED,
+} ArrowFlightDestResponse;
+
 typedef struct _ArrowFlightDestDriver ArrowFlightDestDriver;
 
 LogDriver *arrow_flight_dd_new(GlobalConfig *cfg);
@@ -46,6 +65,8 @@ void arrow_flight_dd_set_batch_bytes(LogDriver *d, glong b);
 void arrow_flight_dd_set_keepalive_time(LogDriver *d, gint t);
 void arrow_flight_dd_set_keepalive_timeout(LogDriver *d, gint t);
 void arrow_flight_dd_set_keepalive_max_pings(LogDriver *d, gint p);
+void arrow_flight_dd_set_response_action(LogDriver *d, ArrowFlightDestResponse response,
+                                         ArrowFlightDestResponseAction action);
 
 LogTemplateOptions *arrow_flight_dd_get_template_options(LogDriver *d);
 
