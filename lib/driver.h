@@ -173,6 +173,10 @@ struct _LogDestDriver
   gint log_fifo_size;
   gint throttle;
   StatsCounterItem *queued_global_messages;
+
+  /* messages rejected while unreachable on a destination-failover path */
+  StatsClusterKey *rejected_messages_key;
+  StatsCounterItem *rejected_messages;
 };
 
 /* returns a reference */
@@ -209,6 +213,9 @@ log_dest_driver_release_queue(LogDestDriver *self, LogQueue *q)
 gboolean log_dest_driver_init_method(LogPipe *s);
 gboolean log_dest_driver_deinit_method(LogPipe *s);
 void log_dest_driver_queue_method(LogPipe *s, LogMessage *msg, const LogPathOptions *path_options);
+void log_dest_driver_register_rejected_counter(LogDestDriver *self, gint stats_level,
+                                               StatsClusterKeyBuilder *driver_sck_builder);
+void log_dest_driver_reject_message(LogDestDriver *self, LogMessage *msg, const LogPathOptions *path_options);
 
 void log_dest_driver_init_instance(LogDestDriver *self, GlobalConfig *cfg);
 void log_dest_driver_free(LogPipe *s);

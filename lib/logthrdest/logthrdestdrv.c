@@ -269,6 +269,28 @@ _suspend(LogThreadedDestWorker *self)
   self->suspended = TRUE;
 }
 
+/* NOTE: runs in the worker thread, while the source threads read it in
+ * _lookup_worker() to keep flags(destination-failover) messages off the
+ * queues of workers that cannot deliver them */
+static void
+_mark_unreachable(LogThreadedDestWorker *self)
+{
+  g_atomic_int_set(&self->unreachable, TRUE);
+}
+
+/* NOTE: runs in the worker thread */
+static void
+_mark_reachable(LogThreadedDestWorker *self)
+{
+  g_atomic_int_set(&self->unreachable, FALSE);
+}
+
+static gboolean
+_is_reachable(LogThreadedDestWorker *self)
+{
+  return !g_atomic_int_get(&self->unreachable);
+}
+
 /* NOTE: runs in the worker thread */
 static void
 _connect(LogThreadedDestWorker *self)
@@ -280,6 +302,11 @@ _connect(LogThreadedDestWorker *self)
                 evt_tag_int("worker_index", self->worker_index),
                 log_expr_node_location_tag(self->owner->super.super.super.expr_node));
       _suspend(self);
+      _mark_unreachable(self);
+    }
+  else
+    {
+      _mark_reachable(self);
     }
 
   stats_counter_set(self->metrics.output_unreachable, !self->connected);
@@ -297,6 +324,7 @@ static void
 _disconnect_and_suspend(LogThreadedDestWorker *self)
 {
   _disconnect(self);
+  _mark_unreachable(self);
   stats_counter_set(self->metrics.output_unreachable, !self->connected);
   _suspend(self);
 }
@@ -1472,16 +1500,38 @@ _round_robin_to_worker_index(LogThreadedDestDriver *self)
   return worker_index;
 }
 
-LogThreadedDestWorker *
-_lookup_worker(LogThreadedDestDriver *self, LogMessage *msg)
+static LogThreadedDestWorker *
+_round_robin_to_reachable_worker(LogThreadedDestDriver *self)
 {
-  guint worker_index;
-  if (self->worker_partition_key)
-    worker_index = _partition_to_worker_index(self, msg);
-  else
-    worker_index = _round_robin_to_worker_index(self);
+  for (gint i = 0; i < self->num_workers; i++)
+    {
+      LogThreadedDestWorker *dw = self->workers[_round_robin_to_worker_index(self)];
 
-  return self->workers[worker_index];
+      if (_is_reachable(dw))
+        return dw;
+    }
+  return NULL;
+}
+
+/* With @reachable_only, returns NULL if the message has no reachable
+ * worker: a partitioned message is bound to its worker (moving it would
+ * break the per-key ordering), others may go to any reachable one. */
+static LogThreadedDestWorker *
+_lookup_worker(LogThreadedDestDriver *self, LogMessage *msg, gboolean reachable_only)
+{
+  if (self->worker_partition_key)
+    {
+      LogThreadedDestWorker *dw = self->workers[_partition_to_worker_index(self, msg)];
+
+      if (reachable_only && !_is_reachable(dw))
+        return NULL;
+      return dw;
+    }
+
+  if (reachable_only)
+    return _round_robin_to_reachable_worker(self);
+
+  return self->workers[_round_robin_to_worker_index(self)];
 }
 
 /* the feeding side of the driver, runs in the source thread and puts an
@@ -1492,8 +1542,15 @@ log_threaded_dest_driver_queue(LogPipe *s, LogMessage *msg,
                                const LogPathOptions *path_options)
 {
   LogThreadedDestDriver *self = (LogThreadedDestDriver *)s;
-  LogThreadedDestWorker *dw = _lookup_worker(self, msg);
   LogPathOptions local_path_options;
+
+  LogThreadedDestWorker *dw = _lookup_worker(self, msg, path_options->destination_failover);
+
+  if (!dw)
+    {
+      log_dest_driver_reject_message(&self->super, msg, path_options);
+      return;
+    }
 
   if (!path_options->flow_control_requested)
     path_options = log_msg_break_ack(msg, path_options, &local_path_options);
@@ -1693,6 +1750,7 @@ _register_driver_stats(LogThreadedDestDriver *self, StatsClusterKeyBuilder *kb)
       }
   }
   stats_unlock();
+  log_dest_driver_register_rejected_counter(&self->super, level, kb);
   _register_driver_aggregated_stats(self);
 }
 
@@ -1753,6 +1811,10 @@ _format_seqnum_persist_name(LogThreadedDestDriver *self)
 static gboolean
 _create_workers(LogThreadedDestDriver *self, gint stats_level, StatsClusterKeyBuilder *driver_sck_builder)
 {
+  /* compat mode has a single, embedded worker instance: _construct_worker()
+   * would hand out the same instance for every index */
+  g_assert(!_is_worker_compat_mode(self) || self->num_workers == 1);
+
   /* free previous workers array if set to cope with num_workers change */
   g_free(self->workers);
   self->workers = g_new0(LogThreadedDestWorker *, self->num_workers);

@@ -36,6 +36,25 @@ log_multiplexer_disable_delivery_propagation(LogMultiplexer *self)
   self->delivery_propagation = FALSE;
 }
 
+/* the last alternative of flags(destination-failover), the next_hop tried
+ * last: the last fallback branch if there's one, as those are only tried
+ * once every other branch failed */
+static gint
+_find_failover_fallback(LogMultiplexer *self)
+{
+  if (!(self->super.flags & PIF_DESTINATION_FAILOVER))
+    return -1;
+
+  for (gint i = self->next_hops->len - 1; i >= 0; i--)
+    {
+      LogPipe *next_hop = g_ptr_array_index(self->next_hops, i);
+
+      if (!self->fallback_exists || (next_hop->flags & PIF_BRANCH_FALLBACK))
+        return i;
+    }
+  return -1;
+}
+
 static gboolean
 log_multiplexer_init(LogPipe *s)
 {
@@ -57,6 +76,7 @@ log_multiplexer_init(LogPipe *s)
           self->fallback_exists = TRUE;
         }
     }
+  self->failover_fallback = _find_failover_fallback(self);
   return TRUE;
 }
 
@@ -84,6 +104,11 @@ log_multiplexer_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_op
   gint fallback;
 
   log_path_options_push_junction(&local_path_options, &matched, path_options);
+
+  /* destinations may only reject while there is an alternative left to try */
+  if (self->super.flags & PIF_DESTINATION_FAILOVER)
+    local_path_options.destination_failover = TRUE;
+
   if (_has_multiple_arcs(self))
     {
       /* if we are delivering to multiple branches, we need to sync the
@@ -108,6 +133,11 @@ log_multiplexer_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_op
             {
               continue;
             }
+
+          /* the last alternative buffers, unless an enclosing
+           * flags(destination-failover) still has alternatives of its own */
+          if (G_UNLIKELY(i == self->failover_fallback))
+            local_path_options.destination_failover = path_options->destination_failover;
 
           matched = TRUE;
           log_msg_add_ack(msg, &local_path_options);
@@ -169,9 +199,18 @@ log_multiplexer_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_op
    * perform a filtering function, which means we need to push our filtering
    * responsibility to the next pipe element.
    *
+   * flags(destination-failover) is the one case where we *are* dispatching
+   * to destinations (self->delivery_propagation is FALSE, as set by
+   * cfg_tree_compile_reference()/cfg_tree_compile_junction()) but still
+   * need to propagate: path_options->destination_failover, set by the
+   * multiplexer of the failover alternatives (see above) and inherited
+   * unchanged through any further nesting (see
+   * log_path_options_push_junction()), tells us this message is on such a
+   * path without needing to know anything about the concrete pipe graph
+   * around us.
    */
 
-  if (self->delivery_propagation)
+  if (self->delivery_propagation || path_options->destination_failover)
     {
       if (!delivered && path_options->matched)
         *path_options->matched = FALSE;

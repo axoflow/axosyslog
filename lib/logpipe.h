@@ -76,6 +76,11 @@
 
 #define PIF_BREAKPOINT        0x0800
 
+/* LogMultiplexer whose next_hops are the alternatives of
+ * flags(destination-failover).  Not a branch property, so it is not copied
+ * to the head of a branch. */
+#define PIF_DESTINATION_FAILOVER  0x1000
+
 /* private flags range, to be used by other LogPipe instances for their own purposes */
 
 #define PIF_PRIVATE(x)       ((x) << 16)
@@ -193,30 +198,31 @@
 
 struct _LogPathOptions
 {
-  /* an acknowledgement is "passed" to this path, an ACK is still
-   * needed to close the window slot. This was called "flow-control"
+  /* ack_needed: an acknowledgement is "passed" to this path, an ACK is
+   * still needed to close the window slot. This was called "flow-control"
    * and meant both of these things: the user requested
    * flags(flow-control), _AND_ an acknowledgement was needed. With
-   * the latest change, the one below specifies the user option,
-   * while the "ack is still needed" condition is stored in
-   * ack_needed.
-   */
-
-  gboolean ack_needed;
-
-  /* The user has requested flow-control on this processing path,
-   * which means that the destination should invoke log_msg_ack()
-   * after it has completed processing it (e.g. after sending to the
-   * actual destination, possibly after confirmation if the transport
-   * supports that). If flow-control is not requested, destinations
-   * are permitted to call log_msg_ack() early (e.g. at queue time).
+   * the latest change, flow_control_requested specifies the user option,
+   * while the "ack is still needed" condition is stored here.
    *
-   * This is initially set to the value of the global log-flow-control
-   * option and can be set to TRUE/FALSE anywhere _before_ the destination
-   * driver, which will actually carry out the required action.
+   * flow_control_requested: the user has requested flow-control on this
+   * processing path, which means that the destination should invoke
+   * log_msg_ack() after it has completed processing it (e.g. after
+   * sending to the actual destination, possibly after confirmation if the
+   * transport supports that). If flow-control is not requested,
+   * destinations are permitted to call log_msg_ack() early (e.g. at queue
+   * time). This is initially set to the value of the global
+   * log-flow-control option and can be set to TRUE/FALSE anywhere
+   * _before_ the destination driver, which will actually carry out the
+   * required action.
+   *
+   * destination_failover: set to TRUE while this message is in a
+   * flags(destination-failover) alternative that is followed by another
+   * one.  Sticky for the rest of this path.  A destination driver can check
+   * this to decide whether to refuse (instead of buffer) new messages while
+   * it considers itself unreachable.
    */
-
-  gboolean flow_control_requested;
+  guint ack_needed:1, flow_control_requested:1, destination_failover:1;
 
   gboolean *matched;
   const LogPathOptions *lpo_parent_junction;
@@ -231,8 +237,8 @@ typedef enum
 
 typedef gboolean (*LogPathWalkFunc)(LogPipe *from, LogPathConnectionType type, LogPipe *to, gpointer user_data);
 
-#define LOG_PATH_OPTIONS_INIT { TRUE, FALSE, NULL, NULL, NULL}
-#define LOG_PATH_OPTIONS_INIT_NOACK { FALSE, FALSE, NULL, NULL, NULL }
+#define LOG_PATH_OPTIONS_INIT { TRUE, FALSE, FALSE, NULL, NULL, NULL}
+#define LOG_PATH_OPTIONS_INIT_NOACK { FALSE, FALSE, FALSE, NULL, NULL, NULL }
 
 /*
  * Embed a step in our LogPathOptions chain.

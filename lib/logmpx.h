@@ -41,6 +41,10 @@ typedef struct _LogMultiplexer
   GPtrArray *next_hops;
   gboolean fallback_exists;
   gboolean delivery_propagation;
+
+  /* the next_hop that buffers instead of rejecting, as the last alternative
+   * of flags(destination-failover), -1 without it */
+  gint failover_fallback;
 } LogMultiplexer;
 
 void log_multiplexer_add_next_hop(LogMultiplexer *self, LogPipe *next_hop);
