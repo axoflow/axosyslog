@@ -94,10 +94,6 @@ void stats_aggregator_free(StatsAggregator *self);
 
 /* type specific constructors */
 
-StatsAggregator *stats_aggregator_maximum_new(gint level, StatsClusterKey *sc_key);
-
-StatsAggregator *stats_aggregator_average_new(gint level, StatsClusterKey *sc_key);
-
 StatsAggregator *stats_aggregator_cps_new(gint level, StatsClusterKey *sc_key, StatsClusterKey *sc_key_input,
                                           gint stats_type);
 
