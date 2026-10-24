@@ -84,8 +84,8 @@ struct _LogWriter
     StatsClusterKey *written_bytes_key;
     StatsByteCounter written_bytes;
 
-    StatsAggregator *max_message_size;
-    StatsAggregator *average_messages_size;
+    StatsClusterKey *event_size_key;
+    StatsAggregator *event_size;
     StatsAggregator *CPS;
     StatsClusterKey *message_latency_key;
     StatsAggregator *message_latency;
@@ -1168,8 +1168,7 @@ log_writer_flush_finalize(LogWriter *self)
 static void
 log_writer_update_message_stats(LogWriter *self, const LogMessage *msg, gsize msg_len)
 {
-  stats_aggregator_add_data_point(self->metrics.max_message_size, msg_len);
-  stats_aggregator_add_data_point(self->metrics.average_messages_size, msg_len);
+  stats_aggregator_add_data_point(self->metrics.event_size, msg_len);
 
   if (!self->metrics.message_latency)
     return;
@@ -1411,6 +1410,8 @@ log_writer_init_watches(LogWriter *self)
 static void
 _register_aggregated_stats(LogWriter *self, StatsClusterKey *sc_key_input, gint stats_level, gint stats_type)
 {
+  gint hist_level = log_pipe_is_internal(&self->super) ? STATS_LEVEL3 : STATS_LEVEL2;
+
   stats_aggregator_lock();
   StatsClusterKey sc_key;
 
@@ -1418,20 +1419,19 @@ _register_aggregated_stats(LogWriter *self, StatsClusterKey *sc_key_input, gint 
   stats_cluster_key_builder_format_legacy_stats_instance(self->metrics.stats_kb,
                                                          stats_instance, sizeof(stats_instance));
 
-  stats_cluster_single_key_legacy_set_with_name(&sc_key, self->options->stats_source | SCS_DESTINATION, self->stats_id,
-                                                stats_instance, "msg_size_max");
-  stats_register_aggregator_maximum(stats_level, &sc_key, &self->metrics.max_message_size);
-
-  stats_cluster_single_key_legacy_set_with_name(&sc_key, self->options->stats_source | SCS_DESTINATION, self->stats_id,
-                                                stats_instance, "msg_size_avg");
-  stats_register_aggregator_average(stats_level, &sc_key, &self->metrics.average_messages_size);
+  StatsClusterKey sc_key_size_avg, sc_key_size_max;
+  stats_cluster_single_key_legacy_set_with_name(&sc_key_size_avg, self->options->stats_source | SCS_DESTINATION,
+                                                self->stats_id, stats_instance, "msg_size_avg");
+  stats_cluster_single_key_legacy_set_with_name(&sc_key_size_max, self->options->stats_source | SCS_DESTINATION,
+                                                self->stats_id, stats_instance, "msg_size_max");
+  stats_register_aggregator_hist_with_legacy(hist_level, self->metrics.event_size_key, round_to_log2(64), 8,
+                                             &sc_key_size_avg, &sc_key_size_max, &self->metrics.event_size);
 
   stats_cluster_single_key_legacy_set_with_name(&sc_key, self->options->stats_source | SCS_DESTINATION, self->stats_id,
                                                 stats_instance, "eps");
   stats_register_aggregator_cps(stats_level, &sc_key, sc_key_input, stats_type, &self->metrics.CPS);
 
-  gint level = log_pipe_is_internal(&self->super) ? STATS_LEVEL3 : STATS_LEVEL2;
-  stats_register_aggregator_hist(level, self->metrics.message_latency_key, round_to_log2(1), 20,
+  stats_register_aggregator_hist(hist_level, self->metrics.message_latency_key, round_to_log2(1), 20,
                                  &self->metrics.message_latency);
 
   stats_aggregator_unlock();
@@ -1443,8 +1443,7 @@ _unregister_aggregated_stats(LogWriter *self)
   stats_aggregator_lock();
 
   stats_unregister_aggregator(&self->metrics.message_latency);
-  stats_unregister_aggregator(&self->metrics.max_message_size);
-  stats_unregister_aggregator(&self->metrics.average_messages_size);
+  stats_unregister_aggregator(&self->metrics.event_size);
   stats_unregister_aggregator(&self->metrics.CPS);
 
   stats_aggregator_unlock();
@@ -1616,6 +1615,9 @@ log_writer_free(LogPipe *s)
 
   if (self->metrics.message_latency_key)
     stats_cluster_key_free(self->metrics.message_latency_key);
+
+  if (self->metrics.event_size_key)
+    stats_cluster_key_free(self->metrics.event_size_key);
 
   ml_batched_timer_free(&self->mark_timer);
   ml_batched_timer_free(&self->suppress_timer);
@@ -1835,6 +1837,16 @@ _set_metric_options(LogWriter *self, const gchar *stats_id, StatsClusterKeyBuild
       stats_cluster_key_builder_set_name(self->metrics.stats_kb, METRIC(output_event_latency_seconds));
       stats_cluster_key_builder_set_unit(self->metrics.stats_kb, SCU_MILLISECONDS);
       self->metrics.message_latency_key = stats_cluster_key_builder_build_hist(self->metrics.stats_kb);
+    }
+    stats_cluster_key_builder_pop(self->metrics.stats_kb);
+
+    if (self->metrics.event_size_key)
+      stats_cluster_key_free(self->metrics.event_size_key);
+
+    stats_cluster_key_builder_push(self->metrics.stats_kb);
+    {
+      stats_cluster_key_builder_set_name(self->metrics.stats_kb, METRIC(output_event_size_bytes));
+      self->metrics.event_size_key = stats_cluster_key_builder_build_hist(self->metrics.stats_kb);
     }
     stats_cluster_key_builder_pop(self->metrics.stats_kb);
   }
