@@ -57,6 +57,11 @@ _destroy_reload_entry(void *c)
   CfgReloadEntry *e = static_cast<CfgReloadEntry *>(c);
 
   e->server->Shutdown(std::chrono::system_clock::now() + std::chrono::seconds(30));
+
+  /* a queued message can keep a worker alive past this entry, and the
+   * requests in its queue refer to the server deleted below */
+  for (int i = 0; i < e->num_workers; i++)
+    static_cast<SourceWorker *>(((GrpcSourceWorker *) e->workers[i])->cpp)->shutdown_queue();
   log_threaded_source_driver_destroy_workers(e->workers, e->num_workers);
 
   delete e;
@@ -100,8 +105,8 @@ SourceDriver::generate_persist_name()
 
   /* worker scaling during reload is not supported, hence num_workers is here */
   if (this->super->super.super.super.super.persist_name)
-    g_snprintf(persist_name, sizeof(persist_name), "opentelemetry.%s",
-               this->super->super.super.super.super.persist_name);
+    g_snprintf(persist_name, sizeof(persist_name), "opentelemetry.%s(%d)",
+               this->super->super.super.super.super.persist_name, this->super->super.num_workers);
   else
     g_snprintf(persist_name, sizeof(persist_name), "opentelemetry(%s, %d)",
                this->get_unique_id_fragment().c_str(), this->super->super.num_workers);
@@ -212,7 +217,13 @@ SourceWorker::~SourceWorker()
   SourceDriver &owner = static_cast<SourceDriver &>(this->get_owner());
   owner.shutdown_server();
 
-  if (!this->cq)
+  this->shutdown_queue();
+}
+
+void
+syslogng::grpc::otel::SourceWorker::shutdown_queue()
+{
+  if (!this->cq || this->queue_drained)
     return;
 
   this->cq->Shutdown();
@@ -224,6 +235,7 @@ SourceWorker::~SourceWorker()
       auto call = static_cast<AsyncServiceCallInterface *>(tag);
       delete call;
     }
+  this->queue_drained = true;
 }
 
 bool
