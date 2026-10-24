@@ -259,6 +259,69 @@ log_source_flow_control_suspend(LogSource *self)
   window_size_counter_suspend(&self->window_size);
 }
 
+static void
+_invalidate_resolved_peer(LogSource *self)
+{
+  self->resolved_peer.sec = -1;
+}
+
+static gboolean
+_is_resolved_peer_valid(LogSource *self, GSockAddr *saddr, gint64 sec)
+{
+  if (self->resolved_peer.sec != sec)
+    return FALSE;
+
+  if (!saddr)
+    return self->resolved_peer.saddr_len == 0;
+
+  return saddr->super.salen == self->resolved_peer.saddr_len &&
+         memcmp(&saddr->sa, &self->resolved_peer.saddr, saddr->super.salen) == 0;
+}
+
+static void
+_store_resolved_peer(LogSource *self, GSockAddr *saddr, gint64 sec, const gchar *name, gsize name_len)
+{
+  guint32 saddr_len = saddr ? saddr->super.salen : 0;
+
+  if (saddr_len > sizeof(self->resolved_peer.saddr) || name_len >= sizeof(self->resolved_peer.name))
+    {
+      _invalidate_resolved_peer(self);
+      return;
+    }
+
+  self->resolved_peer.sec = sec;
+  self->resolved_peer.saddr_len = saddr_len;
+  if (saddr)
+    memcpy(&self->resolved_peer.saddr, &saddr->sa, saddr_len);
+  memcpy(self->resolved_peer.name, name, name_len);
+  self->resolved_peer.name[name_len] = 0;
+  self->resolved_peer.name_len = name_len;
+}
+
+/* The name is reused only within the second it was resolved in, so that
+ * changes in DNS (or the DNS cache expiring an entry) are noticed the same
+ * way as if we resolved it for every message. */
+static const gchar *
+_resolve_peer_hostname(LogSource *self, LogMessage *msg, gsize *name_len)
+{
+  gint64 sec = msg->timestamps[LM_TS_RECVD].ut_sec;
+
+  if (!_is_resolved_peer_valid(self, msg->saddr, sec))
+    {
+      gsize len;
+      const gchar *name = resolve_sockaddr_to_hostname(&len, msg->saddr, &self->options->host_resolve_options);
+
+      _store_resolved_peer(self, msg->saddr, sec, name, len);
+      if (self->resolved_peer.sec != sec)
+        {
+          *name_len = len;
+          return name;
+        }
+    }
+  *name_len = self->resolved_peer.name_len;
+  return self->resolved_peer.name;
+}
+
 void
 log_source_mangle_hostname(LogSource *self, LogMessage *msg)
 {
@@ -266,7 +329,7 @@ log_source_mangle_hostname(LogSource *self, LogMessage *msg)
   gsize resolved_name_len;
   const gchar *orig_host;
 
-  resolved_name = resolve_sockaddr_to_hostname(&resolved_name_len, msg->saddr, &self->options->host_resolve_options);
+  resolved_name = _resolve_peer_hostname(self, msg, &resolved_name_len);
   log_msg_set_value(msg, LM_V_HOST_FROM, resolved_name, resolved_name_len);
 
   orig_host = log_msg_get_value(msg, LM_V_HOST, NULL);
@@ -748,6 +811,7 @@ log_source_set_options(LogSource *self, LogSourceOptions *options,
     _initialize_window(self, options->init_window_size);
 
   self->options = options;
+  _invalidate_resolved_peer(self);
   _set_metric_options(self, stats_id, kb);
   self->threaded = threaded;
 
@@ -778,6 +842,7 @@ log_source_init_instance(LogSource *self, GlobalConfig *cfg)
   self->super.init = log_source_init;
   self->super.deinit = log_source_deinit;
   self->window_initialized = FALSE;
+  _invalidate_resolved_peer(self);
   self->ack_tracker_factory = instant_ack_tracker_bookmarkless_factory_new();
   self->ack_tracker = NULL;
 }
