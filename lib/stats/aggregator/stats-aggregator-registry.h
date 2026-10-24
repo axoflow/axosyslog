@@ -38,8 +38,6 @@ void stats_aggregator_registry_deinit(void);
 
 /* type specific helpers */
 
-void stats_register_aggregator_maximum(gint level, StatsClusterKey *sc_key, StatsAggregator **aggr);
-void stats_register_aggregator_average(gint level, StatsClusterKey *sc_key, StatsAggregator **aggr);
 void stats_register_aggregator_cps(gint level, StatsClusterKey *sc_key, StatsClusterKey *sc_key_input, gint stats_type,
                                    StatsAggregator **aggr);
 void stats_register_aggregator_hist(gint level, StatsClusterKey *sc_key,
