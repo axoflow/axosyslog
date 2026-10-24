@@ -22,6 +22,7 @@
 #include "stats/aggregator/stats-aggregator.h"
 #include "stats/stats-registry.h"
 #include "stats/stats-cluster-hist.h"
+#include "stats/stats-counter-batch.h"
 #include "stats/stats-prometheus.h"
 #include "compat/pow2.h"
 
@@ -85,8 +86,8 @@ _add_data_point(StatsAggregator *s, gsize value)
 {
   StatsAggregatorHistogram *self = (StatsAggregatorHistogram *) s;
 
-  stats_counter_inc(self->count);
-  stats_counter_add(self->sum, value);
+  stats_counter_inc_batched(self->count);
+  stats_counter_add_batched(self->sum, value);
   _update_maximum(self, value);
 
   gssize bucket = (round_to_log2(value));
@@ -99,7 +100,7 @@ _add_data_point(StatsAggregator *s, gsize value)
   if (bucket >= self->num_buckets)
     bucket = self->num_buckets - 1;
 
-  stats_counter_inc(self->buckets[bucket]);
+  stats_counter_inc_batched(self->buckets[bucket]);
 }
 
 static void
