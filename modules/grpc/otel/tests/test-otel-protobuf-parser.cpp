@@ -20,9 +20,9 @@
  *
  */
 
-#include "opentelemetry/proto/logs/v1/logs.pb.h"
-#include "opentelemetry/proto/metrics/v1/metrics.pb.h"
-#include "opentelemetry/proto/trace/v1/trace.pb.h"
+#include "syslogng/opentelemetry/proto/logs/v1/logs.pb.h"
+#include "syslogng/opentelemetry/proto/metrics/v1/metrics.pb.h"
+#include "syslogng/opentelemetry/proto/trace/v1/trace.pb.h"
 
 #include "otel-protobuf-parser.hpp"
 #include "otel-logmsg-handles.hpp"
@@ -34,11 +34,11 @@
 #include <criterion/criterion.h>
 
 using namespace syslogng::grpc::otel;
-using namespace opentelemetry::proto::resource::v1;
-using namespace opentelemetry::proto::common::v1;
-using namespace opentelemetry::proto::logs::v1;
-using namespace opentelemetry::proto::metrics::v1;
-using namespace opentelemetry::proto::trace::v1;
+using namespace syslogng::opentelemetry::proto::resource::v1;
+using namespace syslogng::opentelemetry::proto::common::v1;
+using namespace syslogng::opentelemetry::proto::logs::v1;
+using namespace syslogng::opentelemetry::proto::metrics::v1;
+using namespace syslogng::opentelemetry::proto::trace::v1;
 
 
 static LogMessage *

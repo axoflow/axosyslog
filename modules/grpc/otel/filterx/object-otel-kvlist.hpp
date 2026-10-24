@@ -32,7 +32,7 @@
 
 #include "filterx/protobuf-field-converter.hpp"
 #include "object-otel-base.hpp"
-#include "opentelemetry/proto/common/v1/common.pb.h"
+#include "syslogng/opentelemetry/proto/common/v1/common.pb.h"
 #include <mutex>
 
 typedef struct FilterXOtelKVList_ FilterXOtelKVList;
@@ -44,8 +44,8 @@ namespace grpc {
 namespace otel {
 namespace filterx {
 
-using opentelemetry::proto::common::v1::KeyValue;
-using opentelemetry::proto::common::v1::KeyValueList;
+using syslogng::opentelemetry::proto::common::v1::KeyValue;
+using syslogng::opentelemetry::proto::common::v1::KeyValueList;
 using google::protobuf::RepeatedPtrField;
 
 class KVList : public Base

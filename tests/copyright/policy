@@ -214,7 +214,7 @@ modules/metrics-probe/tests/test_metrics_probe\.c$
 modules/metrics-probe/tests/test_filterx_func_update_metric\.c$
 modules/metrics-probe/tests/metrics-probe-test\.h$
 modules/darwinosl/darwinosl(|-parser|-plugin|-grammar|-source|-source-oslog|-source-persist)\.(c|h|m|ym)$
-modules/grpc/otel/otel-(grammar|parser|plugin|source|source-services|servicecall|protobuf-parser|protobuf-formatter|dest|dest-worker|logmsg-handles)\.(c|h|cpp|hpp|ym)$
+modules/grpc/otel/otel-(grammar|parser|plugin|source|source-services|servicecall|services|protobuf-parser|protobuf-formatter|dest|dest-worker|logmsg-handles)\.(c|h|cpp|hpp|ym)$
 modules/grpc/otel/grpc-credentials-builder\.(h|cpp|hpp)$
 modules/grpc/otel/syslog-ng-otlp-(dest|dest-worker)\.(h|cpp|hpp)$
 modules/grpc/otel/tests/test-otel-(protobuf-parser|protobuf-formatter)\.cpp$
