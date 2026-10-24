@@ -26,6 +26,7 @@
 #include "stats/stats-registry.h"
 #include "stats/stats-counter-batch.h"
 #include "stats/stats-cluster-hist.h"
+#include "stats/stats-cluster-single.h"
 #include "stats/stats-prometheus.h"
 #include "stats/aggregator/stats-aggregator-registry.h"
 
@@ -123,6 +124,48 @@ Test(stats_histogram, maximum_is_formatted_as_a_max_suffixed_series)
   GString *record = stats_prometheus_format_counter(sc, SC_TYPE_HIST_MAXIMUM,
                                                     stats_cluster_get_counter(sc, SC_TYPE_HIST_MAXIMUM));
   cr_assert_str_eq(record->str, "syslogng_test_histogram_max 7\n");
+
+  _unregister_histogram(aggr);
+}
+
+static gsize
+_get_legacy_value(StatsClusterKey *key)
+{
+  stats_lock();
+  StatsCluster *sc = stats_get_cluster(key);
+  stats_unlock();
+  cr_assert_not_null(sc);
+  return stats_counter_get(stats_cluster_get_counter(sc, SC_TYPE_SINGLE_VALUE));
+}
+
+Test(stats_histogram, legacy_average_and_maximum_are_derived_from_the_histogram)
+{
+  StatsAggregator *aggr = NULL;
+  StatsClusterKey key, average_key, maximum_key;
+
+  stats_cluster_hist_key_set(&key, "test_histogram", NULL, 0);
+  stats_cluster_single_key_legacy_set_with_name(&average_key, SCS_SOURCE | SCS_GROUP, "id", "instance", "msg_size_avg");
+  stats_cluster_single_key_legacy_set_with_name(&maximum_key, SCS_SOURCE | SCS_GROUP, "id", "instance", "msg_size_max");
+
+  stats_aggregator_lock();
+  stats_register_aggregator_hist_with_legacy(0, &key, 0, 4, &average_key, &maximum_key, &aggr);
+  stats_aggregator_unlock();
+  cr_assert_not_null(aggr);
+
+  stats_aggregator_add_data_point(aggr, 10);
+  stats_aggregator_add_data_point(aggr, 30);
+  cr_assert_eq(_get_legacy_value(&average_key), 0, "the legacy metrics are only updated by the aggregator timer");
+
+  stats_aggregator_aggregate(aggr);
+  cr_assert_eq(_get_legacy_value(&average_key), 20);
+  cr_assert_eq(_get_legacy_value(&maximum_key), 30);
+
+  stats_aggregator_reset(aggr);
+  cr_assert_eq(_get_legacy_value(&average_key), 0);
+  cr_assert_eq(_get_legacy_value(&maximum_key), 0);
+
+  stats_aggregator_aggregate(aggr);
+  cr_assert_eq(_get_legacy_value(&average_key), 0, "no division by zero without data points");
 
   _unregister_histogram(aggr);
 }
