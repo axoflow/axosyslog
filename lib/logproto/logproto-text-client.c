@@ -74,6 +74,7 @@ log_proto_text_client_process_input(LogProtoClient *s)
   if (read > 0 && !self->super.options->drop_input)
     {
       msg_error("Unexpected input, closing", evt_tag_int("fd", self->super.transport_stack.fd));
+      errno = EINVAL;
       return LPS_ERROR;
     }
 
