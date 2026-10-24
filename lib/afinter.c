@@ -557,10 +557,42 @@ _events_by_severity_key_set(StatsClusterKey *sc_key, StatsClusterLabel *label, g
   stats_cluster_single_key_set(sc_key, METRIC(internal_events_total), label, 1);
 }
 
+static void
+_register_events_by_severity(void)
+{
+  StatsClusterKey sc_key;
+  StatsClusterLabel label;
+
+  stats_lock();
+  for (gint severity = 0; severity <= SYSLOG_PRIMASK; severity++)
+    {
+      _events_by_severity_key_set(&sc_key, &label, severity);
+      stats_register_counter(0, &sc_key, SC_TYPE_SINGLE_VALUE, &events_by_severity[severity]);
+    }
+  stats_unlock();
+}
+
+static void
+_unregister_events_by_severity(void)
+{
+  StatsClusterKey sc_key;
+  StatsClusterLabel label;
+
+  stats_lock();
+  for (gint severity = 0; severity <= SYSLOG_PRIMASK; severity++)
+    {
+      _events_by_severity_key_set(&sc_key, &label, severity);
+      stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &events_by_severity[severity]);
+    }
+  stats_unlock();
+}
+
 void
 afinter_message_posted(LogMessage *msg)
 {
   g_mutex_lock(&internal_msg_lock);
+
+  stats_counter_inc(events_by_severity[SYSLOG_PRI(msg->pri)]);
 
   /* Messages should be queued even when the internal source is inactive to prevent message loss during reloads,
    * while a new internal source is initializing. */
@@ -584,19 +616,10 @@ afinter_message_posted(LogMessage *msg)
 
       stats_cluster_single_key_set(&sc_key, METRIC(internal_events_queue_capacity), NULL, 0);
       stats_register_counter(0, &sc_key, SC_TYPE_SINGLE_VALUE, &metrics.queue_capacity);
-
-      for (gint severity = 0; severity <= SYSLOG_PRIMASK; severity++)
-        {
-          StatsClusterLabel label;
-          _events_by_severity_key_set(&sc_key, &label, severity);
-          stats_register_counter(0, &sc_key, SC_TYPE_SINGLE_VALUE, &events_by_severity[severity]);
-        }
       stats_unlock();
 
       stats_counter_set(metrics.queue_capacity, current_internal_source->options->queue_capacity);
     }
-
-  stats_counter_inc(events_by_severity[SYSLOG_PRI(msg->pri)]);
 
   if (current_internal_source
       && g_queue_get_length(internal_msg_queue) >= current_internal_source->options->queue_capacity)
@@ -618,6 +641,7 @@ exit:
 static void
 afinter_register_posted_hook(gint hook_type, gpointer user_data)
 {
+  _register_events_by_severity();
   msg_set_post_func(afinter_message_posted);
 }
 
@@ -653,18 +677,12 @@ afinter_global_deinit(void)
 
       stats_cluster_single_key_set(&sc_key, METRIC(internal_events_queue_capacity), NULL, 0);
       stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &metrics.queue_capacity);
-
-      for (gint severity = 0; severity <= SYSLOG_PRIMASK; severity++)
-        {
-          StatsClusterLabel label;
-          _events_by_severity_key_set(&sc_key, &label, severity);
-          stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &events_by_severity[severity]);
-        }
       stats_unlock();
 
       g_queue_free_full(internal_msg_queue, (GDestroyNotify)log_msg_unref);
       internal_msg_queue = NULL;
     }
+  _unregister_events_by_severity();
   current_internal_source = NULL;
 }
 
