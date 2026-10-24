@@ -229,3 +229,58 @@ Test(instant_ack_tracker, bookmark_saving)
   _deinit_log_source(src);
   _deinit_test_logpipe_dst(dst);
 }
+
+static gpointer
+_ack_in_thread(gpointer msg)
+{
+  LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
+
+  log_msg_ack((LogMessage *) msg, &path_options, AT_PROCESSED);
+  return NULL;
+}
+
+Test(instant_ack_tracker, ack_record_acked_on_another_thread_is_freed_without_leaks)
+{
+  LogSource *src = _init_log_source(instant_ack_tracker_factory_new());
+  TestLogPipeDst *dst = _init_test_logpipe_dst();
+  log_pipe_append(&src->super, &dst->super);
+  AckTracker *ack_tracker = src->ack_tracker;
+
+  ack_tracker_request_bookmark(ack_tracker);
+  LogMessage *msg = log_msg_new_empty();
+  log_source_post(src, msg);
+  GThread *acker = g_thread_new("acker", _ack_in_thread, msg);
+  g_thread_join(acker);
+  log_msg_unref(msg);
+  cr_expect_eq(window_size_counter_get(&src->window_size, NULL), 10);
+
+  ack_tracker_request_bookmark(ack_tracker);
+
+  _deinit_log_source(src);
+  _deinit_test_logpipe_dst(dst);
+}
+
+Test(instant_ack_tracker, tracker_teardown_with_acked_records_without_leaks)
+{
+  LogSource *src = _init_log_source(instant_ack_tracker_factory_new());
+  TestLogPipeDst *dst = _init_test_logpipe_dst();
+  log_pipe_append(&src->super, &dst->super);
+  AckTracker *ack_tracker = src->ack_tracker;
+  LogMessage *msgs[3];
+
+  for (gint i = 0; i < 3; i++)
+    {
+      ack_tracker_request_bookmark(ack_tracker);
+      msgs[i] = log_msg_new_empty();
+      log_source_post(src, msgs[i]);
+    }
+  for (gint i = 0; i < 3; i++)
+    {
+      LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
+      log_msg_ack(msgs[i], &path_options, AT_PROCESSED);
+      log_msg_unref(msgs[i]);
+    }
+
+  _deinit_log_source(src);
+  _deinit_test_logpipe_dst(dst);
+}
