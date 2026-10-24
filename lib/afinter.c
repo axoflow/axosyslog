@@ -29,6 +29,7 @@
 #include "messages.h"
 #include "apphook.h"
 #include "mainloop-threaded-worker.h"
+#include "syslog-names.h"
 
 #include <iv_event.h>
 
@@ -39,6 +40,7 @@ static GQueue *internal_msg_queue;
 static AFInterSource *current_internal_source;
 
 static AFInterMetrics metrics;
+static StatsCounterItem *events_by_severity[SYSLOG_PRIMASK + 1];
 
 /* the expiration timer of the next MARK message */
 static struct timespec next_mark_target = { -1, 0 };
@@ -548,10 +550,49 @@ _release_internal_msg_queue(void)
   internal_msg_queue = NULL;
 }
 
+static void
+_events_by_severity_key_set(StatsClusterKey *sc_key, StatsClusterLabel *label, gint severity)
+{
+  *label = stats_cluster_label("severity", syslog_name_lookup_severity_by_value(severity));
+  stats_cluster_single_key_set(sc_key, METRIC(internal_events_total), label, 1);
+}
+
+static void
+_register_events_by_severity(void)
+{
+  StatsClusterKey sc_key;
+  StatsClusterLabel label;
+
+  stats_lock();
+  for (gint severity = 0; severity <= SYSLOG_PRIMASK; severity++)
+    {
+      _events_by_severity_key_set(&sc_key, &label, severity);
+      stats_register_counter(0, &sc_key, SC_TYPE_SINGLE_VALUE, &events_by_severity[severity]);
+    }
+  stats_unlock();
+}
+
+static void
+_unregister_events_by_severity(void)
+{
+  StatsClusterKey sc_key;
+  StatsClusterLabel label;
+
+  stats_lock();
+  for (gint severity = 0; severity <= SYSLOG_PRIMASK; severity++)
+    {
+      _events_by_severity_key_set(&sc_key, &label, severity);
+      stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &events_by_severity[severity]);
+    }
+  stats_unlock();
+}
+
 void
 afinter_message_posted(LogMessage *msg)
 {
   g_mutex_lock(&internal_msg_lock);
+
+  stats_counter_inc(events_by_severity[SYSLOG_PRI(msg->pri)]);
 
   /* Messages should be queued even when the internal source is inactive to prevent message loss during reloads,
    * while a new internal source is initializing. */
@@ -600,6 +641,7 @@ exit:
 static void
 afinter_register_posted_hook(gint hook_type, gpointer user_data)
 {
+  _register_events_by_severity();
   msg_set_post_func(afinter_message_posted);
 }
 
@@ -640,6 +682,7 @@ afinter_global_deinit(void)
       g_queue_free_full(internal_msg_queue, (GDestroyNotify)log_msg_unref);
       internal_msg_queue = NULL;
     }
+  _unregister_events_by_severity();
   current_internal_source = NULL;
 }
 
