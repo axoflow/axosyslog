@@ -24,12 +24,12 @@
 #ifndef OTEL_DEST_WORKER_HPP
 #define OTEL_DEST_WORKER_HPP
 
-#include "axosyslog/opentelemetry/proto/collector/logs/v1/logs_service.pb.h"
-#include "axosyslog/opentelemetry/proto/collector/metrics/v1/metrics_service.pb.h"
-#include "axosyslog/opentelemetry/proto/collector/trace/v1/trace_service.pb.h"
-#include "axosyslog/opentelemetry/proto/logs/v1/logs.pb.h"
-#include "axosyslog/opentelemetry/proto/metrics/v1/metrics.pb.h"
-#include "axosyslog/opentelemetry/proto/trace/v1/trace.pb.h"
+#include "syslogng/opentelemetry/proto/collector/logs/v1/logs_service.pb.h"
+#include "syslogng/opentelemetry/proto/collector/metrics/v1/metrics_service.pb.h"
+#include "syslogng/opentelemetry/proto/collector/trace/v1/trace_service.pb.h"
+#include "syslogng/opentelemetry/proto/logs/v1/logs.pb.h"
+#include "syslogng/opentelemetry/proto/metrics/v1/metrics.pb.h"
+#include "syslogng/opentelemetry/proto/trace/v1/trace.pb.h"
 
 #include "grpc-dest-worker.hpp"
 #include "otel-dest.hpp"
@@ -40,15 +40,15 @@ namespace syslogng {
 namespace grpc {
 namespace otel {
 
-using axosyslog::opentelemetry::proto::collector::logs::v1::ExportLogsServiceRequest;
-using axosyslog::opentelemetry::proto::collector::logs::v1::ExportLogsServiceResponse;
-using axosyslog::opentelemetry::proto::collector::metrics::v1::ExportMetricsServiceRequest;
-using axosyslog::opentelemetry::proto::collector::metrics::v1::ExportMetricsServiceResponse;
-using axosyslog::opentelemetry::proto::collector::trace::v1::ExportTraceServiceRequest;
-using axosyslog::opentelemetry::proto::collector::trace::v1::ExportTraceServiceResponse;
-using axosyslog::opentelemetry::proto::logs::v1::ScopeLogs;
-using axosyslog::opentelemetry::proto::metrics::v1::ScopeMetrics;
-using axosyslog::opentelemetry::proto::trace::v1::ScopeSpans;
+using syslogng::opentelemetry::proto::collector::logs::v1::ExportLogsServiceRequest;
+using syslogng::opentelemetry::proto::collector::logs::v1::ExportLogsServiceResponse;
+using syslogng::opentelemetry::proto::collector::metrics::v1::ExportMetricsServiceRequest;
+using syslogng::opentelemetry::proto::collector::metrics::v1::ExportMetricsServiceResponse;
+using syslogng::opentelemetry::proto::collector::trace::v1::ExportTraceServiceRequest;
+using syslogng::opentelemetry::proto::collector::trace::v1::ExportTraceServiceResponse;
+using syslogng::opentelemetry::proto::logs::v1::ScopeLogs;
+using syslogng::opentelemetry::proto::metrics::v1::ScopeMetrics;
+using syslogng::opentelemetry::proto::trace::v1::ScopeSpans;
 
 using LogsServiceStub = ExportStub<ExportLogsServiceRequest, ExportLogsServiceResponse>;
 using MetricsServiceStub = ExportStub<ExportMetricsServiceRequest, ExportMetricsServiceResponse>;

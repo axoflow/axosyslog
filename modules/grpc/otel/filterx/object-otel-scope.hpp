@@ -31,7 +31,7 @@
 #include "compat/cpp-end.h"
 
 #include "object-otel-base.hpp"
-#include "axosyslog/opentelemetry/proto/common/v1/common.pb.h"
+#include "syslogng/opentelemetry/proto/common/v1/common.pb.h"
 
 typedef struct FilterXOtelScope_ FilterXOtelScope;
 
@@ -57,7 +57,7 @@ public:
   bool is_key_set(const gchar *key, gsize key_len);
   uint64_t len() const;
   bool iter(FilterXObjectIterFunc func, void *user_data);
-  const axosyslog::opentelemetry::proto::common::v1::InstrumentationScope &get_value() const;
+  const syslogng::opentelemetry::proto::common::v1::InstrumentationScope &get_value() const;
 
 private:
   Scope(const Scope &o, FilterXOtelScope *s);
@@ -65,7 +65,7 @@ private:
 
 private:
   FilterXOtelScope *super;
-  axosyslog::opentelemetry::proto::common::v1::InstrumentationScope scope;
+  syslogng::opentelemetry::proto::common::v1::InstrumentationScope scope;
 
 protected:
   const google::protobuf::Message &get_protobuf_value() const override;

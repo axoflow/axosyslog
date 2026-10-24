@@ -31,7 +31,7 @@
 #include "compat/cpp-end.h"
 
 #include "object-otel-base.hpp"
-#include "axosyslog/opentelemetry/proto/logs/v1/logs.pb.h"
+#include "syslogng/opentelemetry/proto/logs/v1/logs.pb.h"
 
 typedef struct FilterXOtelLogRecord_ FilterXOtelLogRecord;
 
@@ -56,10 +56,10 @@ public:
   bool is_key_set(const gchar *key, gsize key_len);
   uint64_t len() const;
   bool iter(FilterXObjectIterFunc func, void *user_data);
-  const axosyslog::opentelemetry::proto::logs::v1::LogRecord &get_value() const;
+  const syslogng::opentelemetry::proto::logs::v1::LogRecord &get_value() const;
 private:
   FilterXOtelLogRecord *super;
-  axosyslog::opentelemetry::proto::logs::v1::LogRecord logRecord;
+  syslogng::opentelemetry::proto::logs::v1::LogRecord logRecord;
   LogRecord(const LogRecord &o, FilterXOtelLogRecord *super);
   friend FilterXObject *::_filterx_otel_logrecord_clone(FilterXObject *s);
 

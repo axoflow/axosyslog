@@ -30,18 +30,18 @@
 #include "filterx/filterx-mapping.h"
 #include "compat/cpp-end.h"
 
-#include "axosyslog/opentelemetry/proto/logs/v1/logs.pb.h"
+#include "syslogng/opentelemetry/proto/logs/v1/logs.pb.h"
 
 namespace syslogng {
 namespace grpc {
 namespace otel {
 
 using namespace google::protobuf;
-using axosyslog::opentelemetry::proto::logs::v1::LogRecord;
+using syslogng::opentelemetry::proto::logs::v1::LogRecord;
 
 class AnyValueFieldConverter : public ProtobufFieldConverter
 {
-  using AnyValue = axosyslog::opentelemetry::proto::common::v1::AnyValue;
+  using AnyValue = syslogng::opentelemetry::proto::common::v1::AnyValue;
 
 public:
   FilterXObject *get(Message *message, ProtoReflectors reflectors);

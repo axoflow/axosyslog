@@ -23,7 +23,7 @@
 #include "syslog-ng-otlp-dest-worker.hpp"
 
 using namespace syslogng::grpc::otel;
-using namespace axosyslog::opentelemetry::proto::logs::v1;
+using namespace syslogng::opentelemetry::proto::logs::v1;
 
 ScopeLogs *
 SyslogNgDestWorker::lookup_scope_logs(LogMessage *msg)

@@ -31,7 +31,7 @@
 #include "object-otel.h"
 #include "compat/cpp-end.h"
 
-#include "axosyslog/opentelemetry/proto/common/v1/common.pb.h"
+#include "syslogng/opentelemetry/proto/common/v1/common.pb.h"
 
 namespace syslogng {
 namespace grpc {

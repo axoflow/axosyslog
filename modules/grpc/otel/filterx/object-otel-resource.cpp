@@ -147,7 +147,7 @@ Resource::iter(FilterXObjectIterFunc func, void *user_data)
   return iter_on_otel_protobuf_message_fields(resource, func, user_data);
 }
 
-const axosyslog::opentelemetry::proto::resource::v1::Resource &
+const syslogng::opentelemetry::proto::resource::v1::Resource &
 Resource::get_value() const
 {
   return resource;

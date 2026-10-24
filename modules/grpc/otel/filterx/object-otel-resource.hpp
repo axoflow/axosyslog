@@ -31,7 +31,7 @@
 #include "compat/cpp-end.h"
 
 #include "object-otel-base.hpp"
-#include "axosyslog/opentelemetry/proto/resource/v1/resource.pb.h"
+#include "syslogng/opentelemetry/proto/resource/v1/resource.pb.h"
 
 typedef struct FilterXOtelResource_ FilterXOtelResource;
 
@@ -57,7 +57,7 @@ public:
   bool is_key_set(const gchar *key, gsize key_len);
   uint64_t len() const;
   bool iter(FilterXObjectIterFunc func, void *user_data);
-  const axosyslog::opentelemetry::proto::resource::v1::Resource &get_value() const;
+  const syslogng::opentelemetry::proto::resource::v1::Resource &get_value() const;
 
 private:
   Resource(const Resource &o, FilterXOtelResource *s);
@@ -65,7 +65,7 @@ private:
 
 private:
   FilterXOtelResource *super;
-  axosyslog::opentelemetry::proto::resource::v1::Resource resource;
+  syslogng::opentelemetry::proto::resource::v1::Resource resource;
 
 protected:
   const google::protobuf::Message &get_protobuf_value() const override;

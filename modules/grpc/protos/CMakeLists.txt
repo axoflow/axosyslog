@@ -56,18 +56,18 @@ set(CLICKHOUSE_PROTO_GRPC_SOURCES
 # Foreign copies of these protos, e.g. an Arrow built with OpenTelemetry, share
 # the process-wide protobuf descriptor database, so ours must not reuse their names.
 foreach(_proto ${OTEL_PROTO_SOURCES})
-  set(_private_proto ${OTEL_PROTO_BUILDDIR}/axosyslog/${_proto})
+  set(_private_proto ${OTEL_PROTO_BUILDDIR}/syslogng/${_proto})
   get_filename_component(_private_proto_dir ${_private_proto} DIRECTORY)
   file(MAKE_DIRECTORY ${_private_proto_dir})
   add_custom_command(
     OUTPUT ${_private_proto}
     COMMAND sed
-      -e "s,opentelemetry/proto/,axosyslog/opentelemetry/proto/,g"
-      -e "s,opentelemetry\\.proto\\.,axosyslog.opentelemetry.proto.,g"
+      -e "s,opentelemetry/proto/,syslogng/opentelemetry/proto/,g"
+      -e "s,opentelemetry\\.proto\\.,syslogng.opentelemetry.proto.,g"
       ${OTEL_PROTO_SRCDIR}/${_proto} > ${_private_proto}
     DEPENDS ${OTEL_PROTO_SRCDIR}/${_proto}
     VERBATIM)
-  list(APPEND OTEL_PRIVATE_PROTO_SOURCES axosyslog/${_proto})
+  list(APPEND OTEL_PRIVATE_PROTO_SOURCES syslogng/${_proto})
   list(APPEND OTEL_PRIVATE_PROTO_FILES ${_private_proto})
 endforeach()
 

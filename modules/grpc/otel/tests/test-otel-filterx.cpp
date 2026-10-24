@@ -41,9 +41,9 @@
 #include <criterion/criterion.h>
 
 using namespace syslogng::grpc::otel;
-using namespace axosyslog::opentelemetry::proto::logs::v1;
-using namespace axosyslog::opentelemetry::proto::common::v1;
-using namespace axosyslog::opentelemetry::proto::resource::v1;
+using namespace syslogng::opentelemetry::proto::logs::v1;
+using namespace syslogng::opentelemetry::proto::common::v1;
+using namespace syslogng::opentelemetry::proto::resource::v1;
 using namespace google::protobuf::util;
 
 static void
@@ -329,7 +329,7 @@ Test(otel_filterx, resource_empty)
   FilterXOtelResource *filterx_otel_resource = (FilterXOtelResource *) filterx_otel_resource_new();
   cr_assert(filterx_otel_resource);
 
-  cr_assert(MessageDifferencer::Equals(axosyslog::opentelemetry::proto::resource::v1::Resource(),
+  cr_assert(MessageDifferencer::Equals(syslogng::opentelemetry::proto::resource::v1::Resource(),
                                        filterx_otel_resource->cpp->get_value()));
 
   filterx_object_unref(&filterx_otel_resource->super.super);
@@ -337,7 +337,7 @@ Test(otel_filterx, resource_empty)
 
 Test(otel_filterx, resource_from_protobuf)
 {
-  axosyslog::opentelemetry::proto::resource::v1::Resource resource;
+  syslogng::opentelemetry::proto::resource::v1::Resource resource;
   resource.set_dropped_attributes_count(42);
   KeyValue *attribute = resource.add_attributes();
   attribute->set_key("attribute_key");
@@ -350,7 +350,7 @@ Test(otel_filterx, resource_from_protobuf)
     (FilterXOtelResource *) filterx_otel_resource_new_from_args(NULL, args, G_N_ELEMENTS(args));
   cr_assert(filterx_otel_resource);
 
-  const axosyslog::opentelemetry::proto::resource::v1::Resource &resource_from_filterx =
+  const syslogng::opentelemetry::proto::resource::v1::Resource &resource_from_filterx =
     filterx_otel_resource->cpp->get_value();
   cr_assert(MessageDifferencer::Equals(resource, resource_from_filterx));
 
@@ -393,7 +393,7 @@ Test(otel_filterx, resource_too_many_args)
 
 Test(otel_filterx, resource_get_field)
 {
-  axosyslog::opentelemetry::proto::resource::v1::Resource resource;
+  syslogng::opentelemetry::proto::resource::v1::Resource resource;
   resource.set_dropped_attributes_count(42);
   KeyValue *attribute_1 = resource.add_attributes();
   attribute_1->set_key("attribute_1");
@@ -442,7 +442,7 @@ Test(otel_filterx, resource_set_field)
 
   cr_assert_eq(type, LM_VT_PROTOBUF);
 
-  axosyslog::opentelemetry::proto::resource::v1::Resource resource;
+  syslogng::opentelemetry::proto::resource::v1::Resource resource;
   cr_assert(resource.ParsePartialFromArray(serialized->str, serialized->len));
   cr_assert_eq(resource.dropped_attributes_count(), 42);
 
@@ -506,7 +506,7 @@ Test(otel_filterx, scope_empty)
   FilterXOtelScope *filterx_otel_scope = (FilterXOtelScope *) filterx_otel_scope_new();
   cr_assert(filterx_otel_scope);
 
-  cr_assert(MessageDifferencer::Equals(axosyslog::opentelemetry::proto::common::v1::InstrumentationScope(),
+  cr_assert(MessageDifferencer::Equals(syslogng::opentelemetry::proto::common::v1::InstrumentationScope(),
                                        filterx_otel_scope->cpp->get_value()));
 
   filterx_object_unref(&filterx_otel_scope->super.super);
@@ -514,7 +514,7 @@ Test(otel_filterx, scope_empty)
 
 Test(otel_filterx, scope_from_protobuf)
 {
-  axosyslog::opentelemetry::proto::common::v1::InstrumentationScope scope;
+  syslogng::opentelemetry::proto::common::v1::InstrumentationScope scope;
   scope.set_dropped_attributes_count(42);
   KeyValue *attribute = scope.add_attributes();
   scope.set_name("name");
@@ -529,7 +529,7 @@ Test(otel_filterx, scope_from_protobuf)
     (FilterXOtelScope *) filterx_otel_scope_new_from_args(NULL, args, G_N_ELEMENTS(args));
   cr_assert(filterx_otel_scope);
 
-  const axosyslog::opentelemetry::proto::common::v1::InstrumentationScope &scope_from_filterx =
+  const syslogng::opentelemetry::proto::common::v1::InstrumentationScope &scope_from_filterx =
     filterx_otel_scope->cpp->get_value();
   cr_assert(MessageDifferencer::Equals(scope, scope_from_filterx));
 
@@ -572,7 +572,7 @@ Test(otel_filterx, scope_too_many_args)
 
 Test(otel_filterx, scope_get_field)
 {
-  axosyslog::opentelemetry::proto::common::v1::InstrumentationScope scope;
+  syslogng::opentelemetry::proto::common::v1::InstrumentationScope scope;
   scope.set_dropped_attributes_count(42);
   scope.set_name("foobar");
   KeyValue *attribute_1 = scope.add_attributes();
@@ -626,7 +626,7 @@ Test(otel_filterx, scope_set_field)
 
   cr_assert_eq(type, LM_VT_PROTOBUF);
 
-  axosyslog::opentelemetry::proto::common::v1::InstrumentationScope scope;
+  syslogng::opentelemetry::proto::common::v1::InstrumentationScope scope;
   cr_assert(scope.ParsePartialFromArray(serialized->str, serialized->len));
   cr_assert_eq(scope.dropped_attributes_count(), 42);
   cr_assert_eq(scope.name().compare("foobar"), 0);
@@ -655,7 +655,7 @@ Test(otel_filterx, kvlist_empty)
 
 Test(otel_filterx, kvlist_from_protobuf)
 {
-  axosyslog::opentelemetry::proto::common::v1::KeyValueList kvlist;
+  syslogng::opentelemetry::proto::common::v1::KeyValueList kvlist;
   KeyValue *element_1 = kvlist.add_values();
   element_1->set_key("element_1_key");
   element_1->mutable_value()->set_int_value(42);
@@ -711,7 +711,7 @@ Test(otel_filterx, kvlist_too_many_args)
 
 Test(otel_filterx, kvlist_get_subscript)
 {
-  axosyslog::opentelemetry::proto::common::v1::KeyValueList kvlist;
+  syslogng::opentelemetry::proto::common::v1::KeyValueList kvlist;
   KeyValue *element_1 = kvlist.add_values();
   element_1->set_key("element_1_key");
   element_1->mutable_value()->set_int_value(42);
@@ -781,7 +781,7 @@ Test(otel_filterx, kvlist_set_subscript)
 
   cr_assert_eq(type, LM_VT_PROTOBUF);
 
-  axosyslog::opentelemetry::proto::common::v1::KeyValueList kvlist;
+  syslogng::opentelemetry::proto::common::v1::KeyValueList kvlist;
   cr_assert(kvlist.ParsePartialFromArray(serialized->str, serialized->len));
   cr_assert_eq(kvlist.values_size(), 4);
   cr_assert_eq(kvlist.values(0).value().int_value(), 42);
@@ -977,7 +977,7 @@ Test(otel_filterx, array_empty)
   FilterXOtelArray *filterx_otel_kvlist = (FilterXOtelArray *) filterx_otel_array_new();
   cr_assert(filterx_otel_kvlist);
 
-  cr_assert(MessageDifferencer::Equals(axosyslog::opentelemetry::proto::common::v1::ArrayValue(),
+  cr_assert(MessageDifferencer::Equals(syslogng::opentelemetry::proto::common::v1::ArrayValue(),
                                        filterx_otel_kvlist->cpp->get_value()));
 
   filterx_object_unref(&filterx_otel_kvlist->super.super);
@@ -985,7 +985,7 @@ Test(otel_filterx, array_empty)
 
 Test(otel_filterx, array_from_protobuf)
 {
-  axosyslog::opentelemetry::proto::common::v1::ArrayValue array;
+  syslogng::opentelemetry::proto::common::v1::ArrayValue array;
   AnyValue *element_1 = array.add_values();
   element_1->set_int_value(42);
   AnyValue *element_2 = array.add_values();
@@ -998,7 +998,7 @@ Test(otel_filterx, array_from_protobuf)
     (FilterXOtelArray *) filterx_otel_array_new_from_args(NULL, args, G_N_ELEMENTS(args));
   cr_assert(filterx_otel_array);
 
-  const axosyslog::opentelemetry::proto::common::v1::ArrayValue &array_from_filterx =
+  const syslogng::opentelemetry::proto::common::v1::ArrayValue &array_from_filterx =
     filterx_otel_array->cpp->get_value();
   cr_assert(MessageDifferencer::Equals(array, array_from_filterx));
 
@@ -1041,7 +1041,7 @@ Test(otel_filterx, array_too_many_args)
 
 Test(otel_filterx, array_get_subscript)
 {
-  axosyslog::opentelemetry::proto::common::v1::ArrayValue array;
+  syslogng::opentelemetry::proto::common::v1::ArrayValue array;
   AnyValue *element_1 = array.add_values();
   element_1->set_int_value(42);
   AnyValue *element_2 = array.add_values();
@@ -1108,7 +1108,7 @@ Test(otel_filterx, array_set_subscript)
 
   cr_assert_eq(type, LM_VT_PROTOBUF);
 
-  axosyslog::opentelemetry::proto::common::v1::ArrayValue array;
+  syslogng::opentelemetry::proto::common::v1::ArrayValue array;
   cr_assert(array.ParsePartialFromArray(serialized->str, serialized->len));
   cr_assert_eq(array.values_size(), 4);
   cr_assert_eq(array.values(0).int_value(), 42);
