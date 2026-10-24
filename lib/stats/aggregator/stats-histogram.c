@@ -31,6 +31,7 @@ typedef struct
   gint min_bucket, num_buckets;
   StatsCounterItem *sum;
   StatsCounterItem *count;
+  StatsCounterItem *maximum;
   StatsCounterItem *buckets[SC_TYPE_HIST_MAX_BUCKETS];
 } StatsAggregatorHistogram;
 
@@ -42,6 +43,7 @@ _register_aggr(StatsAggregator *s)
   stats_lock();
   stats_register_counter(s->stats_level, &s->key, SC_TYPE_HIST_SUM, &self->sum);
   stats_register_counter(s->stats_level, &s->key, SC_TYPE_HIST_COUNT, &self->count);
+  stats_register_counter(s->stats_level, &s->key, SC_TYPE_HIST_MAXIMUM, &self->maximum);
   for (gint i = 0; i < self->num_buckets; i++)
     stats_register_counter(s->stats_level, &s->key, SC_TYPE_HIST_BUCKET0+i, &self->buckets[i]);
   stats_unlock();
@@ -55,9 +57,27 @@ _unregister_aggr(StatsAggregator *s)
   stats_lock();
   stats_unregister_counter(&s->key, SC_TYPE_HIST_SUM, &self->sum);
   stats_unregister_counter(&s->key, SC_TYPE_HIST_COUNT, &self->count);
+  stats_unregister_counter(&s->key, SC_TYPE_HIST_MAXIMUM, &self->maximum);
   for (gint i = 0; i < self->num_buckets; i++)
     stats_unregister_counter(&s->key, SC_TYPE_HIST_BUCKET0+i, &self->buckets[i]);
   stats_unlock();
+}
+
+static void
+_update_maximum(StatsAggregatorHistogram *self, gsize value)
+{
+  if (!self->maximum)
+    return;
+
+  gsize current_max;
+  do
+    {
+      current_max = stats_counter_get(self->maximum);
+
+      if (current_max >= value)
+        break;
+    }
+  while (!atomic_gssize_compare_and_exchange(&self->maximum->value, current_max, value));
 }
 
 static void
@@ -67,6 +87,7 @@ _add_data_point(StatsAggregator *s, gsize value)
 
   stats_counter_inc(self->count);
   stats_counter_add(self->sum, value);
+  _update_maximum(self, value);
 
   gssize bucket = (round_to_log2(value));
 
@@ -90,6 +111,7 @@ _reset(StatsAggregator *s)
     stats_counter_set(self->buckets[i], 0);
   stats_counter_set(self->count, 0);
   stats_counter_set(self->sum, 0);
+  stats_counter_set(self->maximum, 0);
 }
 
 static void
@@ -98,6 +120,7 @@ _override_bucket_names(StatsAggregatorHistogram *self)
   GPtrArray *bucket_names = g_ptr_array_new();
   g_ptr_array_add(bucket_names, g_strdup("sum"));
   g_ptr_array_add(bucket_names, g_strdup("count"));
+  g_ptr_array_add(bucket_names, g_strdup("max"));
 
   for (gint i = 0; i < self->num_buckets - 1; i++)
     {
