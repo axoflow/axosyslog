@@ -292,7 +292,7 @@ extract_holder_license() {
   c|h|cpp|hpp|m|mm|ym|java|table|S)
     extract_holder_license_c
     ;;
-  ac|am|cmake|conf|sh|pl|py)
+  ac|am|cmake|conf|sh|pl|py|formats)
     extract_holder_license_sh
     ;;
   *)

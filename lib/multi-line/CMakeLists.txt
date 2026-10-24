@@ -5,6 +5,7 @@ set(MULTI_LINE_HEADERS
     multi-line/multi-line-pattern.h
     multi-line/smart-multi-line.h
     multi-line/regexp-multi-line.h
+    multi-line/timestamp-multi-line.h
     PARENT_SCOPE)
 
 set(MULTI_LINE_SOURCES
@@ -14,7 +15,8 @@ set(MULTI_LINE_SOURCES
     multi-line/multi-line-pattern.c
     multi-line/smart-multi-line.c
     multi-line/regexp-multi-line.c
+    multi-line/timestamp-multi-line.c
     PARENT_SCOPE)
 
-install(FILES smart-multi-line.fsm DESTINATION share/syslog-ng)
+install(FILES smart-multi-line.fsm timestamp-multi-line.formats DESTINATION share/syslog-ng)
 add_test_subdirectory(tests)
