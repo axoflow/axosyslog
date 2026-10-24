@@ -21,6 +21,8 @@
 # COPYING for details.
 #
 #############################################################################
+from concurrent.futures import ThreadPoolExecutor
+
 from axosyslog_light.common.blocking import wait_until_true
 from axosyslog_light.syslog_ng_config.statements.sources.opentelemetry_source import OTelLog
 from axosyslog_light.syslog_ng_ctl.prometheus_stats_handler import MetricFilter
@@ -37,7 +39,9 @@ def test_opentelemetry_source_stops_while_flow_controlled_messages_are_queued(co
     config.create_logpath(statements=[opentelemetry_source, network_destination], flags="flow-control")
     syslog_ng.start(config)
 
-    opentelemetry_source.write_log(log=OTelLog(body="test message"))
+    executor = ThreadPoolExecutor(max_workers=1)
+    executor.submit(opentelemetry_source.write_log, log=OTelLog(body="test message"))
+    executor.shutdown(wait=False)
     assert wait_until_true(lambda: _queued_events(config) == 1)
 
     syslog_ng.stop()
