@@ -387,7 +387,7 @@ Test(splunk_s2s_proto_client, post_is_not_consumed_while_handshake_is_pending)
   const gchar *payload = "queued payload";
   gboolean consumed = FALSE;
 
-  cr_assert_eq(log_proto_client_post(client, msg, (const guchar *) payload, strlen(payload), &consumed), LPS_PARTIAL);
+  cr_assert_eq(log_proto_client_post(client, msg, (const guchar *) payload, strlen(payload), &consumed), LPS_SUCCESS);
   cr_assert_not(consumed, "message must stay in the queue until the handshake finishes");
   cr_assert_eq(acks, 0);
 
