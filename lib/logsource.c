@@ -40,6 +40,7 @@
 #include "mainloop.h"
 #include "mainloop-call.h"
 #include "compat/valgrind.h"
+#include "tls-support.h"
 
 #include <string.h>
 #include <unistd.h>
@@ -115,7 +116,7 @@ _flow_control_window_size_adjust(LogSource *self, guint32 window_size_increment,
 }
 
 static void
-_flow_control_rate_adjust(LogSource *self)
+_flow_control_rate_adjust(LogSource *self, guint32 num_acked)
 {
 #ifdef SYSLOG_NG_HAVE_CLOCK_GETTIME
   guint32 cur_ack_count, last_ack_count;
@@ -125,8 +126,9 @@ _flow_control_rate_adjust(LogSource *self)
 
   if (accurate_nanosleep && self->threaded)
     {
-      cur_ack_count = ++self->ack_count;
-      if ((cur_ack_count & 0x3FFF) == 0)
+      cur_ack_count = (self->ack_count += num_acked);
+      /* a batched ack may step over the multiple of 16k */
+      if (((cur_ack_count - num_acked) ^ cur_ack_count) & ~0x3FFF)
         {
           struct timespec now;
           gint64 diff;
@@ -220,14 +222,96 @@ void
 log_source_flow_control_adjust(LogSource *self, guint32 window_size_increment)
 {
   _flow_control_window_size_adjust(self, window_size_increment, FALSE);
-  _flow_control_rate_adjust(self);
+  _flow_control_rate_adjust(self, 1);
 }
 
 void
 log_source_flow_control_adjust_when_suspended(LogSource *self, guint32 window_size_increment)
 {
   _flow_control_window_size_adjust(self, window_size_increment, TRUE);
-  _flow_control_rate_adjust(self);
+  _flow_control_rate_adjust(self, 1);
+}
+
+/*
+ * Acks released between log_source_ack_batch_begin() and
+ * log_source_ack_batch_end() are accumulated per source and applied in one
+ * go: a single window adjustment and unref instead of one per message.  These
+ * atomics hit cache lines that the source's thread writes for every message.
+ * A batch of acks mostly comes from the same source, as the fifo moves
+ * messages in per-thread chunks, so we only keep track of the last one.
+ */
+TLS_BLOCK_START
+{
+  gint ack_batch_depth;
+  LogSource *ack_batch_source;
+  guint32 ack_batch_count;
+}
+TLS_BLOCK_END;
+
+#define ack_batch_depth  __tls_deref(ack_batch_depth)
+#define ack_batch_source __tls_deref(ack_batch_source)
+#define ack_batch_count  __tls_deref(ack_batch_count)
+
+/* drop @count references at once, the caller owns all of them */
+static void
+_unref_many(LogSource *self, guint32 count)
+{
+  if (count > 1)
+    g_atomic_counter_exchange_and_add(&self->super.ref_cnt, -(gint) (count - 1));
+  log_pipe_unref(&self->super);
+}
+
+static void
+_ack_batch_flush(void)
+{
+  LogSource *source = ack_batch_source;
+  guint32 count = ack_batch_count;
+
+  if (!source)
+    return;
+
+  ack_batch_source = NULL;
+  ack_batch_count = 0;
+  _flow_control_window_size_adjust(source, count, FALSE);
+  _flow_control_rate_adjust(source, count);
+  _unref_many(source, count);
+}
+
+void
+log_source_ack_batch_begin(void)
+{
+  ack_batch_depth++;
+}
+
+void
+log_source_ack_batch_end(void)
+{
+  g_assert(ack_batch_depth > 0);
+  if (--ack_batch_depth == 0)
+    _ack_batch_flush();
+}
+
+/* release the window slot and the source reference held by an acked message */
+void
+log_source_release_acked_msg(LogSource *self, AckType ack_type)
+{
+  if (ack_type == AT_SUSPENDED || ack_batch_depth == 0)
+    {
+      /* a deferred adjustment would lift the suspend again, keep the order */
+      _ack_batch_flush();
+      log_source_flow_control_adjust(self, 1);
+      if (ack_type == AT_SUSPENDED)
+        log_source_flow_control_suspend(self);
+      log_pipe_unref(&self->super);
+      return;
+    }
+
+  if (ack_batch_source != self)
+    {
+      _ack_batch_flush();
+      ack_batch_source = self;
+    }
+  ack_batch_count++;
 }
 
 void

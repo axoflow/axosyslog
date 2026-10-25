@@ -119,13 +119,8 @@ _manage_msg_ack(AckTracker *s, LogMessage *msg, AckType ack_type)
 
   _save_bookmark(msg);
   _ack_record_free(self, msg->ack_record);
-  log_source_flow_control_adjust(self->super.source, 1);
-
-  if (ack_type == AT_SUSPENDED)
-    log_source_flow_control_suspend(self->super.source);
-
   log_msg_unref(msg);
-  log_pipe_unref((LogPipe *)self->super.source);
+  log_source_release_acked_msg(self->super.source, ack_type);
 }
 
 static void
