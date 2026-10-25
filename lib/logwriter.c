@@ -68,7 +68,6 @@ struct _LogWriter
   LogQueue *queue;
   guint32 flags:31;
   gint32 seq_num;
-  gboolean partial_write;
 
   struct
   {
@@ -255,7 +254,7 @@ log_writer_work_finished(gpointer s, gpointer arg)
       return;
     }
 
-  if (self->work_result != LPS_SUCCESS && self->work_result != LPS_PARTIAL)
+  if (self->work_result != LPS_SUCCESS)
     {
       log_writer_broken(self, NC_WRITE_ERROR);
       if (self->proto)
@@ -1197,8 +1196,6 @@ log_writer_write_message(LogWriter *self, LogMessage *msg, LogPathOptions *path_
                                                     self->line_buffer->len,
                                                     &consumed);
 
-      self->partial_write = (status == LPS_PARTIAL);
-
       if (status == LPS_ERROR)
         {
           if ((self->options->options & LWO_IGNORE_ERRORS) != 0)
@@ -1706,11 +1703,6 @@ log_writer_reopen_deferred(gpointer s)
     }
 
   log_writer_stop_watches(self);
-
-  if (self->partial_write)
-    {
-      log_queue_rewind_backlog_all(self->queue);
-    }
   log_writer_free_proto(self);
   log_writer_set_proto(self, proto);
 
