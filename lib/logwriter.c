@@ -108,6 +108,7 @@ struct _LogWriter
   struct iv_timer suspend_timer;
   struct iv_task immed_io_task;
   struct iv_event queue_filled;
+  gboolean closed;
   MainLoopIOWorkerJob io_job;
   GMutex suppress_lock;
   MlBatchedTimer suppress_timer;
@@ -412,6 +413,16 @@ log_writer_queue_filled(gpointer s)
   LogWriter *self = (LogWriter *) s;
 
   main_loop_assert_main_thread();
+
+  if (self->closed)
+    {
+      /* closed by the owner and we received data into our queue, we need to
+       * trigger a reopen. */
+
+      self->closed = FALSE;
+      log_pipe_notify(self->control, NC_REOPEN_REQUIRED, self);
+      return;
+    }
 
   /*
    * NOTE: This theory is somewhat questionable, e.g. I'm not 100% sure it
@@ -1653,6 +1664,7 @@ log_writer_set_proto(LogWriter *self, LogProtoClient *proto)
 
   if (proto)
     {
+      self->closed = FALSE;
       LogProtoClientFlowControlFuncs flow_control_funcs;
       flow_control_funcs.ack_callback = log_writer_msg_ack;
       flow_control_funcs.rewind_callback = log_writer_msg_rewind_cb;
@@ -1732,6 +1744,35 @@ log_writer_reopen_deferred(gpointer s)
 
   if (proto)
     log_writer_start_watches(self);
+}
+
+/*
+ * Close the output of the writer without tearing the writer down and
+ * without arming the reopen timer. Once closed, an NC_REOPEN_REQUIRED
+ * is triggered if new data arrives.
+ */
+void
+log_writer_close(LogWriter *self)
+{
+  gint timeout_msec = 0;
+
+  main_loop_assert_main_thread();
+  g_assert(!self->io_job.working);
+
+  log_writer_stop_watches(self);
+
+  if (self->partial_write)
+    log_queue_rewind_backlog_all(self->queue);
+
+  log_writer_free_proto(self);
+  log_writer_set_proto(self, NULL);
+  self->closed = TRUE;
+
+  /* wake us up (in the main thread) when the queue has data */
+  if (log_queue_check_items(self->queue, &timeout_msec,
+                            (LogQueuePushNotifyFunc) log_writer_schedule_update_watches, self, NULL)
+      || timeout_msec)
+    log_writer_schedule_update_watches(self);
 }
 
 /*
