@@ -83,6 +83,7 @@ void log_writer_format_log(LogWriter *self, LogMessage *lm, GString *result);
 gboolean log_writer_has_pending_writes(LogWriter *self);
 gboolean log_writer_opened(LogWriter *self);
 void log_writer_reopen(LogWriter *self, LogProtoClient *proto);
+void log_writer_close(LogWriter *self);
 LogProtoClient *log_writer_steal_proto(LogWriter *self);
 LogProtoClient *log_writer_get_proto(LogWriter *self);
 void log_writer_set_queue(LogWriter *self, LogQueue *queue);
