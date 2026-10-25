@@ -151,11 +151,14 @@ test_pipe_destroy(TestPipe *pipe)
 }
 
 
+static gint resolve_count;
+
 const gchar *
 MOCK_FUNCTION(resolve_sockaddr_to_hostname)(gsize *result_len, GSockAddr *saddr,
                                             const HostResolveOptions *host_resolve_options)
 {
   static const gchar *test_hostname = "resolved-test-host";
+  resolve_count++;
   *result_len = strlen(test_hostname);
   return test_hostname;
 }
@@ -206,6 +209,50 @@ StaticParameterizedTest(MangleHostnameParams *test_params, test_mangle_hostname_
   cr_assert_str_eq(actual_hostname, test_params->expected_hostname);
 
   log_msg_unref(msg);
+  test_source_destroy(source);
+}
+
+static void
+_mangle_hostname_of_msg_from(LogSource *source, const gchar *ip, gint64 recvd_sec)
+{
+  LogMessage *msg = log_msg_new_empty();
+
+  msg->timestamps[LM_TS_RECVD].ut_sec = recvd_sec;
+  if (ip)
+    {
+      GSockAddr *saddr = g_sockaddr_inet_new(ip, 514);
+      log_msg_set_saddr(msg, saddr);
+      g_sockaddr_unref(saddr);
+    }
+  log_source_mangle_hostname(source, msg);
+  cr_assert_str_eq(log_msg_get_value(msg, LM_V_HOST_FROM, NULL), "resolved-test-host");
+  log_msg_unref(msg);
+}
+
+Test(log_source, test_peer_hostname_is_resolved_once_per_address_and_second)
+{
+  LogSource *source = test_source_init(&source_options);
+
+  resolve_count = 0;
+  _mangle_hostname_of_msg_from(source, "10.0.0.1", 1000);
+  _mangle_hostname_of_msg_from(source, "10.0.0.1", 1000);
+  cr_assert_eq(resolve_count, 1);
+
+  _mangle_hostname_of_msg_from(source, "10.0.0.2", 1000);
+  cr_assert_eq(resolve_count, 2);
+
+  _mangle_hostname_of_msg_from(source, "10.0.0.2", 1001);
+  _mangle_hostname_of_msg_from(source, "10.0.0.2", 1001);
+  cr_assert_eq(resolve_count, 3);
+
+  _mangle_hostname_of_msg_from(source, NULL, 1001);
+  _mangle_hostname_of_msg_from(source, NULL, 1001);
+  cr_assert_eq(resolve_count, 4);
+
+  log_source_set_options(source, &source_options, TEST_STATS_ID, NULL, TRUE, NULL);
+  _mangle_hostname_of_msg_from(source, NULL, 1001);
+  cr_assert_eq(resolve_count, 5);
+
   test_source_destroy(source);
 }
 
