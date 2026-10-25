@@ -28,6 +28,7 @@
 #include "stats/stats-cluster.h"
 #include "stats/stats-cluster-single.h"
 #include "stats/stats-cluster-logpipe.h"
+#include "stats/stats-cluster-hist.h"
 #include "stats/stats-prometheus.h"
 #include "timeutils/unixtime.h"
 #include "scratch-buffers.h"
@@ -134,6 +135,31 @@ Test(stats_prometheus, test_prometheus_format_logpipe)
   assert_prometheus_format(cluster, SC_TYPE_WRITTEN,
                            "syslogng_test_name{app=\"cisco\",sourceip=\"127.0.0.1\",customlabel=\"value\","
                            "result=\"delivered\"} 1\n");
+  stats_cluster_free(cluster);
+}
+
+Test(stats_prometheus, test_prometheus_format_hist_buckets_are_cumulative)
+{
+  gchar *names[] = { "sum", "count", "1", "2", "4", "+Inf", NULL };
+  StatsClusterKey key;
+  stats_cluster_hist_key_set(&key, "test_hist", NULL, 0);
+  key.counter_group_init.counter.names = names;
+  StatsCluster *cluster = stats_cluster_new(&key);
+
+  /* observations: 1, 3, 3, 100 */
+  stats_counter_add(_track_counter_locked(cluster, SC_TYPE_HIST_SUM), 107);
+  stats_counter_add(_track_counter_locked(cluster, SC_TYPE_HIST_COUNT), 4);
+  stats_counter_add(_track_counter_locked(cluster, SC_TYPE_HIST_BUCKET0), 1);
+  _track_counter_locked(cluster, SC_TYPE_HIST_BUCKET1);
+  stats_counter_add(_track_counter_locked(cluster, SC_TYPE_HIST_BUCKET2), 2);
+  stats_counter_add(_track_counter_locked(cluster, SC_TYPE_HIST_BUCKET3), 1);
+
+  assert_prometheus_format(cluster, SC_TYPE_HIST_SUM, "syslogng_test_hist_sum 107\n");
+  assert_prometheus_format(cluster, SC_TYPE_HIST_COUNT, "syslogng_test_hist_count 4\n");
+  assert_prometheus_format(cluster, SC_TYPE_HIST_BUCKET0, "syslogng_test_hist_bucket{le=\"1\"} 1\n");
+  assert_prometheus_format(cluster, SC_TYPE_HIST_BUCKET1, "syslogng_test_hist_bucket{le=\"2\"} 1\n");
+  assert_prometheus_format(cluster, SC_TYPE_HIST_BUCKET2, "syslogng_test_hist_bucket{le=\"4\"} 3\n");
+  assert_prometheus_format(cluster, SC_TYPE_HIST_BUCKET3, "syslogng_test_hist_bucket{le=\"+Inf\"} 4\n");
   stats_cluster_free(cluster);
 }
 
