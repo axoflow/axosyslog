@@ -22,6 +22,7 @@
  */
 
 #include "logmsg/logmsg.h"
+#include "logmsg/logmsg-free-queue.h"
 #include "str-utils.h"
 #include "str-repr/encode.h"
 #include "messages.h"
@@ -1298,6 +1299,7 @@ log_msg_alloc(gsize payload_size)
     msg->payload = nv_table_init_borrowed(((gchar *) msg) + payload_ofs, payload_space, LM_V_MAX);
 
   msg->num_nodes = nodes;
+  msg->origin_thread_id = log_msg_free_queue_get_current_id();
   log_msg_update_allocation(msg, alloc_size);
   return msg;
 }
@@ -1351,6 +1353,7 @@ log_msg_alloc_clone(LogMessage *original)
   memcpy(msg, original, sizeof(*msg));
   msg->allocated_bytes = 0;
   msg->num_nodes = nodes;
+  msg->origin_thread_id = log_msg_free_queue_get_current_id();
   log_msg_update_allocation(msg, alloc_size);
 
   return msg;
@@ -1478,13 +1481,13 @@ log_msg_new_mark(void)
 }
 
 /**
- * log_msg_free:
+ * log_msg_free_in_place:
  * @self: LogMessage instance
  *
- * Frees a LogMessage instance.
+ * Frees a LogMessage instance in the current thread.
  **/
 void
-_log_msg_free(LogMessage *self)
+log_msg_free_in_place(LogMessage *self)
 {
   if (log_msg_chk_flag(self, LF_STATE_OWN_PAYLOAD) && self->payload)
     nv_table_unref(self->payload);
@@ -1504,6 +1507,20 @@ _log_msg_free(LogMessage *self)
   stats_counter_sub(count_allocated_bytes, self->allocated_bytes);
 
   g_free(self);
+}
+
+/**
+ * _log_msg_free:
+ * @self: LogMessage instance
+ *
+ * Frees a LogMessage instance, either right away or by handing it back to
+ * the thread that allocated it.
+ **/
+void
+_log_msg_free(LogMessage *self)
+{
+  if (!log_msg_free_queue_push(self))
+    log_msg_free_in_place(self);
 }
 
 /**
@@ -1720,13 +1737,14 @@ log_msg_register_stats(void)
 
   stats_cluster_single_key_set(&sc_key, METRIC(events_allocated_bytes), NULL, 0);
   stats_cluster_single_key_add_legacy_alias(&sc_key, SCS_GLOBAL, "msg_allocated_bytes", NULL);
-  stats_register_counter(1, &sc_key, SC_TYPE_SINGLE_VALUE, &count_allocated_bytes);
+  stats_register_counter(3, &sc_key, SC_TYPE_SINGLE_VALUE, &count_allocated_bytes);
   stats_unlock();
 }
 
 void
 log_msg_global_init(void)
 {
+  log_msg_free_queue_global_init();
   log_msg_registry_init();
   log_tags_global_init();
   log_msg_tags_init();
@@ -1747,6 +1765,7 @@ log_msg_get_handle_name(NVHandle handle, gssize *length)
 void
 log_msg_global_deinit(void)
 {
+  log_msg_free_queue_global_deinit();
   log_tags_global_deinit();
   log_msg_registry_deinit();
 }
