@@ -172,7 +172,7 @@ _flush_out_buf(LogProtoSplunkS2SServer *self)
   if (rc < 0)
     {
       if (errno == EAGAIN || errno == EINTR)
-        return LPS_PARTIAL;
+        return LPS_SUCCESS;
 
       msg_error("splunk-s2s: I/O error occurred while writing",
                 evt_tag_int("fd", self->super.transport_stack.fd),
@@ -182,7 +182,7 @@ _flush_out_buf(LogProtoSplunkS2SServer *self)
 
   self->out_pos += rc;
   if (_out_buf_pending(self))
-    return LPS_PARTIAL;
+    return LPS_SUCCESS;
 
   g_string_truncate(self->out_buf, 0);
   self->out_pos = 0;

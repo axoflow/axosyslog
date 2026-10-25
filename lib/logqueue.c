@@ -25,6 +25,7 @@
 #include "stats/stats-registry.h"
 #include "stats/stats-cluster-single.h"
 #include "stats/aggregator/stats-aggregator-registry.h"
+#include "stats/stats-counter-batch.h"
 #include "messages.h"
 #include "compat/pow2.h"
 #include "timeutils/misc.h"
@@ -67,8 +68,8 @@ log_queue_queued_messages_inc(LogQueue *self)
 void
 log_queue_queued_messages_dec(LogQueue *self)
 {
-  stats_counter_dec(self->metrics.shared.queued_messages);
-  stats_counter_dec(self->metrics.owned.queued_messages);
+  stats_counter_add_batched(self->metrics.shared.queued_messages, -1);
+  stats_counter_add_batched(self->metrics.owned.queued_messages, -1);
 }
 
 void

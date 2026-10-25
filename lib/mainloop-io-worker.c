@@ -24,6 +24,7 @@
 #include "mainloop-worker.h"
 #include "mainloop-call.h"
 #include "logqueue.h"
+#include "logmsg/logmsg-free-queue.h"
 #include "apphook.h"
 
 /************************************************************************************
@@ -150,11 +151,13 @@ static void
 main_loop_io_worker_thread_start(void *cookie)
 {
   main_loop_worker_thread_start(MLW_ASYNC_WORKER);
+  log_msg_free_queue_thread_start();
 }
 
 static void
 main_loop_io_worker_thread_stop(void *cookie)
 {
+  log_msg_free_queue_thread_stop();
   main_loop_worker_thread_stop();
 }
 

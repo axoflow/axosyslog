@@ -76,9 +76,12 @@ struct _LogSource
   gsize wakeup_threshold;
   /* full_window_size = static + dynamic */
   gsize full_window_size;
-  atomic_gssize window_size_to_be_reclaimed;
-  atomic_gssize pending_reclamation;
-  WindowSizeCounter window_size;
+  gint64 window_full_sleep_nsec;
+  AckTrackerFactory *ack_tracker_factory;
+  AckTracker *ack_tracker;
+
+  void (*wakeup)(LogSource *s);
+  void (*schedule_dynamic_window_realloc)(LogSource *s);
 
   struct
   {
@@ -102,16 +105,31 @@ struct _LogSource
 
   } metrics;
 
+  /* the name resolved for the last peer address, reused within the same
+   * second to avoid a DNS cache lookup for every message of a connection */
+  struct
+  {
+    gint64 sec;
+    guint32 saddr_len;
+    struct sockaddr_storage saddr;
+    gsize name_len;
+    gchar name[256];
+  } resolved_peer;
+
+  /* these are shared between the input/output threads and bouncing back and forth */
   guint32 last_ack_count;
   guint32 ack_count;
-  gint64 window_full_sleep_nsec;
   struct timespec last_ack_rate_time;
-  AckTrackerFactory *ack_tracker_factory;
-  AckTracker *ack_tracker;
-
-  void (*wakeup)(LogSource *s);
-  void (*schedule_dynamic_window_realloc)(LogSource *s);
+  atomic_gssize window_size_to_be_reclaimed;
+  atomic_gssize pending_reclamation;
+  WindowSizeCounter window_size;
 };
+
+/* the hot flow control state should not share a cache line with the fields
+ * read on every message */
+G_STATIC_ASSERT(G_STRUCT_OFFSET(LogSource, last_ack_count) - G_STRUCT_OFFSET(LogSource,
+                metrics.window_available) >= 64);
+G_STATIC_ASSERT(G_STRUCT_OFFSET(LogSource, last_ack_count) - G_STRUCT_OFFSET(LogSource, ack_tracker) >= 64);
 
 static inline gboolean
 log_source_free_to_send(LogSource *self)
@@ -160,6 +178,9 @@ void log_source_wakeup(LogSource *self);
 void log_source_flow_control_adjust(LogSource *self, guint32 window_size_increment);
 void log_source_flow_control_adjust_when_suspended(LogSource *self, guint32 window_size_increment);
 void log_source_flow_control_suspend(LogSource *self);
+void log_source_ack_batch_begin(void);
+void log_source_ack_batch_end(void);
+void log_source_release_acked_msg(LogSource *self, AckType ack_type);
 void log_source_disable_bookmark_saving(LogSource *self);
 
 void log_source_enable_dynamic_window(LogSource *self, DynamicWindowPool *window_ctr);

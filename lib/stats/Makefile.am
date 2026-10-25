@@ -9,6 +9,7 @@ statsinclude_HEADERS = \
 	lib/stats/stats-compat.h \
 	lib/stats/stats-control.h		\
 	lib/stats/stats-counter.h		\
+	lib/stats/stats-counter-batch.h \
 	lib/stats/stats-cluster.h		\
 	lib/stats/stats-csv.h			\
 	lib/stats/stats-log.h			\
@@ -25,6 +26,7 @@ stats_sources = \
 	lib/stats/stats.c			\
 	lib/stats/stats-control.c		\
 	lib/stats/stats-cluster.c		\
+	lib/stats/stats-counter-batch.c \
 	lib/stats/stats-csv.c			\
 	lib/stats/stats-log.c			\
 	lib/stats/stats-prometheus.c	\

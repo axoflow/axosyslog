@@ -187,11 +187,11 @@ log_proto_spoof_source_client_poll_prepare(LogProtoClient *s, GIOCondition *cond
 
   *cond = G_IO_OUT;
   *idle_cond = 0;
-  return self->super.partial != NULL;
+  return self->super.batch.count > 0;
 }
 
 static LogProtoStatus
-log_proto_spoof_source_client_post(LogProtoClient *s, LogMessage *logmsg, guchar *msg, gsize msg_len,
+log_proto_spoof_source_client_post(LogProtoClient *s, LogMessage *logmsg, const guchar *msg, gsize msg_len,
                                    gboolean *consumed)
 {
   LogProtoSpoofSourceClient *self = (LogProtoSpoofSourceClient *) s;
@@ -214,7 +214,6 @@ log_proto_spoof_source_client_post(LogProtoClient *s, LogMessage *logmsg, guchar
 
   *consumed = TRUE;
   log_proto_client_msg_ack(s, 1);
-  g_free(msg);
   return LPS_SUCCESS;
 }
 
@@ -227,10 +226,7 @@ log_proto_spoof_source_client_free(LogProtoClient *s)
     libnet_destroy(self->lnet_ctx);
   if (self->dest_addr)
     g_sockaddr_unref(self->dest_addr);
-  if (self->super.partial_free)
-    self->super.partial_free(self->super.partial);
-  self->super.partial = NULL;
-  log_proto_client_free_method(s);
+  log_proto_text_client_free_method(s);
 }
 
 LogProtoClient *

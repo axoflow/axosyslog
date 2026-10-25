@@ -26,6 +26,7 @@
 #include "stats/stats-registry.h"
 #include "stats/aggregator/stats-aggregator-registry.h"
 #include "stats/stats-cluster-single.h"
+#include "stats/stats-counter-batch.h"
 #include "stats/aggregator/stats-aggregator.h"
 #include "stats/stats-compat.h"
 #include "hostname.h"
@@ -67,8 +68,6 @@ struct _LogWriter
   LogPipe super;
   LogQueue *queue;
   guint32 flags:31;
-  gint32 seq_num;
-  gboolean partial_write;
 
   struct
   {
@@ -83,8 +82,8 @@ struct _LogWriter
     StatsClusterKey *written_bytes_key;
     StatsByteCounter written_bytes;
 
-    StatsAggregator *max_message_size;
-    StatsAggregator *average_messages_size;
+    StatsClusterKey *event_size_key;
+    StatsAggregator *event_size;
     StatsAggregator *CPS;
     StatsClusterKey *message_latency_key;
     StatsAggregator *message_latency;
@@ -105,9 +104,12 @@ struct _LogWriter
   gchar *stats_id;
 
   struct iv_fd fd_watch;
+  gint32 seq_num;
+
   struct iv_timer suspend_timer;
   struct iv_task immed_io_task;
   struct iv_event queue_filled;
+  gboolean closed;
   MainLoopIOWorkerJob io_job;
   GMutex suppress_lock;
   MlBatchedTimer suppress_timer;
@@ -255,7 +257,7 @@ log_writer_work_finished(gpointer s, gpointer arg)
       return;
     }
 
-  if (self->work_result != LPS_SUCCESS && self->work_result != LPS_PARTIAL)
+  if (self->work_result != LPS_SUCCESS)
     {
       log_writer_broken(self, NC_WRITE_ERROR);
       if (self->proto)
@@ -412,6 +414,16 @@ log_writer_queue_filled(gpointer s)
   LogWriter *self = (LogWriter *) s;
 
   main_loop_assert_main_thread();
+
+  if (self->closed)
+    {
+      /* closed by the owner and we received data into our queue, we need to
+       * trigger a reopen. */
+
+      self->closed = FALSE;
+      log_pipe_notify(self->control, NC_REOPEN_REQUIRED, self);
+      return;
+    }
 
   /*
    * NOTE: This theory is somewhat questionable, e.g. I'm not 100% sure it
@@ -867,7 +879,7 @@ log_writer_queue(LogPipe *s, LogMessage *lm, const LogPathOptions *path_options)
       log_writer_postpone_mark_timer(self);
     }
 
-  stats_counter_inc(self->metrics.processed_messages);
+  stats_counter_inc_batched(self->metrics.processed_messages);
   log_queue_push_tail(self->queue, lm, path_options);
 }
 
@@ -1137,14 +1149,6 @@ log_writer_broken(LogWriter *self, gint notify_code)
   log_pipe_notify(self->control, notify_code, self);
 }
 
-static void
-log_writer_realloc_line_buffer(LogWriter *self)
-{
-  self->line_buffer->str = g_malloc(self->line_buffer->allocated_len);
-  self->line_buffer->str[0] = 0;
-  self->line_buffer->len = 0;
-}
-
 /*
  * Write messages to the underlying file descriptor using the installed
  * LogProtoClient instance.  This is called whenever the output is ready to accept
@@ -1167,8 +1171,7 @@ log_writer_flush_finalize(LogWriter *self)
 static void
 log_writer_update_message_stats(LogWriter *self, const LogMessage *msg, gsize msg_len)
 {
-  stats_aggregator_add_data_point(self->metrics.max_message_size, msg_len);
-  stats_aggregator_add_data_point(self->metrics.average_messages_size, msg_len);
+  stats_aggregator_add_data_point(self->metrics.event_size, msg_len);
 
   if (!self->metrics.message_latency)
     return;
@@ -1201,25 +1204,15 @@ log_writer_write_message(LogWriter *self, LogMessage *msg, LogPathOptions *path_
   if (self->line_buffer->len)
     {
       msg_len = self->line_buffer->len;
-      LogProtoStatus status = log_proto_client_post(self->proto, msg, (guchar *)self->line_buffer->str,
+      LogProtoStatus status = log_proto_client_post(self->proto, msg, (const guchar *) self->line_buffer->str,
                                                     self->line_buffer->len,
                                                     &consumed);
-
-      self->partial_write = (status == LPS_PARTIAL);
-
-      if (consumed)
-        log_writer_realloc_line_buffer(self);
 
       if (status == LPS_ERROR)
         {
           if ((self->options->options & LWO_IGNORE_ERRORS) != 0)
             {
-              if (!consumed)
-                {
-                  g_free(self->line_buffer->str);
-                  log_writer_realloc_line_buffer(self);
-                  consumed = TRUE;
-                }
+              consumed = TRUE;
             }
           else
             {
@@ -1291,6 +1284,7 @@ log_writer_flush(LogWriter *self, LogWriterFlushMode flush_mode)
    * infinite loop, since the reader will cease to produce new messages when
    * main_loop_io_worker_job_quit() is set. */
 
+  stats_counter_batch_begin();
   while ((!main_loop_worker_job_quit() || flush_mode == LW_FLUSH_FORCE) && !write_error)
     {
       LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
@@ -1309,8 +1303,9 @@ log_writer_flush(LogWriter *self, LogWriterFlushMode flush_mode)
       scratch_buffers_reclaim_marked(mark);
 
       if (!write_error)
-        stats_counter_inc(self->metrics.written_messages);
+        stats_counter_inc_batched(self->metrics.written_messages);
     }
+  stats_counter_batch_end();
 
   if (write_error)
     return LPS_ERROR;
@@ -1408,6 +1403,8 @@ log_writer_init_watches(LogWriter *self)
 static void
 _register_aggregated_stats(LogWriter *self, StatsClusterKey *sc_key_input, gint stats_level, gint stats_type)
 {
+  gint hist_level = log_pipe_is_internal(&self->super) ? STATS_LEVEL3 : STATS_LEVEL2;
+
   stats_aggregator_lock();
   StatsClusterKey sc_key;
 
@@ -1415,20 +1412,19 @@ _register_aggregated_stats(LogWriter *self, StatsClusterKey *sc_key_input, gint 
   stats_cluster_key_builder_format_legacy_stats_instance(self->metrics.stats_kb,
                                                          stats_instance, sizeof(stats_instance));
 
-  stats_cluster_single_key_legacy_set_with_name(&sc_key, self->options->stats_source | SCS_DESTINATION, self->stats_id,
-                                                stats_instance, "msg_size_max");
-  stats_register_aggregator_maximum(stats_level, &sc_key, &self->metrics.max_message_size);
-
-  stats_cluster_single_key_legacy_set_with_name(&sc_key, self->options->stats_source | SCS_DESTINATION, self->stats_id,
-                                                stats_instance, "msg_size_avg");
-  stats_register_aggregator_average(stats_level, &sc_key, &self->metrics.average_messages_size);
+  StatsClusterKey sc_key_size_avg, sc_key_size_max;
+  stats_cluster_single_key_legacy_set_with_name(&sc_key_size_avg, self->options->stats_source | SCS_DESTINATION,
+                                                self->stats_id, stats_instance, "msg_size_avg");
+  stats_cluster_single_key_legacy_set_with_name(&sc_key_size_max, self->options->stats_source | SCS_DESTINATION,
+                                                self->stats_id, stats_instance, "msg_size_max");
+  stats_register_aggregator_hist_with_legacy(hist_level, self->metrics.event_size_key, round_to_log2(64), 8,
+                                             &sc_key_size_avg, &sc_key_size_max, &self->metrics.event_size);
 
   stats_cluster_single_key_legacy_set_with_name(&sc_key, self->options->stats_source | SCS_DESTINATION, self->stats_id,
                                                 stats_instance, "eps");
   stats_register_aggregator_cps(stats_level, &sc_key, sc_key_input, stats_type, &self->metrics.CPS);
 
-  gint level = log_pipe_is_internal(&self->super) ? STATS_LEVEL3 : STATS_LEVEL2;
-  stats_register_aggregator_hist(level, self->metrics.message_latency_key, round_to_log2(1), 20,
+  stats_register_aggregator_hist(hist_level, self->metrics.message_latency_key, round_to_log2(1), 20,
                                  &self->metrics.message_latency);
 
   stats_aggregator_unlock();
@@ -1440,8 +1436,7 @@ _unregister_aggregated_stats(LogWriter *self)
   stats_aggregator_lock();
 
   stats_unregister_aggregator(&self->metrics.message_latency);
-  stats_unregister_aggregator(&self->metrics.max_message_size);
-  stats_unregister_aggregator(&self->metrics.average_messages_size);
+  stats_unregister_aggregator(&self->metrics.event_size);
   stats_unregister_aggregator(&self->metrics.CPS);
 
   stats_aggregator_unlock();
@@ -1614,6 +1609,9 @@ log_writer_free(LogPipe *s)
   if (self->metrics.message_latency_key)
     stats_cluster_key_free(self->metrics.message_latency_key);
 
+  if (self->metrics.event_size_key)
+    stats_cluster_key_free(self->metrics.event_size_key);
+
   ml_batched_timer_free(&self->mark_timer);
   ml_batched_timer_free(&self->suppress_timer);
   g_mutex_clear(&self->suppress_lock);
@@ -1653,6 +1651,7 @@ log_writer_set_proto(LogWriter *self, LogProtoClient *proto)
 
   if (proto)
     {
+      self->closed = FALSE;
       LogProtoClientFlowControlFuncs flow_control_funcs;
       flow_control_funcs.ack_callback = log_writer_msg_ack;
       flow_control_funcs.rewind_callback = log_writer_msg_rewind_cb;
@@ -1722,16 +1721,36 @@ log_writer_reopen_deferred(gpointer s)
     }
 
   log_writer_stop_watches(self);
-
-  if (self->partial_write)
-    {
-      log_queue_rewind_backlog_all(self->queue);
-    }
   log_writer_free_proto(self);
   log_writer_set_proto(self, proto);
 
   if (proto)
     log_writer_start_watches(self);
+}
+
+/*
+ * Close the output of the writer without tearing the writer down and
+ * without arming the reopen timer. Once closed, an NC_REOPEN_REQUIRED
+ * is triggered if new data arrives.
+ */
+void
+log_writer_close(LogWriter *self)
+{
+  gint timeout_msec = 0;
+
+  main_loop_assert_main_thread();
+  g_assert(!self->io_job.working);
+
+  log_writer_stop_watches(self);
+  log_writer_free_proto(self);
+  log_writer_set_proto(self, NULL);
+  self->closed = TRUE;
+
+  /* wake us up (in the main thread) when the queue has data */
+  if (log_queue_check_items(self->queue, &timeout_msec,
+                            (LogQueuePushNotifyFunc) log_writer_schedule_update_watches, self, NULL)
+      || timeout_msec)
+    log_writer_schedule_update_watches(self);
 }
 
 /*
@@ -1832,6 +1851,16 @@ _set_metric_options(LogWriter *self, const gchar *stats_id, StatsClusterKeyBuild
       stats_cluster_key_builder_set_name(self->metrics.stats_kb, METRIC(output_event_latency_seconds));
       stats_cluster_key_builder_set_unit(self->metrics.stats_kb, SCU_MILLISECONDS);
       self->metrics.message_latency_key = stats_cluster_key_builder_build_hist(self->metrics.stats_kb);
+    }
+    stats_cluster_key_builder_pop(self->metrics.stats_kb);
+
+    if (self->metrics.event_size_key)
+      stats_cluster_key_free(self->metrics.event_size_key);
+
+    stats_cluster_key_builder_push(self->metrics.stats_kb);
+    {
+      stats_cluster_key_builder_set_name(self->metrics.stats_kb, METRIC(output_event_size_bytes));
+      self->metrics.event_size_key = stats_cluster_key_builder_build_hist(self->metrics.stats_kb);
     }
     stats_cluster_key_builder_pop(self->metrics.stats_kb);
   }

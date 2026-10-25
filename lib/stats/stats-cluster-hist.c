@@ -46,7 +46,7 @@ _counter_group_hist_get_type_formatting(StatsCounterGroup *self,
                                         StatsCluster *cluster, gint type,
                                         StatsClusterUnit *stored_unit)
 {
-  if (type == SC_TYPE_HIST_SUM)
+  if (type == SC_TYPE_HIST_SUM || type == SC_TYPE_HIST_MAXIMUM)
     return;
 
   *stored_unit = SCU_NONE;
@@ -62,6 +62,8 @@ _counter_group_hist_get_type_name_suffix(StatsCounterGroup *self, StatsCluster *
     return "_sum";
   if (type == SC_TYPE_HIST_COUNT)
     return "_count";
+  if (type == SC_TYPE_HIST_MAXIMUM)
+    return "_max";
 
   return "_bucket";
 }
