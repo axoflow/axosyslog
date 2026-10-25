@@ -28,6 +28,7 @@
 #include "stats/stats-cluster-single.h"
 #include "stats/aggregator/stats-aggregator-registry.h"
 #include "timeutils/misc.h"
+#include "compat/pow2.h"
 
 /* TODO: Move these to darwinosl-source.h or a separate class once options and its handling need to be exposed */
 void darwinosl_sd_options_defaults(DarwinOSLogSourceOptions *self,
@@ -62,8 +63,8 @@ typedef struct _DarwinOSLogSourceDriver
   const gchar *persist_name;
   const gchar *stat_persist_name;
 
-  StatsAggregator *max_message_size;
-  StatsAggregator *average_messages_size;
+  StatsClusterKey *event_size_key;
+  StatsAggregator *event_size;
   StatsAggregator *CPS;
 
   /* NOTE: Naming convention difference is intentional here, camelCase is ObjC default.
@@ -74,8 +75,7 @@ typedef struct _DarwinOSLogSourceDriver
 static void
 _log_reader_insert_msg_length_stats(DarwinOSLogSourceDriver *self, gsize len)
 {
-  stats_aggregator_add_data_point(self->max_message_size, len);
-  stats_aggregator_add_data_point(self->average_messages_size, len);
+  stats_aggregator_add_data_point(self->event_size, len);
 }
 
 static void
@@ -90,24 +90,24 @@ _register_aggregated_stats(DarwinOSLogSourceDriver *self)
     gchar stats_instance[1024];
     const gchar *instance_name = stats_cluster_key_builder_format_legacy_stats_instance(kb, stats_instance,
                                  sizeof(stats_instance));
+    stats_cluster_key_builder_set_name(kb, METRIC(input_event_size_bytes));
+    self->event_size_key = stats_cluster_key_builder_build_hist(kb);
+
     stats_aggregator_lock();
     StatsClusterKey sc_key;
 
-    // msg_size_max
-    stats_cluster_single_key_legacy_set_with_name(&sc_key,
-                                                  super_options->stats_source | SCS_SOURCE,
-                                                  stats_id,
-                                                  instance_name, "msg_size_max");
-    stats_register_aggregator_maximum(super_options->stats_level, &sc_key,
-                                      &self->max_message_size);
-
-    // msg_size_avg
-    stats_cluster_single_key_legacy_set_with_name(&sc_key,
+    StatsClusterKey sc_key_size_avg, sc_key_size_max;
+    stats_cluster_single_key_legacy_set_with_name(&sc_key_size_avg,
                                                   super_options->stats_source | SCS_SOURCE,
                                                   stats_id,
                                                   instance_name, "msg_size_avg");
-    stats_register_aggregator_average(super_options->stats_level, &sc_key,
-                                      &self->average_messages_size);
+    stats_cluster_single_key_legacy_set_with_name(&sc_key_size_max,
+                                                  super_options->stats_source | SCS_SOURCE,
+                                                  stats_id,
+                                                  instance_name, "msg_size_max");
+    stats_register_aggregator_hist_with_legacy(STATS_LEVEL2, self->event_size_key,
+                                               round_to_log2(64), 8,
+                                               &sc_key_size_avg, &sc_key_size_max, &self->event_size);
 
     // eps
     stats_cluster_single_key_legacy_set_with_name(&sc_key,
@@ -128,11 +128,13 @@ _unregister_aggregated_stats(DarwinOSLogSourceDriver *self)
 {
   stats_aggregator_lock();
 
-  stats_unregister_aggregator(&self->max_message_size);
-  stats_unregister_aggregator(&self->average_messages_size);
+  stats_unregister_aggregator(&self->event_size);
   stats_unregister_aggregator(&self->CPS);
 
   stats_aggregator_unlock();
+
+  stats_cluster_key_free(self->event_size_key);
+  self->event_size_key = NULL;
 }
 
 static void

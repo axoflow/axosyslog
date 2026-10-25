@@ -29,6 +29,7 @@ typedef enum
 {
   SC_TYPE_HIST_SUM=0,     /* the sum of all observations */
   SC_TYPE_HIST_COUNT,     /* number of observations */
+  SC_TYPE_HIST_MAXIMUM,   /* the largest observation */
   SC_TYPE_HIST_BUCKET0,
   SC_TYPE_HIST_BUCKET1,
   SC_TYPE_HIST_BUCKET2,
