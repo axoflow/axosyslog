@@ -25,6 +25,33 @@
 #include "timeutils/names.h"
 #include "timeutils/conv.h"
 #include "str-format.h"
+#include "tls-support.h"
+
+#include <string.h>
+
+/* The formatted timestamp changes only once a second, while formatting it
+ * digit by digit is expensive at high message rates.  Each thread caches
+ * the part up to the seconds and the zone of the last timestamp it
+ * formatted, one entry per format.  The fraction of the second is always
+ * formatted. */
+typedef struct _FormattedTimeCache
+{
+  gint sec, min, hour, mday, mon, year;
+  glong gmtoff;
+  gboolean valid;
+  guint8 seconds_len, zone_len;
+  gchar seconds[32];
+  gchar zone[8];
+} FormattedTimeCache;
+
+TLS_BLOCK_START
+{
+  /* indexed by TS_FMT_BSD, TS_FMT_ISO and TS_FMT_FULL */
+  FormattedTimeCache formatted_time_cache[TS_FMT_FULL + 1];
+}
+TLS_BLOCK_END;
+
+#define formatted_time_cache __tls_deref(formatted_time_cache)
 
 static void
 _append_frac_digits(glong usecs, GString *target, gint frac_digits)
@@ -81,6 +108,108 @@ format_unix_time(const UnixTime *stamp, GString *target, gint ts_format, glong z
   append_format_unix_time(stamp, target, ts_format, zone_offset, frac_digits);
 }
 
+static void
+_append_up_to_seconds(const WallClockTime *wct, GString *target, gint ts_format)
+{
+  switch (ts_format)
+    {
+    case TS_FMT_BSD:
+      g_string_append_len(target, month_names_abbrev[wct->wct_mon], MONTH_NAME_ABBREV_LEN);
+      g_string_append_c(target, ' ');
+      format_uint32_padded(target, 2, ' ', 10, wct->wct_mday);
+      g_string_append_c(target, ' ');
+      format_uint32_padded(target, 2, '0', 10, wct->wct_hour);
+      g_string_append_c(target, ':');
+      format_uint32_padded(target, 2, '0', 10, wct->wct_min);
+      g_string_append_c(target, ':');
+      format_uint32_padded(target, 2, '0', 10, wct->wct_sec);
+      break;
+    case TS_FMT_ISO:
+      format_uint32_padded(target, 0, 0, 10, wct->wct_year + 1900);
+      g_string_append_c(target, '-');
+      format_uint32_padded(target, 2, '0', 10, wct->wct_mon + 1);
+      g_string_append_c(target, '-');
+      format_uint32_padded(target, 2, '0', 10, wct->wct_mday);
+      g_string_append_c(target, 'T');
+      format_uint32_padded(target, 2, '0', 10, wct->wct_hour);
+      g_string_append_c(target, ':');
+      format_uint32_padded(target, 2, '0', 10, wct->wct_min);
+      g_string_append_c(target, ':');
+      format_uint32_padded(target, 2, '0', 10, wct->wct_sec);
+      break;
+    case TS_FMT_FULL:
+      format_uint32_padded(target, 0, 0, 10, wct->wct_year + 1900);
+      g_string_append_c(target, ' ');
+      g_string_append_len(target, month_names_abbrev[wct->wct_mon], MONTH_NAME_ABBREV_LEN);
+      g_string_append_c(target, ' ');
+      format_uint32_padded(target, 2, ' ', 10, wct->wct_mday);
+      g_string_append_c(target, ' ');
+      format_uint32_padded(target, 2, '0', 10, wct->wct_hour);
+      g_string_append_c(target, ':');
+      format_uint32_padded(target, 2, '0', 10, wct->wct_min);
+      g_string_append_c(target, ':');
+      format_uint32_padded(target, 2, '0', 10, wct->wct_sec);
+      break;
+    default:
+      g_assert_not_reached();
+      break;
+    }
+}
+
+static inline gboolean
+_cache_matches(const FormattedTimeCache *cache, const WallClockTime *wct)
+{
+  return cache->valid &&
+         cache->sec == wct->wct_sec &&
+         cache->min == wct->wct_min &&
+         cache->hour == wct->wct_hour &&
+         cache->mday == wct->wct_mday &&
+         cache->mon == wct->wct_mon &&
+         cache->year == wct->wct_year &&
+         cache->gmtoff == wct->wct_gmtoff;
+}
+
+static void
+_append_cached_wall_clock_time(const WallClockTime *wct, GString *target, gint ts_format, gint frac_digits)
+{
+  FormattedTimeCache *cache = &formatted_time_cache[ts_format];
+
+  if (_cache_matches(cache, wct))
+    {
+      g_string_append_len(target, cache->seconds, cache->seconds_len);
+      _append_frac_digits(wct->wct_usec, target, frac_digits);
+      g_string_append_len(target, cache->zone, cache->zone_len);
+      return;
+    }
+
+  gsize seconds_start = target->len;
+  _append_up_to_seconds(wct, target, ts_format);
+  gsize seconds_len = target->len - seconds_start;
+
+  _append_frac_digits(wct->wct_usec, target, frac_digits);
+
+  gsize zone_start = target->len;
+  if (ts_format == TS_FMT_ISO)
+    append_format_zone_info(target, wct->wct_gmtoff);
+  gsize zone_len = target->len - zone_start;
+
+  cache->valid = seconds_len <= sizeof(cache->seconds) && zone_len <= sizeof(cache->zone);
+  if (!cache->valid)
+    return;
+
+  memcpy(cache->seconds, target->str + seconds_start, seconds_len);
+  cache->seconds_len = seconds_len;
+  memcpy(cache->zone, target->str + zone_start, zone_len);
+  cache->zone_len = zone_len;
+  cache->sec = wct->wct_sec;
+  cache->min = wct->wct_min;
+  cache->hour = wct->wct_hour;
+  cache->mday = wct->wct_mday;
+  cache->mon = wct->wct_mon;
+  cache->year = wct->wct_year;
+  cache->gmtoff = wct->wct_gmtoff;
+}
+
 /**
  * unix_time_format:
  * @stamp: Timestamp to format
@@ -99,47 +228,9 @@ append_format_wall_clock_time(const WallClockTime *wct, GString *target, gint ts
   switch (ts_format)
     {
     case TS_FMT_BSD:
-      g_string_append_len(target, month_names_abbrev[wct->wct_mon], MONTH_NAME_ABBREV_LEN);
-      g_string_append_c(target, ' ');
-      format_uint32_padded(target, 2, ' ', 10, wct->wct_mday);
-      g_string_append_c(target, ' ');
-      format_uint32_padded(target, 2, '0', 10, wct->wct_hour);
-      g_string_append_c(target, ':');
-      format_uint32_padded(target, 2, '0', 10, wct->wct_min);
-      g_string_append_c(target, ':');
-      format_uint32_padded(target, 2, '0', 10, wct->wct_sec);
-      _append_frac_digits(wct->wct_usec, target, frac_digits);
-      break;
     case TS_FMT_ISO:
-      format_uint32_padded(target, 0, 0, 10, wct->wct_year + 1900);
-      g_string_append_c(target, '-');
-      format_uint32_padded(target, 2, '0', 10, wct->wct_mon + 1);
-      g_string_append_c(target, '-');
-      format_uint32_padded(target, 2, '0', 10, wct->wct_mday);
-      g_string_append_c(target, 'T');
-      format_uint32_padded(target, 2, '0', 10, wct->wct_hour);
-      g_string_append_c(target, ':');
-      format_uint32_padded(target, 2, '0', 10, wct->wct_min);
-      g_string_append_c(target, ':');
-      format_uint32_padded(target, 2, '0', 10, wct->wct_sec);
-
-      _append_frac_digits(wct->wct_usec, target, frac_digits);
-      append_format_zone_info(target, wct->wct_gmtoff);
-      break;
     case TS_FMT_FULL:
-      format_uint32_padded(target, 0, 0, 10, wct->wct_year + 1900);
-      g_string_append_c(target, ' ');
-      g_string_append_len(target, month_names_abbrev[wct->wct_mon], MONTH_NAME_ABBREV_LEN);
-      g_string_append_c(target, ' ');
-      format_uint32_padded(target, 2, ' ', 10, wct->wct_mday);
-      g_string_append_c(target, ' ');
-      format_uint32_padded(target, 2, '0', 10, wct->wct_hour);
-      g_string_append_c(target, ':');
-      format_uint32_padded(target, 2, '0', 10, wct->wct_min);
-      g_string_append_c(target, ':');
-      format_uint32_padded(target, 2, '0', 10, wct->wct_sec);
-
-      _append_frac_digits(wct->wct_usec, target, frac_digits);
+      _append_cached_wall_clock_time(wct, target, ts_format, frac_digits);
       break;
     case TS_FMT_UNIX:
       convert_wall_clock_time_to_unix_time(wct, &ut);

@@ -332,7 +332,7 @@ Test(splunk_s2s_proto_client, post_encodes_event_with_metadata_nvpairs)
 
   const gchar *raw = "the raw payload";
   gboolean consumed = FALSE;
-  cr_assert_eq(log_proto_client_post(client, msg, (guchar *) g_strdup(raw), strlen(raw), &consumed), LPS_SUCCESS);
+  cr_assert_eq(log_proto_client_post(client, msg, (const guchar *) raw, strlen(raw), &consumed), LPS_SUCCESS);
   cr_assert(consumed);
   cr_assert_eq(acks, 0, "no writer ack before the indexer confirms");
 
@@ -364,7 +364,7 @@ Test(splunk_s2s_proto_client, post_falls_back_to_default_metadata)
 
   const gchar *raw = "fallback payload";
   gboolean consumed = FALSE;
-  cr_assert_eq(log_proto_client_post(client, msg, (guchar *) g_strdup(raw), strlen(raw), &consumed), LPS_SUCCESS);
+  cr_assert_eq(log_proto_client_post(client, msg, (const guchar *) raw, strlen(raw), &consumed), LPS_SUCCESS);
   cr_assert(consumed);
 
   GString *written = _written_bytes(transport);
@@ -384,14 +384,13 @@ Test(splunk_s2s_proto_client, post_is_not_consumed_while_handshake_is_pending)
   LogProtoClient *client = _client_new(transport);
 
   LogMessage *msg = _test_msg_new();
-  guchar *payload = (guchar *) g_strdup("queued payload");
+  const gchar *payload = "queued payload";
   gboolean consumed = FALSE;
 
-  cr_assert_eq(log_proto_client_post(client, msg, payload, strlen((gchar *) payload), &consumed), LPS_PARTIAL);
+  cr_assert_eq(log_proto_client_post(client, msg, (const guchar *) payload, strlen(payload), &consumed), LPS_SUCCESS);
   cr_assert_not(consumed, "message must stay in the queue until the handshake finishes");
   cr_assert_eq(acks, 0);
 
-  g_free(payload);
   log_msg_unref(msg);
   log_proto_client_free(client);
 }
@@ -419,7 +418,7 @@ _connected_client_with_posted_events(LogTransport *transport, gint n_events)
     {
       LogMessage *msg = _test_msg_new();
       gboolean consumed = FALSE;
-      cr_assert_eq(log_proto_client_post(client, msg, (guchar *) g_strdup("payload"), 7, &consumed), LPS_SUCCESS);
+      cr_assert_eq(log_proto_client_post(client, msg, (const guchar *) "payload", 7, &consumed), LPS_SUCCESS);
       cr_assert(consumed);
       log_msg_unref(msg);
     }

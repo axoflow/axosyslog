@@ -29,6 +29,7 @@
 
 
 static void _ack_callback(gint num_acked, gpointer user_data);
+static void _rewind_callback(gpointer user_data);
 
 /* helper variables used by all testcases below */
 
@@ -38,10 +39,12 @@ static LogTransport *transport;
 static LogProtoClientFlowControlFuncs flow_control_funcs =
 {
   .ack_callback = _ack_callback,
+  .rewind_callback = _rewind_callback,
 };
 static gchar output_buffer[8192];
 static LogProtoStatus status;
 static gint messages_acked = 0;
+static gint rewinds = 0;
 static gboolean consumed;
 static const gchar *payload = "PAYLOAD";
 static gssize count;
@@ -58,7 +61,7 @@ Test(file_writer, write_single_message_and_flush_is_expected_to_dump_the_payload
 
   log_proto_client_set_client_flow_control(fw, &flow_control_funcs);
 
-  status = log_proto_client_post(fw, msg, (guchar *) g_strdup(payload), strlen(payload) + 1, &consumed);
+  status = log_proto_client_post(fw, msg, (const guchar *) payload, strlen(payload) + 1, &consumed);
   cr_assert(status == LPS_SUCCESS);
   cr_assert(consumed == TRUE);
 
@@ -81,7 +84,7 @@ Test(file_writer, batches_of_messages_should_be_flushed_to_the_output)
   log_proto_client_set_client_flow_control(fw, &flow_control_funcs);
   for (gint i = 0; i < MESSAGE_COUNT; i++)
     {
-      status = log_proto_client_post(fw, msg, (guchar *) g_strdup(payload), strlen(payload) + 1, &consumed);
+      status = log_proto_client_post(fw, msg, (const guchar *) payload, strlen(payload) + 1, &consumed);
       cr_assert(status == LPS_SUCCESS);
       cr_assert(consumed == TRUE);
     }
@@ -110,7 +113,7 @@ Test(file_writer, messages_should_be_flushed_automatically_once_we_reach_batch_s
   log_proto_client_set_client_flow_control(fw, &flow_control_funcs);
   for (gint i = 0; i < BATCH_SIZE - 1; i++)
     {
-      status = log_proto_client_post(fw, msg, (guchar *) g_strdup(payload), strlen(payload) + 1, &consumed);
+      status = log_proto_client_post(fw, msg, (const guchar *) payload, strlen(payload) + 1, &consumed);
       cr_assert(status == LPS_SUCCESS);
       cr_assert(consumed == TRUE);
     }
@@ -119,7 +122,7 @@ Test(file_writer, messages_should_be_flushed_automatically_once_we_reach_batch_s
   cr_assert_eq(count, 0);
 
   /* Push an extra item, which causes the BATCH_SIZE limit to be reached. There's an automatic flush in this case. */
-  status = log_proto_client_post(fw, msg, (guchar *) g_strdup(payload), strlen(payload) + 1, &consumed);
+  status = log_proto_client_post(fw, msg, (const guchar *) payload, strlen(payload) + 1, &consumed);
   cr_assert(status == LPS_SUCCESS);
   cr_assert(consumed == TRUE);
 
@@ -139,15 +142,17 @@ Test(file_writer, batches_of_messages_are_flushed_even_if_the_underlying_transpo
   log_proto_client_set_client_flow_control(fw, &flow_control_funcs);
   for (gint i = 0; i < BATCH_SIZE; i++)
     {
-      status = log_proto_client_post(fw, msg, (guchar *) g_strdup(payload), strlen(payload) + 1, &consumed);
+      status = log_proto_client_post(fw, msg, (const guchar *) payload, strlen(payload) + 1, &consumed);
       cr_assert(status == LPS_SUCCESS, "status=%d", status);
       cr_assert(consumed == TRUE);
     }
 
-  while ((status = log_proto_client_flush(fw)) == LPS_PARTIAL)
-    ;
-
-  cr_assert(status == LPS_SUCCESS);
+  /* each write takes 2 bytes, the batch is written by repeated flushes */
+  for (gint i = 0; i < 1000 && messages_acked < BATCH_SIZE; i++)
+    {
+      status = log_proto_client_flush(fw);
+      cr_assert(status == LPS_SUCCESS, "status=%d", status);
+    }
 
   count = log_transport_mock_read_from_write_buffer((LogTransportMock *) transport, output_buffer, sizeof(output_buffer));
   cr_assert_eq(count, BATCH_SIZE * (strlen(payload) + 1));
@@ -160,6 +165,30 @@ Test(file_writer, batches_of_messages_are_flushed_even_if_the_underlying_transpo
   cr_assert_eq(messages_acked, BATCH_SIZE);
 
   log_proto_client_free(fw);
+}
+
+Test(file_writer, unwritten_messages_are_rewound_when_the_writer_is_freed)
+{
+  const gint BATCH_SIZE = 10;
+  LogProtoClient *fw = log_proto_file_writer_new(transport, &options, BATCH_SIZE, FALSE);
+
+  log_proto_client_set_client_flow_control(fw, &flow_control_funcs);
+  for (gint i = 0; i < 3; i++)
+    {
+      status = log_proto_client_post(fw, msg, (const guchar *) payload, strlen(payload) + 1, &consumed);
+      cr_assert(status == LPS_SUCCESS);
+      cr_assert(consumed == TRUE);
+    }
+
+  log_proto_client_free(fw);
+  cr_assert_eq(messages_acked, 0);
+  cr_assert_eq(rewinds, 1);
+}
+
+static void
+_rewind_callback(gpointer user_data)
+{
+  rewinds++;
 }
 
 static void

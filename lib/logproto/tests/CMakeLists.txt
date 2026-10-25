@@ -14,3 +14,4 @@ add_unit_test(LIBTEST CRITERION
   SOURCES "${TEST_LOGPROTO_SOURCES}")
 
 add_unit_test(CRITERION LIBTEST TARGET test_findeom)
+add_unit_test(CRITERION LIBTEST TARGET test_text_client)

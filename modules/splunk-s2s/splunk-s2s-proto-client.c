@@ -123,7 +123,7 @@ _flush_out_buf(LogProtoSplunkS2SClient *self)
   if (rc < 0)
     {
       if (errno == EAGAIN || errno == EINTR)
-        return LPS_PARTIAL;
+        return LPS_SUCCESS;
 
       msg_error("splunk-s2s: I/O error occurred while writing",
                 evt_tag_int("fd", self->super.transport_stack.fd),
@@ -133,7 +133,7 @@ _flush_out_buf(LogProtoSplunkS2SClient *self)
 
   self->out_pos += rc;
   if (_out_buf_pending(self))
-    return LPS_PARTIAL;
+    return LPS_SUCCESS;
 
   g_string_truncate(self->out_buf, 0);
   self->out_pos = 0;
@@ -156,6 +156,12 @@ _format_info_and_default_channel(LogProtoSplunkS2SClient *self)
                                  DEFAULT_SOURCETYPE);
 }
 
+static gboolean
+_reply_consumed(LogProtoSplunkS2SClient *self)
+{
+  return self->reply_len_pos == sizeof(self->reply_len_buf) && self->reply_remaining == 0;
+}
+
 static LogProtoStatus
 _consume_reply(LogProtoSplunkS2SClient *self)
 {
@@ -167,7 +173,7 @@ _consume_reply(LogProtoSplunkS2SClient *self)
       if (rc < 0)
         {
           if (errno == EAGAIN || errno == EINTR)
-            return LPS_PARTIAL;
+            return LPS_SUCCESS;
           msg_error("splunk-s2s: I/O error while reading the handshake reply",
                     evt_tag_int("fd", self->super.transport_stack.fd),
                     evt_tag_error(EVT_TAG_OSERROR));
@@ -205,7 +211,7 @@ _consume_reply(LogProtoSplunkS2SClient *self)
       if (rc < 0)
         {
           if (errno == EAGAIN || errno == EINTR)
-            return LPS_PARTIAL;
+            return LPS_SUCCESS;
           msg_error("splunk-s2s: I/O error while reading the handshake reply",
                     evt_tag_int("fd", self->super.transport_stack.fd),
                     evt_tag_error(EVT_TAG_OSERROR));
@@ -238,8 +244,9 @@ _start_tls_if_configured(LogProtoSplunkS2SClient *self)
   return log_transport_stack_switch(stack, LOG_TRANSPORT_TLS);
 }
 
-/* drive the handshake as far as the socket allows without blocking;
- * LPS_PARTIAL means the socket is not ready, poll_prepare() tells which way */
+/* drive the handshake as far as the socket allows without blocking; if the
+ * socket is not ready, the state stays before SS2S_CONNECTED and
+ * poll_prepare() tells which way to wait */
 static LogProtoStatus
 _handshake_step(LogProtoSplunkS2SClient *self)
 {
@@ -257,7 +264,7 @@ _handshake_step(LogProtoSplunkS2SClient *self)
               _format_hello(self);
             }
           status = _flush_out_buf(self);
-          if (status != LPS_SUCCESS)
+          if (status != LPS_SUCCESS || _out_buf_pending(self))
             return status;
           self->state = SS2S_AWAIT_REPLY;
           self->reply_len_pos = 0;
@@ -265,14 +272,14 @@ _handshake_step(LogProtoSplunkS2SClient *self)
           break;
         case SS2S_AWAIT_REPLY:
           status = _consume_reply(self);
-          if (status != LPS_SUCCESS)
+          if (status != LPS_SUCCESS || !_reply_consumed(self))
             return status;
           self->state = SS2S_SEND_INFO;
           _format_info_and_default_channel(self);
           break;
         case SS2S_SEND_INFO:
           status = _flush_out_buf(self);
-          if (status != LPS_SUCCESS)
+          if (status != LPS_SUCCESS || _out_buf_pending(self))
             return status;
           self->state = SS2S_CONNECTED;
           msg_debug("splunk-s2s: handshake finished",
@@ -478,7 +485,7 @@ log_proto_splunk_s2s_client_process_in(LogProtoClient *s)
       LogProtoStatus status = _handshake_step(self);
       if (status == LPS_ERROR || status == LPS_EOF)
         return _broken(self, status);
-      return status == LPS_PARTIAL ? LPS_SUCCESS : status;
+      return status;
     }
 
   LogProtoStatus status = _process_acks(self);
@@ -503,7 +510,7 @@ log_proto_splunk_s2s_client_flush(LogProtoClient *s)
 
   if (status == LPS_ERROR || status == LPS_EOF)
     return _broken(self, LPS_ERROR);
-  return status == LPS_PARTIAL ? LPS_SUCCESS : status;
+  return status;
 }
 
 static const gchar *
@@ -576,7 +583,7 @@ _encode_event(LogProtoSplunkS2SClient *self, LogMessage *msg, guint64 event_id, 
 }
 
 static LogProtoStatus
-log_proto_splunk_s2s_client_post(LogProtoClient *s, LogMessage *logmsg, guchar *msg, gsize msg_len,
+log_proto_splunk_s2s_client_post(LogProtoClient *s, LogMessage *logmsg, const guchar *msg, gsize msg_len,
                                  gboolean *consumed)
 {
   LogProtoSplunkS2SClient *self = (LogProtoSplunkS2SClient *) s;
@@ -592,17 +599,16 @@ log_proto_splunk_s2s_client_post(LogProtoClient *s, LogMessage *logmsg, guchar *
       if (status == LPS_ERROR || status == LPS_EOF)
         return _broken(self, LPS_ERROR);
       if (self->state != SS2S_CONNECTED)
-        return LPS_PARTIAL;
+        return LPS_SUCCESS;
     }
 
   LogProtoStatus status = _flush_out_buf(self);
   if (status == LPS_ERROR)
     return _broken(self, status);
   if (_out_buf_pending(self))
-    return LPS_PARTIAL;
+    return LPS_SUCCESS;
 
   _encode_event(self, logmsg, self->next_event_id++, msg, msg_len);
-  g_free(msg);
   *consumed = TRUE;
 
   status = _flush_out_buf(self);
