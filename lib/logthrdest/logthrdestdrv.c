@@ -1407,6 +1407,27 @@ _update_partition_stats(LogThreadedDestDriver *self, Partition *partition, const
   partition->last_update = *now;
 }
 
+static inline gboolean
+_fill_first_routing_enabled(LogThreadedDestDriver *self)
+{
+  return self->worker_partition_autoscaling && self->batch_lines > 1;
+}
+
+/* the first worker of the range whose queue holds less than a batch, -1 when every one of them does */
+static gint
+_find_worker_with_room_for_a_batch(LogThreadedDestDriver *self, guint first_worker, gint num_of_workers)
+{
+  for (gint i = 0; i < num_of_workers; i++)
+    {
+      guint worker_index = (first_worker + i) % self->num_workers;
+
+      if (log_queue_get_length(self->workers[worker_index]->queue) < self->batch_lines)
+        return worker_index;
+    }
+
+  return -1;
+}
+
 static inline guint
 _autoscale_partition(LogThreadedDestDriver *self, const gchar *partition_key, LogMessage *msg)
 {
@@ -1430,8 +1451,16 @@ _autoscale_partition(LogThreadedDestDriver *self, const gchar *partition_key, Lo
   if (new_partition || _is_worker_partition_rescale_due(self, &now))
     _rescale_worker_partitions(self, partition, &now);
 
+  gint worker_with_room = -1;
+  if (_fill_first_routing_enabled(self))
+    worker_with_room = _find_worker_with_room_for_a_batch(self, partition->worker_idx, partition->num_of_workers);
+
   guint selected_worker;
-  if (partition->num_of_workers == 1)
+  if (worker_with_room >= 0)
+    {
+      selected_worker = worker_with_room;
+    }
+  else if (partition->num_of_workers == 1)
     {
       selected_worker = partition->worker_idx;
     }
@@ -1472,6 +1501,20 @@ _round_robin_to_worker_index(LogThreadedDestDriver *self)
   return worker_index;
 }
 
+static guint
+_fill_first_or_round_robin_to_worker_index(LogThreadedDestDriver *self)
+{
+  if (_fill_first_routing_enabled(self))
+    {
+      gint worker_with_room = _find_worker_with_room_for_a_batch(self, 0, self->num_workers);
+
+      if (worker_with_room >= 0)
+        return worker_with_room;
+    }
+
+  return _round_robin_to_worker_index(self);
+}
+
 LogThreadedDestWorker *
 _lookup_worker(LogThreadedDestDriver *self, LogMessage *msg)
 {
@@ -1479,7 +1522,7 @@ _lookup_worker(LogThreadedDestDriver *self, LogMessage *msg)
   if (self->worker_partition_key)
     worker_index = _partition_to_worker_index(self, msg);
   else
-    worker_index = _round_robin_to_worker_index(self);
+    worker_index = _fill_first_or_round_robin_to_worker_index(self);
 
   return self->workers[worker_index];
 }
