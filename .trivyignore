@@ -17,6 +17,15 @@ CVE-2025-47273 exp:2026-11-15
 # Remove once pip stops pinning a vulnerable setuptools.
 CVE-2026-59890 exp:2026-11-15
 
+# setuptools: Windows path escape via namespace_packages.txt.
+# The flaw is in setuptools/wheel.py (_fix_namespace_packages, reached from
+# Wheel.install_as_egg). pip vendors only pkg_resources, so that module is
+# absent; trivy reports it from pip's SBOM at pip/_vendor/bom.cdx.json, which
+# pins setuptools 70.3.0. Windows-only besides, and the image is Alpine.
+# Remove once pip vendors setuptools >= 84.1.0:
+# https://github.com/pypa/pip/issues/14224
+GHSA-xmj3-9gf7-h52w exp:2026-11-15
+
 # urllib3: HTTPS proxy TLS configuration override (CVE-2026-97687),
 # unbounded memory allocation in the chunk parser (CVE-2026-97689) and
 # infinite loop in chunked Deflate decoding (CVE-2026-97688).
