@@ -426,6 +426,9 @@ build_cmake() {
       lldflag+=("-DCMAKE_${kind}_LINKER_FLAGS=-fuse-ld=lld")
     done
   fi
+  # macOS ships no libunwind package; the macOS CI job turns the stackdump off as well
+  local unwindflag=-DENABLE_LIBUNWIND=ON
+  [ "$(uname -s)" = Darwin ] && unwindflag=-DENABLE_LIBUNWIND=OFF
 
   if [ "$CLEAN" -eq 1 ]; then
     say "clean: wiping ${BUILD#"$ROOT"/}/"
@@ -441,7 +444,7 @@ build_cmake() {
       "${jitflag[@]}" \
       "${lldflag[@]}" \
       -DCMAKE_BUILD_TYPE=Debug -DENABLE_EXTRA_WARNINGS=ON \
-      -DENABLE_JAVA=OFF -DENABLE_JAVA_MODULES=OFF -DENABLE_LIBUNWIND=ON \
+      -DENABLE_JAVA=OFF -DENABLE_JAVA_MODULES=OFF "$unwindflag" \
       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
       -DCMAKE_INSTALL_PREFIX="$prefix"
   else
