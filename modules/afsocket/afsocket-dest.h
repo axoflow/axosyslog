@@ -55,6 +55,8 @@ struct _AFSocketDestDriver
   TransportMapper *transport_mapper;
   gchar *driver_name;
 
+  gboolean currently_unreachable;
+
   struct
   {
     StatsCounterItem *output_unreachable;

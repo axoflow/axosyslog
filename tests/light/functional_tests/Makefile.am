@@ -63,6 +63,7 @@ EXTRA_DIST += \
 	tests/light/functional_tests/logpath/__init__.py \
 	tests/light/functional_tests/logpath/test_conditionals.py \
 	tests/light/functional_tests/logpath/test_flags_catch_all.py \
+	tests/light/functional_tests/logpath/test_flags_destination_failover.py \
 	tests/light/functional_tests/logpath/test_flags_fallback.py \
 	tests/light/functional_tests/logpath/test_flags_final.py \
 	tests/light/functional_tests/logpath/test_midpoint_destinations.py \

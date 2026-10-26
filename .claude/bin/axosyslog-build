@@ -479,8 +479,10 @@ build_dbld() {
     # must not inherit it: shared modules left there by a dynamic build get
     # dlopened by a later monolithic binary on top of its built-in copies
     # (protobuf then aborts on a doubly registered extension)
-    say "clean: wiping dbld/install/"
-    find "$ROOT/dbld/install" -mindepth 1 -maxdepth 1 ! -name .gitignore -exec rm -rf {} + 2>/dev/null || true
+    # etc/ and var/ hold runtime data (config, persist state, disk buffers),
+    # not build output, so they survive the wipe
+    say "clean: wiping dbld/install/ (keeping etc/ and var/)"
+    find "$ROOT/dbld/install" -mindepth 1 -maxdepth 1 ! -name .gitignore ! -name etc ! -name var -exec rm -rf {} + 2>/dev/null || true
     # dbld/rules clean takes the tracked dbld/build/.gitignore with it; put it back
     git -C "$ROOT" checkout -q -- dbld/build/.gitignore dbld/install/.gitignore 2>/dev/null || true
     # drop the native build/ marker too, or detect_mode keeps refusing the

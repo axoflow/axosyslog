@@ -100,6 +100,8 @@ struct _LogThreadedDestWorker
   gboolean suspended;
   time_t time_reopen;
 
+  gboolean unreachable;
+
   struct
   {
     GString *last_key;
