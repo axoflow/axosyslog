@@ -806,6 +806,124 @@ Test(logthrdestdrv, test_explicit_ack_accept)
   cr_assert(dd->super.shared_seq_num == 11, "%d", dd->super.shared_seq_num);
 }
 
+static gboolean
+_worker_connect_never(LogThreadedDestWorker *s)
+{
+  return FALSE;
+}
+
+static LogThreadedResult
+_worker_insert_unreachable(LogThreadedDestWorker *s, LogMessage *msg)
+{
+  cr_assert_fail("a worker that never connects must not insert");
+  return LTR_ERROR;
+}
+
+/* a worker that never connects keeps its queue intact, so the queue lengths expose the routing */
+static LogThreadedDestWorker *
+_construct_suspended_worker(LogThreadedDestDriver *owner, gint worker_index)
+{
+  LogThreadedDestWorker *self = g_new0(LogThreadedDestWorker, 1);
+
+  log_threaded_dest_worker_init_instance(self, owner, worker_index);
+  self->connect = _worker_connect_never;
+  self->insert = _worker_insert_unreachable;
+  self->free_fn = log_threaded_dest_worker_free_method;
+  return self;
+}
+
+static void
+_setup_suspended_dd(gint num_workers, gint batch_lines, gboolean autoscaling)
+{
+  _teardown_dd();
+  dd = test_threaded_dd_new(main_loop_get_current_config(main_loop));
+
+  dd->super.worker.construct = _construct_suspended_worker;
+  dd->super.batch_lines = batch_lines;
+  dd->super.batch_timeout = 1000;
+  log_threaded_dest_driver_set_num_workers(&dd->super.super.super, num_workers);
+  log_threaded_dest_driver_set_worker_partition_autoscaling(&dd->super.super.super, autoscaling);
+}
+
+static void
+_init_dd(void)
+{
+  cr_assert(log_pipe_init(&dd->super.super.super.super));
+  cr_assert(log_pipe_post_config_init(&dd->super.super.super.super));
+}
+
+static void
+_generate_messages_with_recv_usec(TestThreadedDestDriver *d, gint n, glong usec_step)
+{
+  LogPathOptions path_options = LOG_PATH_OPTIONS_INIT_NOACK;
+
+  for (gint i = 0; i < n; i++)
+    {
+      LogMessage *msg = create_sample_message();
+
+      msg->timestamps[LM_TS_RECVD].ut_usec = (i * usec_step) % 1000000;
+      log_pipe_queue(&d->super.super.super.super, msg, &path_options);
+    }
+}
+
+static gint64
+_queued(gint worker_index)
+{
+  return log_queue_get_length(dd->super.workers[worker_index]->queue);
+}
+
+Test(logthrdestdrv, autoscaling_without_a_partition_key_fills_a_worker_before_spilling_to_the_next)
+{
+  _setup_suspended_dd(2, 5, TRUE);
+  _init_dd();
+
+  _generate_messages(dd, 5, TRUE);
+  cr_assert_eq(_queued(0), 5);
+  cr_assert_eq(_queued(1), 0);
+
+  _generate_messages(dd, 3, TRUE);
+  cr_assert_eq(_queued(0), 5);
+  cr_assert_eq(_queued(1), 3);
+}
+
+Test(logthrdestdrv, autoscaling_without_a_partition_key_round_robins_once_every_worker_holds_a_batch)
+{
+  _setup_suspended_dd(2, 5, TRUE);
+  _init_dd();
+
+  _generate_messages(dd, 12, TRUE);
+  cr_assert_eq(_queued(0), 6);
+  cr_assert_eq(_queued(1), 6);
+}
+
+Test(logthrdestdrv, autoscaling_without_batching_keeps_round_robin)
+{
+  _setup_suspended_dd(2, 0, TRUE);
+  _init_dd();
+
+  _generate_messages(dd, 4, TRUE);
+  cr_assert_eq(_queued(0), 2);
+  cr_assert_eq(_queued(1), 2);
+}
+
+Test(logthrdestdrv, autoscaling_fills_the_first_worker_of_a_partition_before_spreading_within_its_range)
+{
+  _setup_suspended_dd(3, 5, TRUE);
+  LogTemplate *key = log_template_new(main_loop_get_current_config(main_loop), NULL);
+  cr_assert(log_template_compile(key, "${APP.VALUE}", NULL));
+  log_threaded_dest_driver_set_worker_partition_key_ref(&dd->super.super.super, key);
+  _init_dd();
+
+  /* the default worker-partition-autoscaling-wfo() of 1 leaves the only partition 2 of the 3 workers */
+  _generate_messages_with_recv_usec(dd, 5, 200000);
+  cr_assert_eq(_queued(0), 5);
+  cr_assert_eq(_queued(1), 0);
+
+  _generate_messages_with_recv_usec(dd, 2, 200000);
+  cr_assert_eq(_queued(1), 2);
+  cr_assert_eq(_queued(2), 0);
+}
+
 MainLoopOptions main_loop_options = {0};
 
 static void
