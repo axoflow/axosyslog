@@ -119,6 +119,7 @@ EXTRA_DIST += \
 	tests/light/functional_tests/source_drivers/opentelemetry_source/test_opentelemetry_source_stop.py \
 	tests/light/functional_tests/source_drivers/opentelemetry_source/test_opentelemetry_source_tls.py \
 	tests/light/functional_tests/source_drivers/syslog_source/auto/test_auto_proto.py \
+	tests/light/functional_tests/source_drivers/syslog_source/auto/test_auto_tls.py \
 	tests/light/functional_tests/source_drivers/syslog_source/test_syslog_transports.py \
 	tests/light/functional_tests/source_drivers/test_input_ordering.py \
 	tests/light/functional_tests/source_drivers/test_input_transports.py \
