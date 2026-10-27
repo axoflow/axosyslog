@@ -79,7 +79,7 @@ jobs:
           docker/tests/smoke.sh
 
       - name: Scan docker image on CVEs
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: 'axosyslog:test'
           format: 'table'
@@ -87,5 +87,6 @@ jobs:
           severity: 'CRITICAL,HIGH,MEDIUM,LOW'
           ignore-unfixed: true
         env:
-          TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2,mirror.gcr.io/aquasec/trivy-db:2,ghcr.io/aquasecurity/trivy-db:2
-          TRIVY_JAVA_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-java-db:1,mirror.gcr.io/aquasec/trivy-java-db:1,ghcr.io/aquasecurity/trivy-java-db:1
+          # The DB is restored from the cache that trivy-db-cache.yml fills daily.
+          TRIVY_SKIP_DB_UPDATE: true
+          TRIVY_SKIP_JAVA_DB_UPDATE: true
