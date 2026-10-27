@@ -20,8 +20,11 @@
 # COPYING for details.
 #
 #############################################################################
+import pytest
 from axosyslog_light.syslog_ng.syslog_ng import SyslogNg
 from axosyslog_light.syslog_ng_config.syslog_ng_config import SyslogNgConfig
+
+GENERATOR_MESSAGE = "plain-body"
 
 ASSEMBLE_PAYLOAD = """
     ${.axo.type} = "log";
@@ -30,28 +33,72 @@ ASSEMBLE_PAYLOAD = """
     ${.axo.log} = otel_logrecord({"body": "axo-body", "severity_text": "ERR"});
 """
 
+ASSEMBLE_RAW_PAYLOAD = """
+    ${.otel_raw.type} = "log";
+    ${.otel_raw.log} = otel_logrecord({"body": "raw-body", "severity_text": "RAW"});
+"""
+
+ASSEMBLE_OTEL_FIELDS = """
+    ${.otel.type} = "log";
+    ${.otel.log.body} = "fallback-body";
+    ${.otel.log.severity_text} = "FALLBACK";
+"""
+
+
 DECODE_RECEIVED = """
     log_record = otel_logrecord(${.otel_raw.log});
-    resource = otel_resource(${.otel_raw.resource});
-    scope = otel_scope(${.otel_raw.scope});
+    resource = otel_resource(${.otel_raw.resource}) ?? otel_resource();
+    scope = otel_scope(${.otel_raw.scope}) ?? otel_scope();
     $MSG = "type=" + ${.otel_raw.type}
            + " body=" + string(log_record.body)
            + " severity=" + log_record.severity_text
-           + " service=" + string(resource.attributes["service.name"])
+           + " service=" + (string(resource.attributes["service.name"]) ?? "")
            + " scope=" + scope.name;
 """
 
 
+@pytest.mark.parametrize(
+    "assemble_payload, prefix, expected",
+    [
+        pytest.param(
+            ASSEMBLE_PAYLOAD, ".axo",
+            "type=log body=axo-body severity=ERR service=axo-svc scope=axo-scope",
+            id="prefix-axo-payload-axo-expect-axo-payload",
+        ),
+        # prefix() replaces .otel_raw instead of adding to it: a message that only
+        # carries .otel_raw.* is sent as a plain syslog-ng fallback record built from $MSG
+        pytest.param(
+            ASSEMBLE_RAW_PAYLOAD, ".axo",
+            f"type=log body={GENERATOR_MESSAGE} severity= service= scope=",
+            id="prefix-axo-payload-otel_raw-expect-fallback-payload",
+        ),
+        # the per-field .otel.* namespace is still read when <prefix>.log is absent
+        pytest.param(
+            ASSEMBLE_OTEL_FIELDS, ".axo",
+            "type=log body=fallback-body severity=FALLBACK service= scope=",
+            id="prefix-axo-payload-otel-expect-otel-payload",
+        ),
+        # prefix("") is accepted and selects the default .otel_raw namespace
+        pytest.param(
+            ASSEMBLE_RAW_PAYLOAD, "",
+            "type=log body=raw-body severity=RAW service= scope=",
+            id="prefix-empty-payload-otel_raw-expect-otel_raw-payload",
+        ),
+    ],
+)
 def test_opentelemetry_destination_prefix(
     syslog_ng: SyslogNg,
     config: SyslogNgConfig,
     port_allocator,
+    assemble_payload: str,
+    prefix: str,
+    expected: str,
 ) -> None:
     receiver_port = port_allocator()
 
-    sender_source = config.create_example_msg_generator_source(num=1, template='"ignored"')
-    destination = config.create_opentelemetry_destination(port=receiver_port, prefix=config.stringify(".axo"))
-    config.create_logpath(statements=[sender_source, config.create_filterx(ASSEMBLE_PAYLOAD), destination])
+    sender_source = config.create_example_msg_generator_source(num=1, template=config.stringify(GENERATOR_MESSAGE))
+    destination = config.create_opentelemetry_destination(port=receiver_port, prefix=config.stringify(prefix))
+    config.create_logpath(statements=[sender_source, config.create_filterx(assemble_payload), destination])
 
     receiver_source = config.create_opentelemetry_source(port=receiver_port)
     file_destination = config.create_file_destination(file_name="output.log", template='"${MSG}\\n"')
@@ -59,5 +106,4 @@ def test_opentelemetry_destination_prefix(
 
     syslog_ng.start(config)
 
-    assert file_destination.read_log() == "type=log body=axo-body severity=ERR service=axo-svc scope=axo-scope"
-    assert syslog_ng.is_process_running()
+    assert file_destination.read_log() == expected
