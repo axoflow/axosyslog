@@ -29,6 +29,7 @@
 #include "messages.h"
 #include "apphook.h"
 #include "mainloop-threaded-worker.h"
+#include "syslog-names.h"
 
 #include <iv_event.h>
 
@@ -39,6 +40,7 @@ static GQueue *internal_msg_queue;
 static AFInterSource *current_internal_source;
 
 static AFInterMetrics metrics;
+static StatsCounterItem *events_by_severity[SYSLOG_PRIMASK + 1];
 
 /* the expiration timer of the next MARK message */
 static struct timespec next_mark_target = { -1, 0 };
@@ -548,6 +550,13 @@ _release_internal_msg_queue(void)
   internal_msg_queue = NULL;
 }
 
+static void
+_events_by_severity_key_set(StatsClusterKey *sc_key, StatsClusterLabel *label, gint severity)
+{
+  *label = stats_cluster_label("severity", syslog_name_lookup_severity_by_value(severity));
+  stats_cluster_single_key_set(sc_key, METRIC(internal_events_total), label, 1);
+}
+
 void
 afinter_message_posted(LogMessage *msg)
 {
@@ -575,10 +584,19 @@ afinter_message_posted(LogMessage *msg)
 
       stats_cluster_single_key_set(&sc_key, METRIC(internal_events_queue_capacity), NULL, 0);
       stats_register_counter(0, &sc_key, SC_TYPE_SINGLE_VALUE, &metrics.queue_capacity);
+
+      for (gint severity = 0; severity <= SYSLOG_PRIMASK; severity++)
+        {
+          StatsClusterLabel label;
+          _events_by_severity_key_set(&sc_key, &label, severity);
+          stats_register_counter(0, &sc_key, SC_TYPE_SINGLE_VALUE, &events_by_severity[severity]);
+        }
       stats_unlock();
 
       stats_counter_set(metrics.queue_capacity, current_internal_source->options->queue_capacity);
     }
+
+  stats_counter_inc(events_by_severity[SYSLOG_PRI(msg->pri)]);
 
   if (current_internal_source
       && g_queue_get_length(internal_msg_queue) >= current_internal_source->options->queue_capacity)
@@ -635,6 +653,13 @@ afinter_global_deinit(void)
 
       stats_cluster_single_key_set(&sc_key, METRIC(internal_events_queue_capacity), NULL, 0);
       stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &metrics.queue_capacity);
+
+      for (gint severity = 0; severity <= SYSLOG_PRIMASK; severity++)
+        {
+          StatsClusterLabel label;
+          _events_by_severity_key_set(&sc_key, &label, severity);
+          stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &events_by_severity[severity]);
+        }
       stats_unlock();
 
       g_queue_free_full(internal_msg_queue, (GDestroyNotify)log_msg_unref);
