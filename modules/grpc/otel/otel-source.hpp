@@ -40,6 +40,8 @@ LogThreadedSourceWorker **otel_sd_reload_restore(LogThreadedSourceDriver *s, gin
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/alarm.h>
 #include <memory>
+#include <mutex>
+#include <set>
 
 namespace syslogng {
 namespace grpc {
@@ -89,6 +91,11 @@ public:
   void request_exit() override;
   void shutdown_queue();
 
+  /* a call waiting for the ACK of its messages before it responds; parking
+   * is refused once request_exit() has swept the parked calls */
+  bool park(AsyncServiceCallInterface *call);
+  void unpark(AsyncServiceCallInterface *call);
+
 private:
   friend TraceServiceCall;
   friend LogsServiceCall;
@@ -101,6 +108,9 @@ private:
   bool service_calls_registered;
   ::grpc::Alarm stop_scheduler;
   StopEventCall stop_call;
+  std::mutex parked_calls_lock;
+  std::set<AsyncServiceCallInterface *> parked_calls;
+  bool exiting = false;
 };
 
 }
