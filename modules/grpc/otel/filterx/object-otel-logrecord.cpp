@@ -161,7 +161,7 @@ LogRecord::iter(FilterXObjectIterFunc func, void *user_data)
   return iter_on_otel_protobuf_message_fields(logRecord, func, user_data);
 }
 
-const opentelemetry::proto::logs::v1::LogRecord &
+const syslogng::opentelemetry::proto::logs::v1::LogRecord &
 LogRecord::get_value() const
 {
   return this->logRecord;

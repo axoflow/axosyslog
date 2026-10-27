@@ -42,9 +42,9 @@ struct CfgReloadEntry
   LogThreadedSourceWorker **workers;
   int num_workers;
   std::unique_ptr<::grpc::Server> server;
-  std::unique_ptr<TraceService::AsyncService> trace_service;
-  std::unique_ptr<LogsService::AsyncService> logs_service;
-  std::unique_ptr<MetricsService::AsyncService> metrics_service;
+  std::unique_ptr<TraceService> trace_service;
+  std::unique_ptr<LogsService> logs_service;
+  std::unique_ptr<MetricsService> metrics_service;
 };
 
 }
@@ -73,9 +73,9 @@ SourceDriver::SourceDriver(GrpcSourceDriver *s)
   : syslogng::grpc::SourceDriver(s), mode(OSM_LOGMESSAGE)
 {
   this->port = 4317;
-  this->trace_service = std::make_unique<TraceService::AsyncService>();
-  this->logs_service = std::make_unique<LogsService::AsyncService>();
-  this->metrics_service = std::make_unique<MetricsService::AsyncService>();
+  this->trace_service = std::make_unique<TraceService>(TRACE_EXPORT_METHOD);
+  this->logs_service = std::make_unique<LogsService>(LOGS_EXPORT_METHOD);
+  this->metrics_service = std::make_unique<MetricsService>(METRICS_EXPORT_METHOD);
 }
 
 void

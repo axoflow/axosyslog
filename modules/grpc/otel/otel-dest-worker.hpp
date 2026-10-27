@@ -24,33 +24,35 @@
 #ifndef OTEL_DEST_WORKER_HPP
 #define OTEL_DEST_WORKER_HPP
 
-#include "opentelemetry/proto/collector/logs/v1/logs_service.grpc.pb.h"
-#include "opentelemetry/proto/collector/metrics/v1/metrics_service.grpc.pb.h"
-#include "opentelemetry/proto/collector/trace/v1/trace_service.grpc.pb.h"
-#include "opentelemetry/proto/logs/v1/logs.pb.h"
-#include "opentelemetry/proto/metrics/v1/metrics.pb.h"
-#include "opentelemetry/proto/trace/v1/trace.pb.h"
+#include "syslogng/opentelemetry/proto/collector/logs/v1/logs_service.pb.h"
+#include "syslogng/opentelemetry/proto/collector/metrics/v1/metrics_service.pb.h"
+#include "syslogng/opentelemetry/proto/collector/trace/v1/trace_service.pb.h"
+#include "syslogng/opentelemetry/proto/logs/v1/logs.pb.h"
+#include "syslogng/opentelemetry/proto/metrics/v1/metrics.pb.h"
+#include "syslogng/opentelemetry/proto/trace/v1/trace.pb.h"
 
 #include "grpc-dest-worker.hpp"
 #include "otel-dest.hpp"
 #include "otel-protobuf-formatter.hpp"
+#include "otel-services.hpp"
 
 namespace syslogng {
 namespace grpc {
 namespace otel {
 
-using opentelemetry::proto::collector::logs::v1::LogsService;
-using opentelemetry::proto::collector::logs::v1::ExportLogsServiceRequest;
-using opentelemetry::proto::collector::logs::v1::ExportLogsServiceResponse;
-using opentelemetry::proto::collector::metrics::v1::MetricsService;
-using opentelemetry::proto::collector::metrics::v1::ExportMetricsServiceRequest;
-using opentelemetry::proto::collector::metrics::v1::ExportMetricsServiceResponse;
-using opentelemetry::proto::collector::trace::v1::TraceService;
-using opentelemetry::proto::collector::trace::v1::ExportTraceServiceRequest;
-using opentelemetry::proto::collector::trace::v1::ExportTraceServiceResponse;
-using opentelemetry::proto::logs::v1::ScopeLogs;
-using opentelemetry::proto::metrics::v1::ScopeMetrics;
-using opentelemetry::proto::trace::v1::ScopeSpans;
+using syslogng::opentelemetry::proto::collector::logs::v1::ExportLogsServiceRequest;
+using syslogng::opentelemetry::proto::collector::logs::v1::ExportLogsServiceResponse;
+using syslogng::opentelemetry::proto::collector::metrics::v1::ExportMetricsServiceRequest;
+using syslogng::opentelemetry::proto::collector::metrics::v1::ExportMetricsServiceResponse;
+using syslogng::opentelemetry::proto::collector::trace::v1::ExportTraceServiceRequest;
+using syslogng::opentelemetry::proto::collector::trace::v1::ExportTraceServiceResponse;
+using syslogng::opentelemetry::proto::logs::v1::ScopeLogs;
+using syslogng::opentelemetry::proto::metrics::v1::ScopeMetrics;
+using syslogng::opentelemetry::proto::trace::v1::ScopeSpans;
+
+using LogsServiceStub = ExportStub<ExportLogsServiceRequest, ExportLogsServiceResponse>;
+using MetricsServiceStub = ExportStub<ExportMetricsServiceRequest, ExportMetricsServiceResponse>;
+using TraceServiceStub = ExportStub<ExportTraceServiceRequest, ExportTraceServiceResponse>;
 
 class DestWorker : public syslogng::grpc::DestWorker
 {
@@ -86,9 +88,9 @@ protected:
   LogThreadedResult flush_spans();
 
 protected:
-  std::unique_ptr<LogsService::Stub> logs_service_stub;
-  std::unique_ptr<MetricsService::Stub> metrics_service_stub;
-  std::unique_ptr<TraceService::Stub> trace_service_stub;
+  std::unique_ptr<LogsServiceStub> logs_service_stub;
+  std::unique_ptr<MetricsServiceStub> metrics_service_stub;
+  std::unique_ptr<TraceServiceStub> trace_service_stub;
 
   ExportLogsServiceRequest *logs_service_request;
   ExportLogsServiceResponse *logs_service_response;

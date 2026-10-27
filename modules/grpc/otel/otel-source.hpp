@@ -59,9 +59,9 @@ public:
   OtelSourceMode mode;
 
   /* services must exist for the lifetime of the server instance */
-  std::unique_ptr<TraceService::AsyncService> trace_service;
-  std::unique_ptr<LogsService::AsyncService> logs_service;
-  std::unique_ptr<MetricsService::AsyncService> metrics_service;
+  std::unique_ptr<TraceService> trace_service;
+  std::unique_ptr<LogsService> logs_service;
+  std::unique_ptr<MetricsService> metrics_service;
 
 private:
   friend class SourceWorker;
