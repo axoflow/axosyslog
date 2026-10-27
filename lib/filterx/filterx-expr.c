@@ -199,7 +199,7 @@ _init_child_exprs(FilterXExpr *parent, FilterXExpr **child, gpointer user_data)
 {
   GlobalConfig *cfg = (GlobalConfig *) user_data;
 
-  if (!filterx_expr_init(*child, cfg))
+  if (!filterx_expr_init_child(parent, *child, cfg))
     return FALSE;
 
   if (*child && filterx_expr_has_effect(*child, FXE_WRITE))
