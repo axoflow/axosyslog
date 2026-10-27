@@ -115,6 +115,7 @@ struct _LogWriter
   struct iv_timer reopen_timer;
   struct iv_timer idle_timer;
   LogProtoStatus work_result;
+  gint io_error;
   gint pollable_state;
   LogProtoClient *proto, *pending_proto;
   guint watches_running:1, suspended:1, waiting_for_throttle:1;
@@ -218,6 +219,7 @@ log_writer_work_perform(gpointer s, gpointer arg)
   g_assert((self->super.flags & PIF_INITIALIZED) != 0);
   g_assert((cond == G_IO_OUT) || (cond == G_IO_IN));
 
+  self->io_error = 0;
   if (cond == G_IO_OUT)
     self->work_result = log_writer_process_out(self);
   else if (cond == G_IO_IN)
@@ -1145,6 +1147,14 @@ log_writer_realloc_line_buffer(LogWriter *self)
   self->line_buffer->len = 0;
 }
 
+static LogProtoStatus
+_record_io_error(LogWriter *self, LogProtoStatus status)
+{
+  if (status == LPS_ERROR)
+    self->io_error = errno;
+  return status;
+}
+
 /*
  * Write messages to the underlying file descriptor using the installed
  * LogProtoClient instance.  This is called whenever the output is ready to accept
@@ -1160,7 +1170,7 @@ log_writer_realloc_line_buffer(LogWriter *self)
 static LogProtoStatus
 log_writer_flush_finalize(LogWriter *self)
 {
-  LogProtoStatus status = log_proto_client_flush(self->proto);
+  LogProtoStatus status = _record_io_error(self, log_proto_client_flush(self->proto));
   return status;
 }
 
@@ -1201,9 +1211,10 @@ log_writer_write_message(LogWriter *self, LogMessage *msg, LogPathOptions *path_
   if (self->line_buffer->len)
     {
       msg_len = self->line_buffer->len;
-      LogProtoStatus status = log_proto_client_post(self->proto, msg, (guchar *)self->line_buffer->str,
-                                                    self->line_buffer->len,
-                                                    &consumed);
+      LogProtoStatus status = _record_io_error(self, log_proto_client_post(self->proto, msg,
+                                               (guchar *)self->line_buffer->str,
+                                               self->line_buffer->len,
+                                               &consumed));
 
       self->partial_write = (status == LPS_PARTIAL);
 
@@ -1330,7 +1341,7 @@ log_writer_process_in(LogWriter *self)
   if (!self->proto)
     return FALSE;
 
-  return log_proto_client_process_in(self->proto);
+  return _record_io_error(self, log_proto_client_process_in(self->proto));
 }
 
 static LogProtoStatus
@@ -1685,6 +1696,12 @@ LogProtoClient *
 log_writer_get_proto(LogWriter *self)
 {
   return self->proto;
+}
+
+gint
+log_writer_get_io_error(LogWriter *self)
+{
+  return self->io_error;
 }
 
 

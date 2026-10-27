@@ -26,6 +26,7 @@ EXTRA_DIST += \
 	tests/light/functional_tests/destination_drivers/network_destination/test_kept_alive_tls_connection_doing_handshake_after_reload.py \
 	tests/light/functional_tests/destination_drivers/network_destination/test_network_destination_transport.py \
 	tests/light/functional_tests/destination_drivers/network_destination/test_kept_alive_tls_connection_doing_handshake_after_reload.py \
+	tests/light/functional_tests/destination_drivers/network_destination/test_network_destination_connection_failures.py \
 	tests/light/functional_tests/destination_drivers/network_destination/test_network_destination_transport.py \
 	tests/light/functional_tests/destination_drivers/network_destination/test_tls_destination_write_batching.py \
 	tests/light/functional_tests/destination_drivers/opentelemetry_destination/test_opentelemetry_destination_batching.py \

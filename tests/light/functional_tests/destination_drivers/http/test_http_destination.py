@@ -21,6 +21,8 @@
 #
 #############################################################################
 import pytest
+from axosyslog_light.common.blocking import wait_until_true
+from axosyslog_light.syslog_ng_ctl.prometheus_stats_handler import MetricFilter
 
 
 OPENOBSERVE_PARTIAL_FAILURE = '{"code":200,"status":[{"name":"stream","successful":0,"failed":1,"error":"Cant parse timestamp"}]}'
@@ -145,3 +147,21 @@ def test_http_destination_templated_header_requires_worker_partition_key(config,
     with pytest.raises(Exception):
         syslog_ng.start(config)
     assert syslog_ng.wait_for_message_in_console_log("worker-partition-key() must be set") != []
+
+
+def test_http_destination_counts_refused_connection(config, syslog_ng, port_allocator):
+    config.update_global_options(stats_level=1)
+
+    unused_port = port_allocator()
+    generator_source = config.create_example_msg_generator_source(num=1, template=config.stringify("test message"))
+    http_destination = config.create_http_destination(
+        port=port_allocator(),
+        url=config.stringify("http://127.0.0.1:{}/".format(unused_port)),
+        time_reopen=1,
+    )
+    config.create_logpath(statements=[generator_source, http_destination])
+
+    syslog_ng.start(config)
+
+    metric_filter = MetricFilter("syslogng_output_connection_failures_total", {"driver": "http", "reason": "connect"})
+    assert wait_until_true(lambda: sum(s.value for s in config.get_prometheus_samples([metric_filter])) >= 1)

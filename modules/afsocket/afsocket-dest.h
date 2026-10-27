@@ -35,6 +35,18 @@
 typedef struct _AFSocketDestDriver AFSocketDestDriver;
 typedef struct _AFSocketDestKeptAliveConnection AFSocketDestKeptAliveConnection;
 
+typedef enum
+{
+  AFSOCKET_DD_CONNECTION_FAILURE_REFUSED,
+  AFSOCKET_DD_CONNECTION_FAILURE_TIMEOUT,
+  AFSOCKET_DD_CONNECTION_FAILURE_NO_ROUTE,
+  AFSOCKET_DD_CONNECTION_FAILURE_RESET,
+  AFSOCKET_DD_CONNECTION_FAILURE_EOF,
+  AFSOCKET_DD_CONNECTION_FAILURE_RESOLVE,
+  AFSOCKET_DD_CONNECTION_FAILURE_ERROR,
+  AFSOCKET_DD_CONNECTION_FAILURE_MAX
+} AFSocketDestConnectionFailure;
+
 struct _AFSocketDestDriver
 {
   LogDestDriver super;
@@ -60,6 +72,7 @@ struct _AFSocketDestDriver
   struct
   {
     StatsCounterItem *output_unreachable;
+    StatsCounterItem *output_connection_failures[AFSOCKET_DD_CONNECTION_FAILURE_MAX];
   } metrics;
 
   LogWriter *(*construct_writer)(AFSocketDestDriver *self);
