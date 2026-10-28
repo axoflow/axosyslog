@@ -96,6 +96,7 @@ EXTRA_DIST += \
 	tests/light/functional_tests/rewrites/cc-mask/test_cc_mask_and_cc_hash.py \
 	tests/light/functional_tests/rewrites/set-pri/test_set_pri.py \
 	tests/light/functional_tests/rewrites/set-tag/test_set_tag.py \
+	tests/light/functional_tests/source_drivers/ehttp_source/test_ehttp_source_response.py \
 	tests/light/functional_tests/source_drivers/file_source/test_acceptance.py \
 	tests/light/functional_tests/source_drivers/file_source/test_follow_freq_value.py \
 	tests/light/functional_tests/source_drivers/file_source/test_no_header_flag.py \

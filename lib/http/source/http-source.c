@@ -28,6 +28,7 @@
 #include "host-resolve.h"
 #include "messages.h"
 #include "stats/stats-registry.h"
+#include "ack-tracker/ack_tracker_factory.h"
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -193,6 +194,8 @@ http_sd_init_instance(HTTPSourceDriver *self, SocketOptions *socket_options,
                       TransportMapper *transport_mapper, GlobalConfig *cfg)
 {
   afsocket_sd_init_instance(&self->super, socket_options, transport_mapper, "http", cfg);
+  log_proto_server_options_set_ack_tracker_factory(&self->super.reader_options.proto_options.super,
+                                                   consecutive_ack_tracker_factory_new());
   self->super.super.super.super.init = http_sd_init_method;
   self->super.super.super.super.free_fn = http_sd_free_method;
   self->super.setup_addresses = http_sd_setup_addresses;
