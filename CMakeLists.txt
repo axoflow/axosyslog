@@ -551,6 +551,7 @@ add_subdirectory(scripts)
 add_subdirectory(syslog-ng)
 add_subdirectory(syslog-ng-ctl)
 add_subdirectory(persist-tool)
+add_subdirectory(filterx-tool)
 add_subdirectory(tests)
 add_subdirectory(libtest)
 
