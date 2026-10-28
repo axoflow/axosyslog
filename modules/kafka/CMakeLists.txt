@@ -12,16 +12,18 @@ if (NOT ENABLE_KAFKA)
   return()
 endif()
 
-check_symbol_exists (rd_kafka_init_transactions "librdkafka/rdkafka.h" SYSLOG_NG_HAVE_RD_KAFKA_INIT_TRANSACTIONS)
-
 set(CMAKE_REQUIRED_INCLUDES ${RDKAFKA_INCLUDE_DIR})
 set(CMAKE_REQUIRED_LIBRARIES ${RDKAFKA_LIBRARY})
+
+check_symbol_exists(rd_kafka_init_transactions "librdkafka/rdkafka.h" SYSLOG_NG_HAVE_RD_KAFKA_INIT_TRANSACTIONS)
 
 set(KAFKA_SOURCES
   kafka-parser.c
   kafka-parser.h
   kafka-plugin.c
+  kafka-dest-driver.h
   kafka-dest-driver.c
+  kafka-dest-worker.h
   kafka-dest-worker.c
   kafka-props.c
   kafka-internal.h
