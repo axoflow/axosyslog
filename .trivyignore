@@ -4,6 +4,12 @@
 # https://github.com/pypa/pip/issues/14224
 GHSA-6v7p-g79w-8964 exp:2026-11-15
 
+# msgpack: memory leak in unpackb()/Unpacker when a map key is rejected
+# (strict_map_key). Same vendored copy, same one-shot use at build time.
+# Fixed in msgpack 1.2.3; pip main already vendors it, no release yet.
+# Remove with a pip vendoring msgpack 1.2.3+, expected in 26.3.
+CVE-2026-114613 exp:2026-11-15
+
 # setuptools: path traversal in PackageIndex.download.
 # pip vendors only pkg_resources, and the image ships no package_index.py.
 # Remove once pip stops pinning a vulnerable setuptools:
