@@ -22,6 +22,7 @@
 #
 #############################################################################
 import base64
+import dataclasses
 import json
 import typing
 
@@ -440,6 +441,47 @@ def test_opentelemetry_source_filterx_dict_mode_sets_peer_address(
     sourceip, ip_proto = file_destination.read_log().split()
     assert sourceip in ("127.0.0.1", "::1")
     assert ip_proto in ("4", "6")
+
+
+def test_opentelemetry_source_filterx_dict_mode_schema_url(
+    syslog_ng: SyslogNg,
+    config: SyslogNgConfig,
+    port_allocator,
+) -> None:
+    opentelemetry_source = config.create_opentelemetry_source(port=port_allocator(), mode="filterx-dict")
+    filterx = config.create_filterx(r"""
+        $MSG = {
+            "resource": resource,
+            "resource_schema_url": resource_schema_url,
+            "scope": scope,
+            "scope_schema_url": scope_schema_url,
+            "log": log,
+        };""")
+    file_destination = config.create_file_destination(file_name="output.log", template=TEMPLATE)
+    config.create_logpath(statements=[opentelemetry_source, filterx, file_destination])
+
+    resource = dataclasses.replace(RESOURCE_1, schema_url="https://opentelemetry.io/schemas/1.0.0")
+    logs: typing.List[OTelResourceScopeLog] = [
+        OTelResourceScopeLog(resource, dataclasses.replace(SCOPE_1, schema_url="https://opentelemetry.io/schemas/1.1.0"), LOG_1),
+        OTelResourceScopeLog(resource, dataclasses.replace(SCOPE_1, schema_url="https://opentelemetry.io/schemas/1.2.0"), LOG_1),
+        OTelResourceScopeLog(resource, SCOPE_1, LOG_1),
+    ]
+    expected_logs = [
+        {
+            "resource": RESOURCE_1_OUTPUT,
+            "resource_schema_url": "https://opentelemetry.io/schemas/1.0.0",
+            "scope": SCOPE_1_OUTPUT,
+            "scope_schema_url": scope_schema_url,
+            "log": LOG_1_OUTPUT,
+        }
+        for scope_schema_url in ("https://opentelemetry.io/schemas/1.1.0", "https://opentelemetry.io/schemas/1.2.0", "")
+    ]
+
+    syslog_ng.start(config)
+    opentelemetry_source.write_logs(logs)
+
+    for expected_log in expected_logs:
+        assert json.loads(file_destination.read_log()) == expected_log
 
 
 def test_opentelemetry_source_filterx_dict_mode_writes(
