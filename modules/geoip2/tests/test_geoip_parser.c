@@ -23,11 +23,36 @@
 #include "libtest/msg_parse_lib.h"
 
 #include "geoip-parser.h"
+#include "maxminddb-helper.h"
+#include "reloc.h"
 #include "apphook.h"
 #include "scratch-buffers.h"
 
+#include <glib/gstdio.h>
+#include <unistd.h>
+
+#define TEST_DATABASE TOP_SRCDIR "/modules/geoip2/tests/test.mmdb"
+
 GlobalConfig *cfg;
 LogParser *geoip_parser;
+static gchar *map_file;
+
+/* the database map can only be overridden once, so every test gets its own
+ * map file, its contents are set by the test */
+static void
+_override_map_file(void)
+{
+  gint fd = g_file_open_tmp("geoip-databases-XXXXXX.tsv", &map_file, NULL);
+  cr_assert(fd >= 0);
+  close(fd);
+  override_installation_path_for(MMDB_DATABASE_MAP_FILE, map_file);
+}
+
+static void
+_use_map_file(const gchar *contents)
+{
+  cr_assert(g_file_set_contents(map_file, contents, -1, NULL));
+}
 
 void
 setup(void)
@@ -41,12 +66,15 @@ setup(void)
    * The same in JSON format:
    * https://github.com/maxmind/MaxMind-DB/blob/ea7cd314bb55879b8cb1a059c425d53ff3b9b6cc/source-data/GeoIP2-Precision-Enterprise-Test.json
    */
-  geoip_parser_set_database_path(geoip_parser, TOP_SRCDIR "/modules/geoip2/tests/test.mmdb");
+  geoip_parser_set_database_path(geoip_parser, TEST_DATABASE);
+  _override_map_file();
 }
 
 void
 teardown(void)
 {
+  g_unlink(map_file);
+  g_clear_pointer(&map_file, g_free);
   log_pipe_deinit(&geoip_parser->super);
   log_pipe_unref(&geoip_parser->super);
   scratch_buffers_explicit_gc();
@@ -153,6 +181,62 @@ Test(geoip2, test_reinit)
 
   log_pipe_deinit(&parser->super);
   log_pipe_unref(&parser->super);
+}
+
+Test(geoip2, test_kind)
+{
+  _use_map_file("country\t/nonexistent/country.mmdb\n"
+                "country\t" TEST_DATABASE "\n");
+  geoip_parser_set_database_path(geoip_parser, NULL);
+  geoip_parser_set_kind(geoip_parser, "country");
+
+  LogMessage *msg = parse_geoip_into_log_message("2.125.160.216");
+  assert_log_message_value(msg, log_msg_get_value_handle(".geoip2.country.iso_code"), "GB");
+  log_msg_unref(msg);
+}
+
+Test(geoip2, test_kind_without_existing_database_leaves_message_untouched)
+{
+  _use_map_file("country\t/nonexistent/country.mmdb\n");
+  geoip_parser_set_database_path(geoip_parser, NULL);
+  geoip_parser_set_kind(geoip_parser, "country");
+
+  LogMessage *msg = parse_geoip_into_log_message("2.125.160.216");
+  assert_log_message_value_unset(msg, log_msg_get_value_handle(".geoip2.country.iso_code"));
+  log_msg_unref(msg);
+}
+
+static gboolean
+_init_parser_with_kind(const gchar *kind, const gchar *database_path)
+{
+  LogParser *parser = maxminddb_parser_new(cfg);
+
+  LogTemplate *template = log_template_new(NULL, NULL);
+  cr_assert(log_template_compile(template, "2.125.160.216", NULL));
+  log_parser_set_template(parser, template);
+  geoip_parser_set_kind(parser, kind);
+  geoip_parser_set_database_path(parser, database_path);
+
+  gboolean result = log_pipe_init(&parser->super);
+  if (result)
+    log_pipe_deinit(&parser->super);
+  log_pipe_unref(&parser->super);
+  return result;
+}
+
+Test(geoip2, test_unknown_kind_is_an_error)
+{
+  _use_map_file("country\t" TEST_DATABASE "\n");
+
+  cr_assert(_init_parser_with_kind("country", NULL));
+  cr_assert_not(_init_parser_with_kind("city", NULL));
+}
+
+Test(geoip2, test_kind_and_database_are_mutually_exclusive)
+{
+  _use_map_file("country\t" TEST_DATABASE "\n");
+
+  cr_assert_not(_init_parser_with_kind("country", TEST_DATABASE));
 }
 
 TestSuite(geoip2, .init = setup, .fini = teardown);
