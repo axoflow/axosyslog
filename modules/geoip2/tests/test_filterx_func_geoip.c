@@ -331,6 +331,20 @@ Test(filterx_func_geoip, test_database_map_falls_back_to_the_shipped_one)
   filterx_expr_unref(func);
 }
 
+Test(filterx_func_geoip, test_unknown_kind_in_shipped_map_suggests_a_copy)
+{
+  g_unlink(database_map_file);
+
+  GError *err = NULL;
+  FilterXExpr *func = _construct_with_kind("no-such-kind", NULL, &err);
+
+  cr_assert_null(func);
+  cr_assert_not_null(err);
+  cr_assert(strstr(err->message, "copy") != NULL, "%s", err->message);
+  cr_assert(strstr(err->message, database_map_file) != NULL, "%s", err->message);
+  g_error_free(err);
+}
+
 Test(filterx_func_geoip, test_kind_without_existing_database_returns_null)
 {
   _use_map_file("country\t/nonexistent/country.mmdb\n");
