@@ -130,17 +130,33 @@ maxminddb_parser_clone(LogPipe *s)
 }
 
 static void
+_close_database(GeoIPParser *self)
+{
+  if (self->database)
+    {
+      MMDB_close(self->database);
+      g_free(self->database);
+      self->database = NULL;
+    }
+}
+
+static gboolean
+maxminddb_parser_deinit(LogPipe *s)
+{
+  GeoIPParser *self = (GeoIPParser *) s;
+
+  _close_database(self);
+  return log_parser_deinit_method(s);
+}
+
+static void
 maxminddb_parser_free(LogPipe *s)
 {
   GeoIPParser *self = (GeoIPParser *) s;
 
   g_free(self->database_path);
   g_free(self->prefix);
-  if (self->database)
-    {
-      MMDB_close(self->database);
-      g_free(self->database);
-    }
+  _close_database(self);
 
   log_parser_free_method(s);
 }
@@ -190,6 +206,7 @@ maxminddb_parser_new(GlobalConfig *cfg)
 
   log_parser_init_instance(&self->super, cfg);
   self->super.super.init = maxminddb_parser_init;
+  self->super.super.deinit = maxminddb_parser_deinit;
   self->super.super.free_fn = maxminddb_parser_free;
   self->super.super.clone = maxminddb_parser_clone;
   self->super.process = maxminddb_parser_process;

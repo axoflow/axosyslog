@@ -134,4 +134,25 @@ Test(geoip2, test_basic)
   log_msg_unref(msg);
 }
 
+Test(geoip2, test_reinit)
+{
+  LogParser *parser = (LogParser *) log_pipe_clone(&geoip_parser->super);
+  LogTemplate *template = log_template_new(NULL, NULL);
+  cr_assert(log_template_compile(template, "2.125.160.216", NULL));
+  log_parser_set_template(parser, template);
+
+  cr_assert(log_pipe_init(&parser->super));
+  cr_assert(log_pipe_deinit(&parser->super));
+  cr_assert(log_pipe_init(&parser->super));
+
+  LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
+  LogMessage *msg = log_msg_new_empty();
+  cr_assert(log_parser_process_message(parser, &msg, &path_options));
+  assert_log_message_value(msg, log_msg_get_value_handle(".geoip2.country.iso_code"), "GB");
+  log_msg_unref(msg);
+
+  log_pipe_deinit(&parser->super);
+  log_pipe_unref(&parser->super);
+}
+
 TestSuite(geoip2, .init = setup, .fini = teardown);

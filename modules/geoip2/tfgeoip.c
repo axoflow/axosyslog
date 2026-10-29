@@ -107,6 +107,7 @@ tf_geoip_maxminddb_prepare(LogTemplateFunction *self, gpointer s, LogTemplate *p
       goto error;
     }
 
+  g_free(field);
   return TRUE;
 
 error:
@@ -166,6 +167,11 @@ tf_geoip_maxminddb_free_state(gpointer s)
 
   g_free(state->database_path);
   g_strfreev(state->entry_path);
+  if (state->database)
+    {
+      MMDB_close(state->database);
+      g_free(state->database);
+    }
   tf_simple_func_free_state(&state->super);
 }
 
