@@ -31,6 +31,7 @@ struct _GeoIPParser
   MMDB_s *database;
 
   gchar *database_path;
+  gchar *kind;
   gchar *prefix;
 };
 
@@ -50,6 +51,15 @@ geoip_parser_set_database_path(LogParser *s, const gchar *database_path)
 
   g_free(self->database_path);
   self->database_path = g_strdup(database_path);
+}
+
+void
+geoip_parser_set_kind(LogParser *s, const gchar *kind)
+{
+  GeoIPParser *self = (GeoIPParser *) s;
+
+  g_free(self->kind);
+  self->kind = g_strdup(kind);
 }
 
 static gboolean
@@ -92,6 +102,11 @@ maxminddb_parser_process(LogParser *s, LogMessage **pmsg,
                          const gchar *input, gsize input_len)
 {
   GeoIPParser *self = (GeoIPParser *) s;
+
+  /* kind() found no database, leave the message untouched */
+  if (!self->database)
+    return TRUE;
+
   LogMessage *msg = log_msg_make_writable(pmsg, path_options);
   msg_trace("geoip2-parser message processing started",
             evt_tag_str("input", input),
@@ -124,6 +139,7 @@ maxminddb_parser_clone(LogPipe *s)
   log_parser_clone_settings(&self->super, &cloned->super);
 
   geoip_parser_set_database_path(&cloned->super, self->database_path);
+  geoip_parser_set_kind(&cloned->super, self->kind);
   geoip_parser_set_prefix(&cloned->super, self->prefix);
 
   return &cloned->super.super;
@@ -155,6 +171,7 @@ maxminddb_parser_free(LogPipe *s)
   GeoIPParser *self = (GeoIPParser *) s;
 
   g_free(self->database_path);
+  g_free(self->kind);
   g_free(self->prefix);
   _close_database(self);
 
@@ -171,6 +188,47 @@ remove_trailing_dot(gchar *str)
 }
 
 static gboolean
+_open_database(GeoIPParser *self)
+{
+  gchar *path = NULL;
+
+  if (self->kind)
+    {
+      GError *error = NULL;
+      if (!mmdb_resolve_database_kind(self->kind, &path, &error))
+        {
+          msg_error("geoip2(): error resolving database kind",
+                    evt_tag_str("error", error->message),
+                    log_pipe_location_tag(&self->super.super));
+          g_error_free(error);
+          return FALSE;
+        }
+
+      /* none of the databases of this kind are installed */
+      if (!path)
+        return TRUE;
+    }
+  else
+    {
+      path = self->database_path ? g_strdup(self->database_path) : mmdb_default_database();
+      if (!path)
+        return FALSE;
+    }
+
+  self->database = g_new0(MMDB_s, 1);
+  if (!mmdb_open_database(path, self->database))
+    {
+      g_free(self->database);
+      self->database = NULL;
+      g_free(path);
+      return FALSE;
+    }
+
+  g_free(path);
+  return TRUE;
+}
+
+static gboolean
 maxminddb_parser_init(LogPipe *s)
 {
   GeoIPParser *self = (GeoIPParser *) s;
@@ -181,17 +239,13 @@ maxminddb_parser_init(LogPipe *s)
       return FALSE;
     }
 
-  if (!self->database_path)
-    self->database_path = mmdb_default_database();
+  if (self->kind && self->database_path)
+    {
+      msg_error("geoip2(): kind() and database() are mutually exclusive", log_pipe_location_tag(s));
+      return FALSE;
+    }
 
-  if (!self->database_path)
-    return FALSE;
-
-  self->database = g_new0(MMDB_s, 1);
-  if (!self->database)
-    return FALSE;
-
-  if (!mmdb_open_database(self->database_path, self->database))
+  if (!_open_database(self))
     return FALSE;
 
   remove_trailing_dot(self->prefix);

@@ -1,6 +1,6 @@
 #
-# GeoIP database locations used by the geoip() FilterX function's kind=
-# argument.
+# GeoIP database locations used by the kind argument of the geoip() FilterX
+# function, the $(geoip2) template function and the geoip2() parser.
 #
 # This is the copy shipped with syslog-ng, which is overwritten by upgrades.
 # To customize it, copy it to the configuration directory (e.g.
