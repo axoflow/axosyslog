@@ -39,6 +39,7 @@ static CfgLexerKeyword otel_keywords[] =
   { "set_hostname",              KW_SET_HOSTNAME },
   { "keep_alive",                KW_KEEP_ALIVE },
   { "mode",                      KW_MODE },
+  { "prefix",                    KW_PREFIX },
   { "logmessage",                KW_LOGMESSAGE },
   { "filterx_dict",              KW_FILTERX_DICT },
   { NULL }

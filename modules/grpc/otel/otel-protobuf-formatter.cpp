@@ -42,12 +42,20 @@ using namespace syslogng::opentelemetry::proto::trace::v1;
 
 using namespace syslogng::grpc::otel;
 
+static const char *DEFAULT_NV_PREFIX = ".otel_raw.";
+
+static NVHandle
+_raw_handle(const std::string &prefix, const char *name)
+{
+  return log_msg_get_value_handle((prefix + name).c_str());
+}
+
 syslogng::grpc::otel::MessageType
-syslogng::grpc::otel::get_message_type(LogMessage *msg)
+ProtobufFormatter::get_message_type(LogMessage *msg)
 {
   gssize len;
   LogMessageValueType type;
-  const gchar *value = log_msg_get_value_with_type(msg, logmsg_handle::RAW_TYPE, &len, &type);
+  const gchar *value = log_msg_get_value_with_type(msg, raw.type, &len, &type);
 
   if (type == LM_VT_NULL)
     value = log_msg_get_value_with_type(msg, logmsg_handle::TYPE, &len, &type);
@@ -361,13 +369,13 @@ ProtobufFormatter::get_resource_and_schema_url(LogMessage *msg, Resource &resour
   gssize len;
   const gchar *value;
 
-  value = _get_protobuf(msg, logmsg_handle::RAW_RESOURCE, &len);
+  value = _get_protobuf(msg, raw.resource, &len);
   if (value)
     {
       if (!resource.ParsePartialFromArray(value, len))
         return false;
 
-      value = _get_string(msg, logmsg_handle::RAW_RESOURCE_SCHEMA_URL, &len);
+      value = _get_string(msg, raw.resource_schema_url, &len);
       schema_url.assign(value, len);
 
       return true;
@@ -389,13 +397,13 @@ ProtobufFormatter::get_scope_and_schema_url(LogMessage *msg, InstrumentationScop
   gssize len;
   const gchar *value;
 
-  value = _get_protobuf(msg, logmsg_handle::RAW_SCOPE, &len);
+  value = _get_protobuf(msg, raw.scope, &len);
   if (value)
     {
       if (!scope.ParsePartialFromArray(value, len))
         return false;
 
-      value = _get_string(msg, logmsg_handle::RAW_SCOPE_SCHEMA_URL, &len);
+      value = _get_string(msg, raw.scope_schema_url, &len);
       schema_url.assign(value, len);
 
       return true;
@@ -439,7 +447,7 @@ ProtobufFormatter::format(LogMessage *msg, LogRecord &log_record)
   gssize len;
   const gchar *value;
 
-  value = _get_protobuf(msg, logmsg_handle::RAW_LOG, &len);
+  value = _get_protobuf(msg, raw.log, &len);
   if (value)
     return log_record.ParsePartialFromArray(value, len);
 
@@ -1188,7 +1196,7 @@ ProtobufFormatter::format(LogMessage *msg, Metric &metric)
   gssize len;
   const gchar *value;
 
-  value = _get_protobuf(msg, logmsg_handle::RAW_METRIC, &len);
+  value = _get_protobuf(msg, raw.metric, &len);
   if (value)
     return metric.ParsePartialFromArray(value, len);
 
@@ -1250,7 +1258,7 @@ ProtobufFormatter::format(LogMessage *msg, Span &span)
   gssize len;
   const gchar *value;
 
-  value = _get_protobuf(msg, logmsg_handle::RAW_SPAN, &len);
+  value = _get_protobuf(msg, raw.span, &len);
   if (value)
     return span.ParsePartialFromArray(value, len);
 
@@ -1379,7 +1387,19 @@ ProtobufFormatter::format(LogMessage *msg, Span &span)
   return true;
 }
 
-syslogng::grpc::otel::ProtobufFormatter::ProtobufFormatter(GlobalConfig *cfg_)
+syslogng::grpc::otel::ProtobufFormatter::ProtobufFormatter(GlobalConfig *cfg_, const std::string &nv_prefix)
   : cfg(cfg_)
 {
+  std::string p = nv_prefix.empty() ? DEFAULT_NV_PREFIX : nv_prefix;
+  if (p.back() != '.')
+    p.push_back('.');
+
+  raw.type = _raw_handle(p, "type");
+  raw.log = _raw_handle(p, "log");
+  raw.metric = _raw_handle(p, "metric");
+  raw.span = _raw_handle(p, "span");
+  raw.resource = _raw_handle(p, "resource");
+  raw.resource_schema_url = _raw_handle(p, "resource_schema_url");
+  raw.scope = _raw_handle(p, "scope");
+  raw.scope_schema_url = _raw_handle(p, "scope_schema_url");
 }

@@ -34,6 +34,8 @@
 #include "syslogng/opentelemetry/proto/metrics/v1/metrics.pb.h"
 #include "syslogng/opentelemetry/proto/trace/v1/trace.pb.h"
 
+#include <string>
+
 namespace syslogng {
 namespace grpc {
 namespace otel {
@@ -45,8 +47,6 @@ enum MessageType : int
   METRIC,
   SPAN,
 };
-
-MessageType get_message_type(LogMessage *msg);
 
 using google::protobuf::RepeatedPtrField;
 
@@ -71,8 +71,9 @@ using syslogng::opentelemetry::proto::trace::v1::Span;
 class ProtobufFormatter
 {
 public:
-  ProtobufFormatter(GlobalConfig *cfg);
+  ProtobufFormatter(GlobalConfig *cfg, const std::string &nv_prefix = "");
 
+  MessageType get_message_type(LogMessage *msg);
   static void get_metadata_for_syslog_ng(Resource &resource, std::string &resource_schema_url,
                                          InstrumentationScope &scope, std::string &scope_schema_url);
   bool get_metadata(LogMessage *msg, Resource &resource, std::string &resource_schema_url,
@@ -110,6 +111,14 @@ private:
 
 private:
   GlobalConfig *cfg;
+
+  /* the name-value pairs the outgoing payload is read from, resolved from prefix() */
+  struct
+  {
+    NVHandle type, log, metric, span;
+    NVHandle resource, resource_schema_url;
+    NVHandle scope, scope_schema_url;
+  } raw;
 };
 
 }

@@ -79,40 +79,41 @@ _assert_dummy_resource_and_scope(const Resource &resource, const std::string &re
 
 Test(otel_protobuf_formatter, get_message_type)
 {
+  ProtobufFormatter formatter(configuration);
   LogMessage *msg = log_msg_new_empty();
-  cr_assert_eq(get_message_type(msg), MessageType::UNKNOWN);
+  cr_assert_eq(formatter.get_message_type(msg), MessageType::UNKNOWN);
 
   log_msg_set_value_by_name_with_type(msg, ".otel_raw.type", "log", -1, LM_VT_BYTES);
-  cr_assert_eq(get_message_type(msg), MessageType::UNKNOWN);
+  cr_assert_eq(formatter.get_message_type(msg), MessageType::UNKNOWN);
 
   log_msg_set_value_by_name_with_type(msg, ".otel_raw.type", "log", -1, LM_VT_STRING);
-  cr_assert_eq(get_message_type(msg), MessageType::LOG);
+  cr_assert_eq(formatter.get_message_type(msg), MessageType::LOG);
 
   log_msg_set_value_by_name_with_type(msg, ".otel_raw.type", "metric", -1, LM_VT_STRING);
-  cr_assert_eq(get_message_type(msg), MessageType::METRIC);
+  cr_assert_eq(formatter.get_message_type(msg), MessageType::METRIC);
 
   log_msg_set_value_by_name_with_type(msg, ".otel_raw.type", "span", -1, LM_VT_STRING);
-  cr_assert_eq(get_message_type(msg), MessageType::SPAN);
+  cr_assert_eq(formatter.get_message_type(msg), MessageType::SPAN);
 
   log_msg_set_value_by_name_with_type(msg, ".otel_raw.type", "almafa", -1, LM_VT_STRING);
-  cr_assert_eq(get_message_type(msg), MessageType::UNKNOWN);
+  cr_assert_eq(formatter.get_message_type(msg), MessageType::UNKNOWN);
 
   log_msg_unset_value_by_name(msg, ".otel_raw.type");
 
   log_msg_set_value_by_name_with_type(msg, ".otel.type", "log", -1, LM_VT_BYTES);
-  cr_assert_eq(get_message_type(msg), MessageType::UNKNOWN);
+  cr_assert_eq(formatter.get_message_type(msg), MessageType::UNKNOWN);
 
   log_msg_set_value_by_name_with_type(msg, ".otel.type", "log", -1, LM_VT_STRING);
-  cr_assert_eq(get_message_type(msg), MessageType::LOG);
+  cr_assert_eq(formatter.get_message_type(msg), MessageType::LOG);
 
   log_msg_set_value_by_name_with_type(msg, ".otel.type", "metric", -1, LM_VT_STRING);
-  cr_assert_eq(get_message_type(msg), MessageType::METRIC);
+  cr_assert_eq(formatter.get_message_type(msg), MessageType::METRIC);
 
   log_msg_set_value_by_name_with_type(msg, ".otel.type", "span", -1, LM_VT_STRING);
-  cr_assert_eq(get_message_type(msg), MessageType::SPAN);
+  cr_assert_eq(formatter.get_message_type(msg), MessageType::SPAN);
 
   log_msg_set_value_by_name_with_type(msg, ".otel.type", "almafa", -1, LM_VT_STRING);
-  cr_assert_eq(get_message_type(msg), MessageType::UNKNOWN);
+  cr_assert_eq(formatter.get_message_type(msg), MessageType::UNKNOWN);
 
   log_msg_unref(msg);
 }
@@ -145,6 +146,116 @@ Test(otel_protobuf_formatter, get_metadata)
 
   _assert_dummy_resource_and_scope(resource_from_raw, resource_schema_url_from_raw, scope_from_raw,
                                    scope_schema_url_from_raw);
+}
+
+static void
+_set_raw_protobuf(LogMessage *msg, const char *name, const google::protobuf::Message &message)
+{
+  std::string serialized = message.SerializeAsString();
+  log_msg_set_value_by_name_with_type(msg, name, serialized.c_str(), serialized.length(), LM_VT_PROTOBUF);
+}
+
+Test(otel_protobuf_formatter, prefix_relocates_the_raw_payload)
+{
+  Resource resource;
+  KeyValue *resource_attribute = resource.add_attributes();
+  resource_attribute->set_key("attr_0");
+  resource_attribute->mutable_value()->set_string_value("val_0");
+
+  InstrumentationScope scope;
+  scope.set_name("scope");
+  scope.set_version("v1.2.3");
+
+  LogRecord log_record;
+  log_record.set_severity_text("my_error_text");
+  log_record.mutable_body()->set_string_value("string_body");
+
+  LogMessage *msg = log_msg_new_empty();
+  log_msg_set_value_by_name_with_type(msg, ".axo.type", "log", -1, LM_VT_STRING);
+  _set_raw_protobuf(msg, ".axo.resource", resource);
+  log_msg_set_value_by_name_with_type(msg, ".axo.resource_schema_url", "resource_schema_url", -1, LM_VT_STRING);
+  _set_raw_protobuf(msg, ".axo.scope", scope);
+  log_msg_set_value_by_name_with_type(msg, ".axo.scope_schema_url", "scope_schema_url", -1, LM_VT_STRING);
+  _set_raw_protobuf(msg, ".axo.log", log_record);
+
+  ProtobufFormatter prefixed(configuration, ".axo");
+
+  cr_assert_eq(prefixed.get_message_type(msg), MessageType::LOG);
+
+  Resource resource_from_prefix;
+  std::string resource_schema_url_from_prefix;
+  InstrumentationScope scope_from_prefix;
+  std::string scope_schema_url_from_prefix;
+  cr_assert(prefixed.get_metadata(msg, resource_from_prefix, resource_schema_url_from_prefix, scope_from_prefix,
+                                  scope_schema_url_from_prefix));
+  cr_assert_eq(resource_from_prefix.attributes_size(), 1);
+  cr_assert_str_eq(resource_from_prefix.attributes(0).value().string_value().c_str(), "val_0");
+  cr_assert_str_eq(resource_schema_url_from_prefix.c_str(), "resource_schema_url");
+  cr_assert_str_eq(scope_from_prefix.name().c_str(), "scope");
+  cr_assert_str_eq(scope_from_prefix.version().c_str(), "v1.2.3");
+  cr_assert_str_eq(scope_schema_url_from_prefix.c_str(), "scope_schema_url");
+
+  LogRecord log_record_from_prefix;
+  cr_assert(prefixed.format(msg, log_record_from_prefix));
+  cr_assert_str_eq(log_record_from_prefix.severity_text().c_str(), "my_error_text");
+  cr_assert_str_eq(log_record_from_prefix.body().string_value().c_str(), "string_body");
+
+  /* metrics and spans are relocated by the same prefix */
+  Metric metric;
+  metric.set_name("my_metric");
+  LogMessage *metric_msg = log_msg_new_empty();
+  log_msg_set_value_by_name_with_type(metric_msg, ".axo.type", "metric", -1, LM_VT_STRING);
+  _set_raw_protobuf(metric_msg, ".axo.metric", metric);
+
+  cr_assert_eq(prefixed.get_message_type(metric_msg), MessageType::METRIC);
+  Metric metric_from_prefix;
+  cr_assert(prefixed.format(metric_msg, metric_from_prefix));
+  cr_assert_str_eq(metric_from_prefix.name().c_str(), "my_metric");
+  log_msg_unref(metric_msg);
+
+  Span span;
+  span.set_name("my_span");
+  LogMessage *span_msg = log_msg_new_empty();
+  log_msg_set_value_by_name_with_type(span_msg, ".axo.type", "span", -1, LM_VT_STRING);
+  _set_raw_protobuf(span_msg, ".axo.span", span);
+
+  cr_assert_eq(prefixed.get_message_type(span_msg), MessageType::SPAN);
+  Span span_from_prefix;
+  cr_assert(prefixed.format(span_msg, span_from_prefix));
+  cr_assert_str_eq(span_from_prefix.name().c_str(), "my_span");
+  log_msg_unref(span_msg);
+
+  /* a trailing dot is the spelling every other prefix() option uses, so both resolve the same */
+  ProtobufFormatter dot_terminated(configuration, ".axo.");
+  cr_assert_eq(dot_terminated.get_message_type(msg), MessageType::LOG);
+
+  LogRecord log_record_from_dot_terminated;
+  cr_assert(dot_terminated.format(msg, log_record_from_dot_terminated));
+  cr_assert_str_eq(log_record_from_dot_terminated.body().string_value().c_str(), "string_body");
+
+  /* the leading dot only selects a value-pairs scope, so a prefix without one is just as valid */
+  LogMessage *dotless_msg = log_msg_new_empty();
+  log_msg_set_value_by_name_with_type(dotless_msg, "axo.type", "log", -1, LM_VT_STRING);
+  _set_raw_protobuf(dotless_msg, "axo.log", log_record);
+
+  ProtobufFormatter dotless(configuration, "axo");
+  cr_assert_eq(dotless.get_message_type(dotless_msg), MessageType::LOG);
+
+  LogRecord log_record_from_dotless;
+  cr_assert(dotless.format(dotless_msg, log_record_from_dotless));
+  cr_assert_str_eq(log_record_from_dotless.body().string_value().c_str(), "string_body");
+  log_msg_unref(dotless_msg);
+
+  /* the default namespace is left alone, so a formatter without prefix() reads none of this */
+  ProtobufFormatter unprefixed(configuration);
+  cr_assert_eq(unprefixed.get_message_type(msg), MessageType::UNKNOWN);
+
+  LogRecord log_record_from_default;
+  cr_assert(unprefixed.format(msg, log_record_from_default));
+  cr_assert_str_eq(log_record_from_default.severity_text().c_str(), "");
+  cr_assert_eq(log_record_from_default.body().value_case(), AnyValue::VALUE_NOT_SET);
+
+  log_msg_unref(msg);
 }
 
 static void
