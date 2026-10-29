@@ -33,8 +33,6 @@
 #include "filterx/filterx-eval.h"
 #include "filterx/object-extractor.h"
 
-#include "messages.h"
-
 #include <string.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -406,43 +404,17 @@ _extract_ip_arg(FilterXFunctionArgs *args, GError **error)
 static gboolean
 _find_database_by_kind(FilterXFunctionGeoIP *self, const gchar *kind, GError **error)
 {
-  const gchar *map_file = mmdb_database_map_file();
-  GPtrArray *candidates = g_ptr_array_new_with_free_func(g_free);
-  GError *map_error = NULL;
-  gboolean result = TRUE;
+  GError *kind_error = NULL;
 
-  self->database_path = mmdb_find_database_by_kind(map_file, kind, candidates, &map_error);
-  if (map_error)
+  if (!mmdb_resolve_database_kind(kind, &self->database_path, &kind_error))
     {
       g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
-                  "error reading the GeoIP database map: %s", map_error->message);
-      g_error_free(map_error);
-      result = FALSE;
-    }
-  else if (!self->database_path && candidates->len == 0)
-    {
-      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
-                  "unknown GeoIP database kind %s, add it to %s or use the database argument",
-                  kind, map_file);
-      result = FALSE;
-    }
-  else if (!self->database_path)
-    {
-      /* Databases may be installed after startup (e.g. downloaded by an
-       * agent), so a missing one must not prevent the configuration from
-       * loading: geoip() returns null until a reload finds it. */
-      g_ptr_array_add(candidates, NULL);
-      gchar *tried = g_strjoinv(", ", (gchar **) candidates->pdata);
-      msg_warning("geoip(): no GeoIP database found, geoip() returns null until one is installed "
-                  "and the configuration is reloaded",
-                  evt_tag_str("kind", kind),
-                  evt_tag_str("map_file", map_file),
-                  evt_tag_str("tried", tried));
-      g_free(tried);
+                  "%s; to use a specific file, set the database argument", kind_error->message);
+      g_error_free(kind_error);
+      return FALSE;
     }
 
-  g_ptr_array_free(candidates, TRUE);
-  return result;
+  return TRUE;
 }
 
 static gboolean

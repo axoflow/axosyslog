@@ -33,3 +33,6 @@ Names are localized: `names.en` can also be `names.de`, `names.fr`, `names.ja`, 
 
 An IP address missing from the database, or a field missing from its record, yields `null`; an invalid IP address
 is an error.
+
+The `$(geoip2)` template function also accepts `--kind`, e.g. `$(geoip2 --kind asn --field autonomous_system_number
+${HOST})`, as an alternative to `--database`. Without either, it still uses its earlier default.
