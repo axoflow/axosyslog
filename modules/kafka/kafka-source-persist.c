@@ -224,7 +224,7 @@ _offset_tracker_try_bitmap_shift(OffsetTracker *t)
             {
               const guint64 total_bytes = (t->window_size + 7) / 8;
 
-              memcpy(t->bitmap, t->bitmap + shift_bytes, total_bytes - shift_bytes);
+              memmove(t->bitmap, t->bitmap + shift_bytes, total_bytes - shift_bytes);
               memset(t->bitmap + total_bytes - shift_bytes, 0, shift_bytes);
 
               t->window_start += shift_bytes * 8;

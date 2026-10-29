@@ -102,10 +102,10 @@ _send_message(KafkaSourceWorker *self,
     kafka_sd_persist_add_msg_bookmark(driver, self->super.super.ack_tracker,
                                       rd_kafka_topic_name(msg->rkt), msg->partition,
                                       msg->offset);
+  log_msg_set_recvd_rawmsg_size(log_msg, msg->len);
   _send(self, log_msg);
 
   kafka_sd_update_msg_length_stats(driver, msg->len);
-  log_msg_set_recvd_rawmsg_size(log_msg, msg->len);
   kafka_sd_inc_msg_topic_stats(driver, rd_kafka_topic_name(msg->rkt));
 }
 

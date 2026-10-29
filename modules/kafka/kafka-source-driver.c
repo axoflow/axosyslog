@@ -1166,7 +1166,8 @@ _apply_assigned_partitions(KafkaSourceDriver *self, rd_kafka_topic_partition_lis
             result = _partitions_persists_create(self);
 
           // TODO: We just continue now on offset restoration failure, TBD: how to handle this properly?!
-          _restore_msg_offsets(self);
+          if (!self->options.disable_bookmarks)
+            _restore_msg_offsets(self);
 
           if (self->options.persist_store == KSPS_REMOTE && !self->options.disable_bookmarks)
             result = _partitions_persists_create(self);
@@ -1944,9 +1945,11 @@ kafka_sd_deinit(LogPipe *s)
   _destroy_kafka_client(&self->super.super.super);
 
   g_free(self->group_id);
+  self->group_id = NULL;
 
   if (self->requested_topics)
     kafka_tps_list_free(self->requested_topics);
+  self->requested_topics = NULL;
 
   g_mutex_clear(&self->state_mutex);
   _destroy_msg_queues(self);

@@ -209,7 +209,7 @@ main_loop_worker_wait_for_exit_until(gdouble wait_time)
   if (wait_time > 0.0)
     {
       g_mutex_lock(&exit_cond.lock);
-      gint64 end = g_get_monotonic_time() + (gint64) wait_time * G_USEC_PER_SEC;
+      gint64 end = g_get_monotonic_time() + (gint64) (wait_time * G_USEC_PER_SEC);
       g_cond_wait_until(&exit_cond.cond, &exit_cond.lock, end);
       g_mutex_unlock(&exit_cond.lock);
     }
@@ -422,12 +422,10 @@ static void
 _reenable_worker_jobs(void *s)
 {
   /* NOTE:
-   *     - If a config reload is not in progress, reaching this point means either:
-   *          - workers are being enabled for the first time, or
-   *          - workers are being re-enabled to allow the exit process to complete.
-   *       Neither of these cases requires setting main_loop_workers_quit back to FALSE.
-   *       On the first call, its value must already be FALSE.
-   *       During re-enabling for exit, once exit has been requested, all threads must exit ASAP.
+   *     - While shutting down, workers are re-enabled only to let the exit process
+   *       complete, so main_loop_workers_quit must stay TRUE: all threads must exit ASAP.
+   *       In every other case (first start, reload, a debugger sync call) the flag has
+   *       to be reset, otherwise new jobs are rejected and the worker loops exit.
    *
    *     - During a config reload, resetting this before _invoke_sync_call_actions is mandatory,
    *       as some worker thread startups
@@ -442,7 +440,7 @@ _reenable_worker_jobs(void *s)
    *        Worker thread startups should be explicit (e.g. directly triggered after the config is fully read),
    *        and not tied to the config init logic. (by a good chance tha same is true for config deinit and worker's shutdown)
    */
-  if (is_reloading_scheduled)
+  if (!main_loop_is_terminating(main_loop_get_instance()))
     main_loop_workers_quit = FALSE;
 
   _invoke_sync_call_actions();
