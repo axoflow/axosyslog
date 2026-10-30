@@ -1,6 +1,7 @@
 add_unit_test(CRITERION TARGET test_cfg_lexer_subst)
 add_unit_test(CRITERION LIBTEST TARGET test_cfg_tree)
 add_unit_test(CRITERION TARGET test_parse_number)
+add_unit_test(CRITERION TARGET test_gsockaddr)
 add_unit_test(CRITERION LIBTEST TARGET test_reloc)
 add_unit_test(CRITERION LIBTEST TARGET test_hostname)
 add_unit_test(CRITERION LIBTEST TARGET test_rcptid)
