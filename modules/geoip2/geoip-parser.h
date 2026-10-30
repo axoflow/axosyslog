@@ -30,6 +30,7 @@
 
 LogParser *maxminddb_parser_new(GlobalConfig *cfg);
 void geoip_parser_set_database_path(LogParser *s, const gchar *database);
+void geoip_parser_set_kind(LogParser *s, const gchar *kind);
 void geoip_parser_set_prefix(LogParser *s, const gchar *prefix);
 
 #endif

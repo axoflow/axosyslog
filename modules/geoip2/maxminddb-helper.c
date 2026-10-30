@@ -25,6 +25,9 @@
 #include "compat/inttypes.h"
 #include <logmsg/logmsg.h>
 #include <messages.h>
+#include "reloc.h"
+
+#include <string.h>
 
 #define return_and_set_error_if(predicate, status)                     \
   if (predicate)                                                       \
@@ -49,6 +52,102 @@ mmdb_default_database(void)
     }
 
   return NULL;
+}
+
+const gchar *
+mmdb_database_map_file(void)
+{
+  return get_installation_path_for(MMDB_DATABASE_MAP_FILE);
+}
+
+/* Look up the database for @kind in @map_file, a file of "kind<TAB>path"
+ * lines.  Returns the first existing path, or NULL if there is none, in
+ * which case @candidates holds the paths that were tried (empty if @kind is
+ * not listed at all).  @error is only set if @map_file cannot be read or
+ * parsed. */
+gchar *
+mmdb_find_database_by_kind(const gchar *map_file, const gchar *kind, GPtrArray *candidates, GError **error)
+{
+  gchar *contents;
+
+  if (!g_file_get_contents(map_file, &contents, NULL, error))
+    return NULL;
+
+  gchar *result = NULL;
+  gchar **lines = g_strsplit(contents, "\n", -1);
+  for (gint i = 0; lines[i] && !result; i++)
+    {
+      gchar *line = g_strstrip(lines[i]);
+      if (line[0] == '\0' || line[0] == '#')
+        continue;
+
+      gchar **fields = g_strsplit_set(line, " \t", 2);
+      gchar *path = fields[1] ? g_strstrip(fields[1]) : NULL;
+
+      if (!path || !g_path_is_absolute(path))
+        {
+          g_set_error(error, G_FILE_ERROR, G_FILE_ERROR_INVAL,
+                      "%s:%d: expected a kind and an absolute path separated by a tab", map_file, i + 1);
+          g_strfreev(fields);
+          break;
+        }
+
+      if (strcmp(fields[0], kind) == 0)
+        {
+          if (g_file_test(path, G_FILE_TEST_EXISTS))
+            result = g_strdup(path);
+          else
+            g_ptr_array_add(candidates, g_strdup(path));
+        }
+      g_strfreev(fields);
+    }
+
+  g_strfreev(lines);
+  g_free(contents);
+  return result;
+}
+
+G_DEFINE_QUARK(mmdb-helper-error-quark, mmdb_helper_error)
+
+/* Resolve @kind to a database path using the database map file.  A kind
+ * that is listed but has none of its databases installed is not an error:
+ * databases may be installed after startup (e.g. downloaded by an agent),
+ * so we warn and set @path to NULL, lookups then return no data until a
+ * reload finds them. */
+gboolean
+mmdb_resolve_database_kind(const gchar *kind, gchar **path, GError **error)
+{
+  const gchar *map_file = mmdb_database_map_file();
+  GPtrArray *candidates = g_ptr_array_new_with_free_func(g_free);
+  GError *map_error = NULL;
+  gboolean result = TRUE;
+
+  *path = mmdb_find_database_by_kind(map_file, kind, candidates, &map_error);
+  if (map_error)
+    {
+      g_set_error(error, MMDB_HELPER_ERROR, 0, "error reading the GeoIP database map: %s", map_error->message);
+      g_error_free(map_error);
+      result = FALSE;
+    }
+  else if (!*path && candidates->len == 0)
+    {
+      g_set_error(error, MMDB_HELPER_ERROR, 0, "unknown GeoIP database kind %s, add it to %s", kind, map_file);
+      result = FALSE;
+    }
+  else if (!*path)
+    {
+      g_ptr_array_add(candidates, NULL);
+      gchar *tried = g_strjoinv(", ", (gchar **) candidates->pdata);
+      msg_warning("No GeoIP database found, lookups return no data until one is installed "
+                  "and the configuration is reloaded",
+                  evt_tag_str("kind", kind),
+                  evt_tag_str("map_file", map_file),
+                  evt_tag_str("tried", tried));
+      g_free(tried);
+    }
+
+  g_ptr_array_free(candidates, TRUE);
+  return result;
 }
 
 gboolean

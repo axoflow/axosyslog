@@ -23,6 +23,7 @@
 #include "cfg-parser.h"
 #include "geoip-parser.h"
 #include "tfgeoip.c"
+#include "filterx-func-geoip.h"
 #include "plugin.h"
 #include "plugin-types.h"
 
@@ -36,6 +37,7 @@ static Plugin geoip2_plugins[] =
     .parser = &geoip2_parser_parser,
   },
   TEMPLATE_FUNCTION_PLUGIN(tf_geoip_maxminddb, "geoip2"),
+  FILTERX_FUNCTION_PLUGIN(geoip),
 };
 
 gboolean

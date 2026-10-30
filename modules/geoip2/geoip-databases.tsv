@@ -1,0 +1,43 @@
+#
+# GeoIP database locations used by the geoip() FilterX function's kind=
+# argument.
+#
+# List of tab separated fields:
+#
+#   kind	path
+#
+# A kind may be listed multiple times, the first path that exists wins, so
+# list the preferred databases first.  Paths must be absolute.  Customize
+# this file to point a kind at a database installed elsewhere, or to add new
+# kinds.
+#
+# DB-IP publishes its databases under dated file names, add them here under
+# a stable name (or symlink).
+#
+
+country	/usr/share/GeoIP/GeoIP2-Country.mmdb
+country	/var/lib/GeoIP/GeoIP2-Country.mmdb
+country	/usr/local/share/GeoIP/GeoIP2-Country.mmdb
+country	/usr/share/GeoIP/GeoLite2-Country.mmdb
+country	/var/lib/GeoIP/GeoLite2-Country.mmdb
+country	/usr/local/share/GeoIP/GeoLite2-Country.mmdb
+country	/usr/share/GeoIP/dbip-country-lite.mmdb
+country	/var/lib/GeoIP/dbip-country-lite.mmdb
+country	/usr/local/share/GeoIP/dbip-country-lite.mmdb
+
+city	/usr/share/GeoIP/GeoIP2-City.mmdb
+city	/var/lib/GeoIP/GeoIP2-City.mmdb
+city	/usr/local/share/GeoIP/GeoIP2-City.mmdb
+city	/usr/share/GeoIP/GeoLite2-City.mmdb
+city	/var/lib/GeoIP/GeoLite2-City.mmdb
+city	/usr/local/share/GeoIP/GeoLite2-City.mmdb
+city	/usr/share/GeoIP/dbip-city-lite.mmdb
+city	/var/lib/GeoIP/dbip-city-lite.mmdb
+city	/usr/local/share/GeoIP/dbip-city-lite.mmdb
+
+asn	/usr/share/GeoIP/GeoLite2-ASN.mmdb
+asn	/var/lib/GeoIP/GeoLite2-ASN.mmdb
+asn	/usr/local/share/GeoIP/GeoLite2-ASN.mmdb
+asn	/usr/share/GeoIP/dbip-asn-lite.mmdb
+asn	/var/lib/GeoIP/dbip-asn-lite.mmdb
+asn	/usr/local/share/GeoIP/dbip-asn-lite.mmdb

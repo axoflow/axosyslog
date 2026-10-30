@@ -27,6 +27,13 @@
 #include <maxminddb.h>
 void append_mmdb_entry_data_to_gstring(GString *target, MMDB_entry_data_s *entry_data);
 gchar *mmdb_default_database(void);
+#define MMDB_DATABASE_MAP_FILE "${pkgdatadir}/geoip-databases.tsv"
+const gchar *mmdb_database_map_file(void);
+#define MMDB_HELPER_ERROR mmdb_helper_error_quark()
+GQuark mmdb_helper_error_quark(void);
+
+gboolean mmdb_resolve_database_kind(const gchar *kind, gchar **path, GError **error);
+gchar *mmdb_find_database_by_kind(const gchar *map_file, const gchar *kind, GPtrArray *candidates, GError **error);
 gboolean mmdb_open_database(const gchar *path, MMDB_s *database);
 MMDB_entry_data_list_s *dump_geodata_into_msg(LogMessage *msg,
                                               MMDB_entry_data_list_s *entry_data_list,
