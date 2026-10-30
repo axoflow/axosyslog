@@ -16,6 +16,8 @@ rules:
         helm/chart-releaser-action: ref-pin
         octokit/request-action: ref-pin
         aquasecurity/trivy-action: ref-pin
+        aquasecurity/setup-trivy: ref-pin
+        actions/cache/save: ref-pin
   unpinned-images:
     ignore:
       - devshell.yml
