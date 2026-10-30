@@ -75,6 +75,7 @@ EXTRA_DIST += \
 	tests/light/functional_tests/logpath/test_named_logpaths_with_fallback_flag.py \
 	tests/light/functional_tests/logpath/test_named_logpaths_with_final_flag.py \
 	tests/light/functional_tests/logpath/test_named_logpaths.py \
+	tests/light/functional_tests/logpath/test_parallelize.py \
 	tests/light/functional_tests/parsers/app-parser/test_app_parser.py \
 	tests/light/functional_tests/parsers/app-parser/test_topic_syslog_raw.py \
 	tests/light/functional_tests/parsers/app-parser/test_topic_syslog.py \
