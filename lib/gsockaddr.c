@@ -164,13 +164,14 @@ g_sockaddr_unshare(GSockAddr **pa)
 {
   GSockAddr *a = *pa;
 
-  if (g_atomic_counter_get(&a->super.refcnt) == 1)
+  if (!a || g_atomic_counter_get(&a->super.refcnt) == 1)
     return;
   gsize len = g_sockaddr_len(a);
   GSockAddr *new = g_malloc(len);
   memcpy(new, a, len);
   g_atomic_counter_set(&new->super.refcnt, 1);
   *pa = new;
+  g_sockaddr_unref(a);
 }
 
 /* AF_INET socket address */
