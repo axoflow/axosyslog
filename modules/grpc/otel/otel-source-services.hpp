@@ -33,6 +33,7 @@
 #include "compat/cpp-start.h"
 #include "transport/tls-session.h"
 #include "filterx/filterx-eval.h"
+#include "filterx/object-string.h"
 #include "compat/cpp-end.h"
 
 #include <grpcpp/grpcpp.h>
@@ -130,7 +131,8 @@ namespace otel {
  * g_alloca() is freed per log record, not accumulated for the whole request */
 static gboolean
 _post_log_record_as_filterx_dicts(SourceWorker &worker, FilterXScopeVariableLayout *layout, LogMessage *msg,
-                                  const Resource &resource, const InstrumentationScope &scope,
+                                  const Resource &resource, const std::string &resource_schema_url,
+                                  const InstrumentationScope &scope, const std::string &scope_schema_url,
                                   const LogRecord &log_record)
 {
   gboolean converted = FALSE;
@@ -138,11 +140,17 @@ _post_log_record_as_filterx_dicts(SourceWorker &worker, FilterXScopeVariableLayo
 
   FILTERX_EVAL_BEGIN_CONTEXT(eval_context, NULL, msg, layout)
   {
+    /* schema_url is a member of the ResourceLogs and ScopeLogs wrappers, which
+     * have no dict of their own */
     converted =
       _filterx_inject_var(eval_context.scope, layout, "resource",
                           otel_protobuf_message_to_filterx_dict(resource)) &&
+      _filterx_inject_var(eval_context.scope, layout, "resource_schema_url",
+                          filterx_string_new(resource_schema_url.c_str(), resource_schema_url.length())) &&
       _filterx_inject_var(eval_context.scope, layout, "scope",
                           otel_protobuf_message_to_filterx_dict(scope)) &&
+      _filterx_inject_var(eval_context.scope, layout, "scope_schema_url",
+                          filterx_string_new(scope_schema_url.c_str(), scope_schema_url.length())) &&
       _filterx_inject_var(eval_context.scope, layout, "log",
                           otel_protobuf_message_to_filterx_dict(log_record));
     if (converted)
@@ -242,7 +250,9 @@ syslogng::grpc::otel::LogsServiceCall::Proceed(bool ok)
       FilterXVariableHandle handles[] =
       {
         filterx_map_varname_to_handle("resource", FX_VAR_DECLARED_FLOATING),
+        filterx_map_varname_to_handle("resource_schema_url", FX_VAR_DECLARED_FLOATING),
         filterx_map_varname_to_handle("scope", FX_VAR_DECLARED_FLOATING),
+        filterx_map_varname_to_handle("scope_schema_url", FX_VAR_DECLARED_FLOATING),
         filterx_map_varname_to_handle("log", FX_VAR_DECLARED_FLOATING),
       };
       filterx_scope_var_layout = filterx_scope_variable_layout_new_from_handles(handles, G_N_ELEMENTS(handles));
@@ -288,7 +298,8 @@ syslogng::grpc::otel::LogsServiceCall::Proceed(bool ok)
                   ProtobufParser::store_peer_address(msg, ctx.peer());
 
                   if (!_post_log_record_as_filterx_dicts(worker, filterx_scope_var_layout, msg,
-                                                         resource, scope, log_record))
+                                                         resource, resource_logs_schema_url,
+                                                         scope, scope_logs_schema_url, log_record))
                     {
                       msg_error("opentelemetry: failed to convert log record to FilterX dicts, dropping message");
                       log_msg_unref(msg);

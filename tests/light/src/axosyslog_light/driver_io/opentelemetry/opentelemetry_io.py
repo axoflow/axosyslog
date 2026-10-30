@@ -116,6 +116,7 @@ class PyToOTelConverter:
 @dataclass
 class OTelResource:
     attributes: typing.Dict[str, typing.Any] = field(default_factory=dict)
+    schema_url: str = ""
 
     def to_otel(self) -> Resource:
         resource = Resource()
@@ -128,6 +129,7 @@ class OTelScope:
     name: str = ""
     version: str = ""
     attributes: typing.Dict[str, typing.Any] = field(default_factory=dict)
+    schema_url: str = ""
 
     def to_otel(self) -> InstrumentationScope:
         scope = InstrumentationScope()
@@ -232,10 +234,11 @@ class OpenTelemetryIO():
         for resource_scope_log in resource_scope_logs:
             resource_logs = ResourceLogs()
             resource_logs.resource.CopyFrom(resource_scope_log.resource.to_otel())
+            resource_logs.schema_url = resource_scope_log.resource.schema_url
 
             new_resource_logs = True
             for stored_resource_logs in request.resource_logs:
-                if stored_resource_logs.resource == resource_logs.resource:
+                if stored_resource_logs.resource == resource_logs.resource and stored_resource_logs.schema_url == resource_logs.schema_url:
                     resource_logs = stored_resource_logs
                     new_resource_logs = False
                     break
@@ -245,10 +248,11 @@ class OpenTelemetryIO():
 
             scope_logs = ScopeLogs()
             scope_logs.scope.CopyFrom(resource_scope_log.scope.to_otel())
+            scope_logs.schema_url = resource_scope_log.scope.schema_url
 
             new_scope_logs = True
             for stored_scope_logs in resource_logs.scope_logs:
-                if stored_scope_logs.scope == scope_logs.scope:
+                if stored_scope_logs.scope == scope_logs.scope and stored_scope_logs.schema_url == scope_logs.schema_url:
                     scope_logs = stored_scope_logs
                     new_scope_logs = False
                     break
