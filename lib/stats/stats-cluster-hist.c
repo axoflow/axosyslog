@@ -66,6 +66,20 @@ _counter_group_hist_get_type_name_suffix(StatsCounterGroup *self, StatsCluster *
   return "_bucket";
 }
 
+/* each observation is counted in one bucket, but a bucket with le="x" has
+ * to include every observation <= x */
+static gsize
+_counter_group_hist_get_type_value(StatsCounterGroup *self, StatsCluster *cluster, gint type)
+{
+  if (type < SC_TYPE_HIST_BUCKET0 || type >= SC_TYPE_HIST_MAX)
+    return stats_counter_get(&self->counters[type]);
+
+  gsize value = 0;
+  for (gint i = SC_TYPE_HIST_BUCKET0; i <= type; i++)
+    value += stats_counter_get(&self->counters[i]);
+  return value;
+}
+
 static void
 _counter_group_hist_init(StatsCounterGroupInit *self, StatsCounterGroup *counter_group)
 {
@@ -75,6 +89,7 @@ _counter_group_hist_init(StatsCounterGroupInit *self, StatsCounterGroup *counter
   counter_group->get_type_label = _counter_group_hist_get_type_label;
   counter_group->get_type_name_suffix = _counter_group_hist_get_type_name_suffix;
   counter_group->get_type_formatting = _counter_group_hist_get_type_formatting;
+  counter_group->get_type_value = _counter_group_hist_get_type_value;
   counter_group->free_fn = _counter_group_hist_free;
 }
 
