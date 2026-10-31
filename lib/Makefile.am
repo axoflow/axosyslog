@@ -143,6 +143,7 @@ pkginclude_HEADERS			+= \
 	lib/hostname.h			\
 	lib/host-resolve.h		\
 	lib/list-adt.h \
+	lib/logbalancer.h		\
 	lib/logmatcher.h		\
 	lib/logmpx.h			\
 	lib/logscheduler.h		\
@@ -240,6 +241,7 @@ lib_libsyslog_ng_la_SOURCES		= \
 	lib/gsocket.c			\
 	lib/hostname.c			\
 	lib/host-resolve.c		\
+	lib/logbalancer.c		\
 	lib/logmatcher.c		\
 	lib/logmpx.c			\
 	lib/logscheduler.c		\
