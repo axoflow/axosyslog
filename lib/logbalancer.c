@@ -21,6 +21,7 @@
  */
 
 #include "logbalancer.h"
+#include "logbalancer-autoscale.h"
 #include "mainloop-worker.h"
 #include "template/eval.h"
 #include "scratch-buffers.h"
@@ -49,6 +50,9 @@ struct _LogBalancer
 
   LogBalancerIsAvailableFunc is_available;
   gpointer is_available_data;
+
+  /* only with partition_autoscaling */
+  LogBalancerAutoscale *autoscale;
 
   /* used by threads that do not have a thread index (e.g. the main thread) */
   guint shared_seq;
@@ -188,15 +192,25 @@ _sticky(LogBalancer *self, LogMessage *msg)
   scratch_buffers_mark(&mark);
 
   const gchar *key = log_template_format_tmpbuf(self->options.partition_key, msg, &eval_options, NULL);
-  guint hash = g_str_hash(key);
+  gint target;
 
-  gint bucket = 0;
-  if (self->options.partition_buckets)
-    bucket = _calculate_bucket(self, msg, &eval_options);
+  if (self->autoscale)
+    {
+      target = log_balancer_autoscale_select(self->autoscale, key, msg);
+    }
+  else
+    {
+      guint hash = g_str_hash(key);
+
+      gint bucket = 0;
+      if (self->options.partition_buckets)
+        bucket = _calculate_bucket(self, msg, &eval_options);
+
+      target = (hash + bucket) % self->num_targets;
+    }
 
   scratch_buffers_reclaim_marked(mark);
-
-  return (hash + bucket) % self->num_targets;
+  return target;
 }
 
 /* LogBalancer */
@@ -236,6 +250,13 @@ log_balancer_get_num_targets(LogBalancer *self)
   return self->num_targets;
 }
 
+void
+log_balancer_set_active_partitions_counter(LogBalancer *self, StatsCounterItem *counter)
+{
+  if (self->autoscale)
+    log_balancer_autoscale_set_active_partitions_counter(self->autoscale, counter);
+}
+
 static void
 _init_thread_states(LogBalancer *self)
 {
@@ -264,6 +285,9 @@ log_balancer_new(const LogBalancerOptions *options, gint num_targets)
   self->num_targets = num_targets;
   self->num_threads = num_threads;
   _init_thread_states(self);
+
+  if (self->options.partition_key && self->options.partition_autoscaling)
+    self->autoscale = log_balancer_autoscale_new(num_targets, self->options.partition_autoscaling_wfo);
   return self;
 }
 
@@ -272,6 +296,8 @@ log_balancer_free(LogBalancer *self)
 {
   log_template_unref(self->options.partition_key);
   log_template_unref(self->options.partition_buckets);
+  if (self->autoscale)
+    log_balancer_autoscale_free(self->autoscale);
   g_free(self);
 }
 
@@ -297,6 +323,8 @@ log_balancer_options_defaults(LogBalancerOptions *options)
   options->batch_size = -1;
   options->partition_key = NULL;
   options->partition_buckets = NULL;
+  options->partition_autoscaling = FALSE;
+  options->partition_autoscaling_wfo = 1;
 }
 
 gboolean
@@ -308,6 +336,12 @@ log_balancer_options_init(LogBalancerOptions *options, GlobalConfig *cfg)
   if (options->partition_key && log_template_is_literal_string(options->partition_key))
     {
       msg_error("worker-partition-key() should not be literal string, use macros to form proper partitions");
+      return FALSE;
+    }
+
+  if (options->partition_autoscaling && options->partition_buckets)
+    {
+      msg_error("worker-partition-autoscaling() and worker-partition-buckets() cannot be used together");
       return FALSE;
     }
   return TRUE;
