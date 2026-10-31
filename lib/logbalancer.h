@@ -39,6 +39,11 @@
  * With a partition key, selection is "sticky": messages with the same key
  * go to the same target, which retains their ordering.
  *
+ * Targets may be temporarily unavailable (e.g. their connection is down),
+ * which is reported by an optional callback.  If requested, unavailable
+ * targets are skipped by round-robin selection.  Sticky selection never
+ * moves a key to another target, as that would break its ordering.
+ *
  * log_balancer_select() is called from source threads.  Round-robin state
  * is kept per input thread, so no locking happens on the hot path.
  */
@@ -57,15 +62,23 @@ typedef struct _LogBalancerOptions
 
 typedef struct _LogBalancer LogBalancer;
 
+/* called from source threads, should be cheap, e.g. an atomic read */
+typedef gboolean (*LogBalancerIsAvailableFunc)(gint target, gpointer user_data);
+
 void log_balancer_options_set_partition_key_ref(LogBalancerOptions *options, LogTemplate *partition_key);
 void log_balancer_options_set_partition_buckets_ref(LogBalancerOptions *options, LogTemplate *partition_buckets);
 void log_balancer_options_defaults(LogBalancerOptions *options);
 gboolean log_balancer_options_init(LogBalancerOptions *options, GlobalConfig *cfg);
 void log_balancer_options_destroy(LogBalancerOptions *options);
 
-/* returns a target index in [0, num_targets) */
-gint log_balancer_select(LogBalancer *self, LogMessage *msg);
+/* Returns a target index in [0, num_targets).  With @available_only, only
+ * available targets are returned and -1 is returned if the message has no
+ * available target. */
+gint log_balancer_select(LogBalancer *self, LogMessage *msg, gboolean available_only);
 gint log_balancer_get_num_targets(LogBalancer *self);
+
+void log_balancer_set_availability_check(LogBalancer *self, LogBalancerIsAvailableFunc is_available,
+                                         gpointer user_data);
 
 LogBalancer *log_balancer_new(const LogBalancerOptions *options, gint num_targets);
 void log_balancer_free(LogBalancer *self);

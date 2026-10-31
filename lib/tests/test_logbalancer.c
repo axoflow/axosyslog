@@ -40,7 +40,7 @@ _construct_balancer(gint num_targets)
 static gint
 _select_msg(LogBalancer *balancer, LogMessage *msg)
 {
-  gint target = log_balancer_select(balancer, msg);
+  gint target = log_balancer_select(balancer, msg, FALSE);
 
   cr_assert(target >= 0 && target < log_balancer_get_num_targets(balancer),
             "target out of range: %d", target);
@@ -306,6 +306,130 @@ Test(logbalancer, sticky_selection_with_literal_partition_key_is_rejected)
 {
   log_balancer_options_set_partition_key_ref(&options, compile_template("literal"));
   cr_assert_not(log_balancer_options_init(&options, configuration));
+}
+
+/* availability */
+
+static gboolean
+_is_available(gint target, gpointer user_data)
+{
+  guint *available_mask = user_data;
+
+  return (*available_mask & (1 << target)) != 0;
+}
+
+static gint
+_select_available(LogBalancer *balancer, const gchar *key)
+{
+  LogMessage *msg = key ? _create_keyed_message(key, 0) : create_sample_message();
+  gint target = log_balancer_select(balancer, msg, TRUE);
+  log_msg_unref(msg);
+  return target;
+}
+
+Test(logbalancer, round_robin_skips_unavailable_targets)
+{
+  LogBalancer *balancer = _construct_balancer(4);
+  guint available_mask = 0x0f & ~(1 << 1) & ~(1 << 2);
+  log_balancer_set_availability_check(balancer, _is_available, &available_mask);
+
+  /* without a thread index */
+  for (gint i = 0; i < 12; i++)
+    {
+      gint target = _select_available(balancer, NULL);
+      cr_assert(target == 0 || target == 3, "unavailable target selected: %d", target);
+    }
+
+  /* not requesting available targets only ignores the availability check */
+  const gint expected[] = { 0, 1, 2, 3 };
+  _assert_selections(balancer, expected, G_N_ELEMENTS(expected));
+  log_balancer_free(balancer);
+}
+
+typedef struct
+{
+  LogBalancer *balancer;
+  gint targets[12];
+} AvailableSelectorThread;
+
+static gpointer
+_available_selector_thread(gpointer user_data)
+{
+  AvailableSelectorThread *st = user_data;
+
+  main_loop_worker_thread_start(MLW_THREADED_INPUT_WORKER);
+  for (gint i = 0; i < G_N_ELEMENTS(st->targets); i++)
+    st->targets[i] = _select_available(st->balancer, NULL);
+  main_loop_worker_thread_stop();
+  return NULL;
+}
+
+Test(logbalancer, round_robin_in_input_thread_skips_unavailable_targets)
+{
+  options.batch_size = 2;
+  LogBalancer *balancer = _construct_balancer(4);
+  guint available_mask = 0x0f & ~(1 << 1) & ~(1 << 2);
+  log_balancer_set_availability_check(balancer, _is_available, &available_mask);
+
+  AvailableSelectorThread st = { .balancer = balancer };
+  g_thread_join(g_thread_new("selector", _available_selector_thread, &st));
+
+  /* runs of 2 on target 0 and 3 */
+  for (gint i = 0; i < G_N_ELEMENTS(st.targets); i++)
+    {
+      cr_assert(st.targets[i] == 0 || st.targets[i] == 3, "unavailable target selected: %d", st.targets[i]);
+      if (i % 2 == 1)
+        cr_assert_eq(st.targets[i], st.targets[i - 1]);
+      else if (i > 0)
+        cr_assert_neq(st.targets[i], st.targets[i - 1]);
+    }
+  log_balancer_free(balancer);
+}
+
+Test(logbalancer, round_robin_returns_minus_one_if_no_target_is_available)
+{
+  LogBalancer *balancer = _construct_balancer(3);
+  guint available_mask = 0;
+  log_balancer_set_availability_check(balancer, _is_available, &available_mask);
+
+  cr_assert_eq(_select_available(balancer, NULL), -1);
+
+  AvailableSelectorThread st = { .balancer = balancer };
+  g_thread_join(g_thread_new("selector", _available_selector_thread, &st));
+  for (gint i = 0; i < G_N_ELEMENTS(st.targets); i++)
+    cr_assert_eq(st.targets[i], -1);
+
+  /* targets becoming available again are selected */
+  available_mask = 1 << 2;
+  cr_assert_eq(_select_available(balancer, NULL), 2);
+  log_balancer_free(balancer);
+}
+
+Test(logbalancer, single_target_availability)
+{
+  LogBalancer *balancer = _construct_balancer(1);
+  guint available_mask = 0;
+  log_balancer_set_availability_check(balancer, _is_available, &available_mask);
+
+  cr_assert_eq(_select_available(balancer, NULL), -1);
+  available_mask = 1;
+  cr_assert_eq(_select_available(balancer, NULL), 0);
+  log_balancer_free(balancer);
+}
+
+Test(logbalancer, sticky_selection_does_not_move_keys_of_unavailable_targets)
+{
+  log_balancer_options_set_partition_key_ref(&options, compile_template("$KEY"));
+  LogBalancer *balancer = _construct_balancer(4);
+  gint target = g_str_hash("foo") % 4;
+  guint available_mask = 0x0f & ~(1 << target);
+  log_balancer_set_availability_check(balancer, _is_available, &available_mask);
+
+  cr_assert_eq(_select_available(balancer, "foo"), -1);
+
+  available_mask = 0x0f;
+  cr_assert_eq(_select_available(balancer, "foo"), target);
+  log_balancer_free(balancer);
 }
 
 static void
