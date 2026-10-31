@@ -156,6 +156,7 @@ systemd_syslog_grammar_set_source_driver(SystemDSyslogSourceDriver *sd)
 
 %token KW_KEEP_ALIVE
 %token KW_MAX_CONNECTIONS
+%token KW_CONNECTIONS
 %token KW_CLOSE_ON_INPUT
 
 %token KW_LOCALIP
@@ -685,6 +686,9 @@ dest_afsocket_option
           {
             log_proto_client_options_set_drop_input(last_proto_client_options, !$3);
           }
+        | KW_CONNECTIONS '(' positive_integer ')' { afsocket_dd_set_num_connections(last_driver, $3); }
+        | KW_WORKER_PARTITION_KEY '(' template_content ')' { afsocket_dd_set_partition_key_ref(last_driver, $3); }
+        | KW_BATCH_SIZE '(' positive_integer ')' { afsocket_dd_set_batch_size(last_driver, $3); }
         ;
 
 
