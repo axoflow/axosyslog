@@ -27,7 +27,9 @@
 
 typedef void (*StatsPrometheusRecordFunc)(const char *record, gpointer user_data);
 
-GString *stats_prometheus_format_counter(StatsCluster *sc, gint type, StatsCounterItem *counter);
+GString \*stats_prometheus_format_counter\(StatsCluster \*sc, gint type, StatsCounterItem \*counter, GHashTable \*seen_metrics\);
+
+gchar \*stats_prometheus_get_metric_type\(const gchar \*metric_name\);
 
 void stats_generate_prometheus(StatsPrometheusRecordFunc process_record, gpointer user_data, gboolean with_legacy,
                                gboolean *cancelled);

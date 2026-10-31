@@ -30,6 +30,14 @@
 
 #include <string.h>
 
+gchar *stats_prometheus_get_metric_type(const gchar *metric_name) {
+  if (g_str_has_suffix(metric_name, "_total") || g_str_has_suffix(metric_name, "_count")) {
+    return g_strdup("counter");
+  }
+  return g_strdup("gauge");
+}
+
+
 
 /* Exposition format:
  *
@@ -303,7 +311,7 @@ stats_format_prometheus(StatsCluster *sc, gint type, StatsCounterItem *counter, 
   ScratchBuffersMarker marker;
   scratch_buffers_mark(&marker);
 
-  GString *record = stats_prometheus_format_counter(sc, type, counter);
+  GString *record = stats_prometheus_format_counter(sc, type, counter, (GHashTable *) args[3]);
   if (!record)
     return;
 
@@ -329,11 +337,19 @@ stats_prometheus_format_labels_append(StatsClusterLabel *labels, gsize labels_le
     g_string_append_c(buf, '}');
 }
 
+
 void
 stats_generate_prometheus(StatsPrometheusRecordFunc process_record, gpointer user_data, gboolean with_legacy,
                           gboolean *cancelled)
 {
-  gpointer format_prometheus_args[] = {process_record, user_data, GINT_TO_POINTER(with_legacy)};
+  GHashTable *seen_metrics = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
+  gpointer format_prometheus_args[] = {process_record, user_data, GINT_TO_POINTER(with_legacy), seen_metrics};
+  stats_lock();
+  stats_foreach_counter(stats_format_prometheus, format_prometheus_args, cancelled);
+  stats_unlock();
+  g_hash_table_destroy(seen_metrics);
+}
+;
   stats_lock();
   stats_foreach_counter(stats_format_prometheus, format_prometheus_args, cancelled);
   stats_unlock();
