@@ -21,7 +21,6 @@
  */
 
 #include "logscheduler.h"
-#include "template/eval.h"
 #include "stats/stats-registry.h"
 #include "stats/stats-cluster-single.h"
 #include "stats/stats-cluster-hist.h"
@@ -272,34 +271,6 @@ _partition_clear(LogSchedulerPartition *partition)
 /* LogSchedulerThreadState */
 
 /* runs in the source thread */
-static guint
-_get_partition_index(LogScheduler *self, LogSchedulerThreadState *thread_state, LogMessage *msg)
-{
-  if (self->options->partition_key)
-    {
-      LogTemplateEvalOptions options = DEFAULT_TEMPLATE_EVAL_OPTIONS;
-      return log_template_hash(self->options->partition_key, msg, &options) % self->options->num_partitions;
-    }
-  else if (self->options->batch_size > 1)
-    {
-      gint partition_index = thread_state->last_partition;
-
-      thread_state->current_batch_size = (thread_state->current_batch_size + 1) % self->options->batch_size;
-
-      if (thread_state->current_batch_size == 0)
-        thread_state->last_partition = (thread_state->last_partition + 1) % self->options->num_partitions;
-
-      return partition_index;
-    }
-  else
-    {
-      gint partition_index = thread_state->last_partition;
-      thread_state->last_partition = (thread_state->last_partition + 1) % self->options->num_partitions;
-      return partition_index;
-    }
-}
-
-/* runs in the source thread */
 static inline void
 _move_batch_to_partition(LogScheduler *self, LogSchedulerThreadState *thread_state, gint partition_index)
 {
@@ -348,7 +319,7 @@ _queue_thread(LogScheduler *self, LogSchedulerThreadState *thread_state, LogMess
       main_loop_worker_register_batch_callback(&thread_state->batch_callback);
     }
 
-  guint partition_index = _get_partition_index(self, thread_state, msg);
+  gint partition_index = log_balancer_select(self->balancer, msg, FALSE);
 
   g_sockaddr_unshare(&msg->saddr);
   g_sockaddr_unshare(&msg->daddr);
@@ -373,8 +344,6 @@ _thread_state_init(LogScheduler *self, LogSchedulerThreadState *state, gint inde
   worker_batch_callback_init(&state->batch_callback);
   state->batch_callback.func = _flush_batches;
   state->batch_callback.user_data = self;
-
-  state->last_partition = index % self->options->num_partitions;
 
   for (gint i = 0; i < self->options->num_partitions; i++)
     {
@@ -548,6 +517,9 @@ log_scheduler_new(LogSchedulerOptions *options, LogPipe *front_pipe, const gchar
   self->options = options;
   self->front_pipe = log_pipe_ref(front_pipe);
 
+  if (options->num_partitions > 0)
+    self->balancer = log_balancer_new(&options->balancer, options->num_partitions);
+
   _init_scheduler_metrics(self);
   _init_thread_states(self);
   _init_partitions(self);
@@ -560,6 +532,8 @@ log_scheduler_free(LogScheduler *self)
   _deinit_scheduler_metrics(self);
   log_pipe_unref(self->front_pipe);
   _free_partitions(self);
+  if (self->balancer)
+    log_balancer_free(self->balancer);
   g_free(self->id);
   g_free(self);
 }
@@ -615,8 +589,7 @@ log_scheduler_free(LogScheduler *self)
 void
 log_scheduler_options_set_partition_key_ref(LogSchedulerOptions *options, LogTemplate *partition_key)
 {
-  log_template_unref(options->partition_key);
-  options->partition_key = partition_key;
+  log_balancer_options_set_partition_key_ref(&options->balancer, partition_key);
 }
 
 void
@@ -624,15 +597,15 @@ log_scheduler_options_defaults(LogSchedulerOptions *options)
 {
   options->num_partitions = -1;
   options->batch_size = -1;
-  options->partition_key = NULL;
   options->log_fetch_limit = 1000;
+  log_balancer_options_defaults(&options->balancer);
 }
 
 #define STRINGIFY(x) #x
 #define TOSTRING(x) STRINGIFY(x)
 
 gboolean
-log_scheduler_options_init(LogSchedulerOptions *options, GlobalConfig *cfg)
+log_scheduler_options_init(LogSchedulerOptions *options, GlobalConfig *cfg, LogExprNode *location)
 {
   if (options->num_partitions == -1)
     options->num_partitions = 0;
@@ -647,11 +620,12 @@ log_scheduler_options_init(LogSchedulerOptions *options, GlobalConfig *cfg)
   if (options->batch_size == -1)
     options->batch_size = 100;
 
-  return TRUE;
+  options->balancer.batch_size = options->batch_size;
+  return log_balancer_options_init(&options->balancer, cfg, location);
 }
 
 void
 log_scheduler_options_destroy(LogSchedulerOptions *options)
 {
-  log_template_unref(options->partition_key);
+  log_balancer_options_destroy(&options->balancer);
 }
