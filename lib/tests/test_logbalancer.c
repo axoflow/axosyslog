@@ -38,14 +38,40 @@ _construct_balancer(gint num_targets)
 }
 
 static gint
-_select(LogBalancer *balancer)
+_select_msg(LogBalancer *balancer, LogMessage *msg)
 {
-  LogMessage *msg = create_sample_message();
   gint target = log_balancer_select(balancer, msg);
-  log_msg_unref(msg);
 
   cr_assert(target >= 0 && target < log_balancer_get_num_targets(balancer),
             "target out of range: %d", target);
+  return target;
+}
+
+static gint
+_select(LogBalancer *balancer)
+{
+  LogMessage *msg = create_sample_message();
+  gint target = _select_msg(balancer, msg);
+  log_msg_unref(msg);
+  return target;
+}
+
+static LogMessage *
+_create_keyed_message(const gchar *key, gint64 recvd_usec)
+{
+  LogMessage *msg = create_empty_message();
+
+  log_msg_set_value_by_name(msg, "KEY", key, -1);
+  msg->timestamps[LM_TS_RECVD].ut_usec = recvd_usec;
+  return msg;
+}
+
+static gint
+_select_key(LogBalancer *balancer, const gchar *key, gint64 recvd_usec)
+{
+  LogMessage *msg = _create_keyed_message(key, recvd_usec);
+  gint target = _select_msg(balancer, msg);
+  log_msg_unref(msg);
   return target;
 }
 
@@ -191,6 +217,95 @@ Test(logbalancer, input_threads_start_on_different_targets)
     cr_assert(seen[i], "target %d was not selected by any of the threads", i);
 
   log_balancer_free(balancer);
+}
+
+/* sticky */
+
+Test(logbalancer, sticky_selection_is_based_on_the_hash_of_the_key)
+{
+  log_balancer_options_set_partition_key_ref(&options, compile_template("$KEY"));
+  LogBalancer *balancer = _construct_balancer(7);
+
+  const gchar *keys[] = { "foo", "bar", "baz", "qux", "quux", "corge", "grault" };
+  for (gint i = 0; i < G_N_ELEMENTS(keys); i++)
+    {
+      gint expected = g_str_hash(keys[i]) % 7;
+
+      /* repeated selections of the same key yield the same target */
+      for (gint j = 0; j < 5; j++)
+        cr_assert_eq(_select_key(balancer, keys[i], j * 100000), expected,
+                     "key %s was not mapped to the expected target %d", keys[i], expected);
+    }
+  log_balancer_free(balancer);
+}
+
+Test(logbalancer, sticky_selection_ignores_batch_size)
+{
+  options.batch_size = 10;
+  log_balancer_options_set_partition_key_ref(&options, compile_template("$KEY"));
+  LogBalancer *balancer = _construct_balancer(5);
+
+  for (gint i = 0; i < 20; i++)
+    {
+      gchar key[16];
+      g_snprintf(key, sizeof(key), "key%d", i);
+      cr_assert_eq(_select_key(balancer, key, 0), g_str_hash(key) % 5);
+    }
+  log_balancer_free(balancer);
+}
+
+Test(logbalancer, sticky_selection_with_buckets_spreads_a_key_over_consecutive_targets)
+{
+  log_balancer_options_set_partition_key_ref(&options, compile_template("$KEY"));
+  log_balancer_options_set_partition_buckets_ref(&options, compile_template("3"));
+  LogBalancer *balancer = _construct_balancer(8);
+
+  guint hash = g_str_hash("foo");
+  gboolean seen[8] = { 0 };
+
+  /* the second is cut to 3 buckets based on the receipt time */
+  for (gint64 usec = 0; usec < 1000000; usec += 50000)
+    {
+      gint target = _select_key(balancer, "foo", usec);
+      gint bucket = usec * 3 / 1000000;
+
+      cr_assert_eq(target, (hash + bucket) % 8, "unexpected target at usec=%" G_GINT64_FORMAT, usec);
+      seen[target] = TRUE;
+    }
+
+  gint num_seen = 0;
+  for (gint i = 0; i < 8; i++)
+    num_seen += seen[i];
+  cr_assert_eq(num_seen, 3);
+  log_balancer_free(balancer);
+}
+
+Test(logbalancer, sticky_selection_with_templated_buckets)
+{
+  log_balancer_options_set_partition_key_ref(&options, compile_template("$KEY"));
+  log_balancer_options_set_partition_buckets_ref(&options, compile_template("${BUCKETS}"));
+  LogBalancer *balancer = _construct_balancer(8);
+
+  guint hash = g_str_hash("foo");
+
+  LogMessage *msg = _create_keyed_message("foo", 500000);
+  log_msg_set_value_by_name(msg, "BUCKETS", "2", -1);
+  cr_assert_eq(_select_msg(balancer, msg), (hash + 1) % 8);
+  log_msg_unref(msg);
+
+  /* invalid buckets value disables bucketing */
+  msg = _create_keyed_message("foo", 500000);
+  log_msg_set_value_by_name(msg, "BUCKETS", "invalid", -1);
+  cr_assert_eq(_select_msg(balancer, msg), hash % 8);
+  log_msg_unref(msg);
+
+  log_balancer_free(balancer);
+}
+
+Test(logbalancer, sticky_selection_with_literal_partition_key_is_rejected)
+{
+  log_balancer_options_set_partition_key_ref(&options, compile_template("literal"));
+  cr_assert_not(log_balancer_options_init(&options, configuration));
 }
 
 static void
