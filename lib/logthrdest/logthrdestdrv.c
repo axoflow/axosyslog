@@ -30,43 +30,12 @@
 #include "template/eval.h"
 #include "mainloop-threaded-worker.h"
 #include "compat/pow2.h"
-#include "str-format.h"
 
 #include <string.h>
 #include <time.h>
-#include <math.h>
 
 #define MAX_RETRIES_ON_ERROR_DEFAULT 3
 #define MAX_RETRIES_BEFORE_SUSPEND_DEFAULT 3
-
-#define PARTITION_STATS_HALFLIFE (30.0)
-/* 10 half-life period is considered inactive (rate has already decayed to zero) */
-#define PARTITION_EXPIRATION_INTERVAL ((gint) (PARTITION_STATS_HALFLIFE * 10))
-#define PARTITION_RESCALE_INTERVAL (10)
-
-typedef struct _Partition
-{
-  gdouble rate;
-  struct timespec last_update;
-  gint worker_idx;
-  gint num_of_workers;
-} Partition;
-
-static inline void
-_partition_stats_create(LogThreadedDestPartitionStats *stats)
-{
-  stats->partitions = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
-  stats->orphans = g_ptr_array_new_full(10, NULL);
-}
-
-static inline void
-_partition_stats_destroy(LogThreadedDestPartitionStats *stats)
-{
-  g_hash_table_destroy(stats->partitions);
-  stats->partitions = NULL;
-  g_ptr_array_free(stats->orphans, TRUE);
-  stats->orphans = NULL;
-}
 
 const gchar *
 log_threaded_result_to_str(LogThreadedResult self)
@@ -500,7 +469,7 @@ _perform_flush(LogThreadedDestWorker *self)
 static inline gboolean
 _flush_on_worker_partition_key_change_enabled(LogThreadedDestWorker *self)
 {
-  return self->owner->flush_on_key_change && self->owner->worker_partition_key;
+  return self->owner->flush_on_key_change && self->owner->balancer_options.partition_key;
 }
 
 static inline gboolean
@@ -509,7 +478,7 @@ _should_flush_due_to_partition_key_change(LogThreadedDestWorker *self, LogMessag
   GString *buffer = scratch_buffers_alloc();
 
   LogTemplateEvalOptions options = DEFAULT_TEMPLATE_EVAL_OPTIONS;
-  log_template_format(self->owner->worker_partition_key, msg, &options, buffer);
+  log_template_format(self->owner->balancer_options.partition_key, msg, &options, buffer);
 
   gboolean should_flush = self->batch_size != 0 && strcmp(self->partitioning.last_key->str, buffer->str) != 0;
 
@@ -1100,8 +1069,7 @@ log_threaded_dest_driver_set_worker_partition_key_ref(LogDriver *s, LogTemplate 
 {
   LogThreadedDestDriver *self = (LogThreadedDestDriver *) s;
 
-  log_template_unref(self->worker_partition_key);
-  self->worker_partition_key = key;
+  log_balancer_options_set_partition_key_ref(&self->balancer_options, key);
 }
 
 void
@@ -1109,8 +1077,7 @@ log_threaded_dest_driver_set_worker_partition_buckets_ref(LogDriver *s, LogTempl
 {
   LogThreadedDestDriver *self = (LogThreadedDestDriver *) s;
 
-  log_template_unref(self->worker_partition_buckets);
-  self->worker_partition_buckets = buckets;
+  log_balancer_options_set_partition_buckets_ref(&self->balancer_options, buckets);
 }
 
 void
@@ -1217,300 +1184,12 @@ log_threaded_dest_driver_set_max_retries_on_error(LogDriver *s, gint max_retries
   self->retries_on_error_max = max_retries;
 }
 
-static const gchar *
-_eval_buckets(LogThreadedDestDriver *self, LogTemplateEvalOptions *options, LogMessage *msg, gssize *len)
+static gboolean
+_is_worker_available(gint worker_index, gpointer user_data)
 {
-  if (log_template_is_trivial(self->worker_partition_buckets))
-    return log_template_get_trivial_value(self->worker_partition_buckets, msg, len);
+  LogThreadedDestDriver *self = (LogThreadedDestDriver *) user_data;
 
-  GString *r = scratch_buffers_alloc();
-  log_template_format(self->worker_partition_buckets, msg, options, r);
-  return r->str;
-}
-
-static inline gint
-_calculate_partition_key_bucket(LogThreadedDestDriver *self, LogMessage *msg, LogTemplateEvalOptions *options)
-{
-  gint buckets = 0;
-  gint bucket = 0;
-
-  gssize buckets_len;
-  const gchar *buckets_string = _eval_buckets(self, options, msg, &buckets_len);
-
-  if (buckets_len > 0)
-    {
-      const gchar *p = buckets_string;
-      gint p_len = buckets_len;
-
-      if (!scan_positive_int(&p, &p_len, p_len, &buckets))
-        {
-          msg_warning_once("WARNING: value for worker-partition-buckets() is not an integer, partition bucketing is disabled",
-                           evt_tag_str("value", buckets_string));
-          buckets = 0;
-        }
-    }
-
-  if (buckets > 0)
-    {
-      bucket = (gint64) msg->timestamps[LM_TS_RECVD].ut_usec * buckets / 1000000LL;
-    }
-
-  return bucket;
-}
-
-static inline gdouble
-_get_time_diff_sec(const struct timespec *last_update, const struct timespec *now)
-{
-  gint64 diff = 0;
-  if (last_update->tv_sec != 0)
-    diff = timespec_diff_nsec(now, last_update);
-
-  return (gdouble) diff / 1e9;
-}
-
-static inline gdouble
-_apply_exp_decay(gdouble dt, gdouble *value)
-{
-  static gdouble log0_5 = 0;
-  if ((gint) log0_5 == 0)
-    log0_5 = log(0.5);
-
-  gdouble decay = exp(log0_5 * dt / (gdouble) PARTITION_STATS_HALFLIFE);
-  *value *= decay;
-
-  return decay;
-}
-
-static inline void
-_apply_instant_rate(gint sample, gdouble dt, gdouble decay, gdouble *result)
-{
-  if (dt > 0)
-    *result += sample/dt * (1.0 - decay);
-}
-
-static inline gdouble
-_get_partition_rate_ratio(gdouble partition_rate, gdouble total_rate)
-{
-  return total_rate > 0.0 ? MIN(1.0, partition_rate / total_rate) : 0.0;
-}
-
-/* partition_stats_lock must be held when calling this method */
-static inline gboolean
-_is_worker_partition_rescale_due(LogThreadedDestDriver *self, const struct timespec *now)
-{
-  if (self->partition_stats.last_rescale.tv_sec == 0)
-    return TRUE;
-
-  gint64 diff = timespec_diff_usec(now, &self->partition_stats.last_rescale);
-  return diff >= PARTITION_RESCALE_INTERVAL * 1000000;
-}
-
-/* partition_stats_lock must be held when calling this method */
-static inline gboolean
-_remove_if_partition_expired(Partition *p, GHashTableIter *iter, const struct timespec *now)
-{
-  gint64 diff = 0;
-  if (p->last_update.tv_sec != 0)
-    diff = timespec_diff_usec(now, &p->last_update);
-
-  if (diff >= PARTITION_EXPIRATION_INTERVAL * 1000000)
-    {
-      g_hash_table_iter_remove(iter);
-      return TRUE;
-    }
-
-  return FALSE;
-}
-
-/* partition_stats_lock must be held when calling this method */
-static inline gdouble
-_get_total_rate_and_update_partition_stats(LogThreadedDestDriver *self, Partition *current_partition,
-                                           const struct timespec *now)
-{
-  gdouble total_rate = 0;
-
-  GHashTableIter iter;
-  gpointer k, v;
-  g_hash_table_iter_init(&iter, self->partition_stats.partitions);
-  while (g_hash_table_iter_next(&iter, &k, &v))
-    {
-      Partition *p = v;
-
-      if (p != current_partition && _remove_if_partition_expired(p, &iter, now))
-        continue;
-
-      /* update all the other partitions' rate */
-      if (p != current_partition)
-        {
-          gdouble dt = _get_time_diff_sec(&p->last_update, now);
-          _apply_exp_decay(dt, &p->rate);
-        }
-
-      total_rate += p->rate;
-    }
-
-  return total_rate;
-}
-
-/* partition_stats_lock must be held when calling this method */
-static inline void
-_rescale_worker_partitions(LogThreadedDestDriver *self, Partition *current_partition, const struct timespec *now)
-{
-  gdouble total_rate = _get_total_rate_and_update_partition_stats(self, current_partition, now);
-  gint num_workers = self->num_workers;
-  gint workers_used = 0;
-
-  /* reserve WFO number of workers for minuscule partitions */
-  gint free_workers = MAX(1, num_workers - self->worker_partition_autoscaling_wfo);
-
-  /*
-   * We need to round down the fractional part of the workers assigned to one partition,
-   * so we do not exceed the total number of workers available.
-   * We can store the unused fractional part though and carry it over to the next partition.
-   */
-  gdouble fractional_worker_carryover = 0.0;
-
-  gint current_worker_idx = 0;
-  g_ptr_array_set_size(self->partition_stats.orphans, 0);
-
-  Partition *part;
-  GHashTableIter iter;
-  gpointer k, v;
-  g_hash_table_iter_init(&iter, self->partition_stats.partitions);
-  while (g_hash_table_iter_next(&iter, &k, &v))
-    {
-      part = v;
-
-      part->worker_idx = current_worker_idx;
-
-      gdouble partition_ratio = _get_partition_rate_ratio(part->rate, total_rate);
-      gdouble partition_workers = partition_ratio * free_workers + fractional_worker_carryover;
-      part->num_of_workers = (gint) (0 + floor(partition_workers));
-      fractional_worker_carryover = partition_workers - part->num_of_workers;
-      workers_used += part->num_of_workers;
-
-      if (part->num_of_workers <= 0)
-        g_ptr_array_add(self->partition_stats.orphans, part);
-
-      current_worker_idx = (current_worker_idx + part->num_of_workers) % num_workers;
-    }
-
-  gdouble remaining_workers = num_workers - workers_used;
-
-  for (gint i = 0; i < self->partition_stats.orphans->len; ++i)
-    {
-      Partition *p = g_ptr_array_index(self->partition_stats.orphans, i);
-      p->worker_idx = current_worker_idx;
-      p->num_of_workers = (gint) MAX(1.0, remaining_workers / self->partition_stats.orphans->len);
-
-      remaining_workers -= p->num_of_workers;
-
-      if (remaining_workers >= 1)
-        current_worker_idx = (current_worker_idx + p->num_of_workers) % num_workers;
-    }
-
-  g_ptr_array_set_size(self->partition_stats.orphans, 0);
-
-  self->partition_stats.last_rescale = *now;
-
-  stats_counter_set(self->metrics.active_partitions, g_hash_table_size(self->partition_stats.partitions));
-}
-
-/* partition_stats_lock must be held when calling this method */
-static inline void
-_update_partition_stats(LogThreadedDestDriver *self, Partition *partition, const struct timespec *now)
-{
-  const gint num_of_messages = 1;
-
-  gdouble partition_dt = _get_time_diff_sec(&partition->last_update, now);
-
-  /* first message should be considered too */
-  if (partition_dt <= 0)
-    partition_dt = 1;
-
-  /* exponentially weighted moving average */
-  gdouble partition_decay = _apply_exp_decay(partition_dt, &partition->rate);
-  _apply_instant_rate(num_of_messages, partition_dt, partition_decay, &partition->rate);
-
-  partition->last_update = *now;
-}
-
-static inline guint
-_autoscale_partition(LogThreadedDestDriver *self, const gchar *partition_key, LogMessage *msg)
-{
-  g_mutex_lock(&self->partition_stats_lock);
-
-  Partition *partition;
-  gboolean new_partition = FALSE;
-  if (!g_hash_table_lookup_extended(self->partition_stats.partitions, partition_key,
-                                    NULL, (gpointer *) &partition))
-    {
-      partition = g_new0(Partition, 1);
-      g_hash_table_insert(self->partition_stats.partitions, g_strdup(partition_key), partition);
-      new_partition = TRUE;
-    }
-
-  struct timespec now = {0};
-  clock_gettime(CLOCK_MONOTONIC, &now);
-
-  _update_partition_stats(self, partition, &now);
-
-  if (new_partition || _is_worker_partition_rescale_due(self, &now))
-    _rescale_worker_partitions(self, partition, &now);
-
-  guint selected_worker;
-  if (partition->num_of_workers == 1)
-    {
-      selected_worker = partition->worker_idx;
-    }
-  else
-    {
-      guint spread = (gint64) msg->timestamps[LM_TS_RECVD].ut_usec * partition->num_of_workers / 1000000LL;
-      selected_worker = (partition->worker_idx + spread) % self->num_workers;
-    }
-
-  g_mutex_unlock(&self->partition_stats_lock);
-  return selected_worker;
-}
-
-static guint
-_partition_to_worker_index(LogThreadedDestDriver *self, LogMessage *msg)
-{
-  LogTemplateEvalOptions options = DEFAULT_TEMPLATE_EVAL_OPTIONS;
-
-  const gchar *pkey = log_template_format_tmpbuf(self->worker_partition_key, msg, &options, NULL);
-
-  if (self->worker_partition_autoscaling)
-    return _autoscale_partition(self, pkey, msg);
-
-  guint partition_hash = g_str_hash(pkey);
-
-  gint bucket = 0;
-  if (self->worker_partition_buckets)
-    bucket = _calculate_partition_key_bucket(self, msg, &options);
-
-  return (partition_hash + bucket) % self->num_workers;
-}
-
-static guint
-_round_robin_to_worker_index(LogThreadedDestDriver *self)
-{
-  guint worker_index = self->last_worker;
-  self->last_worker = (self->last_worker + 1) % self->num_workers;
-  return worker_index;
-}
-
-static LogThreadedDestWorker *
-_round_robin_to_reachable_worker(LogThreadedDestDriver *self)
-{
-  for (gint i = 0; i < self->num_workers; i++)
-    {
-      LogThreadedDestWorker *dw = self->workers[_round_robin_to_worker_index(self)];
-
-      if (_is_reachable(dw))
-        return dw;
-    }
-  return NULL;
+  return _is_reachable(self->workers[worker_index]);
 }
 
 /* With @reachable_only, returns NULL if the message has no reachable
@@ -1519,19 +1198,11 @@ _round_robin_to_reachable_worker(LogThreadedDestDriver *self)
 static LogThreadedDestWorker *
 _lookup_worker(LogThreadedDestDriver *self, LogMessage *msg, gboolean reachable_only)
 {
-  if (self->worker_partition_key)
-    {
-      LogThreadedDestWorker *dw = self->workers[_partition_to_worker_index(self, msg)];
+  gint worker_index = log_balancer_select(self->balancer, msg, reachable_only);
 
-      if (reachable_only && !_is_reachable(dw))
-        return NULL;
-      return dw;
-    }
-
-  if (reachable_only)
-    return _round_robin_to_reachable_worker(self);
-
-  return self->workers[_round_robin_to_worker_index(self)];
+  if (worker_index < 0)
+    return NULL;
+  return self->workers[worker_index];
 }
 
 /* the feeding side of the driver, runs in the source thread and puts an
@@ -1743,7 +1414,7 @@ _register_driver_stats(LogThreadedDestDriver *self, StatsClusterKeyBuilder *kb)
     stats_register_counter(level, self->metrics.workers_key, SC_TYPE_SINGLE_VALUE, &self->metrics.workers);
     stats_register_counter(level, self->metrics.batch_timedout_key, SC_TYPE_SINGLE_VALUE, &self->metrics.batch_timedout);
 
-    if (self->worker_partition_autoscaling)
+    if (self->balancer_options.partition_autoscaling)
       {
         stats_register_counter(lvl, self->metrics.active_partitions_key, SC_TYPE_SINGLE_VALUE,
                                &self->metrics.active_partitions);
@@ -1864,25 +1535,8 @@ log_threaded_dest_driver_init_method(LogPipe *s)
   if (!self->shared_seq_num)
     init_sequence_number(&self->shared_seq_num);
 
-  if (self->worker_partition_key && log_template_is_literal_string(self->worker_partition_key))
-    {
-      msg_error("worker-partition-key() should not be literal string, use macros to form proper partitions",
-                log_expr_node_location_tag(self->super.super.super.expr_node));
-      return FALSE;
-    }
-
-  if (self->worker_partition_autoscaling && self->worker_partition_buckets)
-    {
-      msg_error("worker-partition-autoscaling() and worker-partition-buckets() cannot be used together",
-                log_expr_node_location_tag(self->super.super.super.expr_node));
-      return FALSE;
-    }
-
-  if (self->worker_partition_autoscaling)
-    {
-      g_mutex_init(&self->partition_stats_lock);
-      _partition_stats_create(&self->partition_stats);
-    }
+  if (!log_balancer_options_init(&self->balancer_options, cfg, self->super.super.super.expr_node))
+    return FALSE;
 
   StatsClusterKeyBuilder *driver_sck_builder = stats_cluster_key_builder_new();
   _init_driver_sck_builder(self, driver_sck_builder);
@@ -1896,6 +1550,11 @@ log_threaded_dest_driver_init_method(LogPipe *s)
 
   _register_driver_stats(self, driver_sck_builder);
   stats_counter_set(self->metrics.workers, self->num_workers);
+
+  /* partition stats are reset during reload */
+  self->balancer = log_balancer_new(&self->balancer_options, self->num_workers);
+  log_balancer_set_availability_check(self->balancer, _is_worker_available, self);
+  log_balancer_set_active_partitions_counter(self->balancer, self->metrics.active_partitions);
 
   stats_cluster_key_builder_free(driver_sck_builder);
   return TRUE;
@@ -1955,16 +1614,12 @@ log_threaded_dest_driver_deinit_method(LogPipe *s)
                          _format_seqnum_persist_name(self),
                          GINT_TO_POINTER(self->shared_seq_num), NULL);
 
+  /* the balancer refers to both the active-partitions counter and the workers */
+  g_clear_pointer(&self->balancer, log_balancer_free);
+
   _unregister_driver_stats(self);
 
   _destroy_workers(self);
-
-  /* partition stats are reset during reload */
-  if (self->worker_partition_autoscaling)
-    {
-      _partition_stats_destroy(&self->partition_stats);
-      g_mutex_clear(&self->partition_stats_lock);
-    }
 
   return log_dest_driver_deinit_method(s);
 }
@@ -1976,7 +1631,7 @@ log_threaded_dest_driver_free(LogPipe *s)
   LogThreadedDestDriver *self = (LogThreadedDestDriver *)s;
 
   g_free(self->workers);
-  log_template_unref(self->worker_partition_key);
+  log_balancer_options_destroy(&self->balancer_options);
   log_dest_driver_free((LogPipe *)self);
 }
 
@@ -1995,12 +1650,11 @@ log_threaded_dest_driver_init_instance(LogThreadedDestDriver *self, GlobalConfig
   self->batch_lines = -1;
   self->batch_timeout = -1;
   self->num_workers = 1;
-  self->last_worker = 0;
   self->flags = LTDF_SEQNUM;
 
   self->retries_on_error_max = MAX_RETRIES_ON_ERROR_DEFAULT;
   self->retries_max = MAX_RETRIES_BEFORE_SUSPEND_DEFAULT;
 
   self->flush_on_key_change = FALSE;
-  self->worker_partition_autoscaling_wfo = 1;
+  log_balancer_options_defaults(&self->balancer_options);
 }
