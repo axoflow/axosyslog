@@ -25,6 +25,7 @@
 
 #include "logmsg/logmsg.h"
 #include "template/templates.h"
+#include "stats/stats-counter.h"
 #include "cfg.h"
 
 /*
@@ -37,7 +38,9 @@
  * batch_size consecutive messages are sent to the same target.
  *
  * With a partition key, selection is "sticky": messages with the same key
- * go to the same target, which retains their ordering.
+ * go to the same target, which retains their ordering.  With autoscaling,
+ * targets are assigned to keys in proportion to their message rate, see
+ * logbalancer-autoscale.h.
  *
  * Targets may be temporarily unavailable (e.g. their connection is down),
  * which is reported by an optional callback.  If requested, unavailable
@@ -58,6 +61,10 @@ typedef struct _LogBalancerOptions
   /* sticky: spread the messages of a single key over this many
    * targets, based on their receipt time within the second */
   LogTemplate *partition_buckets;
+  /* sticky: assign targets to keys based on their message rate */
+  gboolean partition_autoscaling;
+  /* sticky: number of targets reserved for low rate keys */
+  gint partition_autoscaling_wfo;
 } LogBalancerOptions;
 
 typedef struct _LogBalancer LogBalancer;
@@ -76,6 +83,9 @@ void log_balancer_options_destroy(LogBalancerOptions *options);
  * available target. */
 gint log_balancer_select(LogBalancer *self, LogMessage *msg, gboolean available_only);
 gint log_balancer_get_num_targets(LogBalancer *self);
+
+/* number of active partitions with autoscaling, maintained in @counter */
+void log_balancer_set_active_partitions_counter(LogBalancer *self, StatsCounterItem *counter);
 
 void log_balancer_set_availability_check(LogBalancer *self, LogBalancerIsAvailableFunc is_available,
                                          gpointer user_data);

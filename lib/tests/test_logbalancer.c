@@ -23,6 +23,7 @@
 #include "libtest/cr_template.h"
 
 #include "logbalancer.h"
+#include "logbalancer-autoscale.h"
 #include "mainloop-worker.h"
 #include "apphook.h"
 
@@ -430,6 +431,119 @@ Test(logbalancer, sticky_selection_does_not_move_keys_of_unavailable_targets)
   available_mask = 0x0f;
   cr_assert_eq(_select_available(balancer, "foo"), target);
   log_balancer_free(balancer);
+}
+
+/* autoscaling */
+
+static gint
+_autoscale_select(LogBalancerAutoscale *autoscale, const gchar *key, gint64 msec)
+{
+  struct timespec now = { .tv_sec = 1000 + msec / 1000, .tv_nsec = (msec % 1000) * 1000000 };
+  LogMessage *msg = _create_keyed_message(key, (msec % 1000) * 1000);
+
+  gint target = log_balancer_autoscale_select_at(autoscale, key, msg, &now);
+  log_msg_unref(msg);
+  return target;
+}
+
+/* the number of distinct targets of a key, sampled within a single second */
+static gint
+_autoscale_count_targets(LogBalancerAutoscale *autoscale, const gchar *key, gint64 msec, gint num_targets)
+{
+  gboolean seen[16] = { 0 };
+  gint count = 0;
+
+  for (gint i = 0; i < 100; i++)
+    {
+      gint target = _autoscale_select(autoscale, key, msec + i * 10);
+
+      cr_assert(target >= 0 && target < num_targets, "target out of range: %d", target);
+      if (!seen[target])
+        count++;
+      seen[target] = TRUE;
+    }
+  return count;
+}
+
+Test(logbalancer, autoscale_single_partition_uses_all_but_wfo_targets)
+{
+  LogBalancerAutoscale *autoscale = log_balancer_autoscale_new(4, 1);
+
+  cr_assert_eq(_autoscale_count_targets(autoscale, "foo", 0, 4), 3);
+  cr_assert_eq(log_balancer_autoscale_get_num_partitions(autoscale), 1);
+  log_balancer_autoscale_free(autoscale);
+}
+
+Test(logbalancer, autoscale_assigns_more_targets_to_busy_partitions)
+{
+  LogBalancerAutoscale *autoscale = log_balancer_autoscale_new(8, 1);
+
+  /* "busy" receives a message every 10ms, "quiet" one every second */
+  gint64 msec;
+  for (msec = 0; msec < 20000; msec += 10)
+    {
+      _autoscale_select(autoscale, "busy", msec);
+      if (msec % 1000 == 0)
+        _autoscale_select(autoscale, "quiet", msec);
+    }
+
+  gint busy_targets = _autoscale_count_targets(autoscale, "busy", msec, 8);
+  gint quiet_targets = _autoscale_count_targets(autoscale, "quiet", msec, 8);
+
+  /* "busy" gets the bulk of the 7 non-WFO targets, "quiet" is an orphan
+   * sharing the remaining ones */
+  cr_assert_gt(busy_targets, quiet_targets, "busy=%d, quiet=%d", busy_targets, quiet_targets);
+  cr_assert_geq(busy_targets, 5, "busy=%d", busy_targets);
+  log_balancer_autoscale_free(autoscale);
+}
+
+Test(logbalancer, autoscale_expires_inactive_partitions)
+{
+  LogBalancerAutoscale *autoscale = log_balancer_autoscale_new(4, 1);
+  StatsCounterItem active_partitions = { 0 };
+  log_balancer_autoscale_set_active_partitions_counter(autoscale, &active_partitions);
+
+  _autoscale_select(autoscale, "foo", 0);
+  _autoscale_select(autoscale, "bar", 0);
+  cr_assert_eq(log_balancer_autoscale_get_num_partitions(autoscale), 2);
+  cr_assert_eq(stats_counter_get(&active_partitions), 2);
+
+  /* "foo" stays active, "bar" expires after 10 half-lives (300s) */
+  gint64 msec;
+  for (msec = 0; msec <= 310000; msec += 5000)
+    _autoscale_select(autoscale, "foo", msec);
+
+  cr_assert_eq(log_balancer_autoscale_get_num_partitions(autoscale), 1);
+  cr_assert_eq(stats_counter_get(&active_partitions), 1);
+  log_balancer_autoscale_free(autoscale);
+}
+
+Test(logbalancer, sticky_selection_with_autoscaling)
+{
+  log_balancer_options_set_partition_key_ref(&options, compile_template("$KEY"));
+  options.partition_autoscaling = TRUE;
+  LogBalancer *balancer = _construct_balancer(4);
+
+  StatsCounterItem active_partitions = { 0 };
+  log_balancer_set_active_partitions_counter(balancer, &active_partitions);
+
+  /* a single partition gets all the targets, but the one reserved for orphans */
+  gboolean seen[4] = { 0 };
+  for (gint64 usec = 0; usec < 1000000; usec += 10000)
+    seen[_select_key(balancer, "foo", usec)] = TRUE;
+
+  cr_assert(seen[0] && seen[1] && seen[2]);
+  cr_assert_not(seen[3]);
+  cr_assert_eq(stats_counter_get(&active_partitions), 1);
+  log_balancer_free(balancer);
+}
+
+Test(logbalancer, autoscaling_with_buckets_is_rejected)
+{
+  log_balancer_options_set_partition_key_ref(&options, compile_template("$KEY"));
+  log_balancer_options_set_partition_buckets_ref(&options, compile_template("3"));
+  options.partition_autoscaling = TRUE;
+  cr_assert_not(log_balancer_options_init(&options, configuration));
 }
 
 static void
