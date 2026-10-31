@@ -328,20 +328,22 @@ log_balancer_options_defaults(LogBalancerOptions *options)
 }
 
 gboolean
-log_balancer_options_init(LogBalancerOptions *options, GlobalConfig *cfg)
+log_balancer_options_init(LogBalancerOptions *options, GlobalConfig *cfg, LogExprNode *location)
 {
   if (options->batch_size == -1)
     options->batch_size = 1;
 
   if (options->partition_key && log_template_is_literal_string(options->partition_key))
     {
-      msg_error("worker-partition-key() should not be literal string, use macros to form proper partitions");
+      msg_error("worker-partition-key() should not be literal string, use macros to form proper partitions",
+                log_expr_node_location_tag(location));
       return FALSE;
     }
 
   if (options->partition_autoscaling && options->partition_buckets)
     {
-      msg_error("worker-partition-autoscaling() and worker-partition-buckets() cannot be used together");
+      msg_error("worker-partition-autoscaling() and worker-partition-buckets() cannot be used together",
+                log_expr_node_location_tag(location));
       return FALSE;
     }
   return TRUE;
