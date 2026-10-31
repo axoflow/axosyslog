@@ -24,6 +24,7 @@
 #define LOGBALANCER_H_INCLUDED
 
 #include "logmsg/logmsg.h"
+#include "template/templates.h"
 #include "cfg.h"
 
 /*
@@ -31,6 +32,12 @@
  * workers, partitions or connections), identified by their index in the
  * [0, num_targets) range.  It only decides which target a message should
  * go to, delivery is up to the caller.
+ *
+ * Without a partition key, targets are selected in a round-robin fashion,
+ * batch_size consecutive messages are sent to the same target.
+ *
+ * With a partition key, selection is "sticky": messages with the same key
+ * go to the same target, which retains their ordering.
  *
  * log_balancer_select() is called from source threads.  Round-robin state
  * is kept per input thread, so no locking happens on the hot path.
@@ -40,10 +47,18 @@ typedef struct _LogBalancerOptions
 {
   /* round-robin: number of consecutive messages sent to the same target */
   gint batch_size;
+
+  /* sticky: messages with the same key go to the same target */
+  LogTemplate *partition_key;
+  /* sticky: spread the messages of a single key over this many
+   * targets, based on their receipt time within the second */
+  LogTemplate *partition_buckets;
 } LogBalancerOptions;
 
 typedef struct _LogBalancer LogBalancer;
 
+void log_balancer_options_set_partition_key_ref(LogBalancerOptions *options, LogTemplate *partition_key);
+void log_balancer_options_set_partition_buckets_ref(LogBalancerOptions *options, LogTemplate *partition_buckets);
 void log_balancer_options_defaults(LogBalancerOptions *options);
 gboolean log_balancer_options_init(LogBalancerOptions *options, GlobalConfig *cfg);
 void log_balancer_options_destroy(LogBalancerOptions *options);
