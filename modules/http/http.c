@@ -482,7 +482,7 @@ http_dd_init(LogPipe *s)
                             && is_body_prefix_fixed
                             && _are_headers_fixed(self);
 
-  if (is_batching_enabled && !is_batch_fixed && !self->super.worker_partition_key)
+  if (is_batching_enabled && !is_batch_fixed && !log_threaded_dest_driver_get_worker_partition_key(&self->super))
     {
       msg_error("http: worker-partition-key() must be set if using message-dependent templates "
                 "in the url(), headers() or body-prefix() options while batching is enabled. "

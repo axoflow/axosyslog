@@ -35,6 +35,7 @@
 #include "mainloop-threaded-worker.h"
 #include "timeutils/misc.h"
 #include "template/templates.h"
+#include "logbalancer.h"
 
 #include <iv.h>
 #include <iv_event.h>
@@ -128,13 +129,6 @@ struct _LogThreadedDestWorker
 
 const gchar *log_threaded_result_to_str(LogThreadedResult self);
 
-typedef struct _LogThreadedDestPartitionStats
-{
-  struct timespec last_rescale;
-  GHashTable *partitions;
-  GPtrArray *orphans;
-} LogThreadedDestPartitionStats;
-
 struct _LogThreadedDestDriver
 {
   LogDestDriver super;
@@ -200,15 +194,11 @@ struct _LogThreadedDestDriver
   LogThreadedDestWorker **workers;
   gint num_workers;
   gint created_workers;
-  guint last_worker;
 
   gboolean flush_on_key_change;
-  gboolean worker_partition_autoscaling;
-  gint worker_partition_autoscaling_wfo;
-  LogTemplate *worker_partition_key;
-  LogTemplate *worker_partition_buckets;
-  LogThreadedDestPartitionStats partition_stats;
-  GMutex partition_stats_lock;
+  /* distributes messages between workers */
+  LogBalancerOptions balancer_options;
+  LogBalancer *balancer;
 
   gint stats_source;
 
@@ -328,7 +318,7 @@ log_threaded_dest_driver_set_worker_partition_autoscaling(LogDriver *s, gboolean
 {
   LogThreadedDestDriver *self = (LogThreadedDestDriver *) s;
 
-  self->worker_partition_autoscaling = partition_autoscaling;
+  self->balancer_options.partition_autoscaling = partition_autoscaling;
 }
 
 static inline void
@@ -336,7 +326,13 @@ log_threaded_dest_driver_set_worker_partition_autoscaling_wfo(LogDriver *s, gint
 {
   LogThreadedDestDriver *self = (LogThreadedDestDriver *) s;
 
-  self->worker_partition_autoscaling_wfo = wfo;
+  self->balancer_options.partition_autoscaling_wfo = wfo;
+}
+
+static inline LogTemplate *
+log_threaded_dest_driver_get_worker_partition_key(LogThreadedDestDriver *self)
+{
+  return self->balancer_options.partition_key;
 }
 
 void log_threaded_dest_worker_ack_messages(LogThreadedDestWorker *self, gint batch_size);
