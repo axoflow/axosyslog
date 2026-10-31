@@ -327,6 +327,16 @@ log_dest_driver_queue_method(LogPipe *s, LogMessage *msg, const LogPathOptions *
   log_pipe_forward_msg(s, msg, path_options);
 }
 
+/* the same as log_dest_driver_queue_method(), but forwards the message to
+ * @next instead of pipe_next, e.g. for destinations with multiple writers */
+void
+log_dest_driver_queue_to(LogDestDriver *self, LogPipe *next, LogMessage *msg, const LogPathOptions *path_options)
+{
+  stats_counter_inc(self->super.processed_group_messages);
+  stats_counter_inc(self->queued_global_messages);
+  log_pipe_queue(next, msg, path_options);
+}
+
 /* @driver_sck_builder is the one the queues of this destination were
  * acquired with, so the counter ends up next to their output_events_total
  * counters, sharing their legacy alias.  The counter is shared by every
