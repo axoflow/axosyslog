@@ -34,7 +34,7 @@ _init(LogPipe *s)
   LogSchedulerPipe *self = (LogSchedulerPipe *) s;
   GlobalConfig *cfg = log_pipe_get_config(s);
 
-  if (!log_scheduler_options_init(&self->scheduler_options, cfg))
+  if (!log_scheduler_options_init(&self->scheduler_options, cfg, s->expr_node))
     return FALSE;
 
   if (!self->scheduler)
@@ -73,6 +73,7 @@ _free(LogPipe *s)
 
   if (self->scheduler)
     log_scheduler_free(self->scheduler);
+  log_scheduler_options_destroy(&self->scheduler_options);
 }
 
 LogPipe *
