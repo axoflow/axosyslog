@@ -75,7 +75,8 @@ typedef gboolean (*LogBalancerIsAvailableFunc)(gint target, gpointer user_data);
 void log_balancer_options_set_partition_key_ref(LogBalancerOptions *options, LogTemplate *partition_key);
 void log_balancer_options_set_partition_buckets_ref(LogBalancerOptions *options, LogTemplate *partition_buckets);
 void log_balancer_options_defaults(LogBalancerOptions *options);
-gboolean log_balancer_options_init(LogBalancerOptions *options, GlobalConfig *cfg);
+/* @location is used in error messages, may be NULL */
+gboolean log_balancer_options_init(LogBalancerOptions *options, GlobalConfig *cfg, LogExprNode *location);
 void log_balancer_options_destroy(LogBalancerOptions *options);
 
 /* Returns a target index in [0, num_targets).  With @available_only, only

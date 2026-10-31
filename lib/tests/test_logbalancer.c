@@ -34,7 +34,7 @@ static LogBalancerOptions options;
 static LogBalancer *
 _construct_balancer(gint num_targets)
 {
-  cr_assert(log_balancer_options_init(&options, configuration));
+  cr_assert(log_balancer_options_init(&options, configuration, NULL));
   return log_balancer_new(&options, num_targets);
 }
 
@@ -306,7 +306,7 @@ Test(logbalancer, sticky_selection_with_templated_buckets)
 Test(logbalancer, sticky_selection_with_literal_partition_key_is_rejected)
 {
   log_balancer_options_set_partition_key_ref(&options, compile_template("literal"));
-  cr_assert_not(log_balancer_options_init(&options, configuration));
+  cr_assert_not(log_balancer_options_init(&options, configuration, NULL));
 }
 
 /* availability */
@@ -543,7 +543,7 @@ Test(logbalancer, autoscaling_with_buckets_is_rejected)
   log_balancer_options_set_partition_key_ref(&options, compile_template("$KEY"));
   log_balancer_options_set_partition_buckets_ref(&options, compile_template("3"));
   options.partition_autoscaling = TRUE;
-  cr_assert_not(log_balancer_options_init(&options, configuration));
+  cr_assert_not(log_balancer_options_init(&options, configuration, NULL));
 }
 
 static void
