@@ -32,6 +32,7 @@
 #include "poll-fd-events.h"
 #include "timeutils/misc.h"
 #include "afsocket-signals.h"
+#include "logproto/logproto-text-server.h"
 
 #include <string.h>
 #include <sys/types.h>
@@ -148,6 +149,10 @@ afsocket_sc_init(LogPipe *s)
           stats_cluster_key_builder_free(kb);
           return FALSE;
         }
+
+      /* a text server by the check in afsocket_sd_setup_transport() */
+      if (self->owner->multi_line_options.mode != MLM_NONE)
+        log_proto_text_server_set_multi_line(proto, &self->owner->multi_line_options);
 
       if (!transport_mapper_setup_stack(self->owner->transport_mapper, &proto->transport_stack, self->sock))
         {
@@ -953,6 +958,28 @@ afsocket_sd_setup_reader_options(AFSocketSourceDriver *self)
 }
 
 static gboolean
+afsocket_sd_setup_multi_line(AFSocketSourceDriver *self)
+{
+  if (!multi_line_options_init(&self->multi_line_options))
+    return FALSE;
+
+  if (self->multi_line_options.mode == MLM_NONE)
+    return TRUE;
+
+  if (self->construct_proto || strcmp(self->transport_mapper->logproto, "text") != 0)
+    {
+      msg_error("multi-line-mode() is only supported with transports that carry newline separated text, "
+                "such as tcp or tls",
+                evt_tag_str("transport", self->transport_mapper->transport),
+                evt_tag_str("logproto", self->transport_mapper->logproto),
+                log_pipe_location_tag(&self->super.super.super));
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
+static gboolean
 afsocket_sd_setup_transport(AFSocketSourceDriver *self)
 {
   GlobalConfig *cfg = log_pipe_get_config(&self->super.super.super);
@@ -972,6 +999,9 @@ afsocket_sd_setup_transport(AFSocketSourceDriver *self)
           return FALSE;
         }
     }
+
+  if (!afsocket_sd_setup_multi_line(self))
+    return FALSE;
 
   afsocket_sd_setup_reader_options(self);
   return TRUE;
@@ -1388,6 +1418,7 @@ afsocket_sd_free_method(LogPipe *s)
 
   g_free(self->driver_name);
   log_reader_options_destroy(&self->reader_options);
+  multi_line_options_destroy(&self->multi_line_options);
   transport_mapper_free(self->transport_mapper);
   socket_options_free(self->socket_options);
   g_sockaddr_unref(self->bind_addr);
@@ -1419,6 +1450,7 @@ afsocket_sd_init_instance(AFSocketSourceDriver *self,
   self->dynamic_window_realloc_ticks = DYNAMIC_WINDOW_REALLOC_TICKS;
   self->connections_kept_alive_across_reloads = TRUE;
   log_reader_options_defaults(&self->reader_options);
+  multi_line_options_defaults(&self->multi_line_options);
   self->reader_options.super.stats_level = STATS_LEVEL1;
   self->reader_options.super.stats_source = transport_mapper->stats_source;
   self->activate_listener = TRUE;

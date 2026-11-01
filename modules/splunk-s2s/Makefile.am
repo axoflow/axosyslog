@@ -54,6 +54,11 @@ SPLUNK_S2S_PLUGINS = \
 module_LTLIBRARIES += modules/splunk-s2s/libsplunk-s2s.la
 
 modules_splunk_s2s_libsplunk_s2s_la_SOURCES = \
+  modules/splunk-s2s/splunk-s2s-grammar.y \
+  modules/splunk-s2s/splunk-s2s-options.c \
+  modules/splunk-s2s/splunk-s2s-options.h \
+  modules/splunk-s2s/splunk-s2s-parser.c \
+  modules/splunk-s2s/splunk-s2s-parser.h \
   modules/splunk-s2s/splunk-s2s-plugin.c
 
 modules_splunk_s2s_libsplunk_s2s_la_CPPFLAGS = \
@@ -66,9 +71,16 @@ modules_splunk_s2s_libsplunk_s2s_la_LIBADD = $(MODULE_DEPS_LIBS) $(SPLUNK_S2S_PL
 modules_splunk_s2s_libsplunk_s2s_la_LDFLAGS = $(MODULE_LDFLAGS)
 EXTRA_modules_splunk_s2s_libsplunk_s2s_la_DEPENDENCIES = $(MODULE_DEPS_LIBS) $(SPLUNK_S2S_PLUGINS)
 
+BUILT_SOURCES += \
+  modules/splunk-s2s/splunk-s2s-grammar.y \
+  modules/splunk-s2s/splunk-s2s-grammar.c \
+  modules/splunk-s2s/splunk-s2s-grammar.h
+
 modules/splunk-s2s modules/splunk-s2s/ mod-splunk-s2s: modules/splunk-s2s/libsplunk-s2s.la
 
-EXTRA_DIST += modules/splunk-s2s/CMakeLists.txt
+EXTRA_DIST += \
+  modules/splunk-s2s/splunk-s2s-grammar.ym \
+  modules/splunk-s2s/CMakeLists.txt
 
 .PHONY: modules/splunk-s2s/ mod-splunk-s2s
 

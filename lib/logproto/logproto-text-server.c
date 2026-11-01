@@ -22,8 +22,88 @@
  */
 #include "logproto-text-server.h"
 #include "messages.h"
+#include "mainloop.h"
+#include "timeutils/misc.h"
 
 #include <string.h>
+
+/****************************************************************************
+ * multi-line-timeout()
+ *
+ * The timer runs on the main thread, where poll_prepare() is called before
+ * every poll, while fetch() may run on an I/O worker; the two never run at
+ * the same time for one connection.  The timer only wakes the reader up, the
+ * deadline is checked in poll_prepare(): a line may have been consumed in
+ * the meantime, which moves it.
+ ****************************************************************************/
+
+static void
+_multi_line_timer_expired(gpointer cookie)
+{
+  LogProtoTextServer *self = (LogProtoTextServer *) cookie;
+
+  g_atomic_int_set(&self->multi_line_timer_fired, 1);
+  log_proto_server_wakeup_cb_call(&self->super.super.wakeup_callback);
+}
+
+static gboolean
+_multi_line_message_pending(LogProtoTextServer *self)
+{
+  return self->multi_line_timeout > 0 && self->consumed_len >= 0 && !self->super.flush_partial_message;
+}
+
+static void
+_multi_line_check_timeout(LogProtoTextServer *self)
+{
+  if (!g_atomic_int_compare_and_exchange(&self->multi_line_timer_fired, 1, 0))
+    return;
+
+  if (!_multi_line_message_pending(self))
+    return;
+
+  struct timespec now = iv_now;
+  if (timespec_diff_msec(&now, &self->multi_line_pending_since) < self->multi_line_timeout)
+    return;
+
+  msg_debug("Multi-line timeout has elapsed, processing partial message",
+            evt_tag_int("timeout", self->multi_line_timeout));
+  log_proto_buffered_server_cue_flush(&self->super);
+}
+
+static void
+_multi_line_update_timer(LogProtoTextServer *self)
+{
+  if (self->multi_line_timeout <= 0)
+    return;
+
+  main_loop_assert_main_thread();
+
+  struct timespec deadline = self->multi_line_pending_since;
+  gboolean pending = _multi_line_message_pending(self);
+
+  timespec_add_msec(&deadline, self->multi_line_timeout);
+  if (iv_timer_registered(&self->multi_line_timer))
+    {
+      if (pending && timespec_diff_nsec(&deadline, &self->multi_line_timer.expires) == 0)
+        return;
+      iv_timer_unregister(&self->multi_line_timer);
+    }
+  if (!pending)
+    return;
+
+  self->multi_line_timer.expires = deadline;
+  iv_timer_register(&self->multi_line_timer);
+}
+
+void
+log_proto_text_server_fire_multi_line_timeout(LogProtoServer *s)
+{
+  LogProtoTextServer *self = (LogProtoTextServer *) s;
+
+  if (iv_timer_registered(&self->multi_line_timer))
+    iv_timer_unregister(&self->multi_line_timer);
+  _multi_line_timer_expired(self);
+}
 
 LogProtoPrepareAction
 log_proto_text_server_poll_prepare_method(LogProtoServer *s, GIOCondition *cond, gint *timeout)
@@ -31,9 +111,15 @@ log_proto_text_server_poll_prepare_method(LogProtoServer *s, GIOCondition *cond,
   LogProtoTextServer *self = (LogProtoTextServer *) s;
   gboolean avail;
 
+  _multi_line_check_timeout(self);
+  _multi_line_update_timer(self);
+
   LogProtoPrepareAction action = log_proto_buffered_server_poll_prepare(s, cond, timeout);
   if (action != LPPA_POLL_IO)
     return action;
+
+  if (self->super.flush_partial_message)
+    return LPPA_FORCE_SCHEDULE_FETCH;
 
   avail = (self->cached_eol_pos != 0);
   return avail ? LPPA_FORCE_SCHEDULE_FETCH : LPPA_POLL_IO;
@@ -137,6 +223,7 @@ log_proto_text_server_try_extract(LogProtoTextServer *self, LogProtoBufferedServ
           g_assert(drop_length == 0);
           self->cached_eol_pos = next_eol_pos;
           self->consumed_len = eol - buffer_start;
+          self->multi_line_pending_since = iv_now;
         }
       else if (verdict & MLL_REWIND_SEGMENT)
         {
@@ -210,6 +297,8 @@ log_proto_text_server_yield_whole_buffer_as_message(LogProtoTextServer *self, Lo
   *msg_len = buffer_bytes;
   self->consumed_len = -1;
   state->pending_buffer_pos = (*msg) + (*msg_len) - self->super.buffer;
+  if (self->multi_line)
+    multi_line_logic_reset(self->multi_line);
 }
 
 static inline const guchar *
@@ -293,16 +382,19 @@ log_proto_text_server_flush(LogProtoBufferedServer *s)
   LogProtoTextServer *self = (LogProtoTextServer *) s;
   self->consumed_len = -1;
   self->cached_eol_pos = 0;
+  if (self->multi_line)
+    multi_line_logic_reset(self->multi_line);
 }
 
 void
-log_proto_text_server_set_multi_line(LogProtoServer *s, MultiLineLogic *multi_line)
+log_proto_text_server_set_multi_line(LogProtoServer *s, const MultiLineOptions *options)
 {
   LogProtoTextServer *self = (LogProtoTextServer *) s;
 
   if (self->multi_line)
     multi_line_logic_free(self->multi_line);
-  self->multi_line = multi_line;
+  self->multi_line = options->mode != MLM_NONE ? multi_line_factory_construct(options) : NULL;
+  self->multi_line_timeout = options->timeout;
 }
 
 static gboolean
@@ -336,6 +428,8 @@ void
 log_proto_text_server_free(LogProtoServer *s)
 {
   LogProtoTextServer *self = (LogProtoTextServer *) s;
+  if (iv_timer_registered(&self->multi_line_timer))
+    iv_timer_unregister(&self->multi_line_timer);
   if (self->multi_line)
     multi_line_logic_free(self->multi_line);
   log_proto_buffered_server_free_method(&self->super.super);
@@ -353,6 +447,10 @@ log_proto_text_server_init(LogProtoTextServer *self, LogTransport *transport, co
   self->find_eom = find_eom;
   self->super.stream_based = TRUE;
   self->consumed_len = -1;
+
+  IV_TIMER_INIT(&self->multi_line_timer);
+  self->multi_line_timer.cookie = self;
+  self->multi_line_timer.handler = _multi_line_timer_expired;
 }
 
 LogProtoServer *

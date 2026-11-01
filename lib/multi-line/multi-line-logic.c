@@ -33,5 +33,6 @@ multi_line_logic_free_method(MultiLineLogic *s)
 void
 multi_line_logic_init_instance(MultiLineLogic *self)
 {
+  self->reset = NULL;
   self->free_fn = multi_line_logic_free_method;
 }

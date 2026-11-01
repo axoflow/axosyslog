@@ -32,8 +32,7 @@ log_proto_file_reader_new(LogTransport *transport, const LogProtoFileReaderOptio
   if (options->pad_size > 0)
     return log_proto_padded_record_server_new(transport, &options->super, options->pad_size);
   else
-    return log_proto_multiline_server_new(transport, &options->super,
-                                          multi_line_factory_construct(&options->multi_line_options));
+    return log_proto_multiline_server_new(transport, &options->super, &options->multi_line_options);
 }
 
 /* these functions only initialize the fields added on top of

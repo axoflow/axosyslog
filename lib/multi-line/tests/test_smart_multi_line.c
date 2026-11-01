@@ -146,6 +146,35 @@ _output_equals(gint ndx, const gchar *expected_value)
   return strcmp(str, expected_value) == 0;
 }
 
+Test(smart_multi_line, reset_after_a_forced_hand_over_keeps_the_place_in_the_trace)
+{
+  MultiLineLogic *mll = smart_multi_line_new();
+  const gchar *trace_start = "java.lang.RuntimeException: javax.mail.SendFailedException: Invalid Addresses;";
+  const gchar *frame1 = "\tat com.example.mail.EmailFacade.sendWithSmtp(EmailFacade.java:236)";
+  const gchar *frame2 = "\tat com.example.mail.EmailFacade.sendMail(EmailFacade.java:198)";
+  const gchar *unrelated = "this is something unrelated";
+
+  gint verdict = multi_line_logic_accumulate_line(mll, NULL, 0, (const guchar *) trace_start, strlen(trace_start));
+  cr_assert_eq(verdict, MLL_CONSUME_SEGMENT | MLL_WAITING);
+
+  verdict = multi_line_logic_accumulate_line(mll, (const guchar *) trace_start, strlen(trace_start),
+                                             (const guchar *) frame1, strlen(frame1));
+  cr_assert_eq(verdict, MLL_CONSUME_SEGMENT | MLL_WAITING);
+
+  /* the caller hands the partial trace over on its own, to cap its size */
+  multi_line_logic_reset(mll);
+
+  /* the rest of the trace is still a trace, and ends where the trace does */
+  verdict = multi_line_logic_accumulate_line(mll, NULL, 0, (const guchar *) frame2, strlen(frame2));
+  cr_assert_eq(verdict, MLL_CONSUME_SEGMENT | MLL_WAITING);
+
+  verdict = multi_line_logic_accumulate_line(mll, (const guchar *) frame2, strlen(frame2),
+                                             (const guchar *) unrelated, strlen(unrelated));
+  cr_assert_eq(verdict, MLL_REWIND_SEGMENT | MLL_EXTRACTED);
+
+  multi_line_logic_free(mll);
+}
+
 Test(smart_multi_line, feed_smart_multi_line_with_single_and_multi_line_messages)
 {
   MultiLineLogic *mll = smart_multi_line_new();

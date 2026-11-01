@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2019 One Identity
- * Copyright (c) 2019 László Várady
+ * Copyright (c) 2026 Axoflow
+ * Copyright (c) 2026 Balazs Scheidler <balazs.scheidler@axoflow.com>
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
@@ -21,13 +21,29 @@
  *
  */
 
-#ifndef POLL_MULTILINE_FILE_CHANGES_H
-#define POLL_MULTILINE_FILE_CHANGES_H
+#include "splunk-s2s-parser.h"
+#include "splunk-s2s-grammar.h"
 
-#include "poll-file-changes.h"
-#include "file-reader.h"
+extern int splunk_s2s_debug;
 
-PollEvents *poll_multiline_file_changes_new(gint fd, const gchar *follow_filename, gint follow_freq,
-                                            gint multi_line_timeout, FileReader *reader);
+int splunk_s2s_parse(CfgLexer *lexer, LogProtoServerFactory **instance, gpointer arg);
 
+static CfgLexerKeyword splunk_s2s_keywords[] =
+{
+  { "splunk_s2s",         KW_SPLUNK_S2S },
+  { NULL }
+};
+
+CfgParser splunk_s2s_parser =
+{
+#if SYSLOG_NG_ENABLE_DEBUG
+  .debug_flag = &splunk_s2s_debug,
 #endif
+  .name = "splunk-s2s",
+  .keywords = splunk_s2s_keywords,
+  .parse = (gint (*)(CfgLexer *, gpointer *, gpointer)) splunk_s2s_parse,
+  /* the factory is static, there is nothing to clean up */
+  .cleanup = NULL,
+};
+
+CFG_PARSER_IMPLEMENT_LEXER_BINDING(splunk_s2s_, SPLUNK_S2S_, LogProtoServerFactory **)
