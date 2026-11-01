@@ -181,7 +181,8 @@ mmdb_open_database(const gchar *path, MMDB_s *database)
   int mmdb_status = MMDB_open(path, MMDB_MODE_MMAP, database);
   if (mmdb_status != MMDB_SUCCESS)
     {
-      msg_error("MMDB_open",
+      msg_error("Error opening GeoIP database",
+                evt_tag_str("database", path),
                 evt_tag_str("error", MMDB_strerror(mmdb_status)));
       return FALSE;
     }
