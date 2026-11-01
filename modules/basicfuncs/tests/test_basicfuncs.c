@@ -32,6 +32,9 @@
 #include "cfg.h"
 #include "logmsg/logmsg.h"
 #include "scratch-buffers.h"
+#include "mainloop-worker.h"
+
+#include <iv.h>
 
 static void
 add_dummy_template_to_configuration(void)
@@ -367,20 +370,103 @@ Test(basicfuncs, test_bucket)
   assert_template_format("$(bucket --weights 3,1,1 host-e)", "0");
 
   /* compile-time errors */
-  assert_template_failure("$(bucket)", "requires a bucket count");
-  assert_template_failure("$(bucket 8)", "requires a bucket count and at least one value argument");
+  assert_template_failure("$(bucket)", "requires a bucket count or --weights");
   assert_template_failure("$(bucket 0 $HOST)", "bucket count must be a positive integer");
   assert_template_failure("$(bucket notanumber $HOST)", "bucket count must be a positive integer");
   assert_template_failure("$(bucket 4097 $HOST)", "not greater than 4096");
   assert_template_failure("$(bucket 4294967296 $HOST)", "not greater than 4096");
   assert_template_format_value_and_type("$(bucket 4096 host-a)", "1530", LM_VT_INTEGER);
-  assert_template_failure("$(bucket --weights 1,2,3)", "requires at least one value argument");
   assert_template_failure("$(bucket --weights 0,0 $HOST)", "must not all be zero");
   assert_template_failure("$(bucket --weights -1,2 $HOST)", "non-negative integers");
   assert_template_failure("$(bucket --weights notanumber $HOST)", "non-negative integers");
   assert_template_failure("$(bucket --weights 4097,1 $HOST)", "not greater than 4096");
   assert_template_failure("$(bucket --weights 4294967295,2 $HOST)", "not greater than 4096");
   assert_template_format("$(bucket --weights 4096,4096 host-a)", "1");
+}
+
+/* formats an already compiled template repeatedly, checking that the results
+ * follow the comma separated expected sequence */
+static void
+_assert_bucket_sequence(LogTemplate *templ, const gchar *expected_sequence)
+{
+  LogMessage *msg = create_sample_message();
+  GString *res = g_string_new("");
+  gchar **expected = g_strsplit(expected_sequence, ",", 0);
+
+  for (gint i = 0; expected[i]; i++)
+    {
+      LogMessageValueType type;
+
+      log_template_format_value_and_type(templ, msg, &DEFAULT_TEMPLATE_EVAL_OPTIONS, res, &type);
+      cr_assert_str_eq(res->str, expected[i],
+                       "bucket sequence mismatch at index %d, template=%s, actual=%s, expected=%s",
+                       i, templ->template_str, res->str, expected[i]);
+      cr_assert_eq(type, LM_VT_INTEGER);
+    }
+
+  g_strfreev(expected);
+  g_string_free(res, TRUE);
+  log_msg_unref(msg);
+}
+
+static void
+_assert_bucket_rr_sequence(const gchar *template, const gchar *expected_sequence)
+{
+  LogTemplate *templ = compile_template(template);
+
+  cr_assert(templ);
+  _assert_bucket_sequence(templ, expected_sequence);
+  log_template_unref(templ);
+}
+
+Test(basicfuncs, test_bucket_round_robin)
+{
+  /* without value arguments, the per-thread counter starts from zero and
+   * cycles through the buckets */
+  _assert_bucket_rr_sequence("$(bucket --batch 1 1)", "0,0,0");
+  _assert_bucket_rr_sequence("$(bucket --batch 1 3)", "0,1,2,0,1,2,0");
+
+  /* --batch keeps consecutive messages in the same bucket */
+  _assert_bucket_rr_sequence("$(bucket --batch 2 3)", "0,0,1,1,2,2,0,0");
+  _assert_bucket_rr_sequence("$(bucket 2 --batch 3)", "0,0,0,1,1,1,0");
+
+  /* --batch defaults to 100 */
+  GString *expected = g_string_new("");
+  for (gint i = 0; i < 100; i++)
+    g_string_append(expected, "0,");
+  for (gint i = 0; i < 100; i++)
+    g_string_append(expected, "1,");
+  g_string_append(expected, "0");
+  _assert_bucket_rr_sequence("$(bucket 2)", expected->str);
+  g_string_free(expected, TRUE);
+
+  /* --weights: the cycle visits each bucket as many times as its weight */
+  _assert_bucket_rr_sequence("$(bucket --batch 1 --weights 2,1)", "0,0,1,0,0,1,0");
+  _assert_bucket_rr_sequence("$(bucket --batch 1 --weights 1,0,2)", "0,2,2,0,2,2");
+  _assert_bucket_rr_sequence("$(bucket --batch 1 --weights 0,1,0)", "1,1,1,1");
+  _assert_bucket_rr_sequence("$(bucket --batch 3 --weights 1,2)", "0,0,0,1,1,1,1,1,1,0,0,0");
+
+  /* instances have their own counters */
+  LogTemplate *first = compile_template("$(bucket --batch 1 4)");
+  LogTemplate *second = compile_template("$(bucket --batch 1 4)");
+  _assert_bucket_sequence(first, "0,1,2");
+  _assert_bucket_sequence(second, "0,1");
+  _assert_bucket_sequence(first, "3,0");
+  _assert_bucket_sequence(second, "2,3,0");
+  log_template_unref(first);
+  log_template_unref(second);
+
+  /* compile-time errors */
+  assert_template_failure("$(bucket --batch 2 3 $HOST)", "--batch is only valid in round robin mode");
+  assert_template_failure("$(bucket --batch 2 --weights 1,2 $HOST)", "--batch is only valid in round robin mode");
+  assert_template_failure("$(bucket --batch 2)", "requires a bucket count or --weights");
+  assert_template_failure("$(bucket 0)", "bucket count must be a positive integer");
+  assert_template_failure("$(bucket notanumber)", "bucket count must be a positive integer");
+  assert_template_failure("$(bucket 4097)", "not greater than 4096");
+  assert_template_failure("$(bucket --batch 0 3)", "--batch must be a positive integer");
+  assert_template_failure("$(bucket --batch -1 3)", "--batch must be a positive integer");
+  assert_template_failure("$(bucket --batch notanumber 3)", "--batch must be a positive integer");
+  assert_template_failure("$(bucket --weights 0,0)", "must not all be zero");
 }
 
 Test(basicfuncs, test_fname_funcs)
