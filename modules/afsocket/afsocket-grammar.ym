@@ -394,7 +394,7 @@ source_afinet_tcp_option
 
 	    last_tls_context = tls_context_new(TM_SERVER, cfg_lexer_format_location(lexer, &@1, buf, sizeof(buf)));
 	  }
-	  '(' tls_options ')'
+	  '(' source_tls_options ')'
 	  {
 	    afinet_sd_set_tls_context(last_driver, last_tls_context);
           }
@@ -488,7 +488,7 @@ source_afsocket_transport
 
 	    last_tls_context = tls_context_new(TM_SERVER, cfg_lexer_format_location(lexer, &@1, buf, sizeof(buf)));
 	  }
-	  '(' tls_options ')'
+	  '(' source_tls_options ')'
 	  {
 	    afinet_sd_set_tls_context(last_driver, last_tls_context);
           }
@@ -799,10 +799,18 @@ dest_tls_option
           }
         ;
 
-tls_options
-	: tls_option tls_options
-	|
-	;
+source_tls_options
+        : source_tls_option source_tls_options
+        |
+        ;
+
+source_tls_option
+        : tls_option
+        | KW_OPTIONAL '(' yesno ')'
+          {
+            tls_context_set_optional(last_tls_context, $3);
+          }
+        ;
 
 tls_option
         : KW_IFDEF {
