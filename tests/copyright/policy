@@ -72,6 +72,7 @@ lib/logmsg/tests/messages/axosyslog-[.0-9]*(-full-nvtable)?-msg.h$
 modules/python-modules/requirements\.lock
 scl/darwinosl/darwinosl-metadata-db.csv
 lib/multi-line/smart-multi-line\.fsm$
+modules/geoip2/geoip-databases\.tsv$
 doc/.*\.svg$
 charts/.*$
 docker/.*$

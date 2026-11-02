@@ -41,6 +41,10 @@ typedef struct
 static inline gboolean
 tf_maxminddb_init(TFMaxMindDBState *state)
 {
+  /* --kind found no database, the function returns empty results */
+  if (!state->database_path)
+    return TRUE;
+
   state->database = g_new0(MMDB_s, 1);
 
   if (!mmdb_open_database(state->database_path, state->database))
@@ -59,11 +63,16 @@ tf_geoip_maxminddb_prepare(LogTemplateFunction *self, gpointer s, LogTemplate *p
 {
   TFMaxMindDBState *state = (TFMaxMindDBState *) s;
   gchar *field = NULL;
+  gchar *kind = NULL;
   state->database_path = NULL;
 
   GOptionEntry maxminddb_options[] =
   {
     { "database", 'd', 0, G_OPTION_ARG_FILENAME, &state->database_path, "mmdb database location", NULL },
+    {
+      "kind", 'k', 0, G_OPTION_ARG_STRING, &kind,
+      "database kind, as listed in geoip-databases.tsv. For example: city", NULL
+    },
     { "field", 'f', 0, G_OPTION_ARG_STRING, &field, "data path in database. For example: country.iso_code", NULL },
     { NULL }
   };
@@ -78,13 +87,33 @@ tf_geoip_maxminddb_prepare(LogTemplateFunction *self, gpointer s, LogTemplate *p
     }
   g_option_context_free(ctx);
 
-  if (!state->database_path)
-    state->database_path = mmdb_default_database();
-
-  if (!state->database_path || argc < 1)
+  if (kind && state->database_path)
     {
       g_set_error(error, LOG_TEMPLATE_ERROR, LOG_TEMPLATE_ERROR_COMPILE,
-                  "geoip2: format must be: $(geoip2 --database <db.mmdb> [ --field path.child ] ${HOST})\n");
+                  "geoip2: --kind and --database are mutually exclusive");
+      goto error;
+    }
+
+  if (kind)
+    {
+      GError *kind_error = NULL;
+      if (!mmdb_resolve_database_kind(kind, &state->database_path, &kind_error))
+        {
+          g_set_error(error, LOG_TEMPLATE_ERROR, LOG_TEMPLATE_ERROR_COMPILE, "geoip2: %s", kind_error->message);
+          g_error_free(kind_error);
+          goto error;
+        }
+    }
+  else if (!state->database_path)
+    {
+      state->database_path = mmdb_default_database();
+    }
+
+  if ((!kind && !state->database_path) || argc < 1)
+    {
+      g_set_error(error, LOG_TEMPLATE_ERROR, LOG_TEMPLATE_ERROR_COMPILE,
+                  "geoip2: format must be: "
+                  "$(geoip2 { --kind <kind> | --database <db.mmdb> } [ --field path.child ] ${HOST})\n");
       goto error;
     }
 
@@ -107,9 +136,12 @@ tf_geoip_maxminddb_prepare(LogTemplateFunction *self, gpointer s, LogTemplate *p
       goto error;
     }
 
+  g_free(kind);
+  g_free(field);
   return TRUE;
 
 error:
+  g_free(kind);
   g_free(state->database_path);
   state->database_path = NULL;
   g_strfreev(state->entry_path);
@@ -124,6 +156,10 @@ tf_geoip_maxminddb_call(LogTemplateFunction *self, gpointer s, const LogTemplate
                         LogMessageValueType *type)
 {
   TFMaxMindDBState *state = (TFMaxMindDBState *) s;
+
+  *type = LM_VT_STRING;
+  if (!state->database)
+    return;
 
   int _gai_error, mmdb_error;
   MMDB_lookup_result_s mmdb_result =
@@ -166,6 +202,11 @@ tf_geoip_maxminddb_free_state(gpointer s)
 
   g_free(state->database_path);
   g_strfreev(state->entry_path);
+  if (state->database)
+    {
+      MMDB_close(state->database);
+      g_free(state->database);
+    }
   tf_simple_func_free_state(&state->super);
 }
 
