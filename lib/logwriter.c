@@ -475,12 +475,12 @@ log_writer_update_watches(LogWriter *self)
       log_queue_check_items(self->queue, &timeout_msec,
                             (LogQueuePushNotifyFunc) log_writer_schedule_update_watches, self, NULL))
     {
-      /* flush_lines number of element is already available and throttle would permit us to send. */
+      /* there is pending output or queued messages that throttle permits us to send */
       log_writer_update_fd_callbacks(self, cond);
     }
   else if (timeout_msec)
     {
-      /* few elements are available, but less than flush_lines, we need to start a timer to initiate a flush */
+      /* messages are queued, but throttle does not let us send them yet, retry once it would */
 
       log_writer_update_fd_callbacks(self, idle_cond);
       self->waiting_for_throttle = TRUE;
