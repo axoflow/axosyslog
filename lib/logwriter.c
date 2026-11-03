@@ -1891,6 +1891,7 @@ log_writer_options_defaults(LogWriterOptions *options)
   options->truncate_size = -1;
   options->options = LWO_SEQNUM;
   host_resolve_options_defaults(&options->host_resolve_options);
+  log_proto_client_options_defaults(&options->proto_options.super);
 }
 
 void

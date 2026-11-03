@@ -81,12 +81,14 @@ log_proto_client_options_defaults(LogProtoClientOptions *options)
 {
   options->drop_input = FALSE;
   options->idle_timeout = 0;
-  options->flush_lines = 0;
+  options->flush_lines = -1;
 }
 
 void
 log_proto_client_options_init(LogProtoClientOptions *options, GlobalConfig *cfg)
 {
+  if (options->flush_lines == -1)
+    options->flush_lines = cfg->flush_lines;
 }
 
 void

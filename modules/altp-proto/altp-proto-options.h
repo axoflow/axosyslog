@@ -184,8 +184,7 @@ typedef struct _AltpSenderOptions
 
 /* AltpProtoClientOptions extends LogProtoClientOptions in place, exactly as
  * AltpProtoServerOptions extends the server side.  Unlike that one it owns no
- * resources: there is no destroy hook on the client options and
- * log_proto_client_options_defaults() is never called by anyone.
+ * resources: there is no destroy hook on the client options.
  */
 typedef struct _AltpProtoClientOptions
 {
