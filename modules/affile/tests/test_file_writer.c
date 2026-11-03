@@ -46,6 +46,13 @@ static gboolean consumed;
 static const gchar *payload = "PAYLOAD";
 static gssize count;
 
+static LogProtoClient *
+_file_writer_new(gint flush_lines)
+{
+  options.flush_lines = flush_lines;
+  return log_proto_file_writer_new(transport, &options, FALSE);
+}
+
 static void
 _ack_callback(gint num_acked, gpointer user_data)
 {
@@ -54,7 +61,7 @@ _ack_callback(gint num_acked, gpointer user_data)
 
 Test(file_writer, write_single_message_and_flush_is_expected_to_dump_the_payload_to_the_output)
 {
-  LogProtoClient *fw = log_proto_file_writer_new(transport, &options, 100, FALSE);
+  LogProtoClient *fw = _file_writer_new(100);
 
   log_proto_client_set_client_flow_control(fw, &flow_control_funcs);
 
@@ -76,7 +83,7 @@ Test(file_writer, batches_of_messages_should_be_flushed_to_the_output)
 {
   const gint BATCH_SIZE = 10;
   const gint MESSAGE_COUNT = BATCH_SIZE * 3;
-  LogProtoClient *fw = log_proto_file_writer_new(transport, &options, BATCH_SIZE, FALSE);
+  LogProtoClient *fw = _file_writer_new(BATCH_SIZE);
 
   log_proto_client_set_client_flow_control(fw, &flow_control_funcs);
   for (gint i = 0; i < MESSAGE_COUNT; i++)
@@ -105,7 +112,7 @@ Test(file_writer, batches_of_messages_should_be_flushed_to_the_output)
 Test(file_writer, messages_should_be_flushed_automatically_once_we_reach_batch_size)
 {
   const gint BATCH_SIZE = 10;
-  LogProtoClient *fw = log_proto_file_writer_new(transport, &options, BATCH_SIZE, FALSE);
+  LogProtoClient *fw = _file_writer_new(BATCH_SIZE);
 
   log_proto_client_set_client_flow_control(fw, &flow_control_funcs);
   for (gint i = 0; i < BATCH_SIZE - 1; i++)
@@ -133,7 +140,7 @@ Test(file_writer, messages_should_be_flushed_automatically_once_we_reach_batch_s
 Test(file_writer, batches_of_messages_are_flushed_even_if_the_underlying_transport_is_accepting_a_few_bytes_per_write)
 {
   const gint BATCH_SIZE = 10;
-  LogProtoClient *fw = log_proto_file_writer_new(transport, &options, BATCH_SIZE, FALSE);
+  LogProtoClient *fw = _file_writer_new(BATCH_SIZE);
 
   log_transport_mock_set_write_chunk_limit((LogTransportMock *) transport, 2);
   log_proto_client_set_client_flow_control(fw, &flow_control_funcs);
