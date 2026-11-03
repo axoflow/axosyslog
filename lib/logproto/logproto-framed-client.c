@@ -23,6 +23,7 @@
 #include "logproto-framed-client.h"
 #include "logproto-text-client.h"
 #include "messages.h"
+#include "str-format.h"
 
 /* the longest frame header is "9999999 " */
 #define FRAME_HEADER_MAX 9
@@ -37,7 +38,8 @@ log_proto_framed_client_post(LogProtoClient *s, LogMessage *logmsg, const guchar
   if (msg_len > 9999999)
     msg_len = 9999999;
 
-  gint frame_hdr_len = g_snprintf((gchar *) frame_hdr, sizeof(frame_hdr), "%" G_GSIZE_FORMAT " ", msg_len);
+  gint frame_hdr_len = format_uint32_into_padded_buffer((gchar *) frame_hdr, sizeof(frame_hdr), 0, 0, 10, msg_len);
+  frame_hdr[frame_hdr_len++] = ' ';
   LogProtoStatus status = log_proto_text_client_post_with_prefix(s, frame_hdr, frame_hdr_len, msg, msg_len, consumed);
 
   /* only once the message is accepted, so a retried message warns once */
