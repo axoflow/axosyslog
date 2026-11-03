@@ -161,8 +161,8 @@ _ack_written(LogProtoTextClient *self)
     log_proto_client_msg_ack(&self->super, num_acked);
 }
 
-static LogProtoStatus
-log_proto_text_client_flush(LogProtoClient *s)
+LogProtoStatus
+log_proto_text_client_flush_method(LogProtoClient *s)
 {
   LogProtoTextClient *self = (LogProtoTextClient *) s;
 
@@ -214,7 +214,7 @@ log_proto_text_client_post_with_prefix(LogProtoClient *s, const guchar *prefix, 
 
   if (self->batch.draining || self->batch.count >= limit)
     {
-      LogProtoStatus status = log_proto_text_client_flush(s);
+      LogProtoStatus status = self->super.flush(s);
       if (status != LPS_SUCCESS || self->batch.draining || self->batch.count >= limit)
         return status;
     }
@@ -225,7 +225,7 @@ log_proto_text_client_post_with_prefix(LogProtoClient *s, const guchar *prefix, 
   *consumed = TRUE;
 
   if (self->batch.count >= limit)
-    return log_proto_text_client_flush(s);
+    return self->super.flush(s);
 
   return LPS_SUCCESS;
 }
@@ -257,7 +257,7 @@ log_proto_text_client_init(LogProtoTextClient *self, LogTransport *transport,
 {
   log_proto_client_init(&self->super, transport, options);
   self->super.poll_prepare = log_proto_text_client_poll_prepare;
-  self->super.flush = log_proto_text_client_flush;
+  self->super.flush = log_proto_text_client_flush_method;
   self->super.process_in = log_proto_text_client_process_input;
   self->super.post = log_proto_text_client_post_method;
   self->super.free_fn = log_proto_text_client_free_method;
