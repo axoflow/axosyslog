@@ -27,6 +27,7 @@
 #include "apphook.h"
 
 #include <string.h>
+#include <errno.h>
 
 typedef struct _FlowControlCounters
 {
@@ -243,6 +244,27 @@ Test(text_client, unacked_messages_are_rewound_when_the_client_is_freed)
 
   cr_assert_eq(counters.acked, 0);
   cr_assert_eq(counters.rewound, 1);
+}
+
+Test(text_client, a_failed_write_is_continued_where_it_stopped)
+{
+  LogTransport *transport = log_transport_mock_stream_new(NULL, 0);
+  log_transport_mock_set_write_chunk_limit((LogTransportMock *) transport, 2);
+  LogProtoClient *proto = _construct(log_proto_text_client_new, transport, 1);
+
+  cr_assert(_post(proto, "abc\n"));
+  _assert_written((LogTransportMock *) transport, "ab");
+
+  log_transport_mock_inject_write_error((LogTransportMock *) transport, EIO);
+  cr_assert_eq(log_proto_client_flush(proto), LPS_ERROR);
+  cr_assert_eq(counters.rewound, 0, "a partially written message must not be written again in full");
+
+  _flush(proto);
+  _assert_written((LogTransportMock *) transport, "c\n");
+  cr_assert_eq(counters.acked, 1);
+
+  log_proto_client_free(proto);
+  cr_assert_eq(counters.rewound, 0);
 }
 
 static void
