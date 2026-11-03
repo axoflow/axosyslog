@@ -339,6 +339,7 @@ main_location_print (FILE *yyo, YYLTYPE const * const yylocp)
 %token KW_MULTI_LINE_MODE             10206
 %token KW_MULTI_LINE_PREFIX           10207
 %token KW_MULTI_LINE_GARBAGE          10208
+%token KW_MULTI_LINE_TIMEOUT          10213
 
 /* destination writer options */
 %token KW_TRUNCATE_SIZE               10209
@@ -1814,6 +1815,10 @@ multi_line_option
 
             CHECK_ERROR_GERROR(multi_line_options_set_garbage(last_multi_line_options, $3, &error), @3, error, "error compiling multi-line regexp");
             free($3);
+	  }
+	| KW_MULTI_LINE_TIMEOUT '(' nonnegative_integer ')'
+	  {
+            multi_line_options_set_timeout(last_multi_line_options, $3 * 1000);
 	  }
 	;
 

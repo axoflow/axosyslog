@@ -22,7 +22,7 @@
  */
 #include "logproto/logproto-multiline-server.h"
 #include "logproto/logproto-text-server.h"
-#include "multi-line/multi-line-logic.h"
+#include "multi-line/multi-line-factory.h"
 
 /*
  * This is basically a factory that takes multi-line related options and
@@ -32,9 +32,9 @@
 LogProtoServer *
 log_proto_multiline_server_new(LogTransport *transport,
                                const LogProtoServerOptions *options,
-                               MultiLineLogic *multi_line)
+                               const MultiLineOptions *multi_line_options)
 {
   LogProtoServer *server = log_proto_text_server_new(transport, options);
-  log_proto_text_server_set_multi_line(server, multi_line);
+  log_proto_text_server_set_multi_line(server, multi_line_options);
   return server;
 }
