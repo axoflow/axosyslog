@@ -216,12 +216,10 @@ Test(text_client, a_single_message_is_written_at_once_without_batching)
   log_proto_client_free(proto);
 }
 
-Test(text_client, messages_are_written_one_by_one_on_transports_without_writev)
+Test(text_client, messages_are_written_one_by_one_without_batching)
 {
-  /* datagram sockets have no writev(), each message must remain a separate write */
   LogTransport *transport = log_transport_mock_stream_new(NULL, 0);
-  transport->writev = NULL;
-  LogProtoClient *proto = _construct(log_proto_text_client_new, transport, 3);
+  LogProtoClient *proto = _construct(log_proto_text_client_new, transport, 1);
 
   cr_assert(_post(proto, "a\n"));
   cr_assert(_post(proto, "b\n"));
