@@ -75,6 +75,7 @@ struct _StatsCounterGroup
   void (*get_type_formatting)(StatsCounterGroup *self, StatsCluster *cluster, gint type,
                               StatsClusterUnit *stored_unit);
   const gchar *(*get_type_name_suffix)(StatsCounterGroup *self, StatsCluster *cluster, gint type);
+  gsize (*get_type_value)(StatsCounterGroup *self, StatsCluster *cluster, gint type);
   void (*free_fn)(StatsCounterGroup *self);
 };
 
@@ -215,6 +216,15 @@ stats_cluster_get_type_formatting(StatsCluster *self, gint type,
 
   if (self->counter_group.get_type_formatting)
     self->counter_group.get_type_formatting(&self->counter_group, self, type, stored_unit);
+}
+
+static inline gsize
+stats_cluster_get_type_value(StatsCluster *self, gint type)
+{
+  if (self->counter_group.get_type_value)
+    return self->counter_group.get_type_value(&self->counter_group, self, type);
+
+  return stats_counter_get(&self->counter_group.counters[type]);
 }
 
 static inline const gchar *
