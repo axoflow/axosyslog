@@ -106,24 +106,6 @@ _prohibit_in(LogProtoClient *s)
  * oversized messages left behind */
 #define TEXT_CLIENT_BATCH_BUFFER_MAX (1024 * 1024)
 
-static inline gboolean
-_batching_enabled(LogProtoTextClient *self)
-{
-  if (self->batch.size <= 1)
-    return FALSE;
-
-  /* datagram transports have no writev(), each message must be written
-   * separately to remain a separate datagram */
-  LogTransport *t = log_transport_stack_get_active(&self->super.transport_stack);
-  return t && t->writev;
-}
-
-static inline gint
-_batch_limit(LogProtoTextClient *self)
-{
-  return _batching_enabled(self) ? self->batch.size : 1;
-}
-
 static void
 _reset_batch(LogProtoTextClient *self)
 {
@@ -208,7 +190,7 @@ log_proto_text_client_post_with_prefix(LogProtoClient *s, const guchar *prefix, 
                                        const guchar *msg, gsize msg_len, gboolean *consumed)
 {
   LogProtoTextClient *self = (LogProtoTextClient *) s;
-  gint limit = _batch_limit(self);
+  gint limit = self->batch.size;
 
   *consumed = FALSE;
 
@@ -253,7 +235,7 @@ log_proto_text_client_free_method(LogProtoClient *s)
 
 void
 log_proto_text_client_init(LogProtoTextClient *self, LogTransport *transport,
-                           const LogProtoClientOptions *options, gboolean batching_supported)
+                           const LogProtoClientOptions *options, gboolean batching)
 {
   log_proto_client_init(&self->super, transport, options);
   self->super.poll_prepare = log_proto_text_client_poll_prepare;
@@ -263,7 +245,7 @@ log_proto_text_client_init(LogProtoTextClient *self, LogTransport *transport,
   self->super.free_fn = log_proto_text_client_free_method;
 
   self->batch.size = 1;
-  if (batching_supported && options && options->flush_lines > 1)
+  if (batching && options && options->flush_lines > 1)
     self->batch.size = MIN(options->flush_lines, LOG_PROTO_TEXT_CLIENT_MAX_BATCH);
   self->batch.data = g_string_sized_new(0);
 }

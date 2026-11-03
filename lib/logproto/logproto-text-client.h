@@ -57,7 +57,7 @@ LogProtoStatus log_proto_text_client_post_method(LogProtoClient *s, LogMessage *
                                                  gsize msg_len, gboolean *consumed);
 void log_proto_text_client_init(LogProtoTextClient *self, LogTransport *transport,
                                 const LogProtoClientOptions *options,
-                                gboolean batching_supported);
+                                gboolean batching);
 LogProtoClient *log_proto_text_client_new(LogTransport *transport, const LogProtoClientOptions *options);
 
 LogProtoClient *log_proto_unidirectional_text_client_new(LogTransport *transport, const LogProtoClientOptions *options);
