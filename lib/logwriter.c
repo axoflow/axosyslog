@@ -68,7 +68,6 @@ struct _LogWriter
   LogQueue *queue;
   guint32 flags:31;
   gint32 seq_num;
-  gboolean partial_write;
 
   struct
   {
@@ -257,7 +256,7 @@ log_writer_work_finished(gpointer s, gpointer arg)
       return;
     }
 
-  if (self->work_result != LPS_SUCCESS && self->work_result != LPS_PARTIAL)
+  if (self->work_result != LPS_SUCCESS)
     {
       log_writer_broken(self, NC_WRITE_ERROR);
       if (self->proto)
@@ -475,12 +474,12 @@ log_writer_update_watches(LogWriter *self)
       log_queue_check_items(self->queue, &timeout_msec,
                             (LogQueuePushNotifyFunc) log_writer_schedule_update_watches, self, NULL))
     {
-      /* flush_lines number of element is already available and throttle would permit us to send. */
+      /* there is pending output or queued messages that throttle permits us to send */
       log_writer_update_fd_callbacks(self, cond);
     }
   else if (timeout_msec)
     {
-      /* few elements are available, but less than flush_lines, we need to start a timer to initiate a flush */
+      /* messages are queued, but throttle does not let us send them yet, retry once it would */
 
       log_writer_update_fd_callbacks(self, idle_cond);
       self->waiting_for_throttle = TRUE;
@@ -1139,14 +1138,6 @@ log_writer_broken(LogWriter *self, gint notify_code)
   log_pipe_notify(self->control, notify_code, self);
 }
 
-static void
-log_writer_realloc_line_buffer(LogWriter *self)
-{
-  self->line_buffer->str = g_malloc(self->line_buffer->allocated_len);
-  self->line_buffer->str[0] = 0;
-  self->line_buffer->len = 0;
-}
-
 static LogProtoStatus
 _record_io_error(LogWriter *self, LogProtoStatus status)
 {
@@ -1212,25 +1203,15 @@ log_writer_write_message(LogWriter *self, LogMessage *msg, LogPathOptions *path_
     {
       msg_len = self->line_buffer->len;
       LogProtoStatus status = _record_io_error(self, log_proto_client_post(self->proto, msg,
-                                               (guchar *)self->line_buffer->str,
+                                               (const guchar *)self->line_buffer->str,
                                                self->line_buffer->len,
                                                &consumed));
-
-      self->partial_write = (status == LPS_PARTIAL);
-
-      if (consumed)
-        log_writer_realloc_line_buffer(self);
 
       if (status == LPS_ERROR)
         {
           if ((self->options->options & LWO_IGNORE_ERRORS) != 0)
             {
-              if (!consumed)
-                {
-                  g_free(self->line_buffer->str);
-                  log_writer_realloc_line_buffer(self);
-                  consumed = TRUE;
-                }
+              consumed = TRUE;
             }
           else
             {
@@ -1739,11 +1720,6 @@ log_writer_reopen_deferred(gpointer s)
     }
 
   log_writer_stop_watches(self);
-
-  if (self->partial_write)
-    {
-      log_queue_rewind_backlog_all(self->queue);
-    }
   log_writer_free_proto(self);
   log_writer_set_proto(self, proto);
 
@@ -1897,7 +1873,6 @@ void
 log_writer_options_defaults(LogWriterOptions *options)
 {
   options->template = NULL;
-  options->flush_lines = -1;
   log_template_options_defaults(&options->template_options);
   options->time_reopen = -1;
   options->suppress = -1;
@@ -1907,6 +1882,7 @@ log_writer_options_defaults(LogWriterOptions *options)
   options->truncate_size = -1;
   options->options = LWO_SEQNUM;
   host_resolve_options_defaults(&options->host_resolve_options);
+  log_proto_client_options_defaults(&options->proto_options.super);
 }
 
 void
@@ -1950,8 +1926,6 @@ log_writer_options_init(LogWriterOptions *options, GlobalConfig *cfg, guint32 op
   log_proto_client_options_init(&options->proto_options.super, cfg);
   options->options |= option_flags;
 
-  if (options->flush_lines == -1)
-    options->flush_lines = cfg->flush_lines;
   if (options->suppress == -1)
     options->suppress = cfg->suppress;
   if (options->time_reopen == -1)
