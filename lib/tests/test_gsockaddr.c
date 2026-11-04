@@ -24,6 +24,9 @@
 
 #include "gsockaddr.h"
 
+#include <stddef.h>
+#include <string.h>
+
 Test(gsockaddr, unshare_tolerates_null)
 {
   GSockAddr *addr = NULL;
@@ -57,4 +60,75 @@ Test(gsockaddr, unshare_copies_a_shared_instance_and_releases_it)
 
   g_sockaddr_unref(addr);
   g_sockaddr_unref(shared);
+}
+
+static GSockAddr *
+_unix_new2(const gchar *name, gsize name_len)
+{
+  struct sockaddr_un saun = { .sun_family = AF_UNIX };
+
+  memcpy(saun.sun_path, name, name_len);
+  return g_sockaddr_unix_new2(&saun, offsetof(struct sockaddr_un, sun_path) + name_len);
+}
+
+static void
+_assert_address_equal(GSockAddr *a, GSockAddr *b, gboolean expected)
+{
+  cr_assert_eq(g_sockaddr_address_equal(a, b), expected);
+  cr_assert_eq(g_sockaddr_address_equal(b, a), expected);
+  g_sockaddr_unref(a);
+  g_sockaddr_unref(b);
+}
+
+Test(gsockaddr, address_equal_handles_null)
+{
+  GSockAddr *addr = g_sockaddr_inet_new("192.168.1.1", 514);
+
+  cr_assert(g_sockaddr_address_equal(NULL, NULL));
+  cr_assert_not(g_sockaddr_address_equal(addr, NULL));
+  cr_assert_not(g_sockaddr_address_equal(NULL, addr));
+  cr_assert(g_sockaddr_address_equal(addr, addr));
+  g_sockaddr_unref(addr);
+}
+
+Test(gsockaddr, address_equal_inet_ignores_the_port)
+{
+  _assert_address_equal(g_sockaddr_inet_new("192.168.1.1", 514), g_sockaddr_inet_new("192.168.1.1", 40000), TRUE);
+  _assert_address_equal(g_sockaddr_inet_new("192.168.1.1", 514), g_sockaddr_inet_new("192.168.1.2", 514), FALSE);
+}
+
+Test(gsockaddr, address_equal_differs_for_different_families)
+{
+  _assert_address_equal(g_sockaddr_inet_new("127.0.0.1", 514), g_sockaddr_unix_new("/dev/log"), FALSE);
+#if SYSLOG_NG_ENABLE_IPV6
+  _assert_address_equal(g_sockaddr_inet_new("127.0.0.1", 514), g_sockaddr_inet6_new("::ffff:127.0.0.1", 514), FALSE);
+#endif
+}
+
+#if SYSLOG_NG_ENABLE_IPV6
+Test(gsockaddr, address_equal_inet6_ignores_the_port_but_not_the_scope)
+{
+  _assert_address_equal(g_sockaddr_inet6_new("fe80::1", 514), g_sockaddr_inet6_new("fe80::1", 40000), TRUE);
+  _assert_address_equal(g_sockaddr_inet6_new("fe80::1", 514), g_sockaddr_inet6_new("fe80::2", 514), FALSE);
+
+  GSockAddr *scoped = g_sockaddr_inet6_new("fe80::1", 514);
+  g_sockaddr_inet6_get_sa(scoped)->sin6_scope_id = 2;
+  _assert_address_equal(g_sockaddr_inet6_new("fe80::1", 514), scoped, FALSE);
+}
+#endif
+
+Test(gsockaddr, address_equal_unix_compares_the_name)
+{
+  /* the kernel counts the terminating NUL of a pathname, SUN_LEN() does not */
+  _assert_address_equal(g_sockaddr_unix_new("/dev/log"), _unix_new2("/dev/log", sizeof("/dev/log")), TRUE);
+  _assert_address_equal(g_sockaddr_unix_new("/dev/log"), g_sockaddr_unix_new("/dev/log2"), FALSE);
+
+  _assert_address_equal(g_sockaddr_unix_new(NULL), _unix_new2("", 0), TRUE);
+  _assert_address_equal(g_sockaddr_unix_new(NULL), g_sockaddr_unix_new("/dev/log"), FALSE);
+
+  /* abstract names start with a NUL and may contain further NULs */
+  _assert_address_equal(_unix_new2("\0log\0a", 6), _unix_new2("\0log\0a", 6), TRUE);
+  _assert_address_equal(_unix_new2("\0log\0a", 6), _unix_new2("\0log\0b", 6), FALSE);
+  _assert_address_equal(_unix_new2("\0log", 4), _unix_new2("\0log\0", 5), FALSE);
+  _assert_address_equal(_unix_new2("\0", 1), g_sockaddr_unix_new(NULL), FALSE);
 }
