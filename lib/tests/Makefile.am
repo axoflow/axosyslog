@@ -36,6 +36,7 @@ lib_tests_TESTS		= \
 	lib/tests/test_zone		   \
 	lib/tests/test_logwriter	\
 	lib/tests/test_logscheduler \
+	lib/tests/test_logbalancer \
 	lib/tests/test_logmpx
 
 EXTRA_DIST += lib/tests/CMakeLists.txt
@@ -175,6 +176,9 @@ endif
 
 lib_tests_test_logscheduler_CFLAGS = $(TEST_CFLAGS)
 lib_tests_test_logscheduler_LDADD = $(TEST_LDADD)
+
+lib_tests_test_logbalancer_CFLAGS = $(TEST_CFLAGS)
+lib_tests_test_logbalancer_LDADD = $(TEST_LDADD)
 
 lib_tests_test_logmpx_CFLAGS = $(TEST_CFLAGS)
 lib_tests_test_logmpx_LDADD = $(TEST_LDADD)
