@@ -47,12 +47,18 @@ stats_counter_read_only(StatsCounterItem *counter)
   return counter->external;
 }
 
+#if SYSLOG_NG_ENABLE_DEBUG
+#define stats_counter_assert_writable(counter) g_assert(!stats_counter_read_only(counter))
+#else
+#define stats_counter_assert_writable(counter)
+#endif
+
 static inline void
 stats_counter_add(StatsCounterItem *counter, gssize add)
 {
   if (counter)
     {
-      g_assert(!stats_counter_read_only(counter));
+      stats_counter_assert_writable(counter);
       atomic_gssize_add(&counter->value, add);
     }
 }
@@ -62,7 +68,7 @@ stats_counter_sub(StatsCounterItem *counter, gssize sub)
 {
   if (counter)
     {
-      g_assert(!stats_counter_read_only(counter));
+      stats_counter_assert_writable(counter);
       atomic_gssize_sub(&counter->value, sub);
     }
 }
@@ -72,7 +78,7 @@ stats_counter_inc(StatsCounterItem *counter)
 {
   if (counter)
     {
-      g_assert(!stats_counter_read_only(counter));
+      stats_counter_assert_writable(counter);
       atomic_gssize_inc(&counter->value);
     }
 }
@@ -82,7 +88,7 @@ stats_counter_dec(StatsCounterItem *counter)
 {
   if (counter)
     {
-      g_assert(!stats_counter_read_only(counter));
+      stats_counter_assert_writable(counter);
       atomic_gssize_dec(&counter->value);
     }
 }
@@ -115,7 +121,11 @@ stats_counter_get(StatsCounterItem *counter)
 static inline void
 stats_counter_set_time(StatsCounterItem *counter, gint64 value)
 {
-  stats_counter_set(counter, (gsize) MAX(0, value));
+  gsize new_value = (gsize) MAX(0, value);
+  if (counter && stats_counter_get(counter) == new_value)
+    return;
+
+  stats_counter_set(counter, new_value);
 }
 
 static inline gchar *

@@ -67,8 +67,6 @@ struct _LogWriter
   LogPipe super;
   LogQueue *queue;
   guint32 flags:31;
-  gint32 seq_num;
-  gboolean partial_write;
 
   struct
   {
@@ -105,6 +103,9 @@ struct _LogWriter
   gchar *stats_id;
 
   struct iv_fd fd_watch;
+  gint32 seq_num;
+  gboolean partial_write;
+
   struct iv_timer suspend_timer;
   struct iv_task immed_io_task;
   struct iv_event queue_filled;
