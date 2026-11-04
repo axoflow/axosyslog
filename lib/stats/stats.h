@@ -35,6 +35,7 @@ typedef struct _StatsOptions
   gint lifetime;
   gint max_dynamic;
   CfgYesNoAuto syslog_stats;
+  CfgYesNoAuto tag_stats;
 } StatsOptions;
 
 enum
