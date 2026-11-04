@@ -38,13 +38,16 @@ void stats_aggregator_registry_deinit(void);
 
 /* type specific helpers */
 
-void stats_register_aggregator_maximum(gint level, StatsClusterKey *sc_key, StatsAggregator **aggr);
-void stats_register_aggregator_average(gint level, StatsClusterKey *sc_key, StatsAggregator **aggr);
 void stats_register_aggregator_cps(gint level, StatsClusterKey *sc_key, StatsClusterKey *sc_key_input, gint stats_type,
                                    StatsAggregator **aggr);
 void stats_register_aggregator_hist(gint level, StatsClusterKey *sc_key,
                                     gint min_bucket, gint num_buckets,
                                     StatsAggregator **aggr);
+void stats_register_aggregator_hist_with_legacy(gint level, StatsClusterKey *sc_key,
+                                                gint min_bucket, gint num_buckets,
+                                                StatsClusterKey *legacy_average_key,
+                                                StatsClusterKey *legacy_maximum_key,
+                                                StatsAggregator **aggr);
 void stats_unregister_aggregator(StatsAggregator **aggr);
 
 
