@@ -799,12 +799,13 @@ qdisk_get_next_tail_position(QDisk *self)
   return self->hdr->write_head;
 }
 
-gboolean
-qdisk_push_tail(QDisk *self, GString *record)
+/* Moves the write head past a record of @len bytes as if it had been written
+ * and returns the position to write it to, or -1 if it does not fit.  The
+ * positions do not depend on @skip_truncate, which leaves the file size
+ * alone. */
+static gint64
+_advance_write_head(QDisk *self, gsize len, gboolean skip_truncate)
 {
-  if (!qdisk_started(self))
-    return FALSE;
-
   if (_could_not_wrap_write_head_last_push_but_now_can(self))
     {
       /*
@@ -815,18 +816,11 @@ qdisk_push_tail(QDisk *self, GString *record)
       self->hdr->write_head = QDISK_RESERVED_SPACE;
     }
 
-  if (!qdisk_is_space_avail(self, record->len))
-    return FALSE;
+  if (!qdisk_is_space_avail(self, len))
+    return -1;
 
-  _invalidate_read_ahead_range(self, self->hdr->write_head, record->len);
-  if (!pwrite_strict(self->fd, record->str, record->len, self->hdr->write_head))
-    {
-      msg_error("Error writing disk-queue file",
-                evt_tag_error("error"));
-      return FALSE;
-    }
-
-  self->hdr->write_head = self->hdr->write_head + record->len;
+  gint64 position = self->hdr->write_head;
+  self->hdr->write_head = position + len;
 
 
   /* NOTE: we only wrap around if the read head is before the write,
@@ -856,7 +850,8 @@ qdisk_push_tail(QDisk *self, GString *record)
     {
       if (self->cached_file_size > self->hdr->write_head)
         {
-          _maybe_truncate_file(self, self->hdr->write_head);
+          if (!skip_truncate)
+            _maybe_truncate_file(self, self->hdr->write_head);
         }
       else
         {
@@ -878,7 +873,101 @@ qdisk_push_tail(QDisk *self, GString *record)
         }
     }
   self->hdr->length++;
-  return TRUE;
+  return position;
+}
+
+static inline gsize
+_get_serialized_record_size(const GString *records, gsize offset)
+{
+  guint32 record_length;
+
+  memcpy(&record_length, records->str + offset, sizeof(record_length));
+  return sizeof(record_length) + GUINT32_FROM_BE(record_length);
+}
+
+/* Finds the records starting at @offset that land contiguously in the file,
+ * returns their number and stores their position and total size. */
+static gint
+_plan_contiguous_run(QDisk *self, const GString *records, gsize offset, gint count,
+                     gint64 *run_position, gsize *run_size)
+{
+  /* plan on a copy, the header is mmap()-ed and must not point past the
+   * data written so far */
+  QDiskFileHeader *hdr = self->hdr;
+  QDiskFileHeader planned_hdr = *hdr;
+  gint64 cached_file_size = self->cached_file_size;
+  gint run_count = 0;
+
+  self->hdr = &planned_hdr;
+  *run_size = 0;
+  while (run_count < count)
+    {
+      if (run_count > 0 && qdisk_get_next_tail_position(self) != *run_position + (gint64) *run_size)
+        break;
+
+      gsize record_size = _get_serialized_record_size(records, offset + *run_size);
+      gint64 position = _advance_write_head(self, record_size, TRUE);
+      if (position < 0)
+        break;
+
+      if (run_count == 0)
+        *run_position = position;
+      *run_size += record_size;
+      run_count++;
+    }
+  self->hdr = hdr;
+  self->cached_file_size = cached_file_size;
+  return run_count;
+}
+
+/* Pushes @count records, serialized back to back into @records the way
+ * qdisk_serialize() produces them.  Records that land contiguously in the
+ * file are written with a single pwrite(), the header only moves after
+ * their data is written.  Returns the number of records pushed, fewer than
+ * @count if the disk-buffer got full or writing failed. */
+gint
+qdisk_push_tail_records(QDisk *self, const GString *records, gint count)
+{
+  if (!qdisk_started(self))
+    return 0;
+
+  gint pushed = 0;
+  gsize offset = 0;
+  while (pushed < count)
+    {
+      gint64 run_position;
+      gsize run_size;
+      gint run_count = _plan_contiguous_run(self, records, offset, count - pushed, &run_position, &run_size);
+      if (run_count == 0)
+        break;
+
+      _invalidate_read_ahead_range(self, run_position, run_size);
+      if (!pwrite_strict(self->fd, records->str + offset, run_size, run_position))
+        {
+          msg_error("Error writing disk-queue file",
+                    evt_tag_error("error"));
+          break;
+        }
+
+      /* truncating the file to the end of the first records would cut the
+       * ones already written after them, truncate at the end of the run */
+      for (gint i = 0; i < run_count; i++)
+        {
+          gsize record_size = _get_serialized_record_size(records, offset);
+          gint64 position = _advance_write_head(self, record_size, i < run_count - 1);
+          g_assert(position == run_position);
+          run_position += record_size;
+          offset += record_size;
+        }
+      pushed += run_count;
+    }
+  return pushed;
+}
+
+gboolean
+qdisk_push_tail(QDisk *self, GString *record)
+{
+  return qdisk_push_tail_records(self, record, 1) == 1;
 }
 
 /* Bytes after the write head are not valid records yet, they will be written

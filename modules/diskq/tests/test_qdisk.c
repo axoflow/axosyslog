@@ -1206,6 +1206,79 @@ Test(qdisk, read_ahead_is_dropped_when_the_file_is_reset)
   cleanup_qdisk(filename, qdisk);
 }
 
+static gint
+_push_numbered_records(QDisk *qdisk, guint first_id, gint count)
+{
+  GString *records = g_string_new(NULL);
+
+  for (gint i = 0; i < count; i++)
+    {
+      GString *record = _serialize_numbered_record(first_id + i);
+      g_string_append_len(records, record->str, record->len);
+      g_string_free(record, TRUE);
+    }
+
+  gint pushed = qdisk_push_tail_records(qdisk, records, count);
+  g_string_free(records, TRUE);
+  return pushed;
+}
+
+static void
+_assert_record_batches_survive_wrapping(TestDiskQType dq_type, const gchar *filename)
+{
+  QDisk *qdisk = create_qdisk(dq_type, filename, MiB(1));
+  qdisk_start(qdisk, NULL, NULL);
+
+  guint next_push = 0, next_pop = 0;
+  for (gint batch = 1; next_push < 5000; batch = batch % 13 + 1)
+    {
+      cr_assert_eq(_push_numbered_records(qdisk, next_push, batch), batch);
+      next_push += batch;
+      while (qdisk_get_length(qdisk) > 40)
+        _pop_numbered_record_and_ack(qdisk, dq_type, next_pop++);
+    }
+
+  while (qdisk_get_length(qdisk) > 0)
+    _pop_numbered_record_and_ack(qdisk, dq_type, next_pop++);
+  cr_assert_eq(next_pop, next_push);
+
+  qdisk_stop(qdisk, NULL, NULL);
+  cleanup_qdisk(filename, qdisk);
+}
+
+Test(qdisk, push_tail_records_wraps_like_push_tail_non_reliable)
+{
+  _assert_record_batches_survive_wrapping(TDISKQ_NON_RELIABLE, "test_qdisk_push_tail_records_wrap.qf");
+}
+
+Test(qdisk, push_tail_records_wraps_like_push_tail_reliable)
+{
+  _assert_record_batches_survive_wrapping(TDISKQ_RELIABLE, "test_qdisk_push_tail_records_wrap.rqf");
+}
+
+Test(qdisk, push_tail_records_stops_where_push_tail_does_when_full)
+{
+  const gchar *filename = "test_qdisk_push_tail_records_full.qf";
+  QDisk *qdisk = create_qdisk(TDISKQ_NON_RELIABLE, filename, MiB(1));
+  qdisk_start(qdisk, NULL, NULL);
+
+  guint fitting = 0;
+  while (_push_numbered_record(qdisk, fitting))
+    fitting++;
+  while (qdisk_get_length(qdisk) > 0)
+    _pop_and_assert_numbered_record(qdisk, fitting - qdisk_get_length(qdisk));
+  cr_assert_eq(qdisk_get_reader_head(qdisk), QDISK_RESERVED_SPACE);
+
+  cr_assert_eq(_push_numbered_records(qdisk, 0, fitting + 50), fitting);
+  cr_assert_eq(qdisk_get_length(qdisk), fitting);
+  cr_assert_eq(_push_numbered_records(qdisk, fitting, 1), 0);
+  for (guint id = 0; id < fitting; id++)
+    _pop_and_assert_numbered_record(qdisk, id);
+
+  qdisk_stop(qdisk, NULL, NULL);
+  cleanup_qdisk(filename, qdisk);
+}
+
 static void
 setup(void)
 {
