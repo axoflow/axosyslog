@@ -342,12 +342,13 @@ _move_messages_from_overflow(LogQueueDiskNonReliable *self)
 }
 
 static gboolean
-_move_messages_from_disk_to_front_cache_queue(LogQueueDiskNonReliable *self, LogQueueDiskMemoryQueue *queue)
+_move_messages_from_disk_to_front_cache_queue(LogQueueDiskNonReliable *self, LogQueueDiskMemoryQueue *queue,
+                                              gint max_msgs)
 {
   gboolean success = TRUE;
   gsize loaded_size = 0;
 
-  while (queue->len < queue->limit)
+  for (gint i = 0; i < max_msgs && queue->len < queue->limit; i++)
     {
       if (qdisk_get_length(self->super.qdisk) <= 0)
         break;
@@ -377,13 +378,13 @@ _move_messages_from_disk_to_front_cache_queue(LogQueueDiskNonReliable *self, Log
 static inline gboolean
 _move_messages_from_disk_to_front_cache(LogQueueDiskNonReliable *self)
 {
-  return _move_messages_from_disk_to_front_cache_queue(self, &self->front_cache);
+  return _move_messages_from_disk_to_front_cache_queue(self, &self->front_cache, G_MAXINT);
 }
 
 static inline gboolean
 _move_messages_from_disk_to_front_cache_output(LogQueueDiskNonReliable *self)
 {
-  return _move_messages_from_disk_to_front_cache_queue(self, &self->front_cache_output);
+  return _move_messages_from_disk_to_front_cache_queue(self, &self->front_cache_output, G_MAXINT);
 }
 
 /*
@@ -420,8 +421,14 @@ _maybe_move_messages_among_queue_segments(LogQueueDiskNonReliable *self)
         _move_items_from_front_cache_queue_to_output_queue(self);
 
       ret = _move_messages_from_disk_to_front_cache_output(self);
-      if (ret)
+
+      /* While the source threads spill to the disk, they also load the
+       * front cache from it (see _load_front_cache_from_disk()), so that
+       * deserializing does not slow down the destination.  Load it here
+       * only when they did not, e.g. once they went quiet. */
+      if (ret && !self->front_cache_loaded_by_sources)
         ret = _move_messages_from_disk_to_front_cache(self);
+      self->front_cache_loaded_by_sources = FALSE;
     }
 
   if (self->flow_control_window.len > 0)
@@ -880,6 +887,23 @@ _move_input_to_front_cache(LogQueueDiskNonReliable *self, InputQueue *input_queu
   return count;
 }
 
+/* Loads up to @max_msgs messages from the disk into the front cache, which
+ * comes before the disk, so the order is kept.  Called by the source
+ * threads as they spill to the disk: the ones filling the disk also pay for
+ * reading it back, instead of the destination thread, which would then
+ * fall further behind.  Must be called with the lock held. */
+static void
+_load_front_cache_from_disk(LogQueueDiskNonReliable *self, gint max_msgs)
+{
+  if (!_is_front_cache_enabled(self) || qdisk_is_read_only(self->super.qdisk))
+    return;
+
+  /* a read error restarts the corrupted disk-buffer, the same way as when
+   * the destination thread reads it */
+  _move_messages_from_disk_to_front_cache_queue(self, &self->front_cache, max_msgs);
+  self->front_cache_loaded_by_sources = TRUE;
+}
+
 /* Serializes messages from the head of the input queue outside of the lock,
  * writes them to the disk at once and acks them once the lock is released. */
 static gint
@@ -923,6 +947,7 @@ _move_input_to_disk(LogQueueDiskNonReliable *self, InputQueue *input_queue)
         {
           log_queue_queued_messages_add(&self->super.super, pushed);
           log_queue_disk_update_disk_related_counters(&self->super);
+          _load_front_cache_from_disk(self, pushed);
           log_queue_push_notify(&self->super.super);
         }
 
