@@ -90,7 +90,7 @@ Test(logscheduler, test_log_scheduler_can_be_constructed)
   LogScheduler *s;
 
   log_scheduler_options_defaults(&options);
-  log_scheduler_options_init(&options, configuration);
+  log_scheduler_options_init(&options, configuration, NULL);
   s = log_scheduler_new(&options, &test_pipe->super, "id");
 
   LogMessage *msg = create_sample_message();
@@ -102,6 +102,7 @@ Test(logscheduler, test_log_scheduler_can_be_constructed)
 
   cr_assert(test_pipe->messages_count == 2);
   log_scheduler_free(s);
+  log_scheduler_options_destroy(&options);
   _destroy_test_pipe(test_pipe);
 }
 

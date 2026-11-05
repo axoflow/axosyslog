@@ -84,7 +84,7 @@ DestinationDriver::init()
 
   if (this->path_template &&
       !log_template_is_literal_string(this->path_template) &&
-      !this->super->super.worker_partition_key)
+      !log_threaded_dest_driver_get_worker_partition_key(&this->super->super))
     {
       log_threaded_dest_driver_set_worker_partition_key_ref(&this->super->super.super.super,
                                                             log_template_ref(this->path_template));

@@ -116,6 +116,8 @@ set (LIB_HEADERS
     hostname.h
     host-resolve.h
     list-adt.h
+    logbalancer.h
+    logbalancer-autoscale.h
     logmatcher.h
     logmpx.h
     logpipe.h
@@ -216,6 +218,8 @@ set(LIB_SOURCES
     gsocket.c
     hostname.c
     host-resolve.c
+    logbalancer.c
+    logbalancer-autoscale.c
     logmatcher.c
     logmpx.c
     logpipe.c

@@ -48,6 +48,7 @@ debian/autoreconf.*
 build/
 tests/light/reports
 tests/light/axosyslog-light.session.pickle
+tests/light/axosyslog-light.lock
 tags
 TAGS
 GPATH

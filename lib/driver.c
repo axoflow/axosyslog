@@ -28,6 +28,7 @@
 #include "messages.h"
 #include "metrics/metric-names.h"
 #include "stats/stats-cluster-logpipe.h"
+#include "stats/stats-counter-batch.h"
 
 #include <string.h>
 
@@ -239,8 +240,8 @@ log_src_driver_queue_method(LogPipe *s, LogMessage *msg, const LogPathOptions *p
     afinter_postpone_mark(cfg->mark_freq);
 
   log_msg_set_value(msg, LM_V_SOURCE, self->super.group, self->group_len);
-  stats_counter_inc(self->super.processed_group_messages);
-  stats_counter_inc(self->received_global_messages);
+  stats_counter_inc_batched(self->super.processed_group_messages);
+  stats_counter_inc_batched(self->received_global_messages);
   log_pipe_forward_msg(s, msg, path_options);
 }
 
@@ -322,9 +323,19 @@ log_dest_driver_queue_method(LogPipe *s, LogMessage *msg, const LogPathOptions *
 {
   LogDestDriver *self = (LogDestDriver *) s;
 
+  stats_counter_inc_batched(self->super.processed_group_messages);
+  stats_counter_inc_batched(self->queued_global_messages);
+  log_pipe_forward_msg(s, msg, path_options);
+}
+
+/* the same as log_dest_driver_queue_method(), but forwards the message to
+ * @next instead of pipe_next, e.g. for destinations with multiple writers */
+void
+log_dest_driver_queue_to(LogDestDriver *self, LogPipe *next, LogMessage *msg, const LogPathOptions *path_options)
+{
   stats_counter_inc(self->super.processed_group_messages);
   stats_counter_inc(self->queued_global_messages);
-  log_pipe_forward_msg(s, msg, path_options);
+  log_pipe_queue(next, msg, path_options);
 }
 
 /* @driver_sck_builder is the one the queues of this destination were

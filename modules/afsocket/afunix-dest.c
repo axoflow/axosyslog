@@ -44,18 +44,18 @@ afunix_dd_get_dest_name(const AFSocketDestDriver *s)
 }
 
 static gboolean
-afunix_dd_setup_addresses(AFSocketDestDriver *s)
+afunix_dd_setup_addresses(AFSocketDestDriver *s, AFSocketDestConnection *conn)
 {
   AFUnixDestDriver *self = (AFUnixDestDriver *) s;
 
-  if (!afsocket_dd_setup_addresses_method(s))
+  if (!afsocket_dd_setup_addresses_method(s, conn))
     return FALSE;
 
   if (!self->super.bind_addr)
     self->super.bind_addr = g_sockaddr_unix_new(NULL);
 
-  if (!self->super.dest_addr)
-    self->super.dest_addr = g_sockaddr_unix_new(self->filename);
+  if (!conn->dest_addr)
+    conn->dest_addr = g_sockaddr_unix_new(self->filename);
 
   return TRUE;
 }

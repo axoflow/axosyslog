@@ -278,6 +278,7 @@ main_location_print (FILE *yyo, YYLTYPE const * const yylocp)
 %token KW_WORKER_PARTITION_AUTOSCALING_WFO 10410
 
 %token KW_LOG_FLOW_CONTROL            10411
+%token KW_TAG_STATS                   10412
 
 %token KW_CHAIN_HOSTNAMES             10090
 %token KW_NORMALIZE_HOSTNAMES         10091
@@ -1201,6 +1202,7 @@ stats_group_option
 	| KW_LIFETIME '(' positive_integer ')'      { last_stats_options->lifetime = $3; }
 	| KW_MAX_DYNAMIC '(' nonnegative_integer ')'   { last_stats_options->max_dynamic = $3; }
 	| KW_SYSLOG_STATS '(' yesnoauto ')'     { last_stats_options->syslog_stats = $3; }
+	| KW_TAG_STATS '(' yesnoauto ')'        { last_stats_options->tag_stats = $3; }
 	| KW_HEALTHCHECK_FREQ '(' nonnegative_integer ')' { last_healthcheck_options->freq = $3; }
 	;
 
@@ -1609,7 +1611,7 @@ dest_writer_options
 /* NOTE: plugins need to set "last_writer_options" in order to incorporate this rule in their grammar */
 dest_writer_option
         : KW_FLAGS '(' dest_writer_options_flags ')'
-	| KW_FLUSH_LINES '(' nonnegative_integer ')'		{ last_writer_options->flush_lines = $3; }
+	| KW_FLUSH_LINES '(' nonnegative_integer ')'		{ last_writer_options->proto_options.super.flush_lines = $3; }
 	| KW_FLUSH_TIMEOUT '(' positive_integer ')'	{ }
         | KW_SUPPRESS '(' nonnegative_integer ')'            { last_writer_options->suppress = $3; }
 	| KW_TEMPLATE '(' template_name_or_content ')'       { last_writer_options->template = $3; }

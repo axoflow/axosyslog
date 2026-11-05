@@ -255,8 +255,26 @@ struct _LogMessage
    * log_msg_ref/unref.
    */
 
-  gint ack_and_ref_and_abort_and_suspended;
+  union
+  {
+    struct
+    {
+      gint ack_and_ref_and_abort_and_suspended;
+      /* identifier of the source host */
+      guint32 host_id;
+      /* unique message identifier (upon receipt) */
+      guint64 rcptid;
+    };
+
+    /* once the reference count drops to zero the fields above are dead and
+     * the message is linked into the free list of the thread that
+     * allocated it through this member, see logmsg-free-queue.c */
+    struct iv_list_head free_list;
+  };
   guint32 flags;
+
+  /* number of bytes in the received message */
+  guint32 recvd_rawmsg_size;
 
   NVTable *payload;
   LogMessage *original;
@@ -296,13 +314,6 @@ struct _LogMessage
 
   /* is this message currently read only, used to track when we need to copy-on-write */
   guint8 write_protected;
-  /* identifier of the source host */
-  guint32 host_id;
-  /* unique message identifier (upon receipt) */
-  guint64 rcptid;
-
-  /* number of bytes in the received message */
-  guint32 recvd_rawmsg_size;
 
   /* allocated bytes in LogMessage, is limited to 32 bits as it's highly
    * unlikely that we would ever need more than 4GB for a single message
@@ -319,6 +330,10 @@ struct _LogMessage
 
   /* the next available node */
   volatile gint cur_node;
+
+  /* id of the worker thread that allocated this message (0 if unknown), the
+   * message is freed by that thread, see logmsg-free-queue.c */
+  guint16 origin_thread_id;
 
   /* preallocated LogQueueNodes used to insert this message into a LogQueue */
   LogMessageQueueNode nodes[0];
@@ -418,6 +433,7 @@ log_msg_ref(LogMessage *self)
 }
 
 void _log_msg_free(LogMessage *self);
+void log_msg_free_in_place(LogMessage *self);
 
 /**
  * log_msg_unref:

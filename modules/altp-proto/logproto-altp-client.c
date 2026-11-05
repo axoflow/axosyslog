@@ -538,7 +538,8 @@ _count_written_frames(LogProtoAltpClient *self)
   _persist_sender_state(self);
 }
 
-/* LPS_PARTIAL means output remains, which poll_prepare() turns into G_IO_OUT.
+/* Output that would block stays in out_buf, which poll_prepare() turns into
+ * G_IO_OUT.
  *
  * The terminator never shares a write with Frame octets: a write that holds
  * Frames may block with part of it on the wire, and under ZLIB -- whose
@@ -570,7 +571,7 @@ _drain_output(LogProtoAltpClient *self)
               return LPS_ERROR;
             }
 
-          return LPS_PARTIAL;
+          return LPS_SUCCESS;
         }
 
       g_string_truncate(self->out_buf, 0);
@@ -1239,7 +1240,7 @@ _batch_frame_bound(LogProtoAltpClient *self)
  * an oversized message costs at most one extra Batch boundary.
  */
 static LogProtoStatus
-_drop_oversized_message(LogProtoAltpClient *self, guchar *msg, gsize msg_len, gboolean *consumed)
+_drop_oversized_message(LogProtoAltpClient *self, const guchar *msg, gsize msg_len, gboolean *consumed)
 {
   if (self->frames_posted > 0)
     return LPS_SUCCESS;
@@ -1251,7 +1252,6 @@ _drop_oversized_message(LogProtoAltpClient *self, guchar *msg, gsize msg_len, gb
   stats_counter_inc(self->metrics.frames_dropped);
 
   log_proto_client_msg_ack(&self->super, 1);
-  g_free(msg);
   *consumed = TRUE;
 
   return LPS_SUCCESS;
@@ -1261,13 +1261,11 @@ _drop_oversized_message(LogProtoAltpClient *self, guchar *msg, gsize msg_len, gb
  *
  * A refusal -- *consumed FALSE with LPS_SUCCESS -- makes the LogWriter rewind
  * that one message and end the pass, which is what is wanted whenever no Frame
- * may be written.  LPS_PARTIAL is never returned: the LogWriter remembers it
- * and rewinds the WHOLE backlog on reopen, which for a Session that retains
- * its Frames until they are acknowledged would resend the whole open Batch on
- * every reconnect.
+ * may be written.
  */
 static LogProtoStatus
-log_proto_altp_client_post(LogProtoClient *s, LogMessage *logmsg, guchar *msg, gsize msg_len, gboolean *consumed)
+log_proto_altp_client_post(LogProtoClient *s, LogMessage *logmsg, const guchar *msg, gsize msg_len,
+                           gboolean *consumed)
 {
   LogProtoAltpClient *self = (LogProtoAltpClient *) s;
 
@@ -1288,7 +1286,6 @@ log_proto_altp_client_post(LogProtoClient *s, LogMessage *logmsg, guchar *msg, g
     return LPS_SUCCESS;
 
   _append_frame(self, msg, msg_len);
-  g_free(msg);
   *consumed = TRUE;
 
   if (self->frames_posted >= _batch_frame_bound(self))

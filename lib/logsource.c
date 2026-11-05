@@ -28,6 +28,7 @@
 #include "stats/stats-registry.h"
 #include "stats/stats-cluster-logpipe.h"
 #include "stats/stats-cluster-single.h"
+#include "stats/stats-counter-batch.h"
 #include "stats/aggregator/stats-aggregator-registry.h"
 #include "msg-stats.h"
 #include "ack-tracker/ack_tracker.h"
@@ -40,6 +41,7 @@
 #include "mainloop.h"
 #include "mainloop-call.h"
 #include "compat/valgrind.h"
+#include "tls-support.h"
 
 #include <string.h>
 #include <unistd.h>
@@ -115,18 +117,21 @@ _flow_control_window_size_adjust(LogSource *self, guint32 window_size_increment,
 }
 
 static void
-_flow_control_rate_adjust(LogSource *self)
+_flow_control_rate_adjust(LogSource *self, guint32 num_acked)
 {
 #ifdef SYSLOG_NG_HAVE_CLOCK_GETTIME
-  guint32 cur_ack_count, last_ack_count;
+  guint32 prev_ack_count, cur_ack_count, last_ack_count;
   /* NOTE: this is racy. msg_ack may be executing in different writer
    * threads. I don't want to lock, all we need is an approximate value of
    * the ACK rate of the last couple of seconds.  */
 
   if (accurate_nanosleep && self->threaded)
     {
-      cur_ack_count = ++self->ack_count;
-      if ((cur_ack_count & 0x3FFF) == 0)
+      prev_ack_count = self->ack_count;
+      cur_ack_count = prev_ack_count + num_acked;
+      self->ack_count = cur_ack_count;
+
+      if ((prev_ack_count & ~0x3FFF) != (cur_ack_count & ~0x3FFF))
         {
           struct timespec now;
           gint64 diff;
@@ -220,14 +225,96 @@ void
 log_source_flow_control_adjust(LogSource *self, guint32 window_size_increment)
 {
   _flow_control_window_size_adjust(self, window_size_increment, FALSE);
-  _flow_control_rate_adjust(self);
+  _flow_control_rate_adjust(self, 1);
 }
 
 void
 log_source_flow_control_adjust_when_suspended(LogSource *self, guint32 window_size_increment)
 {
   _flow_control_window_size_adjust(self, window_size_increment, TRUE);
-  _flow_control_rate_adjust(self);
+  _flow_control_rate_adjust(self, 1);
+}
+
+/*
+ * Acks released between log_source_ack_batch_begin() and
+ * log_source_ack_batch_end() are accumulated per source and applied in one
+ * go: a single window adjustment and unref instead of one per message.  These
+ * atomics hit cache lines that the source's thread writes for every message.
+ * A batch of acks mostly comes from the same source, as the fifo moves
+ * messages in per-thread chunks, so we only keep track of the last one.
+ */
+TLS_BLOCK_START
+{
+  gint ack_batch_depth;
+  LogSource *ack_batch_source;
+  guint32 ack_batch_count;
+}
+TLS_BLOCK_END;
+
+#define ack_batch_depth  __tls_deref(ack_batch_depth)
+#define ack_batch_source __tls_deref(ack_batch_source)
+#define ack_batch_count  __tls_deref(ack_batch_count)
+
+/* drop @count references at once, the caller owns all of them */
+static void
+_unref_many(LogSource *self, guint32 count)
+{
+  if (count > 1)
+    g_atomic_counter_exchange_and_add(&self->super.ref_cnt, -(gint) (count - 1));
+  log_pipe_unref(&self->super);
+}
+
+static void
+_ack_batch_flush(void)
+{
+  LogSource *source = ack_batch_source;
+  guint32 count = ack_batch_count;
+
+  if (!source)
+    return;
+
+  ack_batch_source = NULL;
+  ack_batch_count = 0;
+  _flow_control_window_size_adjust(source, count, FALSE);
+  _flow_control_rate_adjust(source, count);
+  _unref_many(source, count);
+}
+
+void
+log_source_ack_batch_begin(void)
+{
+  ack_batch_depth++;
+}
+
+void
+log_source_ack_batch_end(void)
+{
+  g_assert(ack_batch_depth > 0);
+  if (--ack_batch_depth == 0)
+    _ack_batch_flush();
+}
+
+/* release the window slot and the source reference held by an acked message */
+void
+log_source_release_acked_msg(LogSource *self, AckType ack_type)
+{
+  if (ack_type == AT_SUSPENDED || ack_batch_depth == 0)
+    {
+      /* a deferred adjustment would lift the suspend again, keep the order */
+      _ack_batch_flush();
+      log_source_flow_control_adjust(self, 1);
+      if (ack_type == AT_SUSPENDED)
+        log_source_flow_control_suspend(self);
+      log_pipe_unref(&self->super);
+      return;
+    }
+
+  if (ack_batch_source != self)
+    {
+      _ack_batch_flush();
+      ack_batch_source = self;
+    }
+  ack_batch_count++;
 }
 
 void
@@ -259,6 +346,66 @@ log_source_flow_control_suspend(LogSource *self)
   window_size_counter_suspend(&self->window_size);
 }
 
+static void
+_invalidate_resolved_peer(LogSource *self)
+{
+  self->resolved_peer.sec = -1;
+  g_sockaddr_unref(self->resolved_peer.saddr);
+  self->resolved_peer.saddr = NULL;
+}
+
+/* Peer addresses are never changed once created, so a reference is as
+ * good as a copy.  Stream transports pass the same GSockAddr instance
+ * with every message, which makes the comparison a pointer check. */
+static gboolean
+_is_resolved_peer_valid(LogSource *self, GSockAddr *saddr, gint64 sec)
+{
+  return self->resolved_peer.sec == sec && g_sockaddr_address_equal(saddr, self->resolved_peer.saddr);
+}
+
+static void
+_store_resolved_peer(LogSource *self, GSockAddr *saddr, gint64 sec, const gchar *name, gsize name_len)
+{
+  if (name_len >= sizeof(self->resolved_peer.name))
+    {
+      _invalidate_resolved_peer(self);
+      return;
+    }
+
+  GSockAddr *old_saddr = self->resolved_peer.saddr;
+  self->resolved_peer.saddr = g_sockaddr_ref(saddr);
+  g_sockaddr_unref(old_saddr);
+
+  self->resolved_peer.sec = sec;
+  memcpy(self->resolved_peer.name, name, name_len);
+  self->resolved_peer.name[name_len] = 0;
+  self->resolved_peer.name_len = name_len;
+}
+
+/* The name is reused only within the second it was resolved in, so that
+ * changes in DNS (or the DNS cache expiring an entry) are noticed the same
+ * way as if we resolved it for every message. */
+static const gchar *
+_resolve_peer_hostname(LogSource *self, LogMessage *msg, gsize *name_len)
+{
+  gint64 sec = msg->timestamps[LM_TS_RECVD].ut_sec;
+
+  if (!_is_resolved_peer_valid(self, msg->saddr, sec))
+    {
+      gsize len;
+      const gchar *name = resolve_sockaddr_to_hostname(&len, msg->saddr, &self->options->host_resolve_options);
+
+      _store_resolved_peer(self, msg->saddr, sec, name, len);
+      if (self->resolved_peer.sec != sec)
+        {
+          *name_len = len;
+          return name;
+        }
+    }
+  *name_len = self->resolved_peer.name_len;
+  return self->resolved_peer.name;
+}
+
 void
 log_source_mangle_hostname(LogSource *self, LogMessage *msg)
 {
@@ -266,7 +413,7 @@ log_source_mangle_hostname(LogSource *self, LogMessage *msg)
   gsize resolved_name_len;
   const gchar *orig_host;
 
-  resolved_name = resolve_sockaddr_to_hostname(&resolved_name_len, msg->saddr, &self->options->host_resolve_options);
+  resolved_name = _resolve_peer_hostname(self, msg, &resolved_name_len);
   log_msg_set_value(msg, LM_V_HOST_FROM, resolved_name, resolved_name_len);
 
   orig_host = log_msg_get_value(msg, LM_V_HOST, NULL);
@@ -681,7 +828,7 @@ log_source_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_options
 
   guint64 rcptid = msg->rcptid;
 
-  stats_counter_inc(self->metrics.recvd_messages);
+  stats_counter_inc_batched(self->metrics.recvd_messages);
   stats_counter_set_time(self->metrics.last_message_seen, msg->timestamps[LM_TS_RECVD].ut_sec);
   stats_byte_counter_add(&self->metrics.recvd_bytes, msg->recvd_rawmsg_size);
   UnixTime recvd_stamp = msg->timestamps[LM_TS_RECVD];
@@ -748,6 +895,7 @@ log_source_set_options(LogSource *self, LogSourceOptions *options,
     _initialize_window(self, options->init_window_size);
 
   self->options = options;
+  _invalidate_resolved_peer(self);
   _set_metric_options(self, stats_id, kb);
   self->threaded = threaded;
 
@@ -778,6 +926,7 @@ log_source_init_instance(LogSource *self, GlobalConfig *cfg)
   self->super.init = log_source_init;
   self->super.deinit = log_source_deinit;
   self->window_initialized = FALSE;
+  _invalidate_resolved_peer(self);
   self->ack_tracker_factory = instant_ack_tracker_bookmarkless_factory_new();
   self->ack_tracker = NULL;
 }
@@ -801,6 +950,7 @@ log_source_free(LogPipe *s)
 
   g_free(self->name);
   g_free(self->stats_id);
+  _invalidate_resolved_peer(self);
 
   /* free() may run in a destination thread (last acked message) */
   if (G_UNLIKELY(log_source_is_dynamic_window_enabled(self)))

@@ -1,6 +1,8 @@
 lib_logproto_tests_TESTS		 = \
 	lib/logproto/tests/test_logproto   \
-	lib/logproto/tests/test_findeom
+	lib/logproto/tests/test_findeom    \
+	lib/logproto/tests/test_text_client \
+	lib/logproto/tests/test_framed_client
 
 EXTRA_DIST += lib/logproto/tests/CMakeLists.txt
 
@@ -30,3 +32,23 @@ lib_logproto_tests_test_findeom_LDADD	= \
 	$(TEST_LDADD)
 lib_logproto_tests_test_findeom_SOURCES = \
 	lib/logproto/tests/test_findeom.c
+
+lib_logproto_tests_test_text_client_CFLAGS	= \
+	$(TEST_CFLAGS) \
+	-I${top_srcdir}/libtest
+lib_logproto_tests_test_text_client_LDADD	= \
+	${top_builddir}/lib/libsyslog-ng.la \
+	${top_builddir}/libtest/libsyslog-ng-test.a \
+	$(TEST_LDADD)
+lib_logproto_tests_test_text_client_SOURCES = \
+	lib/logproto/tests/test_text_client.c
+
+lib_logproto_tests_test_framed_client_CFLAGS	= \
+	$(TEST_CFLAGS) \
+	-I${top_srcdir}/libtest
+lib_logproto_tests_test_framed_client_LDADD	= \
+	${top_builddir}/lib/libsyslog-ng.la \
+	${top_builddir}/libtest/libsyslog-ng-test.a \
+	$(TEST_LDADD)
+lib_logproto_tests_test_framed_client_SOURCES = \
+	lib/logproto/tests/test_framed_client.c
