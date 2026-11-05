@@ -364,12 +364,13 @@ _move_messages_from_disk_to_front_cache_queue(LogQueueDiskNonReliable *self, Log
       _push_to_memory_queue_tail(queue, msg, &path_options);
       loaded_size += log_msg_get_size(msg);
       log_msg_unref(msg);
-
-      log_queue_disk_update_disk_related_counters(&self->super);
     }
 
   if (loaded_size)
-    log_queue_memory_usage_add(&self->super.super, loaded_size);
+    {
+      log_queue_memory_usage_add(&self->super.super, loaded_size);
+      log_queue_disk_update_disk_related_counters(&self->super);
+    }
   return success;
 }
 
