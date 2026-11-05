@@ -41,6 +41,7 @@ typedef struct _LogMessageSerializationState
   NVIndexEntry *updated_index;
   const UnixTime *processed;
   guint32 flags;
+  struct _LogMessageDeserializeCache *cache;
 } LogMessageSerializationState;
 
 #endif
