@@ -344,6 +344,9 @@ _move_messages_from_overflow(LogQueueDiskNonReliable *self)
 static gboolean
 _move_messages_from_disk_to_front_cache_queue(LogQueueDiskNonReliable *self, LogQueueDiskMemoryQueue *queue)
 {
+  gboolean success = TRUE;
+  gsize loaded_size = 0;
+
   while (queue->len < queue->limit)
     {
       if (qdisk_get_length(self->super.qdisk) <= 0)
@@ -353,16 +356,21 @@ _move_messages_from_disk_to_front_cache_queue(LogQueueDiskNonReliable *self, Log
       LogMessage *msg = log_queue_disk_read_message(&self->super, &path_options);
 
       if (!msg)
-        return FALSE;
+        {
+          success = FALSE;
+          break;
+        }
 
       _push_to_memory_queue_tail(queue, msg, &path_options);
-      log_queue_memory_usage_add(&self->super.super, log_msg_get_size(msg));
+      loaded_size += log_msg_get_size(msg);
       log_msg_unref(msg);
 
       log_queue_disk_update_disk_related_counters(&self->super);
     }
 
-  return TRUE;
+  if (loaded_size)
+    log_queue_memory_usage_add(&self->super.super, loaded_size);
+  return success;
 }
 
 static inline gboolean
@@ -428,17 +436,20 @@ _ack_backlog(LogQueue *s, guint num_msg_to_ack)
   LogQueueDiskNonReliable *self = (LogQueueDiskNonReliable *)s;
   LogMessage *msg;
   LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
-  guint i;
+  gsize acked_size = 0;
 
-  for (i = 0; i < num_msg_to_ack; i++)
+  for (guint i = 0; i < num_msg_to_ack; i++)
     {
       if (!_pop_from_memory_queue_head(&self->backlog, &msg, &path_options))
-        return;
+        break;
 
-      log_queue_memory_usage_sub(&self->super.super, log_msg_get_size(msg));
+      acked_size += log_msg_get_size(msg);
       log_msg_ack(msg, &path_options, AT_PROCESSED);
       log_msg_unref(msg);
     }
+
+  if (acked_size)
+    log_queue_memory_usage_sub(&self->super.super, acked_size);
 }
 
 /* runs only in the output thread */
@@ -495,6 +506,8 @@ _rewind_backlog_all(LogQueue *s)
   _rewind_backlog(s, G_MAXUINT);
 }
 
+/* the message moves on to the backlog, which is also in memory, so the
+ * memory usage does not change */
 static inline LogMessage *
 _pop_head_memory_queue(LogQueueDiskNonReliable *self, LogQueueDiskMemoryQueue *queue, LogMessageQueueNode **node,
                        LogPathOptions *path_options)
@@ -504,7 +517,6 @@ _pop_head_memory_queue(LogQueueDiskNonReliable *self, LogQueueDiskMemoryQueue *q
   if (!_pop_node_from_memory_queue_head(queue, node))
     return NULL;
   _extract_queue_node(*node, &msg, path_options);
-  log_queue_memory_usage_sub(&self->super.super, log_msg_get_size(msg));
 
   return msg;
 }
@@ -602,10 +614,12 @@ fast_success:
     {
       /* a message's node counter never decreases, so a retried message must not allocate a new node */
       _push_node_to_memory_queue_tail(&self->backlog, node);
-      log_queue_memory_usage_add(&self->super.super, log_msg_get_size(msg));
     }
   else
-    _push_tail_backlog(self, msg, path_options);
+    {
+      /* read from the disk, it was not in memory until now */
+      _push_tail_backlog(self, msg, path_options);
+    }
 
   if (stats_update)
     log_queue_queued_messages_dec(s);
