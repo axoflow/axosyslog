@@ -26,6 +26,7 @@
 #include "mainloop.h"
 
 gpointer main_loop_call(MainLoopTaskFunc func, gpointer user_data, gboolean wait);
+void main_loop_wait_for_pending_call_to_finish(void);
 
 void main_loop_call_thread_init(void);
 void main_loop_call_thread_deinit(void);

@@ -64,9 +64,20 @@ main_loop_call_free(MainLoopTaskCallSite *site)
   g_free(site);
 }
 
-static void
+/* Wait for the main loop to execute the call this thread posted earlier.
+ *
+ * Calls are posted through a single call site per thread, so posting a new
+ * one starts with this wait, even in the asynchronous (wait == FALSE) case.
+ * A thread that posts to the main loop while holding a lock the main loop
+ * takes as well therefore has to get this wait done before it takes that
+ * lock, otherwise the two wait for each other.
+ */
+void
 main_loop_wait_for_pending_call_to_finish(void)
 {
+  if (main_loop_is_main_thread())
+    return;
+
   g_mutex_lock(&main_task_lock);
 
   /* check if a previous call is being executed */
