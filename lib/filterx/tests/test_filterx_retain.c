@@ -616,6 +616,31 @@ Test(filterx_retain, message_backed_message_value_is_copied_when_retained_past_t
     }
 }
 
+Test(filterx_retain, dict_with_a_message_backed_key_is_copied_when_retained_past_the_message)
+{
+  LogMessage *msg = _new_message_with_values();
+  FilterXObject *key = filterx_extract_object_from_logmsg(msg, log_msg_get_value_handle("str"));
+  cr_assert(key->is_nvtable_backed);
+
+  FilterXObject *dict = filterx_dict_new();
+  FilterXObject *value = filterx_integer_new(4242);
+  cr_assert(filterx_object_set_subscript(dict, key, &value));
+  filterx_object_unref(value);
+  filterx_object_cow_prepare(&dict);
+  cr_assert(filterx_object_borrows_from_message(dict));
+
+  FilterXObject *r = filterx_object_ref(dict);
+  filterx_eval_retain_object(&r, FX_RETAIN_DECOUPLE_CONFIG);
+  cr_assert_neq(r, dict);
+  _assert_decoupled(r, "dict key");
+
+  filterx_object_unref(key);
+  filterx_object_unref(dict);
+  log_msg_unref(msg);
+  assert_object_json_equals(r, "{\"nvtable-string-value\":4242}");
+  filterx_object_unref(r);
+}
+
 /* 8) mixed storage.  The retain decision looks at the id of the object it
  * is handed, so a heap object whose internals point at arena memory would
  * be retained by reference and dangle.  That is why storing such a child is
