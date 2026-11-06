@@ -80,6 +80,7 @@ static const FilterXEvalRetainGoal all_goals[] =
   FX_RETAIN_UNTIL_FINAL_DELIVERY,
   FX_RETAIN_UNTIL_RELOAD,
   FX_RETAIN_DECOUPLE_CONFIG,
+  FX_RETAIN_SNAPSHOT,
 };
 
 static const gchar *
@@ -93,6 +94,8 @@ _goal_name(FilterXEvalRetainGoal goal)
       return "FX_RETAIN_UNTIL_RELOAD";
     case FX_RETAIN_DECOUPLE_CONFIG:
       return "FX_RETAIN_DECOUPLE_CONFIG";
+    case FX_RETAIN_SNAPSHOT:
+      return "FX_RETAIN_SNAPSHOT";
     default:
       return "?";
     }
@@ -438,7 +441,7 @@ Test(filterx_retain, hibernated_object_is_returned_as_is_at_every_goal)
 
 /* 5) frozen at compile time (a literal): lives exactly as long as the
  * configuration, so it is good as-is for the message and until reload, but
- * has to be copied to outlive the configuration */
+ * has to be copied to outlive the configuration, into a snapshot too */
 Test(filterx_retain, compile_time_frozen_object_is_shared_until_reload_and_copied_to_decouple)
 {
   FilterXEnvironment env;
@@ -452,6 +455,10 @@ Test(filterx_retain, compile_time_frozen_object_is_shared_until_reload_and_copie
   r = filterx_eval_retain_dup(o, FX_RETAIN_UNTIL_RELOAD);
   cr_assert_eq(r, o);
   filterx_object_unref(r);
+
+  FilterXObject *snapshot = filterx_eval_retain_dup(o, FX_RETAIN_SNAPSHOT);
+  cr_assert_neq(snapshot, o, "a config literal was retained by reference for FX_RETAIN_SNAPSHOT");
+  filterx_object_unref(snapshot);
 
   FilterXObject *decoupled = filterx_eval_retain_dup(o, FX_RETAIN_DECOUPLE_CONFIG);
   cr_assert_neq(decoupled, o);
@@ -524,13 +531,15 @@ Test(filterx_retain, runtime_frozen_object_without_early_allocation_is_copied_un
   filterx_object_unref(decoupled);
 }
 
-Test(filterx_retain, stashed_object_is_copied_until_reload)
+Test(filterx_retain, stashed_object_is_copied_until_reload_and_pinned_by_a_snapshot)
 {
   /* this is what cache_json_file() produces: built in the stash's own build
    * context (restricted, like compile time) and frozen into an environment
    * owned by the stash, not by the configuration.  Unlike a config literal,
    * it must therefore not pose as an early allocation, or a reference
-   * retained until the next reload could outlive it. */
+   * retained until the next reload could outlive it.  A snapshot carries
+   * a reference of its own on the stash (see filterx_eval_context_dup()),
+   * so it keeps the object itself by reference. */
   FilterXEnvironment env;
   FilterXEvalContext build_context;
   filterx_env_init(&env);
@@ -546,6 +555,10 @@ Test(filterx_retain, stashed_object_is_copied_until_reload)
   cr_assert_neq(until_reload, o, "a stashed object was retained by reference for FX_RETAIN_UNTIL_RELOAD, "
                                  "even though its environment can be released before the next reload");
   cr_assert(filterx_object_is_refcounted(until_reload));
+
+  FilterXObject *pinned = filterx_eval_retain_dup(o, FX_RETAIN_SNAPSHOT);
+  cr_assert_eq(pinned, o, "a stashed object was copied for FX_RETAIN_SNAPSHOT instead of being pinned");
+  filterx_object_unref(pinned);
 
   filterx_env_clear(&env);
   assert_object_str_equals(until_reload, "stashed-value");
@@ -567,7 +580,7 @@ _new_message_with_values(void)
 
 Test(filterx_retain, message_backed_string_is_copied_when_retained_past_the_message)
 {
-  FilterXEvalRetainGoal goals[] = { FX_RETAIN_UNTIL_RELOAD, FX_RETAIN_DECOUPLE_CONFIG };
+  FilterXEvalRetainGoal goals[] = { FX_RETAIN_UNTIL_RELOAD, FX_RETAIN_DECOUPLE_CONFIG, FX_RETAIN_SNAPSHOT };
 
   for (gsize i = 0; i < G_N_ELEMENTS(goals); i++)
     {
@@ -592,7 +605,7 @@ Test(filterx_retain, message_backed_string_is_copied_when_retained_past_the_mess
 
 Test(filterx_retain, message_backed_message_value_is_copied_when_retained_past_the_message)
 {
-  FilterXEvalRetainGoal goals[] = { FX_RETAIN_UNTIL_RELOAD, FX_RETAIN_DECOUPLE_CONFIG };
+  FilterXEvalRetainGoal goals[] = { FX_RETAIN_UNTIL_RELOAD, FX_RETAIN_DECOUPLE_CONFIG, FX_RETAIN_SNAPSHOT };
 
   for (gsize i = 0; i < G_N_ELEMENTS(goals); i++)
     {
@@ -614,6 +627,31 @@ Test(filterx_retain, message_backed_message_value_is_copied_when_retained_past_t
       cr_assert_eq(v, 12345);
       filterx_object_unref(r);
     }
+}
+
+Test(filterx_retain, message_backed_value_stored_deep_marks_the_outer_container)
+{
+  LogMessage *msg = _new_message_with_values();
+  FilterXObject *outer = _new_nested_dict();
+  FilterXObject *items = filterx_object_getattr_string(outer, "items");
+  cr_assert_not_null(items);
+
+  FILTERX_INTEGER_DECLARE_ON_STACK(index, 0);
+  FilterXObject *value = filterx_extract_object_from_logmsg(msg, log_msg_get_value_handle("str"));
+  cr_assert(filterx_object_set_subscript(items, index, &value));
+  filterx_object_unref(value);
+  cr_assert(filterx_object_borrows_from_message(outer));
+
+  FilterXObject *r = filterx_object_ref(outer);
+  filterx_eval_retain_object(&r, FX_RETAIN_DECOUPLE_CONFIG);
+  cr_assert_neq(r, outer);
+  _assert_decoupled(r, "deep store");
+
+  filterx_object_unref(items);
+  filterx_object_unref(outer);
+  log_msg_unref(msg);
+  assert_object_json_equals(r, "{\"name\":\"nested-value\",\"items\":[\"nvtable-string-value\",\"list-element\"]}");
+  filterx_object_unref(r);
 }
 
 Test(filterx_retain, dict_with_a_message_backed_key_is_copied_when_retained_past_the_message)
