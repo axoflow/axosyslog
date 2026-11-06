@@ -72,7 +72,7 @@ _tag_update_counter_registration(LogTag *tag, gboolean enable)
 
   if (enable)
     {
-      stats_register_counter(3, &sc_key, SC_TYPE_SINGLE_VALUE, &tag->counter);
+      stats_register_counter(0, &sc_key, SC_TYPE_SINGLE_VALUE, &tag->counter);
     }
   else
     {
