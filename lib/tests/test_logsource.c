@@ -122,7 +122,7 @@ test_pipe_init(void)
 }
 
 void
-test_pipe_ack_messages(TestPipe *pipe, gsize ack_count)
+test_pipe_ack_messages_with_type(TestPipe *pipe, gsize ack_count, AckType ack_type)
 {
   for (gsize i = 0; i < ack_count; ++i)
     {
@@ -131,8 +131,14 @@ test_pipe_ack_messages(TestPipe *pipe, gsize ack_count)
       pipe->messages_count--;
 
       LogPathOptions path_options = { .ack_needed = TRUE };
-      log_msg_drop(msg, &path_options, AT_PROCESSED);
+      log_msg_drop(msg, &path_options, ack_type);
     }
+}
+
+void
+test_pipe_ack_messages(TestPipe *pipe, gsize ack_count)
+{
+  test_pipe_ack_messages_with_type(pipe, ack_count, AT_PROCESSED);
 }
 
 void
@@ -431,6 +437,45 @@ Test(log_source, test_wakeup_small_window)
 
   test_pipe_ack_messages(next_pipe, 1);
   cr_assert_eq(((TestSource *) source)->wakeup_count, 1);
+
+  test_pipe_destroy(next_pipe);
+  test_source_destroy(source);
+}
+
+Test(log_source, test_acks_in_a_batch_are_applied_at_its_end)
+{
+  source_options.init_window_size = 20;
+
+  LogSource *source = test_source_init(&source_options);
+  TestPipe *next_pipe = test_pipe_init();
+  log_pipe_append(&source->super, &next_pipe->super);
+  gint ref_cnt = g_atomic_counter_get(&source->super.ref_cnt);
+
+  _post_messages(source, 20);
+  cr_assert_eq(g_atomic_counter_get(&source->super.ref_cnt), ref_cnt + 20);
+
+  log_source_ack_batch_begin();
+  log_source_ack_batch_begin();
+  test_pipe_ack_messages(next_pipe, 10);
+  log_source_ack_batch_end();
+  cr_assert_eq(window_size_counter_get(&source->window_size, NULL), 0, "acks are deferred until the outermost end");
+  cr_assert_eq(g_atomic_counter_get(&source->super.ref_cnt), ref_cnt + 20);
+  log_source_ack_batch_end();
+
+  cr_assert_eq(window_size_counter_get(&source->window_size, NULL), 10);
+  cr_assert_eq(g_atomic_counter_get(&source->super.ref_cnt), ref_cnt + 10);
+  cr_assert_eq(((TestSource *) source)->wakeup_count, 1);
+
+  log_source_ack_batch_begin();
+  test_pipe_ack_messages(next_pipe, 5);
+  test_pipe_ack_messages_with_type(next_pipe, 1, AT_SUSPENDED);
+  cr_assert_eq(window_size_counter_get(&source->window_size, NULL), 16,
+               "a suspended ack flushes the pending ones before it");
+  test_pipe_ack_messages(next_pipe, 4);
+  log_source_ack_batch_end();
+
+  cr_assert_eq(window_size_counter_get(&source->window_size, NULL), 20);
+  cr_assert_eq(g_atomic_counter_get(&source->super.ref_cnt), ref_cnt);
 
   test_pipe_destroy(next_pipe);
   test_source_destroy(source);
