@@ -47,5 +47,6 @@ add_unit_test(LIBTEST CRITERION TARGET test_expr_arithmetic_operators DEPENDS js
 add_unit_test(LIBTEST CRITERION TARGET test_func_set_pri DEPENDS json-plugin ${JSONC_LIBRARY})
 add_unit_test(LIBTEST CRITERION TARGET test_func_timestamp DEPENDS json-plugin ${JSONC_LIBRARY})
 add_unit_test(LIBTEST CRITERION TARGET test_json_repr DEPENDS json-plugin ${JSONC_LIBRARY})
+add_unit_test(LIBTEST CRITERION TARGET test_filterx_script DEPENDS json-plugin ${JSONC_LIBRARY})
 add_unit_test(LIBTEST CRITERION TARGET test_filterx_plist DEPENDS syslogformat json-plugin ${JSONC_LIBRARY})
 add_unit_test(LIBTEST CRITERION TARGET test_object_tuple DEPENDS json-plugin ${JSONC_LIBRARY})
