@@ -479,26 +479,6 @@ _collect_variable_for_dup(FilterXVariable *variable, gpointer user_data)
   return TRUE;
 }
 
-/* returns -1 if @handle is not present in @handles */
-static gint
-_bsearch_handle_index(FilterXVariableHandle *handles, guint32 num_handles, FilterXVariableHandle handle)
-{
-  gint l = 0, h = (gint) num_handles - 1;
-
-  while (l <= h)
-    {
-      gint m = (l + h) >> 1;
-
-      if (handles[m] == handle)
-        return m;
-      else if (handles[m] > handle)
-        h = m - 1;
-      else
-        l = m + 1;
-    }
-  return -1;
-}
-
 /* consumes (unrefs) every snapshot value it doesn't end up placing */
 static FilterXScope *
 _dup_scope_from_snapshots(FilterXScope *parent, LogMessage *msg, FilterXScopeVariableLayout *layout, GArray *snapshots)
@@ -510,7 +490,7 @@ _dup_scope_from_snapshots(FilterXScope *parent, LogMessage *msg, FilterXScopeVar
   for (guint32 i = 0; i < snapshots->len; i++)
     {
       FilterXScopeVariableSnapshot *snapshot = &g_array_index(snapshots, FilterXScopeVariableSnapshot, i);
-      gint idx = _bsearch_handle_index(layout->handles, layout->num_variables, snapshot->handle);
+      gint idx = filterx_scope_variable_layout_get_index(layout, snapshot->handle);
       if (idx < 0)
         {
           filterx_object_unref(snapshot->value);
