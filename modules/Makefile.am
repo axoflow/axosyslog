@@ -33,6 +33,7 @@ include modules/java-modules/Makefile.am
 include modules/json/Makefile.am
 include modules/kafka/Makefile.am
 include modules/kvformat/Makefile.am
+include modules/lumberjack-proto/Makefile.am
 include modules/linux-kmsg-format/Makefile.am
 include modules/map-value-pairs/Makefile.am
 include modules/mqtt/Makefile.am
@@ -77,7 +78,8 @@ SYSLOG_NG_MODULES	=	\
 	mod-mqtt mod-regexp-parser mod-rate-limit-filter mod-metrics-probe \
 	mod-darwinosl \
 	mod-grpc mod-cloud-auth mod-arrow-flight mod-splunk-s2s \
-	mod-altp-proto
+	mod-altp-proto \
+	mod-lumberjack-proto
 
 modules modules/: ${SYSLOG_NG_MODULES}
 
@@ -95,7 +97,8 @@ modules_test_subdirs	=	\
 	modules_map-value-pairs modules_tagsparser modules_xml modules_appmodel \
 	modules_regexp-parser modules_rate-limit-filter modules_metrics-probe \
 	modules_altp-proto \
-	modules_splunk_s2s
+	modules_splunk_s2s \
+	modules_lumberjack-proto
 
 EXTRA_DIST += modules/CMakeLists.txt
 
