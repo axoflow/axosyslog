@@ -213,7 +213,7 @@ log_tags_dec_counter(LogTagId id)
 }
 
 /*
- * NOTE: this is called from the AH_CONFIG_CHANGED hook to update the set of
+ * NOTE: this is called from the AH_CONFIG_POST_INIT hook to update the set of
  * counters we have.  If stats-level is decreased, we should unregister
  * everything we had earlier. If increased we need to register them again.
  *
@@ -224,9 +224,8 @@ log_tags_dec_counter(LogTagId id)
  *
  * The counter pointers are rewritten here while log_tags_inc_counter() and
  * friends read them without a lock.  That is safe because the hook runs
- * before the threaded workers of the new configuration are started and
- * while the main loop is not processing messages, so no message is in
- * flight.
+ * inside cfg_init(), after the previous configuration's workers stopped and
+ * before the new ones start, so no message is in flight.
  */
 void
 log_tags_reinit_stats(void)
@@ -252,7 +251,7 @@ log_tags_global_init(void)
 {
   log_tags_hash = g_hash_table_new(g_str_hash, g_str_equal);
 
-  register_application_hook(AH_CONFIG_CHANGED, (ApplicationHookFunc) log_tags_reinit_stats, NULL, AHM_RUN_REPEAT);
+  register_application_hook(AH_CONFIG_POST_INIT, (ApplicationHookFunc) log_tags_reinit_stats, NULL, AHM_RUN_REPEAT);
 }
 
 void
