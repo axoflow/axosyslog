@@ -24,6 +24,7 @@
 #include "filterx/object-string.h"
 #include "filterx/object-null.h"
 #include "scratch-buffers.h"
+#include "logpipe.h"
 
 typedef enum _FilterXVariablePullMode
 {
@@ -503,7 +504,8 @@ static FilterXScope *
 _dup_scope_from_snapshots(FilterXScope *parent, LogMessage *msg, FilterXScopeVariableLayout *layout, GArray *snapshots)
 {
   FilterXScope *new_scope = filterx_scope_new(parent, layout);
-  filterx_scope_set_message(new_scope, msg);
+  if (msg)
+    filterx_scope_set_message(new_scope, msg);
 
   for (guint32 i = 0; i < snapshots->len; i++)
     {
@@ -577,6 +579,11 @@ _layout_from_snapshot_handles(GArray *snapshots)
 FilterXScope *
 filterx_scope_dup(FilterXScope *self, FilterXScopeValueRetainFunc retain, gpointer user_data)
 {
+  /* the message as it is right now: the live path goes on writing (and
+   * bumping the generation of) the original */
+  LogPathOptions path_options = LOG_PATH_OPTIONS_INIT_NOACK;
+  LogMessage *msg = self->msg ? log_msg_clone_cow(self->msg, &path_options) : NULL;
+
   FilterXScopeDupCollector own_collector =
   {
     .snapshots = g_array_new(FALSE, FALSE, sizeof(FilterXScopeVariableSnapshot)),
@@ -609,15 +616,16 @@ filterx_scope_dup(FilterXScope *self, FilterXScopeValueRetainFunc retain, gpoint
       if (ancestor_collector.snapshots->len > 0)
         {
           FilterXScopeVariableLayout *ancestor_layout = _layout_from_snapshot_handles(ancestor_collector.snapshots);
-          ancestor_scope = _dup_scope_from_snapshots(NULL, self->msg, ancestor_layout, ancestor_collector.snapshots);
+          ancestor_scope = _dup_scope_from_snapshots(NULL, msg, ancestor_layout, ancestor_collector.snapshots);
         }
       g_array_free(ancestor_collector.snapshots, TRUE);
     }
 
   FilterXScopeVariableLayout *own_layout = _layout_copy(self->layout);
-  FilterXScope *new_scope = _dup_scope_from_snapshots(ancestor_scope, self->msg, own_layout, own_collector.snapshots);
+  FilterXScope *new_scope = _dup_scope_from_snapshots(ancestor_scope, msg, own_layout, own_collector.snapshots);
   new_scope->dirty = TRUE;
   g_array_free(own_collector.snapshots, TRUE);
+  log_msg_unref(msg);
 
   return new_scope;
 }
