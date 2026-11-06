@@ -570,8 +570,10 @@ _layout_from_snapshot_handles(GArray *snapshots)
  *      declared floating variable visible through @self's parent chain.
  *      Plain (undeclared) floating variables are intentionally excluded:
  *      they are scoped to a single generation by design and were never
- *      meant to survive a scope boundary. This scope is frozen (marked as
- *      a fork point) -- it is never synced or mutated once built.
+ *      meant to survive a scope boundary. An assignment made in an earlier
+ *      block reaches the message at the next syncing pipe, which the
+ *      duplicate never passes, so this scope is dirty: a resumed
+ *      evaluation syncs it along with (2).
  *
  *   2) the "own" scope (returned): an exact copy of @self, using @self's
  *      own layout, parented onto (1).
@@ -617,6 +619,7 @@ filterx_scope_dup(FilterXScope *self, FilterXScopeValueRetainFunc retain, gpoint
         {
           FilterXScopeVariableLayout *ancestor_layout = _layout_from_snapshot_handles(ancestor_collector.snapshots);
           ancestor_scope = _dup_scope_from_snapshots(NULL, msg, ancestor_layout, ancestor_collector.snapshots);
+          filterx_scope_set_dirty(ancestor_scope);
         }
       g_array_free(ancestor_collector.snapshots, TRUE);
     }
