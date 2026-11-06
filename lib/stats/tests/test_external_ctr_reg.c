@@ -83,6 +83,9 @@ Test(stats_external_counter, external_ctr_is_read_only_for_stats_set)
   cr_expect_eq(stats_counter_get(stats_ctr), 11);
 };
 
+/* writing through an external counter is only caught in debug builds */
+#if SYSLOG_NG_ENABLE_DEBUG
+
 Test(stats_external_counter, external_ctr_is_read_only_for_stats_inc, .signal=SIGABRT)
 {
   atomic_gssize test_ctr;
@@ -110,6 +113,8 @@ Test(stats_external_counter, external_ctr_is_read_only_for_stats_sub, .signal=SI
   StatsCounterItem *stats_ctr = _register_external_stats_counter(&test_ctr, 11);
   stats_counter_sub(stats_ctr, 1);
 };
+
+#endif
 
 Test(stats_external_counter, reset_counter_is_disabled_for_external_counters)
 {
