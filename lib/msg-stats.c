@@ -136,7 +136,7 @@ stats_syslog_reinit(void)
 void
 msg_stats_init(void)
 {
-  register_application_hook(AH_CONFIG_CHANGED, (ApplicationHookFunc) stats_syslog_reinit, NULL, AHM_RUN_REPEAT);
+  register_application_hook(AH_CONFIG_POST_INIT, (ApplicationHookFunc) stats_syslog_reinit, NULL, AHM_RUN_REPEAT);
 }
 
 void
