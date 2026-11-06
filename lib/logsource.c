@@ -28,6 +28,7 @@
 #include "stats/stats-registry.h"
 #include "stats/stats-cluster-logpipe.h"
 #include "stats/stats-cluster-single.h"
+#include "stats/stats-counter-batch.h"
 #include "stats/aggregator/stats-aggregator-registry.h"
 #include "msg-stats.h"
 #include "ack-tracker/ack_tracker.h"
@@ -681,7 +682,7 @@ log_source_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_options
 
   guint64 rcptid = msg->rcptid;
 
-  stats_counter_inc(self->metrics.recvd_messages);
+  stats_counter_inc_batched(self->metrics.recvd_messages);
   stats_counter_set_time(self->metrics.last_message_seen, msg->timestamps[LM_TS_RECVD].ut_sec);
   stats_byte_counter_add(&self->metrics.recvd_bytes, msg->recvd_rawmsg_size);
   UnixTime recvd_stamp = msg->timestamps[LM_TS_RECVD];
