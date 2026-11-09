@@ -37,47 +37,63 @@
  * backslash (\), double-quote ("), and line feed (\n) characters have to be
  * escaped as \\, \", and \n, respectively.
  */
-static gchar *
-stats_format_prometheus_sanitize_label_value(const gchar *value, gssize value_len)
+static void
+_append_sanitized_label_value(GString *buf, const gchar *value, gssize value_len)
 {
-  GString *sanitized_value = scratch_buffers_alloc();
-
   if (value_len < 0)
     value_len = strlen(value);
   const gchar *value_end = value + value_len;
+  const gchar *run_start = value;
 
   while (value < value_end)
     {
-      gunichar uchar = g_utf8_get_char_validated(value, value_end - value);
+      guchar c = (guchar) *value;
 
-      if (G_UNLIKELY(uchar == (gunichar) -1 || uchar == (gunichar) -2))
+      if (c >= 0x80)
         {
-          /* double backslash to conform to the format */
-          g_string_append_printf(sanitized_value, "\\\\x%02x", *(guint8 *) value);
-          value++;
+          gunichar uchar = g_utf8_get_char_validated(value, value_end - value);
+
+          if (G_UNLIKELY(uchar == (gunichar) -1 || uchar == (gunichar) -2))
+            {
+              g_string_append_len(buf, run_start, value - run_start);
+              /* double backslash to conform to the format */
+              g_string_append_printf(buf, "\\\\x%02x", c);
+              value++;
+              run_start = value;
+              continue;
+            }
+
+          value = g_utf8_next_char(value);
           continue;
         }
 
-      switch (uchar)
+      const gchar *escaped = NULL;
+      switch (c)
         {
         case '\\':
-          g_string_append(sanitized_value, "\\\\");
+          escaped = "\\\\";
           break;
         case '"':
-          g_string_append(sanitized_value, "\\\"");
+          escaped = "\\\"";
           break;
         case '\n':
-          g_string_append(sanitized_value, "\\n");
+          escaped = "\\n";
           break;
         default:
-          g_string_append_unichar_optimized(sanitized_value, uchar);
           break;
         }
 
-      value = g_utf8_next_char(value);
+      if (escaped)
+        {
+          g_string_append_len(buf, run_start, value - run_start);
+          g_string_append(buf, escaped);
+          run_start = value + 1;
+        }
+
+      value++;
     }
 
-  return sanitized_value->str;
+  g_string_append_len(buf, run_start, value_end - run_start);
 }
 
 static inline gboolean
@@ -92,31 +108,34 @@ _is_str_empty(const gchar *str)
   return !str || strcmp(str, "") == 0;
 }
 
-static gchar *
-stats_format_prometheus_sanitize_name(const gchar *name, gssize len)
+static void
+_append_sanitized_name(GString *buf, const gchar *name, gssize len)
 {
   if (len < 0)
     len = strlen(name);
-  GString *sanitized_name = scratch_buffers_alloc();
+  const gchar *name_end = name + len;
 
-  for (const gchar *c = name; len > 0; ++c, --len)
+  const gchar *run_start = name;
+
+  for (const gchar *c = name; c < name_end; ++c)
     {
       if (_is_valid_name_char(*c))
-        g_string_append_c(sanitized_name, *c);
-      else if (*c == '.' || *c == '-')
-        g_string_append_c(sanitized_name, '_');
+        continue;
+
+      g_string_append_len(buf, run_start, c - run_start);
+      if (*c == '.' || *c == '-')
+        g_string_append_c(buf, '_');
 
       /* remove otherwise */
+      run_start = c + 1;
     }
 
-  return sanitized_name->str;
+  g_string_append_len(buf, run_start, name_end - run_start);
 }
 
-gchar *
-stats_format_prometheus_format_value(StatsClusterUnit stored_unit, gsize stored_value)
+static void
+_append_formatted_value(GString *buf, StatsClusterUnit stored_unit, gsize stored_value)
 {
-  GString *value = scratch_buffers_alloc();
-
   guint64 converted_int = stored_value;
   gdouble converted_double = stored_value;
   gchar double_buf[G_ASCII_DTOSTR_BUF_SIZE];
@@ -129,7 +148,7 @@ stats_format_prometheus_format_value(StatsClusterUnit stored_unit, gsize stored_
       converted_int *= 1024;
     case SCU_KIB:
       converted_int *= 1024;
-      g_string_printf(value, "%"G_GUINT64_FORMAT, converted_int);
+      g_string_append_printf(buf, "%"G_GUINT64_FORMAT, converted_int);
       break;
 
     case SCU_HOURS:
@@ -137,35 +156,51 @@ stats_format_prometheus_format_value(StatsClusterUnit stored_unit, gsize stored_
     case SCU_MINUTES:
       converted_int *= 60;
     case SCU_SECONDS:
-      g_string_printf(value, "%"G_GUINT64_FORMAT, converted_int);
+      g_string_append_printf(buf, "%"G_GUINT64_FORMAT, converted_int);
       break;
 
     case SCU_NANOSECONDS:
       converted_double /= 1e9;
-      g_string_assign(value, g_ascii_dtostr(double_buf, G_N_ELEMENTS(double_buf), converted_double));
+      g_string_append(buf, g_ascii_dtostr(double_buf, G_N_ELEMENTS(double_buf), converted_double));
       break;
 
     case SCU_MILLISECONDS:
       converted_double /= 1e3;
-      g_string_assign(value, g_ascii_dtostr(double_buf, G_N_ELEMENTS(double_buf), converted_double));
+      g_string_append(buf, g_ascii_dtostr(double_buf, G_N_ELEMENTS(double_buf), converted_double));
       break;
 
     default:
       /* no conversion */
-      g_string_printf(value, "%"G_GSIZE_FORMAT, stored_value);
+      g_string_append_printf(buf, "%"G_GSIZE_FORMAT, stored_value);
       break;
     }
+}
 
+gchar *
+stats_format_prometheus_format_value(StatsClusterUnit stored_unit, gsize stored_value)
+{
+  GString *value = scratch_buffers_alloc();
+
+  _append_formatted_value(value, stored_unit, stored_value);
   return value->str;
+}
+
+static void
+_append_counter_value(GString *buf, StatsCluster *sc, gint type)
+{
+  StatsClusterUnit stored_unit;
+
+  stats_cluster_get_type_formatting(sc, type, &stored_unit);
+  _append_formatted_value(buf, stored_unit, stats_cluster_get_type_value(sc, type));
 }
 
 gchar *
 stats_format_prometheus_format_counter_value(StatsCluster *sc, gint type)
 {
-  StatsClusterUnit stored_unit;
+  GString *value = scratch_buffers_alloc();
 
-  stats_cluster_get_type_formatting(sc, type, &stored_unit);
-  return stats_format_prometheus_format_value(stored_unit, stats_cluster_get_type_value(sc, type));
+  _append_counter_value(value, sc, type);
+  return value->str;
 }
 
 static inline void
@@ -185,9 +220,10 @@ _append_formatted_label(GString *serialized_labels, const StatsClusterLabel *lab
   else
     *comma_needed = TRUE;
 
-  g_string_append_printf(serialized_labels, "%s=\"%s\"",
-                         stats_format_prometheus_sanitize_name(label->name, label->name_len),
-                         stats_format_prometheus_sanitize_label_value(label->value, label->value_len));
+  _append_sanitized_name(serialized_labels, label->name, label->name_len);
+  g_string_append_len(serialized_labels, "=\"", 2);
+  _append_sanitized_label_value(serialized_labels, label->value, label->value_len);
+  g_string_append_c(serialized_labels, '"');
 }
 
 static inline gboolean
@@ -196,70 +232,63 @@ _is_timestamp(StatsCluster *sc, gint type)
   return strcmp(stats_cluster_get_type_name(sc, type), "stamp") == 0;
 }
 
-static const gchar *
-_format_labels(StatsCluster *sc, gint type)
+static void
+_append_braced_labels(GString *buf, StatsClusterLabel *labels, gsize labels_len, const StatsClusterLabel *extra)
 {
-  StatsClusterLabel type_label;
-  gboolean needs_type_label = stats_cluster_get_type_label(sc, type, &type_label);
-
-  if (!sc->key.labels_len && !needs_type_label)
-    return NULL;
-
-  GString *serialized_labels = scratch_buffers_alloc();
+  gsize orig_size = buf->len;
+  g_string_append_c(buf, '{');
 
   gboolean comma_needed = FALSE;
-  for (gsize i = 0; i < sc->key.labels_len; ++i)
-    _append_formatted_label(serialized_labels, &sc->key.labels[i], &comma_needed);
+  for (gsize i = 0; i < labels_len; ++i)
+    _append_formatted_label(buf, &labels[i], &comma_needed);
 
-  if (needs_type_label)
-    _append_formatted_label(serialized_labels, &type_label, &comma_needed);
+  if (extra)
+    _append_formatted_label(buf, extra, &comma_needed);
 
-  if (serialized_labels->len == 0)
-    return NULL;
-
-  return serialized_labels->str;
+  gboolean no_labels = buf->len == orig_size + 1;
+  if (no_labels)
+    g_string_truncate(buf, orig_size);
+  else
+    g_string_append_c(buf, '}');
 }
 
 static GString *
 _format_legacy(StatsCluster *sc, gint type, StatsCounterItem *counter)
 {
   GString *record = scratch_buffers_alloc();
-  GString *labels = scratch_buffers_alloc();
 
   gchar component[64];
 
-  g_string_append_printf(record, METRIC_PREFIX "%s",
-                         stats_format_prometheus_sanitize_name(stats_cluster_get_component_name(sc, component, sizeof(component)), -1));
+  g_string_append(record, METRIC_PREFIX);
+  _append_sanitized_name(record, stats_cluster_get_component_name(sc, component, sizeof(component)), -1);
 
-  if (!sc->key.legacy.component || sc->key.legacy.component == SCS_GLOBAL)
+  gboolean global = !sc->key.legacy.component || sc->key.legacy.component == SCS_GLOBAL;
+  if (global && !_is_str_empty(sc->key.legacy.id))
     {
-      if (!_is_str_empty(sc->key.legacy.id))
-        g_string_append_printf(record, "_%s", stats_format_prometheus_sanitize_name(sc->key.legacy.id, -1));
-    }
-  else
-    {
-      gboolean has_id = !_is_str_empty(sc->key.legacy.id);
-      if (has_id)
-        g_string_append_printf(labels, "%s=\"%s\"", "id", stats_format_prometheus_sanitize_label_value(sc->key.legacy.id, -1));
-
-      if (!_is_str_empty(sc->key.legacy.instance))
-        {
-          if (has_id)
-            g_string_append_c(labels, ',');
-          g_string_append_printf(labels, "%s=\"%s\"", "stat_instance",
-                                 stats_format_prometheus_sanitize_label_value(sc->key.legacy.instance, -1));
-        }
+      g_string_append_c(record, '_');
+      _append_sanitized_name(record, sc->key.legacy.id, -1);
     }
 
   const gchar *type_name = stats_cluster_get_type_name(sc, type);
   if (g_strcmp0(type_name, "value") != 0)
-    g_string_append_printf(record, "_%s", stats_format_prometheus_sanitize_name(type_name, -1));
+    {
+      g_string_append_c(record, '_');
+      _append_sanitized_name(record, type_name, -1);
+    }
 
-  if (labels->len != 0)
-    g_string_append_printf(record, "{%s}", labels->str);
+  if (!global)
+    {
+      StatsClusterLabel labels[] =
+      {
+        stats_cluster_label("id", sc->key.legacy.id),
+        stats_cluster_label("stat_instance", sc->key.legacy.instance),
+      };
+      _append_braced_labels(record, labels, G_N_ELEMENTS(labels), NULL);
+    }
 
-  const gchar *metric_value = stats_format_prometheus_format_counter_value(sc, type);
-  g_string_append_printf(record, " %s\n", metric_value);
+  g_string_append_c(record, ' ');
+  _append_counter_value(record, sc, type);
+  g_string_append_c(record, '\n');
 
   return record;
 }
@@ -274,16 +303,20 @@ stats_prometheus_format_counter(StatsCluster *sc, gint type, StatsCounterItem *c
     return _format_legacy(sc, type, counter);
 
   GString *record = scratch_buffers_alloc();
-  g_string_append_printf(record, METRIC_PREFIX "%s%s",
-                         stats_format_prometheus_sanitize_name(sc->key.name, -1),
-                         stats_cluster_get_type_name_suffix(sc, type) ? : "");
+  g_string_append(record, METRIC_PREFIX);
+  _append_sanitized_name(record, sc->key.name, -1);
 
-  const gchar *labels = _format_labels(sc, type);
-  if (labels)
-    g_string_append_printf(record, "{%s}", labels);
+  const gchar *suffix = stats_cluster_get_type_name_suffix(sc, type);
+  if (suffix)
+    g_string_append(record, suffix);
 
-  const gchar *metric_value = stats_format_prometheus_format_counter_value(sc, type);
-  g_string_append_printf(record, " %s\n", metric_value);
+  StatsClusterLabel type_label;
+  gboolean needs_type_label = stats_cluster_get_type_label(sc, type, &type_label);
+  _append_braced_labels(record, sc->key.labels, sc->key.labels_len, needs_type_label ? &type_label : NULL);
+
+  g_string_append_c(record, ' ');
+  _append_counter_value(record, sc, type);
+  g_string_append_c(record, '\n');
 
   return record;
 }
@@ -313,19 +346,7 @@ stats_format_prometheus(StatsCluster *sc, gint type, StatsCounterItem *counter, 
 void
 stats_prometheus_format_labels_append(StatsClusterLabel *labels, gsize labels_len, GString *buf)
 {
-  gsize orig_size = buf->len;
-
-  g_string_append_c(buf, '{');
-
-  gboolean comma_needed = FALSE;
-  for (gsize i = 0; i < labels_len; ++i)
-    _append_formatted_label(buf, &labels[i], &comma_needed);
-
-  gboolean no_labels = buf->len == orig_size + 1;
-  if (no_labels)
-    g_string_truncate(buf, orig_size);
-  else
-    g_string_append_c(buf, '}');
+  _append_braced_labels(buf, labels, labels_len, NULL);
 }
 
 void
