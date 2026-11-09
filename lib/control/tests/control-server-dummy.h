@@ -24,6 +24,7 @@
 
 #include "control/control-server.h"
 
+gint control_connection_dummy_write(ControlConnection *s, gpointer buffer, gsize size);
 void control_connection_dummy_set_input(ControlConnection *s, const gchar *request);
 const gchar *control_connection_dummy_get_output(ControlConnection *s);
 void control_connection_dummy_reset_output(ControlConnection *s);

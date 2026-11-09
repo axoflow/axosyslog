@@ -36,6 +36,8 @@
 #include "apphook.h"
 #include "cfg-path.h"
 
+#include <errno.h>
+
 
 ControlServer *control_server;
 ControlConnection *control_connection;
@@ -221,6 +223,62 @@ Test(control_cmds, test_stats)
   cr_assert_str_eq(stats_result[0], "SourceName;SourceId;SourceInstance;State;Type;Number",
                    "Bad reply");
   g_strfreev(stats_result);
+}
+
+static void (*_real_handle_output)(gpointer s);
+static gint _handle_output_calls;
+
+static void
+_counting_handle_output(gpointer s)
+{
+  _handle_output_calls++;
+  _real_handle_output(s);
+}
+
+Test(control_cmds, test_output_drains_every_queued_batch)
+{
+  const gchar *response;
+
+  _real_handle_output = control_connection->handle_output;
+  control_connection->handle_output = _counting_handle_output;
+
+  control_connection_send_batched_reply(control_connection, g_string_new("first\n"));
+  control_connection_send_batched_reply(control_connection, g_string_new("second\n"));
+  control_connection_send_batched_reply(control_connection, g_string_new("third\n"));
+  control_connection_send_close_batch(control_connection);
+  control_connection_update_watches(control_connection);
+
+  _fetch_response(&response);
+  cr_assert_str_eq(response, "first\nsecond\nthird\n.\n");
+  cr_assert_eq(_handle_output_calls, 1);
+}
+
+static gint _eagain_or_short_write_calls;
+
+static gint
+_eagain_or_short_write(ControlConnection *s, gpointer buffer, gsize size)
+{
+  if (_eagain_or_short_write_calls++ % 2 == 0)
+    {
+      errno = EAGAIN;
+      return -1;
+    }
+  return control_connection_dummy_write(s, buffer, MIN(size, 5));
+}
+
+Test(control_cmds, test_output_resumes_after_eagain_and_short_writes)
+{
+  const gchar *response;
+
+  control_connection->write = _eagain_or_short_write;
+
+  control_connection_send_batched_reply(control_connection, g_string_new("0123456789abcdef\n"));
+  control_connection_send_batched_reply(control_connection, g_string_new("ghijklmnopqrstuv\n"));
+  control_connection_send_close_batch(control_connection);
+  control_connection_update_watches(control_connection);
+
+  _fetch_response(&response);
+  cr_assert_str_eq(response, "0123456789abcdef\nghijklmnopqrstuv\n.\n");
 }
 
 Test(control_cmds, test_reset_stats)
