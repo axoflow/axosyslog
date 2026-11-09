@@ -541,6 +541,30 @@ _filterx_ref_iter(FilterXObject *s, FilterXObjectIterFunc func, gpointer user_da
   return filterx_object_iter(self->value, func, user_data);
 }
 
+static void
+_filterx_ref_make_direct(FilterXObject *s)
+{
+  FilterXRef *self = (FilterXRef *) s;
+
+  /* no _filterx_ref_cow() first: the children get replaced by copies of
+   * equal content, which no other xref on the same value can tell apart, and
+   * a fork here would be the deep copy this path exists to avoid */
+  if (self->value->type->make_direct)
+    {
+      self->value->type->make_direct(self->value);
+      return;
+    }
+
+  /* a mutable object without an in-place path (metrics_labels): this xref
+   * gets a copy, any other xref on the old value keeps the old value, the
+   * way a copy-on-write fork would leave them */
+  FilterXObject *direct = filterx_object_dup(self->value);
+  g_atomic_counter_dec_and_test(_get_fx_ref_cnt(self));
+  filterx_object_unref(self->value);
+  self->value = direct;
+  g_atomic_counter_inc(_get_fx_ref_cnt(self));
+}
+
 static gboolean
 _filterx_ref_repr_append(FilterXObject *s, GString *repr)
 {
@@ -665,6 +689,7 @@ FILTERX_DEFINE_TYPE(ref, FILTERX_TYPE_NAME(object),
                     .unset_key = _filterx_ref_unset_key,
                     .move_key = _filterx_ref_move_key,
                     .iter = _filterx_ref_iter,
+                    .make_direct = _filterx_ref_make_direct,
                     .repr = _filterx_ref_repr_append,
                     .str = _filterx_ref_str_append,
                     .len = _filterx_ref_len,

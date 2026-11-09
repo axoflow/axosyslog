@@ -266,6 +266,19 @@ _filterx_list_clone_container(FilterXObject *s, FilterXObject *container, Filter
   return &clone->super.super;
 }
 
+static void
+_filterx_list_make_direct(FilterXObject *s)
+{
+  FilterXListObject *self = (FilterXListObject *) s;
+
+  for (gsize i = 0; i < self->array->len; i++)
+    {
+      FilterXObject **slot = (FilterXObject **) &g_ptr_array_index(self->array, i);
+      filterx_object_make_direct(slot);
+      filterx_object_assert_child_storable(s, *slot);
+    }
+}
+
 static gboolean
 _filterx_list_iter(FilterXObject *s, FilterXObjectIterFunc func, gpointer user_data)
 {
@@ -427,6 +440,7 @@ FILTERX_DEFINE_TYPE(list, FILTERX_TYPE_NAME(sequence),
                     .repr = _filterx_list_repr,
                     .clone = _filterx_list_clone,
                     .clone_container = _filterx_list_clone_container,
+                    .make_direct = _filterx_list_make_direct,
                     .get_subscript = _filterx_list_get_subscript,
                     .set_subscript = _filterx_list_set_subscript,
                     .is_key_set = _filterx_list_is_key_set,

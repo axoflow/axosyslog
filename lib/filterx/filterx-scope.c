@@ -230,17 +230,6 @@ exit:
 }
 
 static void
-_filterx_scope_make_object_direct(FilterXObject **object)
-{
-  if (!(*object) || !filterx_object_is_nvtable_backed(*object))
-    return;
-
-  FilterXObject *direct = filterx_object_dup(*object);
-  filterx_object_unref(*object);
-  *object = direct;
-}
-
-static void
 _filterx_scope_make_nvtable_backed_variables_direct(FilterXScope *self)
 {
   for (FilterXScope *scope = self;
@@ -254,7 +243,7 @@ _filterx_scope_make_nvtable_backed_variables_direct(FilterXScope *self)
             continue;
 
           if (filterx_variable_is_message_tied(v) || filterx_variable_is_declared(v))
-            _filterx_scope_make_object_direct(&v->value);
+            filterx_object_make_direct(&v->value);
         }
     }
 }

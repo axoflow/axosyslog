@@ -55,6 +55,7 @@
 #include "filterx/filterx-stashed-object.h"
 #include "filterx/filterx-ref.h"
 #include "filterx/filterx-scope.h"
+#include "logpipe.h"
 #include "filterx/filterx-variable.h"
 #include "filterx/filterx-mapping.h"
 #include "filterx/filterx-sequence.h"
@@ -676,6 +677,98 @@ Test(filterx_retain, dict_with_a_message_backed_key_is_copied_when_retained_past
   log_msg_unref(msg);
   assert_object_json_equals(r, "{\"nvtable-string-value\":4242}");
   filterx_object_unref(r);
+}
+
+/* leaves only: a nested container keeps its (sticky) mark by design */
+static gboolean
+_assert_entry_direct(FilterXObject *key, FilterXObject *value, gpointer user_data)
+{
+  cr_assert_not(filterx_object_borrows_from_message(key), "%s: a key still borrows from the message",
+                (gchar *) user_data);
+  if (!filterx_object_is_ref(value))
+    cr_assert_not(filterx_object_borrows_from_message(value), "%s: a value still borrows from the message",
+                  (gchar *) user_data);
+  return TRUE;
+}
+
+Test(filterx_retain, make_direct_copies_the_message_backed_leaves_and_keeps_the_containers)
+{
+  LogMessage *msg = _new_message_with_values();
+  FilterXObject *outer = _new_nested_dict();
+  FilterXObject *items = filterx_object_getattr_string(outer, "items");
+  cr_assert_not_null(items);
+
+  FILTERX_INTEGER_DECLARE_ON_STACK(index, 0);
+  FilterXObject *elem = filterx_extract_object_from_logmsg(msg, log_msg_get_value_handle("str"));
+  cr_assert(filterx_object_set_subscript(items, index, &elem));
+  filterx_object_unref(elem);
+
+  FilterXObject *key = filterx_extract_object_from_logmsg(msg, log_msg_get_value_handle("str"));
+  FilterXObject *value = filterx_extract_object_from_logmsg(msg, log_msg_get_value_handle("int"));
+  cr_assert(filterx_object_set_subscript(outer, key, &value));
+  filterx_object_unref(value);
+  cr_assert(filterx_object_borrows_from_message(outer));
+
+  FilterXObject *direct = outer;
+  filterx_object_make_direct(&direct);
+  cr_assert_eq(direct, outer, "a container must be made direct in place, not replaced");
+
+  FilterXObject *items_after = filterx_object_getattr_string(outer, "items");
+  cr_assert_eq(filterx_ref_unwrap_ro(items_after), filterx_ref_unwrap_ro(items), "the nested list was replaced");
+  cr_assert(filterx_object_iter(outer, _assert_entry_direct, "dict"));
+  cr_assert(filterx_object_iter(items, _assert_entry_direct, "list"));
+
+  filterx_object_unref(items_after);
+  filterx_object_unref(items);
+  filterx_object_unref(key);
+  log_msg_unref(msg);
+  assert_object_json_equals(outer, "{\"name\":\"nested-value\",\"items\":[\"nvtable-string-value\",\"list-element\"],"
+                                   "\"nvtable-string-value\":12345}");
+  filterx_object_unref(outer);
+}
+
+Test(filterx_retain, scope_sync_makes_a_declared_dict_direct_in_place)
+{
+  LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
+  LogMessage *msg = _new_message_with_values();
+  FilterXVariableHandle handles[] =
+  {
+    filterx_map_varname_to_handle("$tied", FX_VAR_MESSAGE_TIED),
+    filterx_map_varname_to_handle("dict", FX_VAR_DECLARED_FLOATING),
+  };
+  FilterXScopeVariableLayout *layout = filterx_scope_variable_layout_new_from_handles(handles, G_N_ELEMENTS(handles));
+  FilterXScope *scope = filterx_scope_new(NULL, layout);
+  filterx_scope_set_message(scope, msg);
+
+  /* something to write back, so the sync does not return early */
+  FilterXVariable *tied = filterx_scope_register_variable(scope, FX_VAR_MESSAGE_TIED, handles[0],
+                                                          filterx_scope_variable_layout_get_index(layout, handles[0]));
+  FilterXObject *flag = filterx_boolean_new(TRUE);
+  filterx_scope_set_variable(scope, tied, &flag, TRUE);
+  filterx_object_unref(flag);
+
+  FilterXVariable *declared = filterx_scope_register_variable(scope, FX_VAR_DECLARED_FLOATING, handles[1],
+                                                              filterx_scope_variable_layout_get_index(layout, handles[1]));
+  FilterXObject *dict = _new_nested_dict();
+  FilterXObject *field = filterx_extract_object_from_logmsg(msg, log_msg_get_value_handle("str"));
+  _dict_set(dict, "field", field);
+  filterx_scope_set_variable(scope, declared, &dict, TRUE);
+  cr_assert(filterx_object_borrows_from_message(filterx_variable_borrow_value(declared)));
+
+  filterx_scope_set_dirty(scope);
+  filterx_scope_sync(scope, &msg, &path_options);
+
+  FilterXObject *after = filterx_variable_borrow_value(declared);
+  cr_assert_eq(filterx_ref_unwrap_ro(after), filterx_ref_unwrap_ro(dict),
+               "the sync copied the dict instead of its leaves");
+  cr_assert(filterx_object_iter(after, _assert_entry_direct, "synced dict"));
+  assert_object_json_equals(after,
+                            "{\"name\":\"nested-value\",\"items\":[4242,\"list-element\"],\"field\":\"nvtable-string-value\"}");
+
+  filterx_object_unref(dict);
+  filterx_scope_free(scope);
+  filterx_scope_variable_layout_free(layout);
+  log_msg_unref(msg);
 }
 
 /* 8) mixed storage.  The retain decision looks at the id of the object it

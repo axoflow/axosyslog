@@ -49,6 +49,10 @@ struct _FilterXType
   FilterXObject *(*clone)(FilterXObject *self);
   FilterXObject *(*clone_container)(FilterXObject *self, FilterXObject *container, FilterXObject *child_of_interest,
                                     gboolean dup);
+  /* replace the message backed leaves below @self with copies, in place,
+   * recursing through the children; the containers and the xref implement
+   * it, see filterx_object_make_direct() */
+  void (*make_direct)(FilterXObject *self);
   gboolean (*truthy)(FilterXObject *self);
 
   /* attribute access */
@@ -934,6 +938,37 @@ filterx_object_note_child_stored(FilterXObject *container, FilterXObject *child)
 {
   if (container && filterx_object_borrows_from_message(child))
     container->is_nvtable_backed = TRUE;
+}
+
+/*
+ * Stop @self from borrowing bytes from the message: a string or a
+ * message_value is replaced by its copy, a container with a make_direct
+ * method replaces its message backed children in place.  An xref is always
+ * kept, so the parent_container links pointing at it stay valid; the value
+ * behind it is kept too unless its type has no in-place path (see
+ * _filterx_ref_make_direct()).  The mark stays on the container (it is
+ * never cleared, see above): a later call walks it again and finds nothing
+ * left to copy.  Clearing it would open a hole: another xref on a shared
+ * child can still carry the mark, and the upward propagation stops at the
+ * first marked xref, so a cleared ancestor would stay unmarked while a new
+ * message backed leaf lands below it.
+ */
+static inline void
+filterx_object_make_direct(FilterXObject **pself)
+{
+  FilterXObject *self = *pself;
+
+  if (!self || !filterx_object_borrows_from_message(self))
+    return;
+
+  if (self->type->make_direct)
+    {
+      self->type->make_direct(self);
+      return;
+    }
+
+  *pself = filterx_object_dup(self);
+  filterx_object_unref(self);
 }
 
 /*
