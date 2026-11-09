@@ -64,7 +64,7 @@ _send_batched_response(const gchar *record, gpointer user_data)
 
   if (!*batch)
     *batch = g_string_sized_new(BATCH_LEN + 1024);
-  g_string_append_printf(*batch, "%s", record);
+  g_string_append(*batch, record);
 
   if ((*batch)->len > BATCH_LEN)
     {
