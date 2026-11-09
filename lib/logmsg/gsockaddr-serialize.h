@@ -27,7 +27,17 @@
 #include "gsockaddr.h"
 #include "serialize.h"
 
+/* Remembers the last address read, so that consecutive messages carrying
+ * the same address share a single GSockAddr instead of allocating one each.
+ * The caller serializes the access to it. */
+typedef struct _GSockAddrDeserializeCache
+{
+  GSockAddr *last;
+} GSockAddrDeserializeCache;
+
 gboolean g_sockaddr_serialize(SerializeArchive *sa, GSockAddr *addr);
 gboolean g_sockaddr_deserialize(SerializeArchive *sa, GSockAddr **addr);
+gboolean g_sockaddr_deserialize_cached(SerializeArchive *sa, GSockAddr **addr, GSockAddrDeserializeCache *cache);
+void g_sockaddr_deserialize_cache_clear(GSockAddrDeserializeCache *cache);
 
 #endif

@@ -342,9 +342,13 @@ _move_messages_from_overflow(LogQueueDiskNonReliable *self)
 }
 
 static gboolean
-_move_messages_from_disk_to_front_cache_queue(LogQueueDiskNonReliable *self, LogQueueDiskMemoryQueue *queue)
+_move_messages_from_disk_to_front_cache_queue(LogQueueDiskNonReliable *self, LogQueueDiskMemoryQueue *queue,
+                                              gint max_msgs)
 {
-  while (queue->len < queue->limit)
+  gboolean success = TRUE;
+  gsize loaded_size = 0;
+
+  for (gint i = 0; i < max_msgs && queue->len < queue->limit; i++)
     {
       if (qdisk_get_length(self->super.qdisk) <= 0)
         break;
@@ -353,28 +357,34 @@ _move_messages_from_disk_to_front_cache_queue(LogQueueDiskNonReliable *self, Log
       LogMessage *msg = log_queue_disk_read_message(&self->super, &path_options);
 
       if (!msg)
-        return FALSE;
+        {
+          success = FALSE;
+          break;
+        }
 
       _push_to_memory_queue_tail(queue, msg, &path_options);
-      log_queue_memory_usage_add(&self->super.super, log_msg_get_size(msg));
+      loaded_size += log_msg_get_size(msg);
       log_msg_unref(msg);
-
-      log_queue_disk_update_disk_related_counters(&self->super);
     }
 
-  return TRUE;
+  if (loaded_size)
+    {
+      log_queue_memory_usage_add(&self->super.super, loaded_size);
+      log_queue_disk_update_disk_related_counters(&self->super);
+    }
+  return success;
 }
 
 static inline gboolean
 _move_messages_from_disk_to_front_cache(LogQueueDiskNonReliable *self)
 {
-  return _move_messages_from_disk_to_front_cache_queue(self, &self->front_cache);
+  return _move_messages_from_disk_to_front_cache_queue(self, &self->front_cache, G_MAXINT);
 }
 
 static inline gboolean
 _move_messages_from_disk_to_front_cache_output(LogQueueDiskNonReliable *self)
 {
-  return _move_messages_from_disk_to_front_cache_queue(self, &self->front_cache_output);
+  return _move_messages_from_disk_to_front_cache_queue(self, &self->front_cache_output, G_MAXINT);
 }
 
 /*
@@ -411,8 +421,14 @@ _maybe_move_messages_among_queue_segments(LogQueueDiskNonReliable *self)
         _move_items_from_front_cache_queue_to_output_queue(self);
 
       ret = _move_messages_from_disk_to_front_cache_output(self);
-      if (ret)
+
+      /* While the source threads spill to the disk, they also load the
+       * front cache from it (see _load_front_cache_from_disk()), so that
+       * deserializing does not slow down the destination.  Load it here
+       * only when they did not, e.g. once they went quiet. */
+      if (ret && !self->front_cache_loaded_by_sources)
         ret = _move_messages_from_disk_to_front_cache(self);
+      self->front_cache_loaded_by_sources = FALSE;
     }
 
   if (self->flow_control_window.len > 0)
@@ -428,17 +444,20 @@ _ack_backlog(LogQueue *s, guint num_msg_to_ack)
   LogQueueDiskNonReliable *self = (LogQueueDiskNonReliable *)s;
   LogMessage *msg;
   LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
-  guint i;
+  gsize acked_size = 0;
 
-  for (i = 0; i < num_msg_to_ack; i++)
+  for (guint i = 0; i < num_msg_to_ack; i++)
     {
       if (!_pop_from_memory_queue_head(&self->backlog, &msg, &path_options))
-        return;
+        break;
 
-      log_queue_memory_usage_sub(&self->super.super, log_msg_get_size(msg));
+      acked_size += log_msg_get_size(msg);
       log_msg_ack(msg, &path_options, AT_PROCESSED);
       log_msg_unref(msg);
     }
+
+  if (acked_size)
+    log_queue_memory_usage_sub(&self->super.super, acked_size);
 }
 
 /* runs only in the output thread */
@@ -495,6 +514,8 @@ _rewind_backlog_all(LogQueue *s)
   _rewind_backlog(s, G_MAXUINT);
 }
 
+/* the message moves on to the backlog, which is also in memory, so the
+ * memory usage does not change */
 static inline LogMessage *
 _pop_head_memory_queue(LogQueueDiskNonReliable *self, LogQueueDiskMemoryQueue *queue, LogMessageQueueNode **node,
                        LogPathOptions *path_options)
@@ -504,7 +525,6 @@ _pop_head_memory_queue(LogQueueDiskNonReliable *self, LogQueueDiskMemoryQueue *q
   if (!_pop_node_from_memory_queue_head(queue, node))
     return NULL;
   _extract_queue_node(*node, &msg, path_options);
-  log_queue_memory_usage_sub(&self->super.super, log_msg_get_size(msg));
 
   return msg;
 }
@@ -602,10 +622,12 @@ fast_success:
     {
       /* a message's node counter never decreases, so a retried message must not allocate a new node */
       _push_node_to_memory_queue_tail(&self->backlog, node);
-      log_queue_memory_usage_add(&self->super.super, log_msg_get_size(msg));
     }
   else
-    _push_tail_backlog(self, msg, path_options);
+    {
+      /* read from the disk, it was not in memory until now */
+      _push_tail_backlog(self, msg, path_options);
+    }
 
   if (stats_update)
     log_queue_queued_messages_dec(s);
@@ -802,41 +824,149 @@ _push_tail(LogQueue *s, LogMessage *msg, const LogPathOptions *path_options)
   _push_tail_single_message(s, msg, path_options);
 }
 
-static void
-_maybe_move_part_of_input_to_front_cache(LogQueueDiskNonReliable *self, InputQueue *input_queue)
+/* The most messages moved from an input queue under the lock at once, so the
+ * destination thread does not wait for the lock for too long */
+#define INPUT_BATCH_MAX_MESSAGES 256
+/* The most bytes written to the disk in one go */
+#define INPUT_BATCH_MAX_DISK_BYTES (64 * 1024)
+
+/* Moves messages from the head of the input queue to the front cache, as
+ * long as it takes them, and acks them once the lock is released. */
+static gint
+_move_input_to_front_cache(LogQueueDiskNonReliable *self, InputQueue *input_queue)
 {
+  LogMessage *msgs[INPUT_BATCH_MAX_MESSAGES];
+  gboolean ack_needed[INPUT_BATCH_MAX_MESSAGES];
+  gint count = 0;
+
   g_mutex_lock(&self->super.super.lock);
 
-  // The user can set a smaller front_cache size, than what we loaded from the disk
-  if (self->front_cache.len > self->front_cache.limit)
-    goto exit;
+  /* the user can set a smaller front cache than what was loaded from the disk */
+  if (self->front_cache.len < self->front_cache.limit
+      && qdisk_get_length(self->super.qdisk) == 0
+      && self->flow_control_window.len == 0)
+    {
+      gint num_msgs = MIN(MIN(self->front_cache.limit - self->front_cache.len, input_queue->len),
+                          INPUT_BATCH_MAX_MESSAGES);
+      gsize moved_size = 0;
 
-  gint num_msgs_to_send_to_front_cache = (qdisk_get_length(self->super.qdisk) == 0 && self->flow_control_window.len == 0)?
-                                         MIN(self->front_cache.limit - self->front_cache.len, input_queue->len) : 0;
+      for (; count < num_msgs; count++)
+        {
+          LogMessageQueueNode *node = iv_list_entry(input_queue->items.next, LogMessageQueueNode, list);
 
-  if (num_msgs_to_send_to_front_cache == 0)
-    goto exit;
+          iv_list_del_init(&node->list);
+          msgs[count] = log_msg_ref(node->msg);
+          ack_needed[count] = node->ack_needed;
 
+          /* the front cache holds messages that are already acked */
+          node->ack_needed = FALSE;
+          node->flow_control_requested = FALSE;
+          _push_node_to_memory_queue_tail(&self->front_cache, node);
+          moved_size += log_msg_get_size(node->msg);
+        }
+
+      if (count > 0)
+        {
+          input_queue->len -= count;
+          log_queue_memory_usage_add(&self->super.super, moved_size);
+          log_queue_queued_messages_add(&self->super.super, count);
+          log_queue_push_notify(&self->super.super);
+        }
+    }
+
+  g_mutex_unlock(&self->super.super.lock);
+
+  for (gint i = 0; i < count; i++)
+    {
+      LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
+
+      path_options.ack_needed = ack_needed[i];
+      log_msg_ack(msgs[i], &path_options, AT_PROCESSED);
+      log_msg_unref(msgs[i]);
+    }
+  return count;
+}
+
+/* Loads up to @max_msgs messages from the disk into the front cache, which
+ * comes before the disk, so the order is kept.  Called by the source
+ * threads as they spill to the disk: the ones filling the disk also pay for
+ * reading it back, instead of the destination thread, which would then
+ * fall further behind.  Must be called with the lock held. */
+static void
+_load_front_cache_from_disk(LogQueueDiskNonReliable *self, gint max_msgs)
+{
+  if (!_is_front_cache_enabled(self) || qdisk_is_read_only(self->super.qdisk))
+    return;
+
+  /* a read error restarts the corrupted disk-buffer, the same way as when
+   * the destination thread reads it */
+  _move_messages_from_disk_to_front_cache_queue(self, &self->front_cache, max_msgs);
+  self->front_cache_loaded_by_sources = TRUE;
+}
+
+/* Serializes messages from the head of the input queue outside of the lock,
+ * writes them to the disk at once and acks them once the lock is released. */
+static gint
+_move_input_to_disk(LogQueueDiskNonReliable *self, InputQueue *input_queue)
+{
+  if (!_is_msg_serialization_needed_hint(self))
+    return 0;
+
+  ScratchBuffersMarker marker;
+  GString *records = scratch_buffers_alloc_and_mark(&marker);
+  GString *record = scratch_buffers_alloc();
   gint count = 0;
-  struct iv_list_head *ilh, *ilh2;
-  iv_list_for_each_safe(ilh, ilh2, &input_queue->items)
+
+  struct iv_list_head *ilh;
+  iv_list_for_each(ilh, &input_queue->items)
   {
-    if (count >= num_msgs_to_send_to_front_cache)
+    if (count >= INPUT_BATCH_MAX_MESSAGES || records->len >= INPUT_BATCH_MAX_DISK_BYTES)
       break;
+
     LogMessageQueueNode *node = iv_list_entry(ilh, LogMessageQueueNode, list);
-    LogPathOptions lpo = LOG_PATH_OPTIONS_INIT;
-    LogMessage *msg;
-    _extract_queue_node(node, &msg, &lpo);
-    _push_tail_front_cache(self, msg, &lpo);
-    iv_list_del_init(ilh);
-    log_msg_free_queue_node(node);
-    input_queue->len--;
-    log_queue_queued_messages_inc(&self->super.super);
+
+    /* a message that fails to serialize is left to the single message path, which drops it */
+    g_string_truncate(record, 0);
+    if (!log_queue_disk_serialize_msg(&self->super, node->msg, record))
+      break;
+    g_string_append_len(records, record->str, record->len);
     count++;
   }
-  log_queue_push_notify(&self->super.super);
-exit:
-  g_mutex_unlock(&self->super.super.lock);
+
+  gint pushed = 0;
+  if (count > 0)
+    {
+      g_mutex_lock(&self->super.super.lock);
+
+      /* the hint may be stale: the front cache comes before the disk and the
+       * flow-control window after it */
+      if (!_can_push_to_front_cache(self) && self->flow_control_window.len == 0)
+        pushed = qdisk_push_tail_records(self->super.qdisk, records, count);
+
+      if (pushed > 0)
+        {
+          log_queue_queued_messages_add(&self->super.super, pushed);
+          log_queue_disk_update_disk_related_counters(&self->super);
+          _load_front_cache_from_disk(self, pushed);
+          log_queue_push_notify(&self->super.super);
+        }
+
+      g_mutex_unlock(&self->super.super.lock);
+    }
+  scratch_buffers_reclaim_marked(marker);
+
+  for (gint i = 0; i < pushed; i++)
+    {
+      LogMessageQueueNode *node = iv_list_entry(input_queue->items.next, LogMessageQueueNode, list);
+      LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
+
+      iv_list_del_init(&node->list);
+      input_queue->len--;
+      path_options.ack_needed = node->ack_needed;
+      log_msg_ack(node->msg, &path_options, AT_PROCESSED);
+      log_msg_free_queue_node(node);
+    }
+  return pushed;
 }
 
 static void
@@ -862,16 +992,18 @@ _move_input(gpointer user_data)
   gint thread_index = main_loop_worker_get_thread_index();
   g_assert(thread_index >= 0);
 
-  if (self->input_queues[thread_index].len == 0)
-    goto exit;
-
-  while (self->input_queues[thread_index].len > 0)
+  InputQueue *input_queue = &self->input_queues[thread_index];
+  while (input_queue->len > 0)
     {
-      _maybe_move_part_of_input_to_front_cache(self, &self->input_queues[thread_index]);
-      if (self->input_queues[thread_index].len > 0)
-        _move_part_of_input_to_disk_or_flow_control_window(self, &self->input_queues[thread_index]);
+      if (_move_input_to_front_cache(self, input_queue) > 0)
+        continue;
+      if (_move_input_to_disk(self, input_queue) > 0)
+        continue;
+
+      /* the flow-control window, or dropping it: one message at a time */
+      _move_part_of_input_to_disk_or_flow_control_window(self, input_queue);
     }
-exit:
+
   log_queue_unref(&self->super.super);
   return NULL;
 }

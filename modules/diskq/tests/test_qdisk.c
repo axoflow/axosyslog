@@ -31,6 +31,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <string.h>
 
 /* QDisk-internal: the frame is a 4-byte integer */
 #define FRAME_LENGTH 4
@@ -1063,6 +1064,219 @@ Test(qdisk, shrink_cannot_apply_at_update_while_wrapped_then_applies_at_pop)
   cr_assert(qdisk_stop(qdisk, NULL, NULL));
   cleanup_qdisk(filename, qdisk);
   _destroy_diskq_options(opts);
+}
+
+/* records with distinct contents, so that a stale read would be noticed */
+#define NUMBERED_RECORD_SIZE 10000
+
+static gboolean
+_generate_numbered_payload(SerializeArchive *sa, gpointer user_data)
+{
+  guint id = GPOINTER_TO_UINT(user_data);
+  gchar payload[NUMBERED_RECORD_SIZE];
+
+  memset(payload, 'a' + id % 26, sizeof(payload));
+  g_snprintf(payload, sizeof(payload), "%08u", id);
+  serialize_archive_write_bytes(sa, payload, sizeof(payload));
+  return TRUE;
+}
+
+static GString *
+_serialize_numbered_record(guint id)
+{
+  GString *record = g_string_new(NULL);
+  GError *error = NULL;
+
+  cr_assert(qdisk_serialize(record, _generate_numbered_payload, GUINT_TO_POINTER(id), &error));
+  return record;
+}
+
+static gboolean
+_push_numbered_record(QDisk *qdisk, guint id)
+{
+  GString *record = _serialize_numbered_record(id);
+  gboolean success = qdisk_push_tail(qdisk, record);
+
+  g_string_free(record, TRUE);
+  return success;
+}
+
+static void
+_pop_and_assert_numbered_record(QDisk *qdisk, guint expected_id)
+{
+  GString *record = g_string_new(NULL);
+  gchar expected_prefix[9];
+
+  cr_assert(qdisk_pop_head(qdisk, record), "failed to pop record %u", expected_id);
+  cr_assert_eq(record->len, NUMBERED_RECORD_SIZE);
+  g_snprintf(expected_prefix, sizeof(expected_prefix), "%08u", expected_id);
+  cr_assert(memcmp(record->str, expected_prefix, 8) == 0,
+            "unexpected record popped, expected: %s, actual: %.8s", expected_prefix, record->str);
+  for (gsize i = 9; i < record->len; i++)
+    cr_assert_eq(record->str[i], 'a' + expected_id % 26, "corrupted record %u at position %" G_GSIZE_FORMAT,
+                 expected_id, i);
+
+  g_string_free(record, TRUE);
+}
+
+static void
+_pop_numbered_record_and_ack(QDisk *qdisk, TestDiskQType dq_type, guint expected_id)
+{
+  _pop_and_assert_numbered_record(qdisk, expected_id);
+  if (dq_type == TDISKQ_RELIABLE)
+    cr_assert(qdisk_ack_backlog(qdisk));
+}
+
+static void
+_assert_records_survive_interleaved_push_and_pop(TestDiskQType dq_type, const gchar *filename)
+{
+  QDisk *qdisk = create_qdisk(dq_type, filename, MiB(1));
+  qdisk_start(qdisk, NULL, NULL);
+
+  /* a 300 KiB backlog moving through a 1 MiB file: wraps around a few dozen
+   * times, while the reader keeps reading what the writer has just written */
+  guint next_pop = 0;
+  for (guint id = 0; id < 5000; id++)
+    {
+      cr_assert(_push_numbered_record(qdisk, id), "failed to push record %u", id);
+      if (id % 7 == 0)
+        continue;
+      while (qdisk_get_length(qdisk) > 30)
+        _pop_numbered_record_and_ack(qdisk, dq_type, next_pop++);
+    }
+
+  while (qdisk_get_length(qdisk) > 0)
+    _pop_numbered_record_and_ack(qdisk, dq_type, next_pop++);
+  cr_assert_eq(next_pop, 5000);
+
+  qdisk_stop(qdisk, NULL, NULL);
+  cleanup_qdisk(filename, qdisk);
+}
+
+Test(qdisk, read_ahead_returns_the_latest_contents_while_wrapping_non_reliable)
+{
+  _assert_records_survive_interleaved_push_and_pop(TDISKQ_NON_RELIABLE, "test_qdisk_read_ahead_wrap.qf");
+}
+
+Test(qdisk, read_ahead_returns_the_latest_contents_while_wrapping_reliable)
+{
+  _assert_records_survive_interleaved_push_and_pop(TDISKQ_RELIABLE, "test_qdisk_read_ahead_wrap.rqf");
+}
+
+Test(qdisk, read_ahead_follows_a_rewound_read_head)
+{
+  const gchar *filename = "test_qdisk_read_ahead_rewind.rqf";
+  QDisk *qdisk = create_qdisk(TDISKQ_RELIABLE, filename, MiB(1));
+  qdisk_start(qdisk, NULL, NULL);
+
+  for (guint id = 0; id < 20; id++)
+    cr_assert(_push_numbered_record(qdisk, id));
+
+  for (guint id = 0; id < 10; id++)
+    _pop_and_assert_numbered_record(qdisk, id);
+  for (guint id = 0; id < 4; id++)
+    cr_assert(qdisk_ack_backlog(qdisk));
+
+  cr_assert(qdisk_rewind_backlog(qdisk, 6));
+  for (guint id = 4; id < 20; id++)
+    _pop_and_assert_numbered_record(qdisk, id);
+
+  qdisk_stop(qdisk, NULL, NULL);
+  cleanup_qdisk(filename, qdisk);
+}
+
+Test(qdisk, read_ahead_is_dropped_when_the_file_is_reset)
+{
+  const gchar *filename = "test_qdisk_read_ahead_reset.qf";
+  QDisk *qdisk = create_qdisk(TDISKQ_NON_RELIABLE, filename, MiB(1));
+  qdisk_start(qdisk, NULL, NULL);
+
+  /* popping the last record resets the file, the next records are written
+   * to the same offsets */
+  for (guint round = 0; round < 3; round++)
+    {
+      for (guint id = round * 10; id < round * 10 + 5; id++)
+        cr_assert(_push_numbered_record(qdisk, id));
+      for (guint id = round * 10; id < round * 10 + 5; id++)
+        _pop_and_assert_numbered_record(qdisk, id);
+      cr_assert_eq(qdisk_get_reader_head(qdisk), QDISK_RESERVED_SPACE);
+    }
+
+  qdisk_stop(qdisk, NULL, NULL);
+  cleanup_qdisk(filename, qdisk);
+}
+
+static gint
+_push_numbered_records(QDisk *qdisk, guint first_id, gint count)
+{
+  GString *records = g_string_new(NULL);
+
+  for (gint i = 0; i < count; i++)
+    {
+      GString *record = _serialize_numbered_record(first_id + i);
+      g_string_append_len(records, record->str, record->len);
+      g_string_free(record, TRUE);
+    }
+
+  gint pushed = qdisk_push_tail_records(qdisk, records, count);
+  g_string_free(records, TRUE);
+  return pushed;
+}
+
+static void
+_assert_record_batches_survive_wrapping(TestDiskQType dq_type, const gchar *filename)
+{
+  QDisk *qdisk = create_qdisk(dq_type, filename, MiB(1));
+  qdisk_start(qdisk, NULL, NULL);
+
+  guint next_push = 0, next_pop = 0;
+  for (gint batch = 1; next_push < 5000; batch = batch % 13 + 1)
+    {
+      cr_assert_eq(_push_numbered_records(qdisk, next_push, batch), batch);
+      next_push += batch;
+      while (qdisk_get_length(qdisk) > 40)
+        _pop_numbered_record_and_ack(qdisk, dq_type, next_pop++);
+    }
+
+  while (qdisk_get_length(qdisk) > 0)
+    _pop_numbered_record_and_ack(qdisk, dq_type, next_pop++);
+  cr_assert_eq(next_pop, next_push);
+
+  qdisk_stop(qdisk, NULL, NULL);
+  cleanup_qdisk(filename, qdisk);
+}
+
+Test(qdisk, push_tail_records_wraps_like_push_tail_non_reliable)
+{
+  _assert_record_batches_survive_wrapping(TDISKQ_NON_RELIABLE, "test_qdisk_push_tail_records_wrap.qf");
+}
+
+Test(qdisk, push_tail_records_wraps_like_push_tail_reliable)
+{
+  _assert_record_batches_survive_wrapping(TDISKQ_RELIABLE, "test_qdisk_push_tail_records_wrap.rqf");
+}
+
+Test(qdisk, push_tail_records_stops_where_push_tail_does_when_full)
+{
+  const gchar *filename = "test_qdisk_push_tail_records_full.qf";
+  QDisk *qdisk = create_qdisk(TDISKQ_NON_RELIABLE, filename, MiB(1));
+  qdisk_start(qdisk, NULL, NULL);
+
+  guint fitting = 0;
+  while (_push_numbered_record(qdisk, fitting))
+    fitting++;
+  while (qdisk_get_length(qdisk) > 0)
+    _pop_and_assert_numbered_record(qdisk, fitting - qdisk_get_length(qdisk));
+  cr_assert_eq(qdisk_get_reader_head(qdisk), QDISK_RESERVED_SPACE);
+
+  cr_assert_eq(_push_numbered_records(qdisk, 0, fitting + 50), fitting);
+  cr_assert_eq(qdisk_get_length(qdisk), fitting);
+  cr_assert_eq(_push_numbered_records(qdisk, fitting, 1), 0);
+  for (guint id = 0; id < fitting; id++)
+    _pop_and_assert_numbered_record(qdisk, id);
+
+  qdisk_stop(qdisk, NULL, NULL);
+  cleanup_qdisk(filename, qdisk);
 }
 
 static void

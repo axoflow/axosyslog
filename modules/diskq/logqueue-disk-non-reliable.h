@@ -49,6 +49,9 @@ typedef struct _LogQueueDiskNonReliable
   LogQueueDiskMemoryQueue flow_control_window;
   LogQueueDiskMemoryQueue backlog;
   LogQueueDiskMemoryQueue front_cache_output;
+  /* set when a source thread loaded the front cache from the disk since the
+   * destination thread last moved the segments, protected by the lock */
+  gboolean front_cache_loaded_by_sources;
   gint num_input_queues;
   InputQueue input_queues[0];
 } LogQueueDiskNonReliable;

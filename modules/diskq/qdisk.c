@@ -50,6 +50,10 @@
 
 #define MAX_RECORD_LENGTH 100 * 1024 * 1024
 
+/* records are read through a buffer of this size, so a run of small records
+ * costs a single pread() instead of two per record */
+#define QDISK_READ_AHEAD_SIZE (64 * 1024)
+
 #define PATH_QDISK              PATH_LOCALSTATEDIR
 
 #define QDISK_HDR_VERSION_CURRENT 3
@@ -78,6 +82,14 @@ struct _QDisk
   gint64 cached_file_size;
   QDiskFileHeader *hdr;
   DiskQueueOptions *options;
+
+  /* a copy of the file's contents at [offset, offset + len) */
+  struct
+  {
+    gchar *data;
+    gint64 offset;
+    gsize len;
+  } read_ahead;
 };
 
 #define QDISK_ERROR qdisk_error_quark()
@@ -93,6 +105,22 @@ qdisk_error_quark(void)
     q = g_quark_from_static_string("qdisk-error");
 
   return q;
+}
+
+static inline void
+_invalidate_read_ahead(QDisk *self)
+{
+  self->read_ahead.len = 0;
+}
+
+/* must be called for every write to the file, so the buffer never serves
+ * data that has been overwritten since it was read */
+static inline void
+_invalidate_read_ahead_range(QDisk *self, gint64 position, gsize len)
+{
+  if (position < self->read_ahead.offset + (gint64) self->read_ahead.len
+      && self->read_ahead.offset < position + (gint64) len)
+    _invalidate_read_ahead(self);
 }
 
 static gboolean
@@ -403,6 +431,7 @@ static void
 _truncate_file(QDisk *self, gint64 expected_size)
 {
   msg_debug("Truncating queue file", evt_tag_str("filename", self->filename), evt_tag_long("new size", expected_size));
+  _invalidate_read_ahead(self);
 
   if (ftruncate(self->fd, (off_t) expected_size) == 0)
     {
@@ -770,12 +799,13 @@ qdisk_get_next_tail_position(QDisk *self)
   return self->hdr->write_head;
 }
 
-gboolean
-qdisk_push_tail(QDisk *self, GString *record)
+/* Moves the write head past a record of @len bytes as if it had been written
+ * and returns the position to write it to, or -1 if it does not fit.  The
+ * positions do not depend on @skip_truncate, which leaves the file size
+ * alone. */
+static gint64
+_advance_write_head(QDisk *self, gsize len, gboolean skip_truncate)
 {
-  if (!qdisk_started(self))
-    return FALSE;
-
   if (_could_not_wrap_write_head_last_push_but_now_can(self))
     {
       /*
@@ -786,17 +816,11 @@ qdisk_push_tail(QDisk *self, GString *record)
       self->hdr->write_head = QDISK_RESERVED_SPACE;
     }
 
-  if (!qdisk_is_space_avail(self, record->len))
-    return FALSE;
+  if (!qdisk_is_space_avail(self, len))
+    return -1;
 
-  if (!pwrite_strict(self->fd, record->str, record->len, self->hdr->write_head))
-    {
-      msg_error("Error writing disk-queue file",
-                evt_tag_error("error"));
-      return FALSE;
-    }
-
-  self->hdr->write_head = self->hdr->write_head + record->len;
+  gint64 position = self->hdr->write_head;
+  self->hdr->write_head = position + len;
 
 
   /* NOTE: we only wrap around if the read head is before the write,
@@ -826,7 +850,8 @@ qdisk_push_tail(QDisk *self, GString *record)
     {
       if (self->cached_file_size > self->hdr->write_head)
         {
-          _maybe_truncate_file(self, self->hdr->write_head);
+          if (!skip_truncate)
+            _maybe_truncate_file(self, self->hdr->write_head);
         }
       else
         {
@@ -848,13 +873,152 @@ qdisk_push_tail(QDisk *self, GString *record)
         }
     }
   self->hdr->length++;
-  return TRUE;
+  return position;
+}
+
+static inline gsize
+_get_serialized_record_size(const GString *records, gsize offset)
+{
+  guint32 record_length;
+
+  memcpy(&record_length, records->str + offset, sizeof(record_length));
+  return sizeof(record_length) + GUINT32_FROM_BE(record_length);
+}
+
+/* Finds the records starting at @offset that land contiguously in the file,
+ * returns their number and stores their position and total size. */
+static gint
+_plan_contiguous_run(QDisk *self, const GString *records, gsize offset, gint count,
+                     gint64 *run_position, gsize *run_size)
+{
+  /* plan on a copy, the header is mmap()-ed and must not point past the
+   * data written so far */
+  QDiskFileHeader *hdr = self->hdr;
+  QDiskFileHeader planned_hdr = *hdr;
+  gint64 cached_file_size = self->cached_file_size;
+  gint run_count = 0;
+
+  self->hdr = &planned_hdr;
+  *run_size = 0;
+  while (run_count < count)
+    {
+      if (run_count > 0 && qdisk_get_next_tail_position(self) != *run_position + (gint64) *run_size)
+        break;
+
+      gsize record_size = _get_serialized_record_size(records, offset + *run_size);
+      gint64 position = _advance_write_head(self, record_size, TRUE);
+      if (position < 0)
+        break;
+
+      if (run_count == 0)
+        *run_position = position;
+      *run_size += record_size;
+      run_count++;
+    }
+  self->hdr = hdr;
+  self->cached_file_size = cached_file_size;
+  return run_count;
+}
+
+/* Pushes @count records, serialized back to back into @records the way
+ * qdisk_serialize() produces them.  Records that land contiguously in the
+ * file are written with a single pwrite(), the header only moves after
+ * their data is written.  Returns the number of records pushed, fewer than
+ * @count if the disk-buffer got full or writing failed. */
+gint
+qdisk_push_tail_records(QDisk *self, const GString *records, gint count)
+{
+  if (!qdisk_started(self))
+    return 0;
+
+  gint pushed = 0;
+  gsize offset = 0;
+  while (pushed < count)
+    {
+      gint64 run_position;
+      gsize run_size;
+      gint run_count = _plan_contiguous_run(self, records, offset, count - pushed, &run_position, &run_size);
+      if (run_count == 0)
+        break;
+
+      _invalidate_read_ahead_range(self, run_position, run_size);
+      if (!pwrite_strict(self->fd, records->str + offset, run_size, run_position))
+        {
+          msg_error("Error writing disk-queue file",
+                    evt_tag_error("error"));
+          break;
+        }
+
+      /* truncating the file to the end of the first records would cut the
+       * ones already written after them, truncate at the end of the run */
+      for (gint i = 0; i < run_count; i++)
+        {
+          gsize record_size = _get_serialized_record_size(records, offset);
+          gint64 position = _advance_write_head(self, record_size, i < run_count - 1);
+          g_assert(position == run_position);
+          run_position += record_size;
+          offset += record_size;
+        }
+      pushed += run_count;
+    }
+  return pushed;
+}
+
+gboolean
+qdisk_push_tail(QDisk *self, GString *record)
+{
+  return qdisk_push_tail_records(self, record, 1) == 1;
+}
+
+/* Bytes after the write head are not valid records yet, they will be written
+ * later, so do not read ahead past it.  When the read head is after the
+ * write head (the file has wrapped), the rest of the file is still unread. */
+static inline gsize
+_get_read_ahead_size(QDisk *self, gint64 position)
+{
+  if (position < self->hdr->write_head)
+    return MIN(QDISK_READ_AHEAD_SIZE, self->hdr->write_head - position);
+  return QDISK_READ_AHEAD_SIZE;
+}
+
+/* Only reads at the read head fill the buffer: the reliable disk-buffer also
+ * reads record lengths at the backlog head when acking or rewinding, those
+ * would otherwise evict the data the read head is about to consume. */
+static gssize
+_pread_with_read_ahead(QDisk *self, gchar *buf, gsize count, gint64 position, gboolean fill)
+{
+  if (position >= self->read_ahead.offset
+      && position + (gint64) count <= self->read_ahead.offset + (gint64) self->read_ahead.len)
+    {
+      memcpy(buf, self->read_ahead.data + (position - self->read_ahead.offset), count);
+      return count;
+    }
+
+  gsize read_ahead_size = _get_read_ahead_size(self, position);
+  if (!fill || count >= read_ahead_size)
+    return pread(self->fd, buf, count, position);
+
+  if (!self->read_ahead.data)
+    self->read_ahead.data = g_malloc(QDISK_READ_AHEAD_SIZE);
+
+  _invalidate_read_ahead(self);
+  gssize bytes_read = pread(self->fd, self->read_ahead.data, read_ahead_size, position);
+  if (bytes_read < 0)
+    return bytes_read;
+
+  self->read_ahead.offset = position;
+  self->read_ahead.len = bytes_read;
+
+  gsize bytes_copied = MIN(count, (gsize) bytes_read);
+  memcpy(buf, self->read_ahead.data, bytes_copied);
+  return bytes_copied;
 }
 
 static inline gssize
 _read_record_length_from_disk(QDisk *self, gint64 position, guint32 *record_length)
 {
-  gssize bytes_read = pread(self->fd, (gchar *)record_length, sizeof(guint32), position);
+  gssize bytes_read = _pread_with_read_ahead(self, (gchar *) record_length, sizeof(guint32), position,
+                                             position == self->hdr->read_head);
 
   *record_length = GUINT32_FROM_BE(*record_length);
 
@@ -918,7 +1082,8 @@ _read_record_from_disk(QDisk *self, GString *record, guint32 record_length)
 {
   g_string_set_size(record, record_length);
 
-  gssize bytes_read = pread(self->fd, record->str, record_length, self->hdr->read_head + sizeof(record_length));
+  gssize bytes_read = _pread_with_read_ahead(self, record->str, record_length,
+                                             self->hdr->read_head + sizeof(record_length), TRUE);
   if (bytes_read != record_length)
     {
       msg_error("Error reading disk-queue file",
@@ -1291,6 +1456,7 @@ static gboolean
 qdisk_write_serialized_string_to_file(QDisk *self, GString const *serialized, gint64 *offset)
 {
   *offset = lseek(self->fd, 0, SEEK_END);
+  _invalidate_read_ahead_range(self, *offset, serialized->len);
   if (!pwrite_strict(self->fd, serialized->str, serialized->len, *offset))
     {
       msg_error("Error writing in-memory buffer of disk-queue to disk",
@@ -1414,6 +1580,7 @@ _close_file(QDisk *self)
     }
 
   self->cached_file_size = 0;
+  _invalidate_read_ahead(self);
 }
 
 static void
@@ -1824,6 +1991,7 @@ qdisk_reset_file_if_empty(QDisk *self)
   self->hdr->read_head = QDISK_RESERVED_SPACE;
   self->hdr->write_head = QDISK_RESERVED_SPACE;
   self->hdr->backlog_head = QDISK_RESERVED_SPACE;
+  _invalidate_read_ahead(self);
 
   _maybe_truncate_file(self, QDISK_RESERVED_SPACE);
   self->hdr->use_v1_wrap_condition = FALSE;
@@ -1911,6 +2079,7 @@ void
 qdisk_free(QDisk *self)
 {
   self->options = NULL;
+  g_free(self->read_ahead.data);
   g_free(self->filename);
   g_free(self);
 }

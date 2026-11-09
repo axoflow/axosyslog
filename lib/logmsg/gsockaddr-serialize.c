@@ -81,8 +81,31 @@ g_sockaddr_serialize(SerializeArchive *sa, GSockAddr *addr)
   return result;
 }
 
+/* the constructors copy the sockaddr as a whole, so comparing all of its
+ * bytes finds an identical address */
+static GSockAddr *
+_get_cached(GSockAddrDeserializeCache *cache, const struct sockaddr *sa, gsize salen)
+{
+  if (!cache || !cache->last)
+    return NULL;
+  if (cache->last->super.salen != salen || memcmp(&cache->last->sa, sa, salen) != 0)
+    return NULL;
+  return g_sockaddr_ref(cache->last);
+}
+
+static GSockAddr *
+_store_cached(GSockAddrDeserializeCache *cache, GSockAddr *addr)
+{
+  if (cache)
+    {
+      g_sockaddr_unref(cache->last);
+      cache->last = g_sockaddr_ref(addr);
+    }
+  return addr;
+}
+
 static gboolean
-_deserialize_ipv4(SerializeArchive *sa, GSockAddr **addr)
+_deserialize_ipv4(SerializeArchive *sa, GSockAddr **addr, GSockAddrDeserializeCache *cache)
 {
   struct sockaddr_in sin;
   memset(&sin, 0, sizeof(sin));
@@ -92,14 +115,16 @@ _deserialize_ipv4(SerializeArchive *sa, GSockAddr **addr)
       !serialize_read_uint16(sa, &sin.sin_port))
     return FALSE;
 
-  *addr = g_sockaddr_inet_new2(&sin);
+  *addr = _get_cached(cache, (struct sockaddr *) &sin, sizeof(sin));
+  if (!*addr)
+    *addr = _store_cached(cache, g_sockaddr_inet_new2(&sin));
   return TRUE;
 }
 
 
 #if SYSLOG_NG_ENABLE_IPV6
 static gboolean
-_deserialize_ipv6(SerializeArchive *sa, GSockAddr **addr)
+_deserialize_ipv6(SerializeArchive *sa, GSockAddr **addr, GSockAddrDeserializeCache *cache)
 {
   gboolean result = FALSE;
   struct sockaddr_in6 sin6;
@@ -109,7 +134,9 @@ _deserialize_ipv6(SerializeArchive *sa, GSockAddr **addr)
   if (serialize_read_blob(sa, (gchar *) &sin6.sin6_addr, sizeof(sin6.sin6_addr)) &&
       serialize_read_uint16(sa, &sin6.sin6_port))
     {
-      *addr = g_sockaddr_inet6_new2(&sin6);
+      *addr = _get_cached(cache, (struct sockaddr *) &sin6, sizeof(sin6));
+      if (!*addr)
+        *addr = _store_cached(cache, g_sockaddr_inet6_new2(&sin6));
       result = TRUE;
     }
   return result;
@@ -117,7 +144,7 @@ _deserialize_ipv6(SerializeArchive *sa, GSockAddr **addr)
 #endif
 
 gboolean
-g_sockaddr_deserialize(SerializeArchive *sa, GSockAddr **addr)
+g_sockaddr_deserialize_cached(SerializeArchive *sa, GSockAddr **addr, GSockAddrDeserializeCache *cache)
 {
   guint16 family;
   gboolean result = TRUE;
@@ -133,13 +160,13 @@ g_sockaddr_deserialize(SerializeArchive *sa, GSockAddr **addr)
       break;
     case AF_INET:
     {
-      result = _deserialize_ipv4(sa, addr);
+      result = _deserialize_ipv4(sa, addr, cache);
       break;
     }
 #if SYSLOG_NG_ENABLE_IPV6
     case AF_INET6:
     {
-      result = _deserialize_ipv6(sa, addr);
+      result = _deserialize_ipv6(sa, addr, cache);
       break;
     }
 #endif
@@ -151,4 +178,17 @@ g_sockaddr_deserialize(SerializeArchive *sa, GSockAddr **addr)
       break;
     }
   return result;
+}
+
+gboolean
+g_sockaddr_deserialize(SerializeArchive *sa, GSockAddr **addr)
+{
+  return g_sockaddr_deserialize_cached(sa, addr, NULL);
+}
+
+void
+g_sockaddr_deserialize_cache_clear(GSockAddrDeserializeCache *cache)
+{
+  g_sockaddr_unref(cache->last);
+  cache->last = NULL;
 }

@@ -27,6 +27,7 @@
 #include "logmsg/gsockaddr-serialize.h"
 
 #include <string.h>
+#include <arpa/inet.h>
 
 TestSuite(gsockaddr_serialize, .init = app_startup, .fini = app_shutdown);
 
@@ -166,3 +167,67 @@ Test(gsockaddr_serialize, test_bad_family)
   g_sockaddr_unref(addr);
   g_sockaddr_unref(read_addr);
 }
+
+static GSockAddr *
+_deserialize_through_cache(GSockAddr *addr, GSockAddrDeserializeCache *cache)
+{
+  GString *stream = g_string_new("");
+  SerializeArchive *sa = serialize_string_archive_new(stream);
+  GSockAddr *read_addr = NULL;
+
+  cr_assert(g_sockaddr_serialize(sa, addr));
+  cr_assert(g_sockaddr_deserialize_cached(sa, &read_addr, cache));
+
+  serialize_archive_free(sa);
+  g_string_free(stream, TRUE);
+  g_sockaddr_unref(addr);
+  return read_addr;
+}
+
+Test(gsockaddr_serialize, test_cached_deserialize_shares_identical_addresses)
+{
+  GSockAddrDeserializeCache cache = { 0 };
+
+  GSockAddr *first = _deserialize_through_cache(g_sockaddr_inet_new("127.0.0.1", 5555), &cache);
+  GSockAddr *same = _deserialize_through_cache(g_sockaddr_inet_new("127.0.0.1", 5555), &cache);
+  cr_assert_eq(first, same);
+
+  GSockAddr *other_port = _deserialize_through_cache(g_sockaddr_inet_new("127.0.0.1", 5556), &cache);
+  cr_assert_neq(other_port, first);
+  cr_assert_eq(g_sockaddr_get_port(other_port), 5556);
+
+  GSockAddr *other_host = _deserialize_through_cache(g_sockaddr_inet_new("127.0.0.2", 5556), &cache);
+  cr_assert_neq(other_host, other_port);
+  cr_assert_eq(g_sockaddr_inet_get_address(other_host).s_addr, inet_addr("127.0.0.2"));
+
+  GSockAddr *empty = _deserialize_through_cache(NULL, &cache);
+  cr_assert_null(empty);
+
+  g_sockaddr_deserialize_cache_clear(&cache);
+  cr_assert_null(cache.last);
+  cr_assert_eq(g_atomic_counter_get(&first->super.refcnt), 2);
+
+  g_sockaddr_unref(first);
+  g_sockaddr_unref(same);
+  g_sockaddr_unref(other_port);
+  g_sockaddr_unref(other_host);
+}
+
+#if SYSLOG_NG_ENABLE_IPV6
+Test(gsockaddr_serialize, test_cached_deserialize_inet6)
+{
+  GSockAddrDeserializeCache cache = { 0 };
+
+  GSockAddr *first = _deserialize_through_cache(g_sockaddr_inet6_new("::1", 5555), &cache);
+  GSockAddr *same = _deserialize_through_cache(g_sockaddr_inet6_new("::1", 5555), &cache);
+  GSockAddr *other = _deserialize_through_cache(g_sockaddr_inet6_new("::2", 5555), &cache);
+
+  cr_assert_eq(first, same);
+  cr_assert_neq(first, other);
+
+  g_sockaddr_deserialize_cache_clear(&cache);
+  g_sockaddr_unref(first);
+  g_sockaddr_unref(same);
+  g_sockaddr_unref(other);
+}
+#endif

@@ -53,6 +53,8 @@ struct _LogQueueDisk
   } metrics;
 
   gboolean compaction;
+  /* deserializing happens under the queue's lock */
+  LogMessageDeserializeCache deserialize_cache;
   gboolean (*start)(LogQueueDisk *s);
   gboolean (*stop)(LogQueueDisk *s, gboolean *persistent);
   gboolean (*stop_corrupted)(LogQueueDisk *s);

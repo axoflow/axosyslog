@@ -317,6 +317,119 @@ Test(diskq, testcase_with_threads)
   fprintf(stderr, "Feed speed: %.2lf\n", (double) TEST_RUNS * MESSAGES_SUM * 1000000 / sum_time);
 }
 
+#define INPUT_BATCH_TEST_MESSAGES 20000
+
+static void
+_push_sequenced_messages(LogQueue *q, gint first, gint count)
+{
+  LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
+
+  path_options.ack_needed = TRUE;
+  path_options.flow_control_requested = TRUE;
+  for (gint i = first; i < first + count; i++)
+    {
+      LogMessage *msg = log_msg_new_empty();
+      gchar seq[16];
+
+      g_snprintf(seq, sizeof(seq), "%d", i);
+      log_msg_set_value_by_name(msg, "SEQ", seq, -1);
+      log_msg_add_ack(msg, &path_options);
+      msg->ack_func = test_ack;
+      log_queue_push_tail(q, msg, &path_options);
+    }
+}
+
+static void
+_pop_and_assert_sequenced_messages(LogQueue *q, gint *next, gint count)
+{
+  for (gint i = 0; i < count; i++)
+    {
+      LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
+      LogMessage *msg = log_queue_pop_head(q, &path_options);
+      gchar expected[16];
+
+      cr_assert(msg, "queue is empty, expected message %d", *next);
+      g_snprintf(expected, sizeof(expected), "%d", *next);
+      cr_assert_str_eq(log_msg_get_value_by_name(msg, "SEQ", NULL), expected);
+      (*next)++;
+
+      log_queue_ack_backlog(q, 1);
+      log_msg_ack(msg, &path_options, AT_PROCESSED);
+      log_msg_unref(msg);
+    }
+}
+
+static gpointer
+_feed_and_consume_through_input_queue(gpointer args)
+{
+  LogQueue *q = (LogQueue *) args;
+  QDisk *qdisk = ((LogQueueDisk *) q)->qdisk;
+  gint pushed = 0, popped = 0;
+  gint64 max_disk_length = 0;
+
+  iv_init();
+  main_loop_worker_thread_start(MLW_ASYNC_WORKER);
+
+  /* batches larger than the front cache, so that they are split between the
+   * front cache and the disk, while the consumer lags behind */
+  for (gint batch = 1; pushed < INPUT_BATCH_TEST_MESSAGES; batch = batch * 3 % 1021 + 1)
+    {
+      gint count = MIN(batch, INPUT_BATCH_TEST_MESSAGES - pushed);
+
+      _push_sequenced_messages(q, pushed, count);
+      pushed += count;
+      main_loop_worker_invoke_batch_callbacks();
+      cr_assert_eq(acked_messages, pushed, "messages written to the front cache or the disk must be acked");
+      max_disk_length = MAX(max_disk_length, qdisk_get_length(qdisk));
+
+      _pop_and_assert_sequenced_messages(q, &popped, MIN(log_queue_get_length(q), count * 2 / 3));
+      main_loop_worker_run_gc();
+    }
+  _pop_and_assert_sequenced_messages(q, &popped, log_queue_get_length(q));
+  cr_assert_eq(popped, INPUT_BATCH_TEST_MESSAGES);
+  cr_assert_gt(max_disk_length, 500, "the test is meant to spill to the disk");
+  cr_assert_null(log_queue_pop_head(q, &(LogPathOptions) LOG_PATH_OPTIONS_INIT));
+
+  main_loop_worker_thread_stop();
+  iv_deinit();
+  return NULL;
+}
+
+Test(diskq, non_reliable_input_queue_batches_keep_order_and_ack_on_enqueue)
+{
+  DiskQueueOptions options;
+  const gchar *filename = "test-non-reliable-input-queue.qf";
+
+  main_loop_worker_allocate_thread_space(1);
+  main_loop_worker_finalize_thread_space();
+
+  _construct_options(&options, 10000000, 100000, FALSE);
+  options.front_cache_size = 100;
+  unlink(filename);
+
+  StatsClusterKeyBuilder *driver_sck_builder = stats_cluster_key_builder_new();
+  StatsClusterKeyBuilder *queue_sck_builder = stats_cluster_key_builder_new();
+  LogQueue *q = log_queue_disk_non_reliable_new(&options, filename, "non_reliable_input_queue", STATS_LEVEL0,
+                                                driver_sck_builder, queue_sck_builder);
+  stats_cluster_key_builder_free(driver_sck_builder);
+  stats_cluster_key_builder_free(queue_sck_builder);
+  log_queue_disk_start(q);
+  acked_messages = 0;
+
+  GThread *thread = g_thread_new(NULL, _feed_and_consume_through_input_queue, q);
+  g_thread_join(thread);
+
+  cr_assert_eq(acked_messages, INPUT_BATCH_TEST_MESSAGES);
+  cr_assert(q->metrics.owned.memory_usage);
+  cr_assert_eq(stats_counter_get(q->metrics.owned.memory_usage), 0);
+
+  gboolean persistent;
+  log_queue_disk_stop(q, &persistent);
+  log_queue_unref(q);
+  unlink(filename);
+  disk_queue_options_destroy(&options);
+}
+
 typedef struct restart_test_parameters
 {
   gchar *filename;
