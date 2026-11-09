@@ -97,6 +97,7 @@ static CfgLexerKeyword afsocket_keywords[] =
   { "transport",          KW_TRANSPORT },
   { "ip_protocol",        KW_IP_PROTOCOL },
   { "max_connections",    KW_MAX_CONNECTIONS },
+  { "connections",        KW_CONNECTIONS },
   { "listen_backlog",     KW_LISTEN_BACKLOG },
   { "keep_alive",         KW_KEEP_ALIVE },
   { "close_on_input",     KW_CLOSE_ON_INPUT },

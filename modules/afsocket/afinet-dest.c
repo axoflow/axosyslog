@@ -256,7 +256,8 @@ afinet_dd_fail_back_to_primary(gpointer s, gint fd, GSockAddr *saddr)
   if (_is_tls_used(self))
     afinet_dd_setup_tls_verifier(self);
 
-  afsocket_dd_connected_with_fd(s, fd, saddr);
+  /* failover() is only supported with a single connection */
+  afsocket_dd_connected_with_fd(&self->super.connections[0], fd, saddr);
 }
 
 void
@@ -303,21 +304,21 @@ _setup_bind_addr(AFInetDestDriver *self)
 }
 
 static gboolean
-_already_connected_to_destination(AFInetDestDriver *self)
+_already_connected_to_destination(AFSocketDestConnection *conn)
 {
-  return log_writer_opened(self->super.writer);
+  return log_writer_opened(conn->writer);
 }
 
 static gboolean
-_setup_dest_addr(AFInetDestDriver *self)
+_setup_dest_addr(AFInetDestDriver *self, AFSocketDestConnection *conn)
 {
-  if (_already_connected_to_destination(self))
+  if (_already_connected_to_destination(conn))
     return TRUE;
 
-  g_sockaddr_unref(self->super.dest_addr);
-  self->super.dest_addr = NULL;
+  g_sockaddr_unref(conn->dest_addr);
+  conn->dest_addr = NULL;
 
-  if (!resolve_hostname_to_sockaddr(&self->super.dest_addr, self->super.transport_mapper->address_family,
+  if (!resolve_hostname_to_sockaddr(&conn->dest_addr, self->super.transport_mapper->address_family,
                                     _afinet_dd_get_hostname(self)))
     return FALSE;
 
@@ -332,17 +333,17 @@ _setup_dest_addr(AFInetDestDriver *self)
         }
     }
 
-  g_sockaddr_set_port(self->super.dest_addr, _determine_port(self));
+  g_sockaddr_set_port(conn->dest_addr, _determine_port(self));
 
   return TRUE;
 }
 
 static gboolean
-afinet_dd_setup_addresses(AFSocketDestDriver *s)
+afinet_dd_setup_addresses(AFSocketDestDriver *s, AFSocketDestConnection *conn)
 {
   AFInetDestDriver *self = (AFInetDestDriver *) s;
 
-  if (!afsocket_dd_setup_addresses_method(s))
+  if (!afsocket_dd_setup_addresses_method(s, conn))
     return FALSE;
 
   if (self->super.proto_factory->default_inet_port)
@@ -357,7 +358,7 @@ afinet_dd_setup_addresses(AFSocketDestDriver *s)
   if (_is_tls_used(self))
     afinet_dd_setup_tls_verifier(self);
 
-  if (!_setup_dest_addr(self))
+  if (!_setup_dest_addr(self, conn))
     return FALSE;
 
   iv_invalidate_now();
@@ -399,6 +400,23 @@ afinet_dd_init(LogPipe *s)
     self->super.connections_kept_alive_across_reloads = TRUE;
 #endif
 
+  if (self->super.num_connections > 1 && _is_failover_used(self))
+    {
+      msg_error("failover() is not supported with connections() greater than 1",
+                evt_tag_int("connections", self->super.num_connections),
+                log_expr_node_location_tag(s->expr_node));
+      return FALSE;
+    }
+
+  if (self->super.num_connections > 1 && self->bind_port)
+    {
+      msg_error("localport() cannot be used with connections() greater than 1, as each connection needs "
+                "its own local port",
+                evt_tag_int("connections", self->super.num_connections),
+                log_expr_node_location_tag(s->expr_node));
+      return FALSE;
+    }
+
   if (!afsocket_dd_init(s))
     return FALSE;
 
@@ -429,7 +447,7 @@ afinet_dd_init(LogPipe *s)
 
 #if SYSLOG_NG_ENABLE_SPOOF_SOURCE
 static LogProtoClient *
-afinet_dd_construct_proto(AFSocketDestDriver *s, gint fd)
+afinet_dd_construct_proto(AFSocketDestDriver *s, AFSocketDestConnection *conn, gint fd)
 {
   AFInetDestDriver *self = (AFInetDestDriver *) s;
 
@@ -438,7 +456,7 @@ afinet_dd_construct_proto(AFSocketDestDriver *s, gint fd)
       LogProtoClient *proto = log_proto_spoof_source_client_new(
                                 self->super.bind_addr->sa.sa_family,
                                 &self->super.writer_options.proto_options.super,
-                                self->super.dest_addr,
+                                conn->dest_addr,
                                 self->spoof_source_max_msglen
                               );
 
@@ -447,13 +465,13 @@ afinet_dd_construct_proto(AFSocketDestDriver *s, gint fd)
           if (!transport_mapper_setup_stack(self->super.transport_mapper, &proto->transport_stack, fd))
             {
               log_proto_client_free(proto);
-              return afsocket_dd_construct_proto_method(s, fd);
+              return afsocket_dd_construct_proto_method(s, conn, fd);
             }
           return proto;
         }
     }
 
-  return afsocket_dd_construct_proto_method(s, fd);
+  return afsocket_dd_construct_proto_method(s, conn, fd);
 }
 #endif
 
@@ -484,7 +502,8 @@ afinet_dd_should_restore_connection(AFSocketDestDriver *s, AFSocketDestKeptAlive
 }
 
 static void
-afinet_dd_restore_connection(AFSocketDestDriver *s, AFSocketDestKeptAliveConnection *item)
+afinet_dd_restore_connection(AFSocketDestDriver *s, AFSocketDestConnection *conn,
+                             AFSocketDestKeptAliveConnection *item)
 {
   AFInetDestDriver *self = (AFInetDestDriver *) s;
 
@@ -508,7 +527,7 @@ afinet_dd_restore_connection(AFSocketDestDriver *s, AFSocketDestKeptAliveConnect
     }
 
 exit:
-  afsocket_dd_restore_connection_method(&self->super, item);
+  afsocket_dd_restore_connection_method(&self->super, conn, item);
 }
 
 static void
@@ -536,16 +555,16 @@ _kept_alive_connection_new(const gchar *transport, const gchar *proto, const gch
 }
 
 static void
-afinet_dd_save_connection(AFSocketDestDriver *s)
+afinet_dd_save_connection(AFSocketDestDriver *s, AFSocketDestConnection *conn)
 {
   AFInetDestDriver *self = (AFInetDestDriver *) s;
 
   const gchar *transport = transport_mapper_get_transport(self->super.transport_mapper);
   const gchar *proto = transport_mapper_get_logproto(self->super.transport_mapper);
   AFInetDestKeptAliveConnection *item = _kept_alive_connection_new(transport, proto, _afinet_dd_get_hostname(self),
-                                        self->super.dest_addr, self->super.writer);
+                                        conn->dest_addr, conn->writer);
 
-  afsocket_dd_save_connection(&self->super, &item->super);
+  afsocket_dd_save_connection(&self->super, conn, &item->super);
 }
 
 static AFInetDestDriver *
