@@ -105,10 +105,9 @@ _goal_name(FilterXEvalRetainGoal goal)
  * The libtest world never uses the thread-local allocator (everything is
  * heap allocated), so these helpers plug one into the standing eval context
  * on demand.  _release_allocator_memory() is what makes allocator related
- * mistakes observable: this is a debug build, where
- * filterx_allocator_empty() drops every area (the areas array has a free
- * func), so any pointer still aimed into the allocator is a real
- * use-after-free afterwards.
+ * mistakes observable: it frees every area (filterx_allocator_empty() would
+ * keep the first one outside debug builds), so any pointer still aimed into
+ * the allocator is a real use-after-free afterwards, in every build.
  */
 static FilterXAllocator test_allocator;
 #define TEST_ALLOCATOR_ID 7
@@ -152,7 +151,7 @@ _release_allocator_memory(void)
 {
   _disable_allocator();
   _drop_allocator_resident_weak_refs();
-  filterx_allocator_empty(&test_allocator);
+  filterx_allocator_clear(&test_allocator);
 }
 
 /* recursively assert that nothing reachable from @o still lives in the
