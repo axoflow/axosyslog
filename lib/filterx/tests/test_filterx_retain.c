@@ -47,7 +47,6 @@
  */
 
 #include <criterion/criterion.h>
-#include <criterion/parameterized.h>
 #include "libtest/filterx-lib.h"
 
 #include "filterx/filterx-eval.h"
