@@ -495,7 +495,7 @@ _dup_scope_from_snapshots(FilterXScope *parent, LogMessage *msg, FilterXScopeVar
 
       FilterXObject *value = snapshot->value;
       FilterXGenCounter generation = filterx_variable_is_message_tied(v) ? new_scope->msg->generation : new_scope->generation;
-      filterx_variable_set_value(v, &value, snapshot->assigned, generation);
+      filterx_variable_set_value(v, value ? &value : NULL, snapshot->assigned, generation);
       filterx_object_unref(value);
     }
 
@@ -523,6 +523,45 @@ _layout_from_snapshot_handles(GArray *snapshots)
   FilterXScopeVariableLayout *layout = filterx_scope_variable_layout_new_from_handles(handles, n);
   g_free(handles);
   return layout;
+}
+
+/* an unset message-tied variable: no value, but something the sync writes
+ * back (see filterx_scope_sync()), so a snapshot has to carry it */
+static inline gboolean
+_variable_is_whiteout(FilterXVariable *variable)
+{
+  return !variable->value && filterx_variable_is_message_tied(variable) && filterx_variable_is_assigned(variable);
+}
+
+/* filterx_scope_foreach_variable_readonly() skips the variables without a
+ * value, whiteouts included, so the ancestors are walked here */
+static void
+_collect_ancestor_variables_for_dup(FilterXScope *self, FilterXScopeDupCollector *collector)
+{
+  GHashTable *already_found = g_hash_table_new(g_direct_hash, g_direct_equal);
+
+  for (FilterXScope *scope = self->parent_scope; scope; scope = scope->parent_scope)
+    {
+      for (guint32 i = 0; i < scope->variables_size; i++)
+        {
+          FilterXVariable *variable = &scope->variables[i];
+
+          if (!variable->variable_type)
+            continue;
+          if (!variable->value && !_variable_is_whiteout(variable))
+            continue;
+          /* NOTE: we validate against @self */
+          if (!_validate_variable(self, variable))
+            continue;
+          if (g_hash_table_contains(already_found, GSIZE_TO_POINTER(variable->handle)))
+            continue;
+
+          _collect_variable_for_dup(variable, collector);
+          g_hash_table_add(already_found, GSIZE_TO_POINTER(variable->handle));
+        }
+    }
+
+  g_hash_table_destroy(already_found);
 }
 
 /*
@@ -565,7 +604,9 @@ filterx_scope_dup(FilterXScope *self, FilterXScopeValueRetainFunc retain, gpoint
   for (guint32 i = 0; i < self->variables_size; i++)
     {
       FilterXVariable *variable = &self->variables[i];
-      if (!variable->variable_type || !variable->value)
+      if (!variable->variable_type)
+        continue;
+      if (!variable->value && !_variable_is_whiteout(variable))
         continue;
       if (!_validate_variable(self, variable))
         continue;
@@ -582,7 +623,7 @@ filterx_scope_dup(FilterXScope *self, FilterXScopeValueRetainFunc retain, gpoint
         .user_data = user_data,
         .declared_and_message_tied_only = TRUE,
       };
-      filterx_scope_foreach_variable_readonly(self->parent_scope, _collect_variable_for_dup, &ancestor_collector);
+      _collect_ancestor_variables_for_dup(self, &ancestor_collector);
 
       if (ancestor_collector.snapshots->len > 0)
         {

@@ -1055,6 +1055,84 @@ _count_variable(FilterXVariable *variable, gpointer user_data)
   return TRUE;
 }
 
+Test(filterx_retain, snapshot_carries_a_whiteout_and_the_resumed_sync_unsets_the_field)
+{
+  LogMessage *msg = filterx_eval_get_context()->msg;
+  log_msg_set_value_by_name_with_type(msg, "snapunset", "to-be-unset", -1, LM_VT_STRING);
+
+  FilterXVariableHandle handle = filterx_map_varname_to_handle("snapunset", FX_VAR_MESSAGE_TIED);
+  FilterXScopeVariableLayout *layout = filterx_scope_variable_layout_new_from_handles(&handle, 1);
+  FilterXScope *scope = filterx_scope_new(NULL, layout);
+  set_libtest_filterx_scope(scope);
+
+  FilterXVariable *v = filterx_scope_register_variable(scope, FX_VAR_MESSAGE_TIED, handle, 0);
+  filterx_scope_unset_variable(scope, v);
+
+  FilterXEvalContext *dup = filterx_eval_context_dup(filterx_eval_get_context());
+
+  FilterXVariable *dv = filterx_scope_lookup_variable(dup->scope, handle, 0);
+  cr_assert_not_null(dv, "the whiteout was not carried into the snapshot");
+  cr_assert(filterx_variable_is_assigned(dv));
+  cr_assert_not(filterx_variable_is_set(dv));
+
+  /* the snapshot's message still has the field, the live sync never ran
+   * on it; the resumed sync is what unsets it.  log_msg_is_value_set()
+   * stays TRUE for an unset entry, so look at the value */
+  LogMessage *snap_msg = log_msg_ref(dup->scope->msg);
+  LogMessageValueType type;
+  cr_assert_not_null(log_msg_get_value_if_set_with_type(snap_msg, filterx_variable_get_nv_handle(dv), NULL, &type));
+  LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
+  filterx_scope_sync(dup->scope, &snap_msg, &path_options);
+  cr_assert_null(log_msg_get_value_if_set_with_type(snap_msg, filterx_variable_get_nv_handle(dv), NULL, &type),
+                 "the resumed sync did not unset the field");
+  log_msg_unref(snap_msg);
+
+  filterx_eval_context_free_dup(dup);
+  filterx_scope_variable_layout_free(layout);
+}
+
+Test(filterx_retain, snapshot_carries_the_whiteout_of_an_earlier_block_the_current_one_never_touched)
+{
+  LogMessage *msg = filterx_eval_get_context()->msg;
+  log_msg_set_value_by_name_with_type(msg, "snapunset", "to-be-unset", -1, LM_VT_STRING);
+
+  /* the earlier block unsets the field; filterx pipes chain their scopes,
+   * so its scope is not synced before the next block runs */
+  FilterXVariableHandle handle = filterx_map_varname_to_handle("snapunset", FX_VAR_MESSAGE_TIED);
+  FilterXScopeVariableLayout *earlier_layout = filterx_scope_variable_layout_new_from_handles(&handle, 1);
+  FilterXScope *earlier_scope = filterx_scope_new(NULL, earlier_layout);
+  filterx_scope_set_message(earlier_scope, msg);
+  FilterXVariable *v = filterx_scope_register_variable(earlier_scope, FX_VAR_MESSAGE_TIED, handle, 0);
+  filterx_scope_unset_variable(earlier_scope, v);
+
+  /* the current block never touches the variable */
+  FilterXScopeVariableLayout *layout = filterx_scope_variable_layout_new_from_handles(NULL, 0);
+  set_libtest_filterx_scope(filterx_scope_new(earlier_scope, layout));
+
+  FilterXEvalContext *dup = filterx_eval_context_dup(filterx_eval_get_context());
+
+  cr_assert_not_null(dup->scope->parent_scope, "the whiteout of the earlier block was not carried into the snapshot");
+  FilterXVariable *dv = filterx_scope_lookup_variable(dup->scope->parent_scope, handle, 0);
+  cr_assert_not_null(dv);
+  cr_assert(filterx_variable_is_assigned(dv));
+  cr_assert_not(filterx_variable_is_set(dv));
+
+  LogMessage *snap_msg = log_msg_ref(dup->scope->msg);
+  LogMessageValueType type;
+  cr_assert_not_null(log_msg_get_value_if_set_with_type(snap_msg, filterx_variable_get_nv_handle(dv), NULL, &type));
+  LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
+  filterx_scope_sync(dup->scope, &snap_msg, &path_options);
+  cr_assert_null(log_msg_get_value_if_set_with_type(snap_msg, filterx_variable_get_nv_handle(dv), NULL, &type),
+                 "the resumed sync did not unset the field");
+  log_msg_unref(snap_msg);
+
+  filterx_eval_context_free_dup(dup);
+  set_libtest_filterx_scope(filterx_scope_new(NULL, NULL));
+  filterx_scope_free(earlier_scope);
+  filterx_scope_variable_layout_free(layout);
+  filterx_scope_variable_layout_free(earlier_layout);
+}
+
 Test(filterx_retain, snapshot_skips_message_tied_variables_that_are_in_sync_with_the_message)
 {
   LogMessage *msg = filterx_eval_get_context()->msg;
