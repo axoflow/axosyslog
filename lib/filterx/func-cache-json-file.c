@@ -185,13 +185,13 @@ _load_json_file_version(FilterXFunctionCacheJsonFile *self, GError **error)
 
   if (json)
     {
-      msg_debug("FilterX: successfully reloaded cached JSON file, instating new version",
+      msg_debug("FilterX: loaded the cached JSON file, instating the new version",
                 evt_tag_str("file_name", self->filepath));
       result = filterx_stash_store(&self->stashed_object, json, &json_env);
     }
   else
     {
-      msg_debug("FilterX: reloading the cached JSON file failed, keeping old version",
+      msg_debug("FilterX: loading the cached JSON file failed, keeping the previous version",
                 evt_tag_str("file_name", self->filepath));
     }
 
