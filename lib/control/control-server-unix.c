@@ -25,6 +25,7 @@
 #include "messages.h"
 
 #include "gsocket.h"
+#include "fdhelpers.h"
 
 #include <iv.h>
 
@@ -222,6 +223,7 @@ _control_socket_accept(void *cookie)
       goto error;
     }
 
+  g_fd_set_nonblock(conn_socket, TRUE);
   cc = control_connection_unix_new(&self->super, conn_socket);
 
   /* NOTE: with the call below, the reference to the control connection (cc)
