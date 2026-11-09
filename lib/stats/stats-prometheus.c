@@ -194,15 +194,6 @@ _append_counter_value(GString *buf, StatsCluster *sc, gint type)
   _append_formatted_value(buf, stored_unit, stats_cluster_get_type_value(sc, type));
 }
 
-gchar *
-stats_format_prometheus_format_counter_value(StatsCluster *sc, gint type)
-{
-  GString *value = scratch_buffers_alloc();
-
-  _append_counter_value(value, sc, type);
-  return value->str;
-}
-
 static inline void
 _append_formatted_label(GString *serialized_labels, const StatsClusterLabel *label, gboolean *comma_needed)
 {
