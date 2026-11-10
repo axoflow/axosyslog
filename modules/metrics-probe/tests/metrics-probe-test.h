@@ -23,6 +23,7 @@
 
 #include <criterion/criterion.h>
 #include "stats/stats-cluster-single.h"
+#include "stats/stats-prometheus.h"
 #include "stats/stats-registry.h"
 
 
@@ -77,28 +78,12 @@ metrics_probe_test_assert_counter_value(const gchar *key, StatsClusterLabel *lab
 {
   gsize actual_value = metrics_probe_test_get_stats_counter_value(key, labels, labels_len);
 
-  GString *formatted_labels = NULL;
-  if (expected_value != actual_value)
-    {
-      formatted_labels = g_string_new("(");
-
-      for (gint i = 0; i < labels_len; i++)
-        {
-          if (i != 0)
-            g_string_append(formatted_labels, ", ");
-
-          g_string_append_len(formatted_labels, labels[i].name, labels[i].name_len);
-          g_string_append(formatted_labels, " => ");
-          g_string_append_len(formatted_labels, labels[i].value, labels[i].value_len);
-        }
-
-      g_string_append_c(formatted_labels, ')');
-    }
+  GString *formatted_labels = g_string_new(NULL);
+  stats_prometheus_format_labels_append(labels, labels_len, formatted_labels);
 
   cr_assert(expected_value == actual_value,
-            "Unexpected counter value. key: %s labels: %s expected: %lu actual: %lu",
+            "Unexpected counter value. key: %s labels: %s expected: %" G_GSIZE_FORMAT " actual: %" G_GSIZE_FORMAT,
             key, formatted_labels->str, expected_value, actual_value);
 
-  if (formatted_labels)
-    g_string_free(formatted_labels, TRUE);
+  g_string_free(formatted_labels, TRUE);
 }
