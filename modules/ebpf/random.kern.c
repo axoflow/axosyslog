@@ -20,6 +20,9 @@
  *
  */
 
+/* vmlinux.h is dumped from the kernel of the build host, and its kfunc
+ * prototypes can differ from the ones libbpf declares.  None is used here. */
+#define BPF_NO_KFUNC_PROTOTYPES
 #include "vmlinux.h"
 #include <bpf/bpf_helpers.h>
 
