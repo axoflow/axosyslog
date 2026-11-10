@@ -167,6 +167,7 @@ gboolean cfg_is_shutting_down(GlobalConfig *cfg);
 gboolean cfg_is_listing_paths(GlobalConfig *cfg);
 void cfg_free(GlobalConfig *self);
 gboolean cfg_init(GlobalConfig *cfg);
+void cfg_post_config_init(GlobalConfig *cfg);
 gboolean cfg_deinit(GlobalConfig *cfg);
 
 PersistConfig *persist_config_new(void);
