@@ -43,7 +43,11 @@ log_template_get_literal_value(const LogTemplate *self, gssize *value_len)
   g_assert(self->literal);
 
   if (!self->compiled_template)
-    return "";
+    {
+      if (value_len)
+        *value_len = 0;
+      return "";
+    }
 
   LogTemplateElem *e = (LogTemplateElem *) self->compiled_template->data;
 
