@@ -115,10 +115,12 @@ struct _LogSource
 };
 
 /* the hot flow control state should not share a cache line with the fields
- * read on every message */
+ * read on every message. This is optimized and checked for 64-bit targets only. */
+#if GLIB_SIZEOF_VOID_P == 8
 G_STATIC_ASSERT(G_STRUCT_OFFSET(LogSource, last_ack_count) - G_STRUCT_OFFSET(LogSource,
                 metrics.window_available) >= 64);
 G_STATIC_ASSERT(G_STRUCT_OFFSET(LogSource, last_ack_count) - G_STRUCT_OFFSET(LogSource, ack_tracker) >= 64);
+#endif
 
 static inline gboolean
 log_source_free_to_send(LogSource *self)
