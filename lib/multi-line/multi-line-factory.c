@@ -92,11 +92,23 @@ multi_line_options_set_garbage(MultiLineOptions *options, const gchar *garbage_r
   return options->regexp.garbage != NULL;
 }
 
+void
+multi_line_options_set_timeout(MultiLineOptions *options, gint timeout_msec)
+{
+  options->timeout = timeout_msec;
+}
+
 gboolean
 multi_line_options_validate(MultiLineOptions *options)
 {
   gboolean is_garbage_mode = options->mode == MLM_REGEXP_PREFIX_GARBAGE;
   gboolean is_suffix_mode = options->mode == MLM_REGEXP_PREFIX_SUFFIX;
+
+  if (options->timeout && options->mode == MLM_NONE)
+    {
+      msg_error("multi-line-timeout() specified but multi-line-mode() is not set, there is nothing to wait for");
+      return FALSE;
+    }
 
   if ((!is_garbage_mode && !is_suffix_mode) && (options->regexp.prefix || options->regexp.garbage))
     {
@@ -118,6 +130,7 @@ void
 multi_line_options_copy(MultiLineOptions *dest, MultiLineOptions *source)
 {
   dest->mode = source->mode;
+  dest->timeout = source->timeout;
   if (dest->mode == MLM_REGEXP_PREFIX_GARBAGE || dest->mode == MLM_REGEXP_PREFIX_SUFFIX)
     {
       dest->regexp.prefix = multi_line_pattern_ref(source->regexp.prefix);

@@ -32,7 +32,6 @@
 #include "logproto/logproto-buffered-server.h"
 #include "poll-fd-events.h"
 #include "poll-file-changes.h"
-#include "poll-multiline-file-changes.h"
 #include "ack-tracker/ack_tracker_factory.h"
 #include "stats/stats-cluster-key-builder.h"
 
@@ -97,15 +96,7 @@ static PollEvents *
 _construct_poll_events(FileReader *self, gint fd)
 {
   if (self->options->follow_freq > 0)
-    {
-      LogProtoFileReaderOptions *proto_opts = file_reader_options_get_log_proto_options(self->options);
-
-      if (proto_opts->multi_line_options.mode == MLM_NONE)
-        return poll_file_changes_new(fd, self->filename->str, self->options->follow_freq, &self->super);
-      else
-        return poll_multiline_file_changes_new(fd, self->filename->str, self->options->follow_freq,
-                                               self->options->multi_line_timeout, self);
-    }
+    return poll_file_changes_new(fd, self->filename->str, self->options->follow_freq, &self->super);
   else if (fd >= 0 && _is_fd_pollable(fd))
     return poll_fd_events_new(fd);
   else
@@ -325,13 +316,6 @@ file_reader_stop_follow_file(FileReader *self)
 }
 
 void
-file_reader_cue_buffer_flush(FileReader *self)
-{
-  LogProtoBufferedServer *proto = (LogProtoBufferedServer *) self->reader->proto;
-  log_proto_buffered_server_cue_flush(proto);
-}
-
-void
 file_reader_init_instance (FileReader *self, const gchar *filename,
                            FileReaderOptions *options, FileOpener *opener,
                            LogSrcDriver *owner, GlobalConfig *cfg)
@@ -367,12 +351,6 @@ file_reader_options_set_follow_freq(FileReaderOptions *options, gint follow_freq
 }
 
 void
-file_reader_options_set_multi_line_timeout(FileReaderOptions *options, gint multi_line_timeout)
-{
-  options->multi_line_timeout = multi_line_timeout;
-}
-
-void
 file_reader_options_defaults(FileReaderOptions *options)
 {
   log_reader_options_defaults(&options->reader_options);
@@ -381,28 +359,10 @@ file_reader_options_defaults(FileReaderOptions *options)
   options->restore_state = FALSE;
 }
 
-static gboolean
-file_reader_options_validate(FileReaderOptions *options)
-{
-  if (options->multi_line_timeout && options->follow_freq >= options->multi_line_timeout)
-    {
-      msg_error("multi-line-timeout() should be set to a higher value than follow-freq(), "
-                "it is recommended to set multi-line-timeout() to a multiple of follow-freq()",
-                evt_tag_int("multi_line_timeout", options->multi_line_timeout),
-                evt_tag_int("follow_freq", options->follow_freq));
-      return FALSE;
-    }
-
-  return TRUE;
-}
-
 gboolean
 file_reader_options_init(FileReaderOptions *options, GlobalConfig *cfg, const gchar *group)
 {
   log_reader_options_init(&options->reader_options, cfg, group);
-
-  if (!file_reader_options_validate(options))
-    return FALSE;
 
   return log_proto_file_reader_options_init(file_reader_options_get_log_proto_options(options), cfg);
 }

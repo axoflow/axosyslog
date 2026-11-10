@@ -39,6 +39,8 @@ enum
 typedef struct _MultiLineOptions
 {
   gint mode;
+  /* msec to wait for the next line, 0 = forever */
+  gint timeout;
   union
   {
     struct
@@ -56,6 +58,7 @@ gboolean multi_line_options_set_prefix(MultiLineOptions *options,
                                        const gchar *prefix_regexp, GError **error);
 gboolean multi_line_options_set_garbage(MultiLineOptions *options,
                                         const gchar *garbage_regexp, GError **error);
+void multi_line_options_set_timeout(MultiLineOptions *options, gint timeout_msec);
 
 gboolean multi_line_options_validate(MultiLineOptions *options);
 void multi_line_options_copy(MultiLineOptions *dest, MultiLineOptions *source);

@@ -24,11 +24,11 @@
 #define LOGPROTO_MULTILINE_SERVER_INCLUDED
 
 #include "logproto/logproto-server.h"
-#include "multi-line/multi-line-logic.h"
+#include "multi-line/multi-line-factory.h"
 
 LogProtoServer *
 log_proto_multiline_server_new(LogTransport *transport,
                                const LogProtoServerOptions *options,
-                               MultiLineLogic *multi_line);
+                               const MultiLineOptions *multi_line_options);
 
 #endif

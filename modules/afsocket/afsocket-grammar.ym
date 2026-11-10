@@ -71,6 +71,7 @@ afsocket_grammar_set_source_driver(AFSocketSourceDriver *sd)
   last_sock_options = ((AFSocketSourceDriver *) last_driver)->socket_options;
   last_transport_mapper = ((AFSocketSourceDriver *) last_driver)->transport_mapper;
   last_proto_server_options = &last_reader_options->proto_options.super;
+  last_multi_line_options = &((AFSocketSourceDriver *) last_driver)->multi_line_options;
 }
 
 static void
@@ -460,6 +461,7 @@ source_afnetwork_option
         : source_afinet_option
         | source_afsocket_transport
 	| source_afsocket_stream_params		{}
+	| multi_line_option
 	;
 
 source_afsocket_transport

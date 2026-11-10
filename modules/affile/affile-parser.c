@@ -52,7 +52,6 @@ static CfgLexerKeyword affile_keywords[] =
   { "symlink_as",         KW_SYMLINK_AS },
   { "follow_freq",        KW_FOLLOW_FREQ },
   { "monitor_freq",       KW_MONITOR_FREQ },
-  { "multi_line_timeout", KW_MULTI_LINE_TIMEOUT },
   { "time_reap",          KW_TIME_REAP },
   { NULL }
 };
