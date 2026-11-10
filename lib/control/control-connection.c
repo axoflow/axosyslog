@@ -105,39 +105,38 @@ static void
 control_connection_io_output(gpointer s)
 {
   ControlConnection *self = (ControlConnection *) s;
-  gint rc;
 
-  if (!self->output_buffer)
+  /* a short write means the socket buffer is full, the next POLLOUT resumes the output */
+  while (TRUE)
     {
-      g_mutex_lock(&self->response_batches_lock);
-      self->output_buffer = g_queue_pop_head(self->response_batches);
-      g_mutex_unlock(&self->response_batches_lock);
-      self->pos = 0;
-    }
-
-  g_assert(self->output_buffer);
-  rc = self->write(self, self->output_buffer->str + self->pos, self->output_buffer->len - self->pos);
-  if (rc < 0)
-    {
-      if (errno != EAGAIN)
+      if (!self->output_buffer)
         {
+          g_mutex_lock(&self->response_batches_lock);
+          self->output_buffer = g_queue_pop_head(self->response_batches);
+          g_mutex_unlock(&self->response_batches_lock);
+          self->pos = 0;
+          if (!self->output_buffer)
+            break;
+        }
+
+      gint rc = self->write(self, self->output_buffer->str + self->pos, self->output_buffer->len - self->pos);
+      if (rc < 0)
+        {
+          if (errno == EAGAIN)
+            break;
+
           msg_error("Error writing control channel",
                     evt_tag_error("error"));
           control_server_connection_closed(self->server, self);
           return;
         }
-    }
-  else
-    {
+
       self->pos += rc;
-      if (self->pos == self->output_buffer->len)
-        {
-          g_string_free(self->output_buffer, TRUE);
-          g_mutex_lock(&self->response_batches_lock);
-          self->output_buffer = g_queue_pop_head(self->response_batches);
-          g_mutex_unlock(&self->response_batches_lock);
-          self->pos = 0;
-        }
+      if (self->pos < self->output_buffer->len)
+        break;
+
+      g_string_free(self->output_buffer, TRUE);
+      self->output_buffer = NULL;
     }
   control_connection_update_watches(self);
 }

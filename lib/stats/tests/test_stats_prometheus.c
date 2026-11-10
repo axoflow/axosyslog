@@ -218,6 +218,7 @@ Test(stats_prometheus, test_prometheus_format_label_escaping)
     stats_cluster_label("backslashes", "a\\a\\t\\nb"),
     stats_cluster_label("quotes", "\"\"hello\""),
     stats_cluster_label("invalid_utf8", "a\xfa"),
+    stats_cluster_label("utf8", "ű\"ő"),
   };
   StatsCluster *cluster = test_single_cluster("test_name", labels, G_N_ELEMENTS(labels));
 
@@ -225,7 +226,8 @@ Test(stats_prometheus, test_prometheus_format_label_escaping)
                            "syslogng_test_name{control_chars=\"a\a\tb\\nc\","
                            "backslashes=\"a\\\\a\\\\t\\\\nb\","
                            "quotes=\"\\\"\\\"hello\\\"\","
-                           "invalid_utf8=\"a\\\\xfa\"} 0\n");
+                           "invalid_utf8=\"a\\\\xfa\","
+                           "utf8=\"ű\\\"ő\"} 0\n");
 
   stats_cluster_free(cluster);
 }

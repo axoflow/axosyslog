@@ -56,15 +56,15 @@ _reset_counters(void)
 static void
 _send_batched_response(const gchar *record, gpointer user_data)
 {
-  static const gsize BATCH_LEN = 2048;
+  static const gsize BATCH_LEN = 64 * 1024;
 
   gpointer *args = (gpointer *) user_data;
   ControlConnection *cc = (ControlConnection *) args[0];
   GString **batch = (GString **) args[1];
 
   if (!*batch)
-    *batch = g_string_sized_new(512);
-  g_string_append_printf(*batch, "%s", record);
+    *batch = g_string_sized_new(BATCH_LEN + 1024);
+  g_string_append(*batch, record);
 
   if ((*batch)->len > BATCH_LEN)
     {
