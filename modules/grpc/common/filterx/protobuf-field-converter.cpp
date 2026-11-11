@@ -389,7 +389,7 @@ public:
     /* An integral double, such as a timestamp in ticks or nanoseconds, prints in
      * scientific notation from 1e17 upwards. Precision 0 keeps it in fixed notation,
      * which is exact and fits the repr buffer below 1e21. */
-    gint prec = (std::fabs(value) < 1e21 && value == std::trunc(value)) ? 0 : -1;
+    gint prec = (std::fabs(value) < 1e21 && std::fpclassify(value - std::trunc(value)) == FP_ZERO) ? 0 : -1;
     return filterx_double_new_with_prec(value, prec);
   }
 

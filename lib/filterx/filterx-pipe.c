@@ -133,7 +133,7 @@ _setup_jit_exec(LogPipe *s)
       return TRUE;
     }
 
-  self->jit_exec = (FilterXJITExecFunc) addr;
+  self->jit_exec = (FilterXJITExecFunc) (guintptr) addr;
   return TRUE;
 }
 

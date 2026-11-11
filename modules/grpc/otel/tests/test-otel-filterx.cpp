@@ -65,7 +65,7 @@ _assert_filterx_string_attribute(FilterXObject *obj, const std::string &attribut
   FilterXObject *filterx_string = filterx_object_getattr_string(obj, attribute_name.c_str());
   cr_assert(filterx_object_is_type(filterx_string, &FILTERX_TYPE_NAME(string)));
 
-  gsize len;
+  gsize len = 0;
   const gchar *value = filterx_string_get_value_ref(filterx_string, &len);
   cr_assert_eq(expected_value.compare(std::string(value, len)), 0);
 
@@ -116,7 +116,7 @@ _assert_filterx_string_element(FilterXObject *obj, FilterXObject *key,
   FilterXObject *filterx_string = filterx_object_get_subscript(obj, key);
   cr_assert(filterx_object_is_type(filterx_string, &FILTERX_TYPE_NAME(string)));
 
-  gsize len;
+  gsize len = 0;
   const gchar *value = filterx_string_get_value_ref(filterx_string, &len);
   cr_assert_eq(expected_value.compare(std::string(value, len)), 0);
 

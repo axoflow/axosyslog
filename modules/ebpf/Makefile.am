@@ -20,6 +20,7 @@ modules/ebpf modules/ebpf/ mod-ebpf: modules/ebpf/libebpf.la
 BPF_CFLAGS=-nostdinc -isystem `$(BPF_CC) -print-file-name=include` \
 	-target bpf \
 	-Imodules/ebpf -I$(LIBBPF_INCLUDE) \
+	-fms-extensions -Wno-microsoft-anon-tag \
 	-fPIC -O2 -g
 
 %.kern.o: %.kern.c modules/ebpf/vmlinux.h

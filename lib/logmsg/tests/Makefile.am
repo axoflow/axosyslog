@@ -63,6 +63,7 @@ noinst_PROGRAMS +=				\
 
 lib_logmsg_tests_dump_logmsg_CFLAGS = $(TEST_CFLAGS)
 lib_logmsg_tests_dump_logmsg_LDADD = $(TEST_LDADD) $(PREOPEN_SYSLOGFORMAT)
+lib_logmsg_tests_dump_logmsg_LDFLAGS = $(test_ldflags)
 
 dump-logmsg: lib/logmsg/tests/dump_logmsg
 	DIR=lib/logmsg/tests/messages/ && \
