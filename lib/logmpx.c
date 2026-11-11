@@ -139,6 +139,12 @@ log_multiplexer_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_op
           if (G_UNLIKELY(i == self->failover_fallback))
             local_path_options.destination_failover = path_options->destination_failover;
 
+          /* once a next_hop accepted the message, it is delivered: the
+           * drivers of a destination are equivalent, the rest of them
+           * buffer instead of rejecting, failover is decided above us */
+          if (delivered)
+            local_path_options.destination_failover = FALSE;
+
           matched = TRUE;
           log_msg_add_ack(msg, &local_path_options);
           log_pipe_queue(next_hop, log_msg_ref(msg), &local_path_options);
@@ -188,34 +194,66 @@ log_multiplexer_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_op
    * route. We need to set matched to FALSE;
    *
    * In the case of 3) we dispatched to one or more destinations and even if
-   * those destinations drop our message on the floor, we are not interested.
-   * "matched" will be determined by all filtering elements on the log
-   * path and we are not one of them.
+   * those destinations drop our message on the floor, we are not interested
+   * unless flags(destination-failover) is set along the path.  Normally,
+   * destination-failover is not set, so "matched" will be determined by all
+   * filtering elements on the log path and we are not one of them.  In case
+   * we are doing failover delivery, we become a filtering element, similar
+   * to 1) and 2).
    *
-   * We differentiate between 1, 2 and 3 based on the value of
-   * self->delivery_propagation which is set during compilation.  If
-   * delivery_propagation is not set, we are just here for dispatching to
-   * destinations (e.g.  we need to ignore their outcome), otherwise we
-   * perform a filtering function, which means we need to push our filtering
-   * responsibility to the next pipe element.
+   * We differentiate between the various cases based on the values of
+   * self->delivery_propagation and path_options->destination_failover.
    *
-   * flags(destination-failover) is the one case where we *are* dispatching
-   * to destinations (self->delivery_propagation is FALSE, as set by
-   * cfg_tree_compile_reference()/cfg_tree_compile_junction()) but still
-   * need to propagate: path_options->destination_failover, set by the
-   * multiplexer of the failover alternatives (see above) and inherited
-   * unchanged through any further nesting (see
-   * log_path_options_push_junction()), tells us this message is on such a
-   * path without needing to know anything about the concrete pipe graph
-   * around us.
+   *  - self->delivery_propagation is set during compilation to FALSE if we
+   *    are dispatching to destinations or TRUE for all other cases.
+   *
+   *  - path_options->destination_failover is set by a parent junction in
+   *    case flags(destination-failover) was specified, the flag is also
+   *    inherited through nesting.
    */
 
-  if (self->delivery_propagation || path_options->destination_failover)
+  if (self->delivery_propagation)
     {
+      /* cases 1) and 2) */
       if (!delivered)
         log_path_options_mark_unmatched(path_options);
+      log_pipe_forward_msg(s, msg, path_options);
     }
-  log_pipe_forward_msg(s, msg, path_options);
+  else if (G_UNLIKELY(path_options->destination_failover))
+    {
+      /* case 3) with failover mode */
+      if (!delivered)
+        {
+          /* The message was rejected downstream: we need to trigger a
+           * failover to the next alternative in our parent junction where
+           * flags(destination-failover) was specified.  We should not
+           * deliver the same message along pipe_next, we essentially need
+           * to drop it just like a failing filter.
+           */
+          log_path_options_mark_unmatched(path_options);
+          log_msg_drop(msg, path_options, AT_PROCESSED);
+        }
+      else
+        {
+          /* Our downstream destination accepted the message.  Keep this status
+           * as we execute our subsequent chain along pipe_next by turning off
+           * the destination_failover flag.  This means that anything we chain
+           * after the first successful destination will deliver normally, they
+           * can't reject the message, thus they can't trigger a failover in the
+           * parent.
+           */
+          LogPathOptions forward_path_options;
+
+          log_path_options_chain(&forward_path_options, path_options);
+          forward_path_options.destination_failover = FALSE;
+          log_pipe_forward_msg(s, msg, &forward_path_options);
+        }
+    }
+  else
+    {
+      /* case 3) without failover mode */
+      log_pipe_forward_msg(s, msg, path_options);
+    }
 }
 
 static void
