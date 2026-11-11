@@ -48,6 +48,24 @@ Test(filterx_func_parse_kv, test_empty_args_error)
 }
 
 
+Test(filterx_func_parse_kv, test_nul_value_separator_is_rejected)
+{
+  GList *args = NULL;
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_literal_new(filterx_string_new("foo=bar", -1))));
+  /* length 1, or this is the empty case */
+  FilterXObject *nul_separator = filterx_string_new("\0", 1);
+  args = g_list_append(args, filterx_function_arg_new("value_separator", filterx_literal_new(nul_separator)));
+
+  GError *err = NULL;
+  GError *args_err = NULL;
+  FilterXExpr *func = filterx_function_parse_kv_new(filterx_function_args_new(args, &args_err), &err);
+
+  cr_assert_null(func);
+  cr_assert_null(args_err);
+  cr_assert_not_null(err);
+  g_error_free(err);
+}
+
 Test(filterx_func_parse_kv, test_skipped_opts_causes_default_behaviour)
 {
   GList *args = NULL;

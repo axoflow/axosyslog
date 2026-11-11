@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include "filterx/expr-unset.h"
 #include "libtest/cr_template.h"
 #include "libtest/filterx-lib.h"
 
@@ -87,6 +88,21 @@ Test(expr_function, test_function_null_arg)
   filterx_expr_unref(func);
 }
 
+Test(expr_function, test_function_without_args_evaluates)
+{
+  GError *error = NULL;
+  FilterXExpr *func = filterx_simple_function_new("test_dummy", filterx_function_args_new(NULL, NULL),
+                                                  test_dummy_function, &error);
+  cr_assert_not_null(func);
+  cr_assert_null(error);
+
+  FilterXObject *res = init_and_eval_expr(func);
+  cr_assert_not_null(res);
+  cr_assert_str_eq(filterx_string_get_value_as_cstr(res), "");
+  filterx_expr_unref(func);
+  filterx_object_unref(res);
+}
+
 Test(expr_function, test_function_valid_arg)
 {
   GList *args = NULL;
@@ -130,6 +146,16 @@ Test(expr_function, test_function_multiple_args)
   cr_assert_str_eq(str, "null443\"foobar\"");
   filterx_expr_unref(func);
   filterx_object_unref(res);
+}
+
+Test(expr_function, test_unset_rejects_a_non_unsettable_argument)
+{
+  GList *args = g_list_append(NULL, filterx_function_arg_new(NULL, filterx_literal_new(filterx_string_new("foo", -1))));
+  GError *error = NULL;
+  FilterXExpr *func = filterx_function_unset_new(filterx_function_args_new(args, NULL), &error);
+  cr_assert_null(func);
+  cr_assert_not_null(error);
+  g_error_free(error);
 }
 
 static void

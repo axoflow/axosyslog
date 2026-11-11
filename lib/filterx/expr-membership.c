@@ -75,7 +75,11 @@ _optimize_in(FilterXExpr *s)
     container = filterx_literal_get_value(self->super.rhs);
 
   if (member && container)
-    result = filterx_literal_new(filterx_object_is_member_of(container, member));
+    {
+      FilterXObject *is_member = filterx_object_is_member_of(container, member);
+      if (is_member)
+        result = filterx_literal_new(is_member);
+    }
   filterx_object_unref(member);
   filterx_object_unref(container);
   return result;

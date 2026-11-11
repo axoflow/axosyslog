@@ -280,6 +280,13 @@ _deescape_json_string(gchar *target, const gchar *source, gsize *source_len)
     {
       gssize segment_len = backslash - input_pos;
 
+      /* literal text ends a pending high surrogate */
+      if (high_surrogate && segment_len > 0)
+        {
+          output_pos += g_unichar_to_utf8((gunichar) UNICODE_REPLACEMENT_CP, output_pos);
+          high_surrogate = 0;
+        }
+
       /* copy characters up to the backslash */
       memcpy(output_pos, input_pos, segment_len);
       output_pos += segment_len;
@@ -288,6 +295,14 @@ _deescape_json_string(gchar *target, const gchar *source, gsize *source_len)
 
       if (remaining_len <= 0)
         break;
+
+      /* flush the orphaned high surrogate here so the current escape is still
+       * processed below */
+      if (high_surrogate && *input_pos != 'u')
+        {
+          output_pos += g_unichar_to_utf8((gunichar) UNICODE_REPLACEMENT_CP, output_pos);
+          high_surrogate = 0;
+        }
 
       /* translate escaped character */
       if (*input_pos == 'u')
@@ -301,9 +316,11 @@ _deescape_json_string(gchar *target, const gchar *source, gsize *source_len)
             {
               if (IS_UTF16_HIGH_SURROGATE(unicode_codepoint))
                 {
-                  /* first half of a surrogate pair, do nothing but remember
-                   * the codepoint in high_surrogate */
+                  /* a second high surrogate orphans the pending one */
+                  if (high_surrogate)
+                    output_pos += g_unichar_to_utf8((gunichar) UNICODE_REPLACEMENT_CP, output_pos);
 
+                  /* first half of a surrogate pair, remember it in high_surrogate */
                   high_surrogate = unicode_codepoint;
                   unicode_codepoint = 0;
                 }
@@ -322,15 +339,15 @@ _deescape_json_string(gchar *target, const gchar *source, gsize *source_len)
                       unicode_codepoint = UNICODE_REPLACEMENT_CP;
                     }
                 }
+              else if (high_surrogate)
+                {
+                  /* a non-surrogate escape orphans the pending high surrogate */
+                  output_pos += g_unichar_to_utf8((gunichar) UNICODE_REPLACEMENT_CP, output_pos);
+                  high_surrogate = 0;
+                }
               if (unicode_codepoint)
                 output_pos += g_unichar_to_utf8((gunichar) unicode_codepoint, output_pos);
             }
-        }
-      else if (G_UNLIKELY(high_surrogate))
-        {
-          /* only high surrogate followed by something else, invalid sequence */
-          output_pos += g_unichar_to_utf8((gunichar) UNICODE_REPLACEMENT_CP, output_pos);
-          high_surrogate = 0;
         }
       else
         {
@@ -364,7 +381,10 @@ _deescape_json_string(gchar *target, const gchar *source, gsize *source_len)
               escaped_character = '"';
               break;
             default:
-              continue;
+              /* jsmn validates escapes upstream, so emit the char literally
+               * rather than leaving the backslash scan stale */
+              escaped_character = *input_pos;
+              break;
             }
           *output_pos = escaped_character;
           output_pos++;

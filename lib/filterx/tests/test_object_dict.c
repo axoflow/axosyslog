@@ -24,6 +24,8 @@
 
 #include "filterx/object-dict.h"
 #include "filterx/object-list.h"
+#include "filterx/object-primitive.h"
+#include "filterx/filterx-ref.h"
 #include "filterx/filterx-sequence.h"
 #include "filterx/object-string.h"
 #include "filterx/object-message-value.h"
@@ -260,6 +262,29 @@ Test(filterx_dict, test_list_freeze)
   filterx_object_unref(list);
 }
 
+Test(filterx_dict, test_adding_to_a_frozen_floating_list_leaves_it_intact)
+{
+  /* a constant-folded + result is stored floating in its literal */
+  FilterXObject *frozen = filterx_ref_float_unchecked(filterx_list_new());
+  filterx_config_freeze_object(configuration, &frozen);
+
+  FilterXObject *elem = filterx_integer_new(1);
+  FilterXObject *other = filterx_list_new();
+  cr_assert(filterx_sequence_append(other, &elem));
+
+  FilterXObject *sum = filterx_object_add(frozen, other);
+  cr_assert_not_null(sum);
+  cr_assert_neq(sum, frozen);
+
+  guint64 len = 1;
+  cr_assert(filterx_object_len(frozen, &len));
+  cr_assert_eq(len, 0);
+
+  filterx_object_unref(sum);
+  filterx_object_unref(other);
+  filterx_object_unref(elem);
+}
+
 Test(filterx_dict, test_dict_freeze)
 {
   FilterXObject *dict = filterx_object_from_json("{\"a\": \"a\", \"b\": \"b\", \"c\": \"a\"}", -1, NULL);
@@ -351,6 +376,22 @@ teardown(void)
   scratch_buffers_explicit_gc();
   deinit_libtest_filterx();
   app_shutdown();
+}
+
+Test(filterx_dict, test_empty_dict_membership_is_false)
+{
+  FilterXObject *dict = filterx_dict_new();
+  FilterXObject *member = filterx_string_new("foo", -1);
+
+  FilterXObject *result = filterx_object_is_member_of(dict, member);
+  gboolean is_member = TRUE;
+  cr_assert(result);
+  cr_assert(filterx_boolean_unwrap(result, &is_member));
+  cr_assert_not(is_member);
+
+  filterx_object_unref(result);
+  filterx_object_unref(member);
+  filterx_object_unref(dict);
 }
 
 TestSuite(filterx_dict, .init = setup, .fini = teardown);

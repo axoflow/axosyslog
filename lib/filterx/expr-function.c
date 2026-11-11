@@ -114,7 +114,8 @@ _simple_eval(FilterXExpr *s)
 {
   FilterXSimpleFunction *self = (FilterXSimpleFunction *) s;
   gsize args_len = self->args->len;
-  FilterXObject *args[self->args->len];
+  /* a zero-length VLA is undefined, and functions without arguments are common */
+  FilterXObject *args[MAX(self->args->len, 1)];
   FilterXObject *res = NULL;
 
   if (_simple_function_eval_args(self, args, &args_len))

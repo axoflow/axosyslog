@@ -30,6 +30,32 @@
 #include "scratch-buffers.h"
 
 
+Test(filterx_double, test_double_repr_large_magnitude_does_not_overflow)
+{
+  GString *repr = g_string_new("");
+  cr_assert(double_repr(1e250, 6, repr));
+  cr_assert(repr->len > 100);
+  g_string_free(repr, TRUE);
+}
+
+Test(filterx_double, test_double_repr_appends_a_long_value_and_trims_it)
+{
+  GString *repr = g_string_new("x=");
+  cr_assert(double_repr(1e50, 2, repr));
+  cr_assert_str_eq(repr->str, "x=100000000000000007629769841091887003294964970946560.0");
+  cr_assert(double_repr(1.5, 3, repr));
+  cr_assert_str_eq(repr->str, "x=100000000000000007629769841091887003294964970946560.01.5");
+  g_string_free(repr, TRUE);
+}
+
+Test(filterx_double, test_double_repr_keeps_the_exponent)
+{
+  GString *repr = g_string_new("");
+  cr_assert(double_repr(2.5e20, -1, repr));
+  cr_assert_str_eq(repr->str, "2.5e+20");
+  g_string_free(repr, TRUE);
+}
+
 Test(filterx_double, test_filterx_primitive_double_marshales_to_double_repr)
 {
   FilterXObject *fobj = filterx_double_new(36.07);

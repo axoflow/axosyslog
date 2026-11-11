@@ -51,7 +51,8 @@ typedef struct FilterXFunctionParseKV_
 static gboolean
 _is_valid_separator_character(char c)
 {
-  return (c != ' '  &&
+  return (c != '\0' &&
+          c != ' '  &&
           c != '\'' &&
           c != '\"' );
 }
