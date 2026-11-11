@@ -218,7 +218,11 @@ afinet_dd_setup_tls_verifier(AFInetDestDriver *self)
   TransportMapperInet *transport_mapper_inet = (TransportMapperInet *) self->super.transport_mapper;
 
   AFInetDestDriverTLSVerifyData *verify_data;
-  verify_data = afinet_dd_tls_verify_data_new(transport_mapper_inet->tls_context, _afinet_dd_get_hostname(self),
+  const gchar *server_name = tls_context_get_server_name(transport_mapper_inet->tls_context);
+  if (!server_name)
+    server_name = _afinet_dd_get_hostname(self);
+
+  verify_data = afinet_dd_tls_verify_data_new(transport_mapper_inet->tls_context, server_name,
                                               self->super.super.super.signal_slot_connector);
   TLSVerifier *verifier = tls_verifier_new(afinet_dd_verify_callback, verify_data, afinet_dd_tls_verify_data_free);
 

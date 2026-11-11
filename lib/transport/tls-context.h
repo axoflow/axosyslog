@@ -88,6 +88,7 @@ struct _TLSContext
   gchar *client_sigalgs;
   gchar *ecdh_curve_list;
   gchar *sni;
+  gchar *server_name;
   gboolean ocsp_stapling_verify;
   gboolean extended_key_usage_verify;
   gboolean allow_compress;
@@ -138,6 +139,9 @@ gboolean tls_context_set_conf_cmds(TLSContext *self, GList *cmds, GError **error
 void tls_context_set_ecdh_curve_list(TLSContext *self, const gchar *ecdh_curve_list);
 void tls_context_set_dhparam_file(TLSContext *self, const gchar *dhparam_file);
 void tls_context_set_sni(TLSContext *self, const gchar *sni);
+const gchar *tls_context_get_sni(TLSContext *self);
+void tls_context_set_server_name(TLSContext *self, const gchar *server_name);
+const gchar *tls_context_get_server_name(TLSContext *self);
 void tls_context_set_ocsp_stapling_verify(TLSContext *self, gboolean ocsp_stapling_verify);
 void tls_context_set_extended_key_usage_verify(TLSContext *self, gboolean extended_key_usage_verify);
 const gchar *tls_context_get_key_file(TLSContext *self);

@@ -651,17 +651,19 @@ tls_session_info_callback(const SSL *ssl, int where, int ret)
 static gboolean
 _set_sni_in_client_mode(TLSSession *self)
 {
-  if (!self->ctx->sni)
+  const gchar *sni = tls_context_get_sni(self->ctx);
+
+  if (!sni)
     return TRUE;
 
   if (self->ctx->mode != TM_CLIENT)
     return TRUE;
 
-  if (SSL_set_tlsext_host_name(self->ssl, self->ctx->sni))
+  if (SSL_set_tlsext_host_name(self->ssl, sni))
     return TRUE;
 
   msg_error("Failed to set SNI",
-            evt_tag_str("sni", self->ctx->sni),
+            evt_tag_str("sni", sni),
             tls_context_format_location_tag(self->ctx));
 
   return FALSE;
