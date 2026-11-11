@@ -142,6 +142,27 @@ def _setup(config, port_allocator, tmp_path, request, tls):
     return listener
 
 
+def test_partial_chain_trusts_an_intermediate_ca(config, syslog_ng, port_allocator, tmp_path, request):
+    listener = _setup(
+        config, port_allocator, tmp_path, request,
+        {"ca-file": "intermediate.crt", "ssl-options": "partial-chain", "server-name": config.stringify(SERVER_NAME)},
+    )
+    syslog_ng.start(config)
+
+    assert wait_until_true(lambda: b"message text" in listener.received)
+
+
+def test_intermediate_ca_is_rejected_without_partial_chain(config, syslog_ng, port_allocator, tmp_path, request):
+    listener = _setup(
+        config, port_allocator, tmp_path, request,
+        {"ca-file": "intermediate.crt", "server-name": config.stringify(SERVER_NAME)},
+    )
+    syslog_ng.start(config)
+
+    assert syslog_ng.wait_for_message_in_console_log("Certificate validation failed")
+    assert listener.received == b""
+
+
 @pytest.mark.parametrize(
     "sni, expected_sni", [("yes", SERVER_NAME), (None, None)],
     ids=["sni-yes", "sni-unset"],

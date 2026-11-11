@@ -599,6 +599,12 @@ tls_context_setup_context(TLSContext *self)
   if (self->crl_dir)
     verify_flags |= X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL;
 
+  if (self->ssl_options & TSO_PARTIAL_CHAIN)
+    {
+      verify_flags |= X509_V_FLAG_PARTIAL_CHAIN;
+      X509_STORE_set_flags(SSL_CTX_get_cert_store(self->ssl_ctx), X509_V_FLAG_PARTIAL_CHAIN);
+    }
+
   X509_VERIFY_PARAM_set_flags(SSL_CTX_get0_param(self->ssl_ctx), verify_flags);
 
   if (self->mode == TM_SERVER)
@@ -750,6 +756,8 @@ tls_context_set_ssl_options_by_name(TLSContext *self, GList *options)
         self->ssl_options |= TSO_IGNORE_HOSTNAME_MISMATCH;
       else if (strcasecmp(l->data, "ignore-validity-period") == 0 || strcasecmp(l->data, "ignore_validity_period") == 0)
         self->ssl_options |= TSO_IGNORE_VALIDITY_PERIOD;
+      else if (strcasecmp(l->data, "partial-chain") == 0 || strcasecmp(l->data, "partial_chain") == 0)
+        self->ssl_options |= TSO_PARTIAL_CHAIN;
       else
         return FALSE;
     }
