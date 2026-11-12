@@ -181,7 +181,7 @@ log_multiplexer_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_op
    *
    *   - If we did not match (e.g.  delivered == FALSE), we may need to
    *   propagate this result to our parent by setting
-   *   (*path_options->matched) to FALSE.
+   *   (*path_options->matched) to FALSE, see log_path_options_mark_unmatched().
    *
    * In the cases of 1) and 2) we perform a filtering function and we want
    * to tell our parent that we did NOT match so it can attempt another
@@ -212,8 +212,8 @@ log_multiplexer_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_op
 
   if (self->delivery_propagation || path_options->destination_failover)
     {
-      if (!delivered && path_options->matched)
-        *path_options->matched = FALSE;
+      if (!delivered)
+        log_path_options_mark_unmatched(path_options);
     }
   log_pipe_forward_msg(s, msg, path_options);
 }

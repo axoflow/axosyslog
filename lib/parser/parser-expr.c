@@ -110,8 +110,7 @@ log_parser_queue_method(LogPipe *s, LogMessage *msg, const LogPathOptions *path_
     }
   else
     {
-      if (path_options->matched)
-        (*path_options->matched) = FALSE;
+      log_path_options_mark_unmatched(path_options);
       log_msg_drop(msg, path_options, AT_PROCESSED);
     }
 }

@@ -188,8 +188,7 @@ log_filterx_pipe_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_o
         break;
 
       case FXE_FAILURE:
-        if (path_options->matched)
-          (*path_options->matched) = FALSE;
+        log_path_options_mark_unmatched(path_options);
       /* FALLTHROUGH */
       case FXE_DROP:
         log_msg_drop(eval_context.msg, path_options, AT_PROCESSED);
