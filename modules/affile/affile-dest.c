@@ -889,7 +889,7 @@ affile_dd_new(LogTemplate *filename_template, GlobalConfig *cfg)
 
   self->writer_flags |= LW_SOFT_FLOW_CONTROL;
   self->writer_options.stats_source = stats_register_type("file");
-  self->file_opener = file_opener_for_regular_dest_files_new(&self->writer_options, &self->use_fsync);
+  self->file_opener = file_opener_for_regular_dest_files_new(&self->use_fsync);
   return &self->super.super;
 }
 

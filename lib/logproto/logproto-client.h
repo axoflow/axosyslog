@@ -68,7 +68,7 @@ struct _LogProtoClient
   const LogProtoClientOptions *options;
   LogTransportStack transport_stack;
   gboolean (*poll_prepare)(LogProtoClient *s, GIOCondition *cond, GIOCondition *idle_cond, gint *timeout);
-  LogProtoStatus (*post)(LogProtoClient *s, LogMessage *logmsg, guchar *msg, gsize msg_len, gboolean *consumed);
+  LogProtoStatus (*post)(LogProtoClient *s, LogMessage *logmsg, const guchar *msg, gsize msg_len, gboolean *consumed);
   LogProtoStatus (*process_in)(LogProtoClient *s);
   LogProtoStatus (*flush)(LogProtoClient *s);
   gboolean (*validate_options)(LogProtoClient *s);
@@ -152,8 +152,11 @@ log_proto_client_process_in(LogProtoClient *self)
   return self->process_in(self);
 }
 
+/* @msg is only borrowed for the duration of the call, the client copies
+ * what it needs.  @consumed is set if the message was accepted, otherwise
+ * the caller has to post it again later. */
 static inline LogProtoStatus
-log_proto_client_post(LogProtoClient *s, LogMessage *logmsg, guchar *msg, gsize msg_len, gboolean *consumed)
+log_proto_client_post(LogProtoClient *s, LogMessage *logmsg, const guchar *msg, gsize msg_len, gboolean *consumed)
 {
   return s->post(s, logmsg, msg, msg_len, consumed);
 }

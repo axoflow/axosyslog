@@ -1611,7 +1611,7 @@ dest_writer_options
 /* NOTE: plugins need to set "last_writer_options" in order to incorporate this rule in their grammar */
 dest_writer_option
         : KW_FLAGS '(' dest_writer_options_flags ')'
-	| KW_FLUSH_LINES '(' nonnegative_integer ')'		{ last_writer_options->flush_lines = $3; }
+	| KW_FLUSH_LINES '(' nonnegative_integer ')'		{ last_writer_options->proto_options.super.flush_lines = $3; }
 	| KW_FLUSH_TIMEOUT '(' positive_integer ')'	{ }
         | KW_SUPPRESS '(' nonnegative_integer ')'            { last_writer_options->suppress = $3; }
 	| KW_TEMPLATE '(' template_name_or_content ')'       { last_writer_options->template = $3; }

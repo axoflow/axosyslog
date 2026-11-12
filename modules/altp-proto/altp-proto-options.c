@@ -178,8 +178,7 @@ altp_proto_client_options_defaults(LogProtoClientOptions *s)
 {
   AltpProtoClientOptions *self = (AltpProtoClientOptions *) s;
 
-  /* nobody calls log_proto_client_options_defaults(), the storage of the
-   * driver simply arrives zeroed */
+  /* log_proto_client_options_defaults() covers the common fields only */
   self->altp.ack_timeout = ALTP_DEFAULT_ACK_TIMEOUT;
   /* the same default, so a configuration that only sets ack-timeout() keeps a
    * handshake timeout of its own */
