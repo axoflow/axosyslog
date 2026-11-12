@@ -59,6 +59,7 @@ typedef struct _GSockAddrFuncs
   gchar   *(*format)(GSockAddr *addr, gchar *text, gulong n, gint format);
   guint16  (*get_port)          (GSockAddr *addr);
   void     (*set_port)          (GSockAddr *addr, guint16 port);
+  gboolean (*address_equal)     (GSockAddr *a, GSockAddr *b);
 } GSockAddrFuncs;
 
 extern GSockAddrFuncs inet_sockaddr_funcs;
@@ -79,6 +80,18 @@ __g_sockaddr_funcs(GSockAddr *a)
     default:
       g_assert_not_reached();
     }
+}
+
+/* Compares the address part only (e.g. without the port), so that two
+ * sockaddrs of the same peer compare equal.  NULL is only equal to NULL. */
+static inline gboolean
+g_sockaddr_address_equal(GSockAddr *a, GSockAddr *b)
+{
+  if (a == b)
+    return TRUE;
+  if (!a || !b || a->sa.sa_family != b->sa.sa_family)
+    return FALSE;
+  return __g_sockaddr_funcs(a)->address_equal(a, b);
 }
 
 

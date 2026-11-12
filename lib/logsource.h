@@ -83,6 +83,16 @@ struct _LogSource
   void (*wakeup)(LogSource *s);
   void (*schedule_dynamic_window_realloc)(LogSource *s);
 
+  /* the name resolved for the last peer address, reused within the same
+   * second to avoid a DNS cache lookup for every message of a connection */
+  struct
+  {
+    gint64 sec;
+    GSockAddr *saddr;
+    gsize name_len;
+    gchar name[256];
+  } resolved_peer;
+
   struct
   {
     /* counters */

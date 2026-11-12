@@ -249,6 +249,12 @@ g_sockaddr_inet_set_port(GSockAddr *s, guint16 port)
   g_sockaddr_inet_get_sa(s)->sin_port = htons(port);
 }
 
+static gboolean
+g_sockaddr_inet_address_equal(GSockAddr *a, GSockAddr *b)
+{
+  return g_sockaddr_inet_get_address(a).s_addr == g_sockaddr_inet_get_address(b).s_addr;
+}
+
 GSockAddrFuncs inet_sockaddr_funcs =
 {
   .bind_prepare = g_sockaddr_inet_bind_prepare,
@@ -256,6 +262,7 @@ GSockAddrFuncs inet_sockaddr_funcs =
   .format = g_sockaddr_inet_format,
   .get_port = g_sockaddr_inet_get_port,
   .set_port = g_sockaddr_inet_set_port,
+  .address_equal = g_sockaddr_inet_address_equal,
 };
 
 gboolean
@@ -400,12 +407,24 @@ g_sockaddr_inet6_is_v4_mapped(GSockAddr *s)
   return IN6_IS_ADDR_V4MAPPED(&g_sockaddr_inet6_get_sa(s)->sin6_addr);
 }
 
+/* the same link-local address on two interfaces is two different peers */
+static gboolean
+g_sockaddr_inet6_address_equal(GSockAddr *a, GSockAddr *b)
+{
+  struct sockaddr_in6 *sin6_a = g_sockaddr_inet6_get_sa(a);
+  struct sockaddr_in6 *sin6_b = g_sockaddr_inet6_get_sa(b);
+
+  return IN6_ARE_ADDR_EQUAL(&sin6_a->sin6_addr, &sin6_b->sin6_addr) &&
+         sin6_a->sin6_scope_id == sin6_b->sin6_scope_id;
+}
+
 GSockAddrFuncs inet6_sockaddr_funcs =
 {
   .bind_prepare = g_sockaddr_inet_bind_prepare,
   .format = g_sockaddr_inet6_format,
   .get_port = g_sockaddr_inet6_get_port,
   .set_port = g_sockaddr_inet6_set_port,
+  .address_equal = g_sockaddr_inet6_address_equal,
 };
 
 gboolean
@@ -513,12 +532,14 @@ typedef struct _GSockAddrUnix
 static GIOStatus g_sockaddr_unix_bind_prepare(int sock, GSockAddr *addr);
 static GIOStatus g_sockaddr_unix_bind(int sock, GSockAddr *addr);
 static gchar *g_sockaddr_unix_format(GSockAddr *addr, gchar *text, gulong n, gint format);
+static gboolean g_sockaddr_unix_address_equal(GSockAddr *a, GSockAddr *b);
 
 GSockAddrFuncs unix_sockaddr_funcs =
 {
   .bind_prepare = g_sockaddr_unix_bind_prepare,
   .bind = g_sockaddr_unix_bind,
-  .format = g_sockaddr_unix_format
+  .format = g_sockaddr_unix_format,
+  .address_equal = g_sockaddr_unix_address_equal,
 };
 
 /* anonymous if name == NULL */
@@ -641,6 +662,33 @@ g_sockaddr_unix_format(GSockAddr *addr, gchar *text, gulong n, gint format)
                  && unix_addr->saun.sun_path[0] ? unix_addr->saun.sun_path : "anonymous");
     }
   return text;
+}
+
+/* The length of the name in sun_path: 0 for unnamed sockets, the length
+ * of the string for pathnames (salen may or may not count the terminating
+ * NUL, depending on where the address comes from) and the whole of salen
+ * for abstract names, which start with a NUL and may contain more. */
+static gsize
+g_sockaddr_unix_name_len(GSockAddrUnix *addr)
+{
+  if (addr->super.salen <= offsetof(struct sockaddr_un, sun_path))
+    return 0;
+
+  gsize len = MIN(addr->super.salen - offsetof(struct sockaddr_un, sun_path), sizeof(addr->saun.sun_path));
+  if (addr->saun.sun_path[0] == 0)
+    return len;
+  return strnlen(addr->saun.sun_path, len);
+}
+
+static gboolean
+g_sockaddr_unix_address_equal(GSockAddr *a, GSockAddr *b)
+{
+  GSockAddrUnix *unix_a = (GSockAddrUnix *) a;
+  GSockAddrUnix *unix_b = (GSockAddrUnix *) b;
+  gsize len = g_sockaddr_unix_name_len(unix_a);
+
+  return len == g_sockaddr_unix_name_len(unix_b) &&
+         memcmp(unix_a->saun.sun_path, unix_b->saun.sun_path, len) == 0;
 }
 
 gsize
