@@ -64,8 +64,7 @@ _queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_options)
 
   if (self->down && path_options->destination_failover)
     {
-      if (path_options->matched)
-        *path_options->matched = FALSE;
+      log_path_options_mark_unmatched(path_options);
       log_msg_drop(msg, path_options, AT_PROCESSED);
       return;
     }
