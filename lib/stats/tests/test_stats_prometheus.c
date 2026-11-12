@@ -140,7 +140,7 @@ Test(stats_prometheus, test_prometheus_format_logpipe)
 
 Test(stats_prometheus, test_prometheus_format_hist_buckets_are_cumulative)
 {
-  gchar *names[] = { "sum", "count", "1", "2", "4", "+Inf", NULL };
+  gchar *names[] = { "sum", "count", "max", "1", "2", "4", "+Inf", NULL };
   StatsClusterKey key;
   stats_cluster_hist_key_set(&key, "test_hist", NULL, 0);
   key.counter_group_init.counter.names = names;
