@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "test-source.h"
 #include "journald-mock.h"
 
@@ -61,28 +62,28 @@ __test_enumerate(sd_journal *journal)
 
   sd_journal_restart_data(journal);
   result = sd_journal_enumerate_data(journal, &data, &length);
-  cr_assert_eq(result, 1, "%s", "Data should exist");
+  cr_assert(eq(int, result, 1), "%s", "Data should exist");
 
   prev_data = data;
   prev_len = length;
 
   result = sd_journal_enumerate_data(journal, &data, &length);
-  cr_assert_eq(result, 1, "%s", "Data should exist");
+  cr_assert(eq(int, result, 1), "%s", "Data should exist");
   result = sd_journal_enumerate_data(journal, &data, &length);
-  cr_assert_eq(result, 1, "%s", "Data should exist");
+  cr_assert(eq(int, result, 1), "%s", "Data should exist");
   result = sd_journal_enumerate_data(journal, &data, &length);
-  cr_assert_eq(result, 0, "%s", "Data should not exist");
+  cr_assert(eq(int, result, 0), "%s", "Data should not exist");
 
   sd_journal_restart_data(journal);
 
   result = sd_journal_enumerate_data(journal, &data, &length);
-  cr_assert_eq(result, 1, "%s", "Data should exist");
-  cr_assert_eq((gpointer )data, (gpointer )prev_data,
-               "%s", "restart data should seek the start of the data");
-  cr_assert_eq(length, prev_len, "%s", "Bad length after restart data");
+  cr_assert(eq(int, result, 1), "%s", "Data should exist");
+  cr_assert(eq(ptr, data, prev_data),
+            "%s", "restart data should seek the start of the data");
+  cr_assert(eq(sz, length, prev_len), "%s", "Bad length after restart data");
 
   result = sd_journal_next(journal);
-  cr_assert_eq(result, 0, "%s", "Should not contain more elements");
+  cr_assert(eq(int, result, 0), "%s", "Should not contain more elements");
 }
 
 
@@ -119,9 +120,9 @@ Test(systemd_journal, test_journald_helper)
   gchar *key = g_hash_table_lookup(result, "KEY");
   gchar *host = g_hash_table_lookup(result, "HOST");
 
-  cr_assert_str_eq(message, "test message", "%s", "Bad item");
-  cr_assert_str_eq(key, "VALUE", "%s", "Bad item");
-  cr_assert_str_eq(host, "testhost", "%s", "Bad item");
+  cr_assert(eq(str, message, "test message"), "%s", "Bad item");
+  cr_assert(eq(str, key, "VALUE"), "%s", "Bad item");
+  cr_assert(eq(str, host, "testhost"), "%s", "Bad item");
 
   sd_journal_close(journal);
   g_hash_table_unref(result);
@@ -188,12 +189,12 @@ _test_default_working_test(TestCase *self, TestSource *src, LogMessage *msg)
 {
   const gchar *message = log_msg_get_value(msg, LM_V_MESSAGE, NULL);
   JournalReaderOptions *options = self->user_data;
-  cr_assert_str_eq(message, "Dummy message", "%s", "Bad message");
-  cr_assert_eq(msg->pri, options->default_pri, "%s", "Bad default prio");
-  cr_assert_eq(options->fetch_limit, 10, "%s", "Bad default fetch_limit");
-  cr_assert_eq(options->max_field_size, 64 * 1024, "%s", "Bad max field size");
-  cr_assert_str_eq(options->prefix, ".journald.", "%s", "Bad default prefix value");
-  cr_assert_str_eq(options->recv_time_zone, cfg->recv_time_zone, "%s", "Bad default timezone");
+  cr_assert(eq(str, message, "Dummy message"), "%s", "Bad message");
+  cr_assert(eq(u16, msg->pri, options->default_pri), "%s", "Bad default prio");
+  cr_assert(eq(int, options->fetch_limit, 10), "%s", "Bad default fetch_limit");
+  cr_assert(eq(u32, options->max_field_size, 64 * 1024), "%s", "Bad max field size");
+  cr_assert(eq(str, options->prefix, ".journald."), "%s", "Bad default prefix value");
+  cr_assert(eq(str, options->recv_time_zone, cfg->recv_time_zone), "%s", "Bad default timezone");
   test_source_finish_tc(src);
 }
 
@@ -212,7 +213,7 @@ __test_other_has_prefix(TestCase *self, LogMessage *msg)
   gchar *requested_name = g_strdup_printf("%s%s", (gchar *) self->user_data, "_CMDLINE");
   gssize value_len;
   const gchar *value = log_msg_get_value_by_name(msg, requested_name, &value_len);
-  cr_assert_str_eq(value, "sshd: foo_user [priv]", "%s", "Bad value for prefixed key");
+  cr_assert(eq(str, value, "sshd: foo_user [priv]"), "%s", "Bad value for prefixed key");
   g_free(requested_name);
 }
 
@@ -220,8 +221,8 @@ void
 _test_prefix_test(TestCase *self, TestSource *src, LogMessage *msg)
 {
   const gchar *message = log_msg_get_value(msg, LM_V_MESSAGE, NULL);
-  cr_assert_str_eq(message, "pam_unix(sshd:session): session opened for user foo_user by (uid=0)",
-                   "%s", "Bad message");
+  cr_assert(eq(str, message, "pam_unix(sshd:session): session opened for user foo_user by (uid=0)"),
+            "%s", "Bad message");
 
   __test_other_has_prefix(self, msg);
 
@@ -246,7 +247,7 @@ __check_value_len(NVHandle handle, const gchar *name,
   gchar *error_message = g_strdup_printf("Bad value size; name: %s, value: %s len: %ld", name, value, value_len);
   if (strcmp(name, "HOST_FROM") != 0 && strcmp(name, "TRANSPORT") != 0)
     {
-      cr_assert_leq(value_len, GPOINTER_TO_INT(self->user_data), "%s", error_message);
+      cr_assert(le(i64, value_len, GPOINTER_TO_INT(self->user_data)), "%s", error_message);
     }
   g_free(error_message);
   return FALSE;
@@ -273,7 +274,7 @@ _test_timezone_init(TestCase *self, TestSource *src, JournalReader *reader,
 void
 _test_timezone_test(TestCase *self, TestSource *src, LogMessage *msg)
 {
-  cr_assert_eq(msg->timestamps[LM_TS_STAMP].ut_gmtoff, 9 * 3600, "%s", "Bad time zone info");
+  cr_assert(eq(i32, msg->timestamps[LM_TS_STAMP].ut_gmtoff, 9 * 3600), "%s", "Bad time zone info");
   test_source_finish_tc(src);
 }
 
@@ -294,7 +295,7 @@ void
 _test_default_level_test(TestCase *self, TestSource *src, LogMessage *msg)
 {
   gint level = GPOINTER_TO_INT(self->user_data);
-  cr_assert_eq(msg->pri, LOG_LOCAL0 | level, "%s", "Bad default prio");
+  cr_assert(eq(u16, msg->pri, LOG_LOCAL0 | level), "%s", "Bad default prio");
   test_source_finish_tc(src);
 }
 
@@ -314,7 +315,7 @@ void
 _test_default_facility_test(TestCase *self, TestSource *src, LogMessage *msg)
 {
   gint facility = GPOINTER_TO_INT(self->user_data);
-  cr_assert_eq(msg->pri, facility | LOG_NOTICE, "%s", "Bad default prio");
+  cr_assert(eq(u16, msg->pri, facility | LOG_NOTICE), "%s", "Bad default prio");
   test_source_finish_tc(src);
 }
 
@@ -348,12 +349,12 @@ _test_program_field_test(TestCase *self, TestSource *src, LogMessage *msg)
   sd_journal_get_cursor(journal, &cursor);
   if (strcmp(cursor, "no SYSLOG_IDENTIFIER") != 0)
     {
-      cr_assert_str_eq(log_msg_get_value(msg, LM_V_PROGRAM, NULL), "syslog_program", "%s", "Bad program name");
+      cr_assert(eq(str, log_msg_get_value(msg, LM_V_PROGRAM, NULL), "syslog_program"), "%s", "Bad program name");
       g_free(cursor);
     }
   else
     {
-      cr_assert_str_eq(log_msg_get_value(msg, LM_V_PROGRAM, NULL), "comm_program", "%s", "Bad program name");
+      cr_assert(eq(str, log_msg_get_value(msg, LM_V_PROGRAM, NULL), "comm_program"), "%s", "Bad program name");
       g_free(cursor);
       test_source_finish_tc(src);
     }
@@ -398,8 +399,8 @@ Test(systemd_journal, test_journal_reader_namespace_init_same_twice)
   cr_assert(journal_reader_test_allocate_namespace(test_1), "%s", "Can't initialize first reader");
 
   void *test_2 = journal_reader_test_prepare_with_namespace("asd", cfg);
-  cr_assert_not(journal_reader_test_allocate_namespace(test_2), "%s",
-                "Multiple readers with the same namespace initialized");
+  cr_assert(not(journal_reader_test_allocate_namespace(test_2)), "%s",
+            "Multiple readers with the same namespace initialized");
 
   journal_reader_test_destroy(test_1);
   journal_reader_test_destroy(test_2);

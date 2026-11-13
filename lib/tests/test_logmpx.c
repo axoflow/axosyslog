@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "logmpx.h"
 #include "apphook.h"
@@ -144,9 +145,10 @@ Test(logmpx, destination_failover_routes_to_first_reachable_branch)
 
   _queue_empty_message(&mpx->super);
 
-  cr_assert_eq(branches[0]->captured_messages->len, 0, "the down primary must not accept the message");
-  cr_assert_eq(branches[1]->captured_messages->len, 1, "the first branch that accepts gets the message");
-  cr_assert_eq(branches[2]->captured_messages->len, 0, "later branches are not tried once an earlier one accepted");
+  cr_assert(eq(uint, branches[0]->captured_messages->len, 0), "the down primary must not accept the message");
+  cr_assert(eq(uint, branches[1]->captured_messages->len, 1), "the first branch that accepts gets the message");
+  cr_assert(eq(uint, branches[2]->captured_messages->len, 0),
+            "later branches are not tried once an earlier one accepted");
 
   _free_pipe(&mpx->super);
   for (gint i = 0; i < 3; i++)
@@ -165,10 +167,10 @@ Test(logmpx, destination_failover_last_branch_buffers_when_every_other_is_down)
 
   _queue_empty_message(&mpx->super);
 
-  cr_assert_eq(branches[0]->captured_messages->len, 0);
+  cr_assert(eq(uint, branches[0]->captured_messages->len, 0));
   cr_assert(branches[0]->last_seen_destination_failover, "a branch followed by another one may reject");
-  cr_assert_not(branches[1]->last_seen_destination_failover, "the last branch has nowhere to fail over to");
-  cr_assert_eq(branches[1]->captured_messages->len, 1, "so it accepts (and buffers) the message instead");
+  cr_assert(not(branches[1]->last_seen_destination_failover), "the last branch has nowhere to fail over to");
+  cr_assert(eq(uint, branches[1]->captured_messages->len, 1), "so it accepts (and buffers) the message instead");
 
   _free_pipe(&mpx->super);
   for (gint i = 0; i < 2; i++)
@@ -186,18 +188,18 @@ Test(logmpx, destination_failover_switches_when_reachability_changes)
   LogMultiplexer *mpx = _create_destination_failover_mpx(NULL, pipes, 2);
 
   _queue_empty_message(&mpx->super);
-  cr_assert_eq(branches[0]->captured_messages->len, 1);
-  cr_assert_eq(branches[1]->captured_messages->len, 0);
+  cr_assert(eq(uint, branches[0]->captured_messages->len, 1));
+  cr_assert(eq(uint, branches[1]->captured_messages->len, 0));
 
   branches[0]->down = TRUE;
   _queue_empty_message(&mpx->super);
-  cr_assert_eq(branches[0]->captured_messages->len, 1, "no more messages routed to the now-down primary");
-  cr_assert_eq(branches[1]->captured_messages->len, 1, "new messages follow to the secondary");
+  cr_assert(eq(uint, branches[0]->captured_messages->len, 1), "no more messages routed to the now-down primary");
+  cr_assert(eq(uint, branches[1]->captured_messages->len, 1), "new messages follow to the secondary");
 
   branches[0]->down = FALSE;
   _queue_empty_message(&mpx->super);
-  cr_assert_eq(branches[0]->captured_messages->len, 2, "failback happens as soon as the primary is reachable");
-  cr_assert_eq(branches[1]->captured_messages->len, 1);
+  cr_assert(eq(uint, branches[0]->captured_messages->len, 2), "failback happens as soon as the primary is reachable");
+  cr_assert(eq(uint, branches[1]->captured_messages->len, 1));
 
   _free_pipe(&mpx->super);
   for (gint i = 0; i < 2; i++)
@@ -217,9 +219,9 @@ Test(logmpx, destination_failover_last_branch_is_a_fallback_branch_if_there_is_o
   _queue_empty_message(&mpx->super);
 
   cr_assert(secondary->last_seen_destination_failover, "the fallback branch is tried after the secondary");
-  cr_assert_eq(secondary->captured_messages->len, 0);
-  cr_assert_not(fallback->last_seen_destination_failover);
-  cr_assert_eq(fallback->captured_messages->len, 1);
+  cr_assert(eq(uint, secondary->captured_messages->len, 0));
+  cr_assert(not(fallback->last_seen_destination_failover));
+  cr_assert(eq(uint, fallback->captured_messages->len, 1));
 
   _free_pipe(&mpx->super);
   for (gint i = 0; i < 3; i++)
@@ -240,8 +242,8 @@ Test(logmpx, destination_failover_is_not_set_by_an_unmarked_multiplexer)
 
   _queue_empty_message(&mpx->super);
 
-  cr_assert_not(first->last_seen_destination_failover);
-  cr_assert_not(second->last_seen_destination_failover);
+  cr_assert(not(first->last_seen_destination_failover));
+  cr_assert(not(second->last_seen_destination_failover));
 
   _free_pipe(&mpx->super);
   _free_pipe(&first->super);
@@ -263,8 +265,8 @@ Test(logmpx, destination_failover_last_branch_of_a_nested_failover_may_reject_if
   _queue_empty_message(&outer->super);
 
   cr_assert(b->last_seen_destination_failover);
-  cr_assert_eq(b->captured_messages->len, 0);
-  cr_assert_eq(c->captured_messages->len, 1);
+  cr_assert(eq(uint, b->captured_messages->len, 0));
+  cr_assert(eq(uint, c->captured_messages->len, 1));
 
   _free_pipe(&outer->super);
   _free_pipe(&inner->super);
@@ -287,8 +289,8 @@ Test(logmpx, destination_failover_last_branch_of_a_nested_failover_buffers_in_th
   _queue_empty_message(&outer->super);
 
   cr_assert(b->last_seen_destination_failover);
-  cr_assert_not(c->last_seen_destination_failover);
-  cr_assert_eq(c->captured_messages->len, 1);
+  cr_assert(not(c->last_seen_destination_failover));
+  cr_assert(eq(uint, c->captured_messages->len, 1));
 
   _free_pipe(&outer->super);
   _free_pipe(&inner->super);
@@ -318,9 +320,9 @@ Test(logmpx, destination_failover_rejection_propagates_through_a_delivery_propag
   _queue_empty_message(&mpx->super);
 
   cr_assert(leaf->last_seen_destination_failover, "the flag must reach the driver through mpx_ref");
-  cr_assert_eq(leaf->captured_messages->len, 0);
-  cr_assert_eq(secondary->captured_messages->len, 1,
-               "the rejection must reach the failover multiplexer despite mpx_ref disabling delivery propagation");
+  cr_assert(eq(uint, leaf->captured_messages->len, 0));
+  cr_assert(eq(uint, secondary->captured_messages->len, 1),
+            "the rejection must reach the failover multiplexer despite mpx_ref disabling delivery propagation");
 
   _free_pipe(&mpx->super);
   _free_pipe(&mpx_ref->super);

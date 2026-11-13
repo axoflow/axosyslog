@@ -21,6 +21,7 @@
  *
  */
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/parameterized.h"
 #include "libtest/cr_template.h"
 #include "libtest/msg_parse_lib.h"
@@ -53,30 +54,30 @@ typedef struct _FilterParamRegexp
 
 Test(filter, create_pcre_regexp_filter)
 {
-  cr_assert_eq(create_pcre_regexp_filter(LM_V_PROGRAM, "((", 0), NULL);
-  cr_assert_eq(create_pcre_regexp_filter(LM_V_HOST, "((", 0), NULL);
-  cr_assert_eq(create_pcre_regexp_match("((", 0), NULL);
-  cr_assert_eq(create_pcre_regexp_filter(LM_V_PROGRAM, "((", 0), NULL);
-  cr_assert_eq(create_pcre_regexp_filter(LM_V_HOST, "((", 0), NULL);
-  cr_assert_eq(create_pcre_regexp_filter(LM_V_HOST, "(?iana", 0), NULL);
-  cr_assert_eq(create_pcre_regexp_filter(LM_V_HOST, "(?iana", 0), NULL);
-  cr_assert_eq(create_pcre_regexp_match("((", 0), NULL);
-  cr_assert_eq(create_pcre_regexp_match("(?P<foo_123", 0), NULL);  // Unterminated group identifier
-  cr_assert_eq(create_pcre_regexp_match("(?P<1>a)", 0), NULL);  // Begins with a digit
-  cr_assert_eq(create_pcre_regexp_match("(?P<!>a)", 0), NULL);  // Begins with an illegal char
-  cr_assert_eq(create_pcre_regexp_match("(?P<foo!>a)", 0), NULL);  // Ends with an illegal char
-  cr_assert_eq(create_pcre_regexp_match("\\1", 0), NULL);  // Backreference
-  cr_assert_eq(create_pcre_regexp_match("a[b-a]", 0), NULL);
-  cr_assert_eq(create_pcre_regexp_match("a[]b", 0), NULL);
-  cr_assert_eq(create_pcre_regexp_match("a[", 0), NULL);
-  cr_assert_eq(create_pcre_regexp_match("*a", 0), NULL);
-  cr_assert_eq(create_pcre_regexp_match("(*)b", 0), NULL);
-  cr_assert_eq(create_pcre_regexp_match("a\\", 0), NULL);
-  cr_assert_eq(create_pcre_regexp_match("abc)", 0), NULL);
-  cr_assert_eq(create_pcre_regexp_match("(abc", 0), NULL);
-  cr_assert_eq(create_pcre_regexp_match("a**", 0), NULL);
-  cr_assert_eq(create_pcre_regexp_match(")(", 0), NULL);
-  cr_assert_eq(create_pcre_regexp_match("(?<DN>foo)|(?<DN>bar)", 0), NULL);
+  cr_assert(zero(ptr, create_pcre_regexp_filter(LM_V_PROGRAM, "((", 0)));
+  cr_assert(zero(ptr, create_pcre_regexp_filter(LM_V_HOST, "((", 0)));
+  cr_assert(zero(ptr, create_pcre_regexp_match("((", 0)));
+  cr_assert(zero(ptr, create_pcre_regexp_filter(LM_V_PROGRAM, "((", 0)));
+  cr_assert(zero(ptr, create_pcre_regexp_filter(LM_V_HOST, "((", 0)));
+  cr_assert(zero(ptr, create_pcre_regexp_filter(LM_V_HOST, "(?iana", 0)));
+  cr_assert(zero(ptr, create_pcre_regexp_filter(LM_V_HOST, "(?iana", 0)));
+  cr_assert(zero(ptr, create_pcre_regexp_match("((", 0)));
+  cr_assert(zero(ptr, create_pcre_regexp_match("(?P<foo_123", 0)));  // Unterminated group identifier
+  cr_assert(zero(ptr, create_pcre_regexp_match("(?P<1>a)", 0)));  // Begins with a digit
+  cr_assert(zero(ptr, create_pcre_regexp_match("(?P<!>a)", 0)));  // Begins with an illegal char
+  cr_assert(zero(ptr, create_pcre_regexp_match("(?P<foo!>a)", 0)));  // Ends with an illegal char
+  cr_assert(zero(ptr, create_pcre_regexp_match("\\1", 0)));  // Backreference
+  cr_assert(zero(ptr, create_pcre_regexp_match("a[b-a]", 0)));
+  cr_assert(zero(ptr, create_pcre_regexp_match("a[]b", 0)));
+  cr_assert(zero(ptr, create_pcre_regexp_match("a[", 0)));
+  cr_assert(zero(ptr, create_pcre_regexp_match("*a", 0)));
+  cr_assert(zero(ptr, create_pcre_regexp_match("(*)b", 0)));
+  cr_assert(zero(ptr, create_pcre_regexp_match("a\\", 0)));
+  cr_assert(zero(ptr, create_pcre_regexp_match("abc)", 0)));
+  cr_assert(zero(ptr, create_pcre_regexp_match("(abc", 0)));
+  cr_assert(zero(ptr, create_pcre_regexp_match("a**", 0)));
+  cr_assert(zero(ptr, create_pcre_regexp_match(")(", 0)));
+  cr_assert(zero(ptr, create_pcre_regexp_match("(?<DN>foo)|(?<DN>bar)", 0)));
 }
 
 static FilterParamRegexp test_filter_regexp_backref_chk_params[] =
@@ -282,13 +283,13 @@ Test(filter, test_match_with_overwritten_match_as_source)
 
   filter = create_pcre_regexp_match("^(PTHREAD)( )(support)", LMF_STORE_MATCHES);
   filter_match_set_value_handle(filter, log_msg_get_value_handle("1"));
-  cr_assert(filter_expr_init(filter, configuration) == TRUE);
+  cr_assert(filter_expr_init(filter, configuration));
 
   LogMessage *msg = log_msg_new_empty();
   log_msg_set_match(msg, 1, "PTHREAD support initialized", -1);
 
   gboolean res = filter_expr_eval(filter, msg);
-  cr_assert(res == TRUE);
+  cr_assert(res);
   /* $1 reset to the capture group's value */
   assert_log_message_match_value(msg, 1, "PTHREAD");
   assert_log_message_match_value(msg, 2, " ");
@@ -304,13 +305,13 @@ Test(filter, test_match_with_overwritten_trivial_template_as_source)
 
   filter = create_pcre_regexp_match("^(PTHREAD)( )(support) initialized", LMF_STORE_MATCHES);
   filter_match_set_template_ref(filter, compile_template("$1"));
-  cr_assert(filter_expr_init(filter, configuration) == TRUE);
+  cr_assert(filter_expr_init(filter, configuration));
 
   LogMessage *msg = log_msg_new_empty();
   log_msg_set_match(msg, 1, "PTHREAD support initialized", -1);
 
   gboolean res = filter_expr_eval(filter, msg);
-  cr_assert(res == TRUE);
+  cr_assert(res);
   /* $1 reset to the capture group's value */
   assert_log_message_match_value(msg, 1, "PTHREAD");
   assert_log_message_match_value(msg, 2, " ");

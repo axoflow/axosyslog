@@ -20,6 +20,7 @@
  *
  */
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/filterx-lib.h"
 
 #include "filterx/object-string.h"
@@ -34,7 +35,7 @@ Test(filterx_double, test_double_repr_large_magnitude_does_not_overflow)
 {
   GString *repr = g_string_new("");
   cr_assert(double_repr(1e250, 6, repr));
-  cr_assert(repr->len > 100);
+  cr_assert(gt(sz, repr->len, 100));
   g_string_free(repr, TRUE);
 }
 
@@ -42,9 +43,9 @@ Test(filterx_double, test_double_repr_appends_a_long_value_and_trims_it)
 {
   GString *repr = g_string_new("x=");
   cr_assert(double_repr(1e50, 2, repr));
-  cr_assert_str_eq(repr->str, "x=100000000000000007629769841091887003294964970946560.0");
+  cr_assert(eq(str, repr->str, "x=100000000000000007629769841091887003294964970946560.0"));
   cr_assert(double_repr(1.5, 3, repr));
-  cr_assert_str_eq(repr->str, "x=100000000000000007629769841091887003294964970946560.01.5");
+  cr_assert(eq(str, repr->str, "x=100000000000000007629769841091887003294964970946560.01.5"));
   g_string_free(repr, TRUE);
 }
 
@@ -52,7 +53,7 @@ Test(filterx_double, test_double_repr_keeps_the_exponent)
 {
   GString *repr = g_string_new("");
   cr_assert(double_repr(2.5e20, -1, repr));
-  cr_assert_str_eq(repr->str, "2.5e+20");
+  cr_assert(eq(str, repr->str, "2.5e+20"));
   g_string_free(repr, TRUE);
 }
 
@@ -74,11 +75,11 @@ Test(filterx_double, test_filterx_primitive_double_is_truthy_if_nonzero)
 {
   FilterXObject *fobj = filterx_double_new(1);
   cr_assert(filterx_object_truthy(fobj));
-  cr_assert_not(filterx_object_falsy(fobj));
+  cr_assert(not(filterx_object_falsy(fobj)));
   filterx_object_unref(fobj);
 
   fobj = filterx_double_new(0.0);
-  cr_assert_not(filterx_object_truthy(fobj));
+  cr_assert(not(filterx_object_truthy(fobj)));
   cr_assert(filterx_object_falsy(fobj));
   filterx_object_unref(fobj);
 }
@@ -86,14 +87,14 @@ Test(filterx_double, test_filterx_primitive_double_is_truthy_if_nonzero)
 Test(filterx_double, test_filterx_double_typecast_null_args)
 {
   FilterXObject *obj = filterx_typecast_double(NULL, NULL, 0);
-  cr_assert_null(obj);
+  cr_assert(zero(ptr, obj));
 }
 
 Test(filterx_double, test_filterx_double_typecast_empty_args)
 {
   FilterXObject *args[] = { NULL };
   FilterXObject *obj = filterx_typecast_double(NULL, args, 0);
-  cr_assert_null(obj);
+  cr_assert(zero(ptr, obj));
 }
 
 Test(filterx_double, test_filterx_double_typecast_null_arg)
@@ -101,7 +102,7 @@ Test(filterx_double, test_filterx_double_typecast_null_arg)
   FilterXObject *args[] = { NULL };
 
   FilterXObject *obj = filterx_typecast_double(NULL, args, G_N_ELEMENTS(args));
-  cr_assert_null(obj);
+  cr_assert(zero(ptr, obj));
 }
 
 Test(filterx_double, test_filterx_double_typecast_null_object_arg)
@@ -109,7 +110,7 @@ Test(filterx_double, test_filterx_double_typecast_null_object_arg)
   FilterXObject *args[] = { filterx_null_new() };
 
   FilterXObject *obj = filterx_typecast_double(NULL, args, G_N_ELEMENTS(args));
-  cr_assert_null(obj);
+  cr_assert(zero(ptr, obj));
 
   filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
   filterx_object_unref(obj);
@@ -120,7 +121,7 @@ Test(filterx_double, test_filterx_double_typecast_from_double)
   FilterXObject *args[] = { filterx_double_new(3.14) };
 
   FilterXObject *obj = filterx_typecast_double(NULL, args, G_N_ELEMENTS(args));
-  cr_assert_eq(args[0], obj);
+  cr_assert(eq(ptr, args[0], obj));
 
   filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
   filterx_object_unref(obj);
@@ -131,11 +132,11 @@ Test(filterx_double, test_filterx_double_typecast_from_integer)
   FilterXObject *args[] = { filterx_integer_new(443) };
 
   FilterXObject *obj = filterx_typecast_double(NULL, args, G_N_ELEMENTS(args));
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(double)));
 
   GenericNumber gn = filterx_primitive_get_value(obj);
-  cr_assert_float_eq(443.0, gn_as_double(&gn), 0.00001);
+  cr_assert(epsilon_eq(dbl, 443.0, gn_as_double(&gn), 0.00001));
 
   filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
   filterx_object_unref(obj);
@@ -147,11 +148,11 @@ Test(filterx_double, test_filterx_double_typecast_from_string)
   FilterXObject *args[] = { filterx_string_new("443.117", -1) };
 
   FilterXObject *obj = filterx_typecast_double(NULL, args, G_N_ELEMENTS(args));
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(double)));
 
   GenericNumber gn = filterx_primitive_get_value(obj);
-  cr_assert_float_eq(443.117, gn_as_double(&gn), 0.00001);
+  cr_assert(epsilon_eq(dbl, 443.117, gn_as_double(&gn), 0.00001));
 
   filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
   filterx_object_unref(obj);
@@ -163,11 +164,11 @@ Test(filterx_double, test_filterx_double_typecast_from_datetime)
   FilterXObject *args[] = { filterx_datetime_new(&ut) };
 
   FilterXObject *obj = filterx_typecast_double(NULL, args, G_N_ELEMENTS(args));
-  cr_assert_not_null(obj);
+  cr_assert(not(zero(ptr, obj)));
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(double)));
 
   GenericNumber gn = filterx_primitive_get_value(obj);
-  cr_assert_float_eq(171.443221, gn_as_double(&gn), 0.00001);
+  cr_assert(epsilon_eq(dbl, 171.443221, gn_as_double(&gn), 0.00001));
 
   filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
   filterx_object_unref(obj);

@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/cr_template.h"
 
 #include "apphook.h"
@@ -42,7 +43,7 @@ static void
 _override_map_file(void)
 {
   gint fd = g_file_open_tmp("geoip-databases-XXXXXX.tsv", &map_file, NULL);
-  cr_assert(fd >= 0);
+  cr_assert(ge(int, fd, 0));
   close(fd);
   override_installation_path_for(MMDB_DATABASE_MAP_FILE, map_file);
 }

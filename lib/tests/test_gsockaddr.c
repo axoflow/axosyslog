@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "gsockaddr.h"
 
@@ -32,7 +33,7 @@ Test(gsockaddr, unshare_tolerates_null)
   GSockAddr *addr = NULL;
 
   g_sockaddr_unshare(&addr);
-  cr_assert_null(addr);
+  cr_assert(zero(ptr, addr));
 }
 
 Test(gsockaddr, unshare_keeps_a_sole_owner)
@@ -41,7 +42,7 @@ Test(gsockaddr, unshare_keeps_a_sole_owner)
   GSockAddr *before = addr;
 
   g_sockaddr_unshare(&addr);
-  cr_assert_eq(addr, before);
+  cr_assert(eq(ptr, addr, before));
   g_sockaddr_unref(addr);
 }
 
@@ -52,11 +53,11 @@ Test(gsockaddr, unshare_copies_a_shared_instance_and_releases_it)
   gchar expected[MAX_SOCKADDR_STRING], actual[MAX_SOCKADDR_STRING];
 
   g_sockaddr_unshare(&addr);
-  cr_assert_neq(addr, shared);
-  cr_assert_eq(g_atomic_counter_get(&addr->super.refcnt), 1);
-  cr_assert_eq(g_atomic_counter_get(&shared->super.refcnt), 1);
-  cr_assert_str_eq(g_sockaddr_format(addr, actual, sizeof(actual), GSA_FULL),
-                   g_sockaddr_format(shared, expected, sizeof(expected), GSA_FULL));
+  cr_assert(ne(ptr, addr, shared));
+  cr_assert(eq(int, g_atomic_counter_get(&addr->super.refcnt), 1));
+  cr_assert(eq(int, g_atomic_counter_get(&shared->super.refcnt), 1));
+  cr_assert(eq(str, g_sockaddr_format(addr, actual, sizeof(actual), GSA_FULL),
+               g_sockaddr_format(shared, expected, sizeof(expected), GSA_FULL)));
 
   g_sockaddr_unref(addr);
   g_sockaddr_unref(shared);
@@ -74,8 +75,8 @@ _unix_new2(const gchar *name, gsize name_len)
 static void
 _assert_address_equal(GSockAddr *a, GSockAddr *b, gboolean expected)
 {
-  cr_assert_eq(g_sockaddr_address_equal(a, b), expected);
-  cr_assert_eq(g_sockaddr_address_equal(b, a), expected);
+  cr_assert(eq(int, g_sockaddr_address_equal(a, b), expected));
+  cr_assert(eq(int, g_sockaddr_address_equal(b, a), expected));
   g_sockaddr_unref(a);
   g_sockaddr_unref(b);
 }
@@ -85,8 +86,8 @@ Test(gsockaddr, address_equal_handles_null)
   GSockAddr *addr = g_sockaddr_inet_new("192.168.1.1", 514);
 
   cr_assert(g_sockaddr_address_equal(NULL, NULL));
-  cr_assert_not(g_sockaddr_address_equal(addr, NULL));
-  cr_assert_not(g_sockaddr_address_equal(NULL, addr));
+  cr_assert(not(g_sockaddr_address_equal(addr, NULL)));
+  cr_assert(not(g_sockaddr_address_equal(NULL, addr)));
   cr_assert(g_sockaddr_address_equal(addr, addr));
   g_sockaddr_unref(addr);
 }

@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "filterx-func-format-windows-eventlog-xml.h"
 #include "filterx-parse-windows-eventlog-xml.h"
@@ -48,8 +49,8 @@ _eval_func(FilterXExpr *(*ctor)(FilterXFunctionArgs *, GError **), FilterXObject
   g_assert(!error);
 
   FilterXObject *result = init_and_eval_expr(func);
-  cr_assert(result);
-  cr_assert(filterx_eval_get_error_count() == 0);
+  cr_assert(not(zero(ptr, result)));
+  cr_assert(eq(int, filterx_eval_get_error_count(), 0));
 
   filterx_expr_unref(func);
   return result;
@@ -69,14 +70,14 @@ _assert_format(const gchar *xml, const gchar *expected_xml)
 
   GString *formatted_str = g_string_new(NULL);
   cr_assert(filterx_object_str(formatted, formatted_str));
-  cr_assert_str_eq(formatted_str->str, expected_xml);
+  cr_assert(eq(str, formatted_str->str, expected_xml));
 
   FilterXObject *reparsed = _parse(formatted_str->str);
   GString *dict_repr = g_string_new(NULL);
   GString *reparsed_repr = g_string_new(NULL);
   filterx_object_repr(dict, dict_repr);
   filterx_object_repr(reparsed, reparsed_repr);
-  cr_assert_str_eq(reparsed_repr->str, dict_repr->str);
+  cr_assert(eq(str, reparsed_repr->str, dict_repr->str));
 
   g_string_free(reparsed_repr, TRUE);
   g_string_free(dict_repr, TRUE);

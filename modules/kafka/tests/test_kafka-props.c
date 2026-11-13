@@ -21,6 +21,7 @@
  *
  */
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/grab-logging.h"
 
 #include "kafka-props.h"
@@ -30,7 +31,7 @@
 static KafkaProperty *
 _get_nth_prop(GList *prop_list, gint n)
 {
-  cr_assert(prop_list != NULL);
+  cr_assert(not(zero(ptr, prop_list)));
   return (KafkaProperty *) g_list_nth(prop_list, n)->data;
 }
 
@@ -38,12 +39,12 @@ static void
 _assert_nth_prop_equals(GList *prop_list, gint n, const gchar *name, const gchar *value)
 {
   KafkaProperty *prop = _get_nth_prop(prop_list, n);
-  cr_assert_str_eq(prop->name, name,
-                   "name does not match in the %d. element of the property, value=%s, expected=%s",
-                   n, prop->name, name);
-  cr_assert_str_eq(prop->value, value,
-                   "value does not match in the %d. element of the property, value=%s, expected=%s",
-                   n, prop->value, value);
+  cr_assert(eq(str, prop->name, name),
+            "name does not match in the %d. element of the property, value=%s, expected=%s",
+            n, prop->name, name);
+  cr_assert(eq(str, prop->value, value),
+            "value does not match in the %d. element of the property, value=%s, expected=%s",
+            n, prop->value, value);
 }
 
 Test(kafka_props, kafka_prop_new_allocates_a_prop)
@@ -51,8 +52,8 @@ Test(kafka_props, kafka_prop_new_allocates_a_prop)
   KafkaProperty *prop;
 
   prop = kafka_property_new("name", "value");
-  cr_assert_str_eq(prop->name, "name");
-  cr_assert_str_eq(prop->value, "value");
+  cr_assert(eq(str, prop->name, "name"));
+  cr_assert(eq(str, prop->value, "value"));
   kafka_property_free(prop);
 }
 

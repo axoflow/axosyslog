@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "apphook.h"
 #include "http/source/http-source.h"
@@ -36,8 +37,8 @@ assert_transport_name_is_http(TransportMapper *transport_mapper)
   cr_assert(transport_mapper_apply_transport(transport_mapper, configuration));
 
   transport_name = transport_mapper_get_transport_name(transport_mapper, &len);
-  cr_assert_str_eq(transport_name, "http");
-  cr_assert_eq(len, strlen("http"));
+  cr_assert(eq(str, transport_name, "http"));
+  cr_assert(eq(sz, len, strlen("http")));
 }
 
 Test(http_source, transport_name_of_a_plain_connection)

@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include <math.h>
 #include <stdlib.h>
 #include "libtest/filterx-lib.h"
@@ -44,7 +45,7 @@ _create_random_expr(FilterXObject *bound)
   GError *error = NULL;
   FilterXExpr *fn = filterx_simple_function_new("random", filterx_function_args_new(args, NULL),
                                                 filterx_simple_function_random, &error);
-  cr_assert_null(error);
+  cr_assert(zero(ptr, error));
   return fn;
 }
 
@@ -59,12 +60,13 @@ Test(filterx_func_random, no_args_returns_double_in_unit_interval)
       gdouble v;
       cr_assert(res && filterx_double_unwrap(res, &v));
       filterx_object_unref(res);
-      cr_assert(v >= 0.0 && v < 1.0);
+      cr_assert(ge(dbl, v, 0.0));
+      cr_assert(lt(dbl, v, 1.0));
       sum += v;
     }
 
   /* mean of U[0,1) over 10000 draws: sigma ~0.0029, so this is a >10 sigma bound */
-  cr_assert_float_eq(sum / 10000, 0.5, 0.03);
+  cr_assert(epsilon_eq(dbl, sum / 10000, 0.5, 0.03));
   filterx_expr_unref(fn);
 }
 
@@ -79,12 +81,13 @@ Test(filterx_func_random, bound_returns_uniform_integer_in_range)
       gint64 v;
       cr_assert(res && filterx_integer_unwrap(res, &v));
       filterx_object_unref(res);
-      cr_assert(v >= 0 && v < 4);
+      cr_assert(ge(i64, v, 0));
+      cr_assert(lt(i64, v, 4));
       hits[v]++;
     }
 
   for (gint i = 0; i < 4; i++)
-    cr_assert_gt(hits[i], 800, "value %d drawn only %d times out of 4000", i, hits[i]);
+    cr_assert(gt(int, hits[i], 800), "value %d drawn only %d times out of 4000", i, hits[i]);
   filterx_expr_unref(fn);
 }
 
@@ -92,7 +95,7 @@ static void
 _assert_rejected(FilterXObject *bound)
 {
   FilterXExpr *fn = _create_random_expr(bound);
-  cr_assert_null(init_and_eval_expr(fn));
+  cr_assert(zero(ptr, init_and_eval_expr(fn)));
   filterx_expr_unref(fn);
 }
 
@@ -115,7 +118,7 @@ _count_true(FilterXExpr *probability, gint n)
 {
   GError *error = NULL;
   FilterXExpr *fn = _create_random_bool_expr(probability, &error);
-  cr_assert_null(error);
+  cr_assert(zero(ptr, error));
   gint count = 0;
   for (gint i = 0; i < n; i++)
     {
@@ -133,23 +136,23 @@ _count_true(FilterXExpr *probability, gint n)
 /* literals are precomputed by the constructor, other expressions are evaluated per call */
 Test(filterx_func_random, bool_probability_is_respected)
 {
-  cr_assert_eq(_count_true(filterx_literal_new(filterx_integer_new(0)), 1000), 0);
-  cr_assert_eq(_count_true(filterx_object_expr_new(filterx_double_new(1.0)), 1000), 1000);
+  cr_assert(eq(int, _count_true(filterx_literal_new(filterx_integer_new(0)), 1000), 0));
+  cr_assert(eq(int, _count_true(filterx_object_expr_new(filterx_double_new(1.0)), 1000), 1000));
   /* binomial(10000, p <= 0.5): sigma <= 50, so these are >10 sigma bounds */
-  cr_assert_lt(abs(_count_true(filterx_literal_new(filterx_double_new(0.25)), 10000) - 2500), 500);
-  cr_assert_lt(abs(_count_true(filterx_object_expr_new(filterx_double_new(0.25)), 10000) - 2500), 500);
-  cr_assert_lt(abs(_count_true(NULL, 10000) - 5000), 500);
+  cr_assert(lt(int, abs(_count_true(filterx_literal_new(filterx_double_new(0.25)), 10000) - 2500), 500));
+  cr_assert(lt(int, abs(_count_true(filterx_object_expr_new(filterx_double_new(0.25)), 10000) - 2500), 500));
+  cr_assert(lt(int, abs(_count_true(NULL, 10000) - 5000), 500));
 }
 
 Test(filterx_func_random, bool_rejects_invalid_probability)
 {
   GError *error = NULL;
-  cr_assert_null(_create_random_bool_expr(filterx_literal_new(filterx_double_new(1.1)), &error));
-  cr_assert_not_null(error);
+  cr_assert(zero(ptr, _create_random_bool_expr(filterx_literal_new(filterx_double_new(1.1)), &error)));
+  cr_assert(not(zero(ptr, error)));
   g_clear_error(&error);
   FilterXExpr *fn = _create_random_bool_expr(filterx_object_expr_new(filterx_double_new(NAN)), &error);
-  cr_assert_null(error);
-  cr_assert_null(init_and_eval_expr(fn));
+  cr_assert(zero(ptr, error));
+  cr_assert(zero(ptr, init_and_eval_expr(fn)));
   filterx_expr_unref(fn);
 }
 

@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "metrics-probe-test.h"
 #include "libtest/filterx-lib.h"
 #include "libtest/grab-logging.h"
@@ -55,7 +56,7 @@ _create_func(FilterXExpr *key, FilterXExpr *labels, FilterXExpr *increment, Filt
 {
   GList *args_list = NULL;
 
-  cr_assert(key);
+  cr_assert(not(zero(ptr, key)));
   args_list = g_list_append(args_list, filterx_function_arg_new(NULL, key));
 
   if (labels)
@@ -79,8 +80,8 @@ _create_increment_func(FilterXExpr *key, FilterXExpr *labels, FilterXExpr *incre
   GError *error = NULL;
   FilterXExpr *func = _create_func(key, labels, increment, NULL, level, &error);
 
-  cr_assert(!error, "Failed to create update_metric(): %s", error->message);
-  cr_assert(func);
+  cr_assert(zero(ptr, error), "Failed to create update_metric(): %s", error->message);
+  cr_assert(not(zero(ptr, func)));
 
   return func;
 }
@@ -91,8 +92,8 @@ _create_set_func(FilterXExpr *key, FilterXExpr *value, FilterXExpr *labels, Filt
   GError *error = NULL;
   FilterXExpr *func = _create_func(key, labels, NULL, value, level, &error);
 
-  cr_assert(!error, "Failed to create update_metric(set=): %s", error->message);
-  cr_assert(func);
+  cr_assert(zero(ptr, error), "Failed to create update_metric(set=): %s", error->message);
+  cr_assert(not(zero(ptr, func)));
 
   return func;
 }
@@ -181,7 +182,7 @@ Test(filterx_func_update_metric, level)
   cr_assert(_eval(func));
   filterx_expr_deinit(func, configuration);
   filterx_expr_unref(func);
-  cr_assert_not(metrics_probe_test_stats_cluster_exists("test_key", expected_labels, G_N_ELEMENTS(expected_labels)));
+  cr_assert(not(metrics_probe_test_stats_cluster_exists("test_key", expected_labels, G_N_ELEMENTS(expected_labels))));
   cr_assert(cfg_deinit(configuration));
 
   configuration->stats_options.level = STATS_LEVEL1;
@@ -192,7 +193,7 @@ Test(filterx_func_update_metric, level)
   cr_assert(_eval(func));
   filterx_expr_deinit(func, configuration);
   filterx_expr_unref(func);
-  cr_assert_not(metrics_probe_test_stats_cluster_exists("test_key", expected_labels, G_N_ELEMENTS(expected_labels)));
+  cr_assert(not(metrics_probe_test_stats_cluster_exists("test_key", expected_labels, G_N_ELEMENTS(expected_labels))));
   cr_assert(cfg_deinit(configuration));
 
   configuration->stats_options.level = STATS_LEVEL2;
@@ -303,8 +304,8 @@ Test(filterx_func_update_metric, set_and_increment_are_mutually_exclusive)
                                    filterx_object_expr_new(filterx_integer_new(5)),
                                    NULL,
                                    &error);
-  cr_assert_not(func);
-  cr_assert(error);
+  cr_assert(zero(ptr, func));
+  cr_assert(not(zero(ptr, error)));
   g_error_free(error);
 }
 

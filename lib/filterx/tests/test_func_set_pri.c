@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/filterx-lib.h"
 
 #include "filterx/func-set-pri.h"
@@ -42,11 +43,11 @@ Test(filterx_func_set_pri, null_argument_eval_does_not_crash)
   GError *err = NULL;
   GError *args_err = NULL;
   FilterXExpr *func = filterx_function_set_pri_new(filterx_function_args_new(args, &args_err), &err);
-  cr_assert_null(err);
-  cr_assert_not_null(func);
+  cr_assert(zero(ptr, err));
+  cr_assert(not(zero(ptr, func)));
 
   FilterXObject *res = init_and_eval_expr(func);
-  cr_assert_null(res);
+  cr_assert(zero(ptr, res));
 
   filterx_expr_unref(func);
 }
@@ -58,7 +59,7 @@ _create_set_pri(gint64 pri)
 
   GError *err = NULL;
   FilterXExpr *func = filterx_function_set_pri_new(filterx_function_args_new(args, NULL), &err);
-  cr_assert_null(err);
+  cr_assert(zero(ptr, err));
   return func;
 }
 
@@ -89,8 +90,8 @@ Test(filterx_func_set_pri, writes_unprotected_message_in_place)
   FilterXExpr *func = _create_set_pri(10);
 
   LogMessage *result = _eval_on_message(func, log_msg_ref(msg));
-  cr_assert_eq(result, msg);
-  cr_assert_eq(msg->pri, 10);
+  cr_assert(eq(ptr, result, msg));
+  cr_assert(eq(u16, msg->pri, 10));
 
   log_msg_unref(result);
   log_msg_unref(msg);
@@ -101,14 +102,14 @@ Test(filterx_func_set_pri, clones_write_protected_message)
 {
   LogMessage *msg = log_msg_new_empty();
   guint16 original_pri = msg->pri;
-  cr_assert_neq(original_pri, 10);
+  cr_assert(ne(u16, original_pri, 10));
   log_msg_write_protect(msg);
   FilterXExpr *func = _create_set_pri(10);
 
   LogMessage *result = _eval_on_message(func, log_msg_ref(msg));
-  cr_assert_neq(result, msg);
-  cr_assert_eq(result->pri, 10);
-  cr_assert_eq(msg->pri, original_pri);
+  cr_assert(ne(ptr, result, msg));
+  cr_assert(eq(u16, result->pri, 10));
+  cr_assert(eq(u16, msg->pri, original_pri));
 
   log_msg_unref(result);
   log_msg_unref(msg);

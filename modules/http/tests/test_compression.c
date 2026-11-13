@@ -23,6 +23,7 @@
 #ifdef SYSLOG_NG_HAVE_ZLIB
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include <criterion/redirect.h>
 #include "compression.h"
 
@@ -112,10 +113,10 @@ void replace_gzip_header_os_id(guint8 *gzip_message)
 static inline void
 test_compression_results(GString *compression_result, const guint8 *expected_byte_array, const uint expected_size)
 {
-  cr_assert_eq(compression_result->len, expected_size);
+  cr_assert(eq(sz, compression_result->len, expected_size));
   for(int i = 0; i < compression_result->len; i++)
     {
-      cr_assert_eq((guint8) compression_result->str[i], expected_byte_array[i]);
+      cr_assert(eq(u8, (guint8) compression_result->str[i], expected_byte_array[i]));
     }
 }
 
@@ -142,7 +143,7 @@ Test(compression, compressor_gzip_compression)
 {
   replace_gzip_header_os_id(test_message_gzipped_bytes);
   compressor = gzip_compressor_new();
-  cr_assert_not_null(compressor);
+  cr_assert(not(zero(ptr, compressor)));
   result = g_string_new("");
   cr_assert(compressor_compress(compressor, result, input));
   test_compression_results(result, test_message_gzipped_bytes, test_message_gzipped_length);
@@ -153,7 +154,7 @@ Test(compression, compressor_gzip_compression)
 Test(compression, compressor_deflate_compression)
 {
   compressor = deflate_compressor_new();
-  cr_assert_not_null(compressor);
+  cr_assert(not(zero(ptr, compressor)));
   result = g_string_new("");
   cr_assert(compressor_compress(compressor, result, input));
   test_compression_results(result, test_message_deflated_bytes, test_message_deflated_length);

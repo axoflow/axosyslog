@@ -30,6 +30,7 @@
 #include "string-list.h"
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 static PyObject *_python_main;
 static PyObject *_python_main_dict;
@@ -68,7 +69,7 @@ TestSuite(python_options, .init = setup, .fini = teardown);
 static void
 _assert_python_option(const PythonOption *option, const gchar *expected_name, const gchar *expected_value)
 {
-  cr_assert_str_eq(python_option_get_name(option), expected_name);
+  cr_assert(eq(str, python_option_get_name(option), expected_name));
 
   PyGILState_STATE gstate = PyGILState_Ensure();
   {
@@ -81,7 +82,7 @@ _assert_python_option(const PythonOption *option, const gchar *expected_name, co
         PyErr_Print();
         Py_DECREF(value);
         PyGILState_Release(gstate);
-        cr_assert(FALSE, "Error running Python script >>>%s<<<", script);
+        cr_fatal("Error running Python script >>>%s<<<", script);
       }
 
     g_free(script);
@@ -141,7 +142,7 @@ Test(python_options, test_python_option_template)
   PythonOption *option = python_option_template_new("template", template);
   g_free(template);
 
-  cr_assert_str_eq(python_option_get_name(option), "template");
+  cr_assert(eq(str, python_option_get_name(option), "template"));
 
   PyGILState_STATE gstate = PyGILState_Ensure();
   {
@@ -156,7 +157,7 @@ Test(python_options, test_python_option_template)
         PyErr_Print();
         Py_DECREF(value);
         PyGILState_Release(gstate);
-        cr_assert(FALSE, "Error running Python script >>>%s<<<", script);
+        cr_fatal("Error running Python script >>>%s<<<", script);
       }
     Py_DECREF(value);
   }
@@ -232,7 +233,7 @@ Test(python_options, test_python_options)
       {
         PyErr_Print();
         PyGILState_Release(gstate);
-        cr_assert(FALSE, "Error running Python script >>>%s<<<", script);
+        cr_fatal("Error running Python script >>>%s<<<", script);
       }
   }
   Py_DECREF(options_dict);

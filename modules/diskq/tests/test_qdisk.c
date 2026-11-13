@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "syslog-ng.h"
 #include "apphook.h"
@@ -110,12 +111,12 @@ push_dummy_record(QDisk *qdisk, guint record_size)
 void
 assert_dummy_record(const GString *record, guint expected_size)
 {
-  cr_assert_eq(record->len, expected_size);
+  cr_assert(eq(sz, record->len, expected_size));
   for (guint i = 0; i < expected_size; ++i)
     {
       if (record->str[i] != DUMMY_RECORD_PATTERN)
-        cr_assert(FALSE, "Invalid data was popped from QDisk, position: %u, actual: %c, expected: %c",
-                  i, (guint) record->str[i], (guint) DUMMY_RECORD_PATTERN);
+        cr_fatal("Invalid data was popped from QDisk, position: %u, actual: %c, expected: %c",
+                 i, (guint) record->str[i], (guint) DUMMY_RECORD_PATTERN);
     }
 }
 
@@ -134,13 +135,13 @@ Test(qdisk, test_qdisk_started)
   const gchar *filename = "test_qdisk_started.rqf";
   QDisk *qdisk = create_qdisk(TDISKQ_RELIABLE, filename, MiB(1));
 
-  cr_assert_not(qdisk_started(qdisk));
+  cr_assert(not(qdisk_started(qdisk)));
 
   qdisk_start(qdisk, NULL, NULL);
   cr_assert(qdisk_started(qdisk));
 
   qdisk_stop(qdisk, NULL, NULL);
-  cr_assert_not(qdisk_started(qdisk));
+  cr_assert(not(qdisk_started(qdisk)));
 
   cleanup_qdisk(filename, qdisk);
 }
@@ -153,14 +154,14 @@ Test(qdisk, qdisk_basic_push_pop)
 
   guint expected_record_len = 128;
   cr_assert(push_dummy_record(qdisk, expected_record_len));
-  cr_assert_eq(qdisk_get_length(qdisk), 1);
+  cr_assert(eq(i64, qdisk_get_length(qdisk), 1));
 
   GString *popped_data = g_string_new(NULL);
   cr_assert(reliable_pop_record_without_backlog(qdisk, popped_data));
   assert_dummy_record(popped_data, expected_record_len);
   g_string_free(popped_data, TRUE);
 
-  cr_assert_eq(qdisk_get_length(qdisk), 0);
+  cr_assert(eq(i64, qdisk_get_length(qdisk), 0));
 
   qdisk_stop(qdisk, NULL, NULL);
   cleanup_qdisk(filename, qdisk);
@@ -185,11 +186,11 @@ Test(qdisk, qdisk_is_space_avail)
   /* fill diskq (overwrite a bit) */
   push_dummy_record(qdisk, record_len);
   available_space -= record_len;
-  cr_assert_not(qdisk_is_space_avail(qdisk, 1));
+  cr_assert(not(qdisk_is_space_avail(qdisk, 1)));
 
   reliable_pop_record_without_backlog(qdisk, data);
-  cr_assert_not(qdisk_is_space_avail(qdisk, record_len + FRAME_LENGTH + 1),
-                "There should not be more free space than the previously popped message size");
+  cr_assert(not(qdisk_is_space_avail(qdisk, record_len + FRAME_LENGTH + 1)),
+            "There should not be more free space than the previously popped message size");
 
   record_len -= 100;
   push_dummy_record(qdisk, record_len);
@@ -210,14 +211,14 @@ Test(qdisk, qdisk_remove_head)
   push_dummy_record(qdisk, 128);
   cr_assert(qdisk_remove_head(qdisk));
 
-  cr_assert_not(qdisk_remove_head(qdisk));
+  cr_assert(not(qdisk_remove_head(qdisk)));
 
   push_dummy_record(qdisk, 128);
   push_dummy_record(qdisk, 128);
   cr_assert(qdisk_remove_head(qdisk));
   cr_assert(qdisk_remove_head(qdisk));
 
-  cr_assert_not(qdisk_remove_head(qdisk));
+  cr_assert(not(qdisk_remove_head(qdisk)));
 
   qdisk_stop(qdisk, NULL, NULL);
   cleanup_qdisk(filename, qdisk);
@@ -234,28 +235,28 @@ Test(qdisk, qdisk_basic_ack_rewind)
   for (gsize i = 1; i <= num_of_records; ++i)
     push_dummy_record(qdisk, 128);
 
-  cr_assert_eq(qdisk_get_backlog_count(qdisk), 0);
+  cr_assert(eq(i64, qdisk_get_backlog_count(qdisk), 0));
 
   for (gsize i = 1; i <= num_of_records; ++i)
     {
       qdisk_remove_head(qdisk);
-      cr_assert_eq(qdisk_get_backlog_count(qdisk), i);
+      cr_assert(eq(i64, qdisk_get_backlog_count(qdisk), i));
     }
 
   gsize to_rewind = 10;
   for (gsize i = 1; i <= num_of_records - to_rewind; ++i)
     {
       cr_assert(qdisk_ack_backlog(qdisk));
-      cr_assert_eq(qdisk_get_backlog_count(qdisk), num_of_records - i);
+      cr_assert(eq(i64, qdisk_get_backlog_count(qdisk), num_of_records - i));
     }
 
   cr_assert(qdisk_rewind_backlog(qdisk, 3));
   to_rewind -= 3;
-  cr_assert_eq(qdisk_get_backlog_count(qdisk), to_rewind);
+  cr_assert(eq(i64, qdisk_get_backlog_count(qdisk), to_rewind));
 
   cr_assert(qdisk_rewind_backlog(qdisk, to_rewind));
-  cr_assert_eq(qdisk_get_backlog_count(qdisk), 0);
-  cr_assert_eq(qdisk_get_backlog_head(qdisk), qdisk_get_reader_head(qdisk));
+  cr_assert(eq(i64, qdisk_get_backlog_count(qdisk), 0));
+  cr_assert(eq(i64, qdisk_get_backlog_head(qdisk), qdisk_get_reader_head(qdisk)));
 
   qdisk_stop(qdisk, NULL, NULL);
   cleanup_qdisk(filename, qdisk);
@@ -270,15 +271,15 @@ Test(qdisk, qdisk_empty_backlog)
   push_dummy_record(qdisk, 514);
   push_dummy_record(qdisk, 514);
 
-  cr_assert_eq(qdisk_get_backlog_count(qdisk), 0);
+  cr_assert(eq(i64, qdisk_get_backlog_count(qdisk), 0));
 
   qdisk_remove_head(qdisk);
   qdisk_remove_head(qdisk);
-  cr_assert_eq(qdisk_get_backlog_count(qdisk), 2);
+  cr_assert(eq(i64, qdisk_get_backlog_count(qdisk), 2));
   qdisk_empty_backlog(qdisk);
-  cr_assert_eq(qdisk_get_backlog_count(qdisk), 0);
+  cr_assert(eq(i64, qdisk_get_backlog_count(qdisk), 0));
 
-  cr_assert_eq(qdisk_get_backlog_head(qdisk), qdisk_get_reader_head(qdisk));
+  cr_assert(eq(i64, qdisk_get_backlog_head(qdisk), qdisk_get_reader_head(qdisk)));
 
   qdisk_stop(qdisk, NULL, NULL);
   cleanup_qdisk(filename, qdisk);
@@ -296,7 +297,7 @@ Test(qdisk, allow_writing_more_than_max_size_when_last_message_does_not_fit)
   cr_assert(push_dummy_record(qdisk, MiB(2)),
             "It should be allowed to overfill qdisk when the last message does not fit");
 
-  cr_assert_geq(qdisk_get_file_size(qdisk), qdisk_get_maximum_size(qdisk));
+  cr_assert(ge(i64, qdisk_get_file_size(qdisk), qdisk_get_maximum_size(qdisk)));
 
   qdisk_stop(qdisk, NULL, NULL);
   cleanup_qdisk(filename, qdisk);
@@ -312,15 +313,15 @@ Test(qdisk, do_not_allow_diskq_to_exceed_max_size_if_last_message_fits)
 
   // fill completely
   push_dummy_record(qdisk, qdisk_size - QDISK_RESERVED_SPACE - FRAME_LENGTH);
-  cr_assert_eq(qdisk_get_writer_head(qdisk), qdisk_get_maximum_size(qdisk));
-  cr_assert_eq(qdisk_get_file_size(qdisk), qdisk_get_maximum_size(qdisk));
+  cr_assert(eq(i64, qdisk_get_writer_head(qdisk), qdisk_get_maximum_size(qdisk)));
+  cr_assert(eq(i64, qdisk_get_file_size(qdisk), qdisk_get_maximum_size(qdisk)));
 
-  cr_assert_not(push_dummy_record(qdisk, 1));
+  cr_assert(not(push_dummy_record(qdisk, 1)));
 
   reliable_pop_record_without_backlog(qdisk, data);
 
   push_dummy_record(qdisk, 4);
-  cr_assert_leq(qdisk_get_file_size(qdisk), qdisk_get_maximum_size(qdisk));
+  cr_assert(le(i64, qdisk_get_file_size(qdisk), qdisk_get_maximum_size(qdisk)));
 
   qdisk_stop(qdisk, NULL, NULL);
   g_string_free(data, TRUE);
@@ -367,11 +368,11 @@ Test(qdisk, prealloc)
   qdisk_start(qdisk, NULL, NULL);
 
   struct stat file_stats;
-  cr_assert(stat(filename, &file_stats) == 0, "Stat call failed, errno: %d", errno);
+  cr_assert(eq(int, stat(filename, &file_stats), 0), "Stat call failed, errno: %d", errno);
   gint64 real_size = file_stats.st_size;
 
-  cr_assert_eq(qdisk_get_file_size(qdisk), MIN_CAPACITY_BYTES);
-  cr_assert_eq(qdisk_get_file_size(qdisk), real_size);
+  cr_assert(eq(i64, qdisk_get_file_size(qdisk), MIN_CAPACITY_BYTES));
+  cr_assert(eq(i64, qdisk_get_file_size(qdisk), real_size));
 
   qdisk_stop(qdisk, NULL, NULL);
   cleanup_qdisk(filename, qdisk);
@@ -392,7 +393,7 @@ _serialize_len_of_zeroes(SerializeArchive *sa, gpointer user_data)
 static void
 _push_data_to_qdisk(QDisk *qdisk, gsize len)
 {
-  cr_assert(len > sizeof(guint32));
+  cr_assert(gt(sz, len, sizeof(guint32)));
 
   gsize len_to_serialize = len - sizeof(guint32);
   GString *buffer = g_string_new(NULL);
@@ -418,12 +419,12 @@ _pop_and_ack(QDisk *qdisk)
 static void
 _assert_backlog_and_write_head_pos(QDisk *qdisk, gint64 backlog_head_pos, gint64 write_head_pos)
 {
-  cr_assert_eq(qdisk_get_backlog_head(qdisk), QDISK_RESERVED_SPACE + backlog_head_pos,
-               "Backlog head positions does not match. Expected: %"G_GINT64_FORMAT" Actual: %"G_GINT64_FORMAT,
-               QDISK_RESERVED_SPACE + backlog_head_pos, qdisk_get_backlog_head(qdisk));
-  cr_assert_eq(qdisk_get_writer_head(qdisk), QDISK_RESERVED_SPACE + write_head_pos,
-               "Write head positions does not match. %"G_GINT64_FORMAT" Actual: %"G_GINT64_FORMAT,
-               QDISK_RESERVED_SPACE + backlog_head_pos, qdisk_get_writer_head(qdisk));
+  cr_assert(eq(i64, qdisk_get_backlog_head(qdisk), QDISK_RESERVED_SPACE + backlog_head_pos),
+            "Backlog head positions does not match. Expected: %"G_GINT64_FORMAT" Actual: %"G_GINT64_FORMAT,
+            QDISK_RESERVED_SPACE + backlog_head_pos, qdisk_get_backlog_head(qdisk));
+  cr_assert(eq(i64, qdisk_get_writer_head(qdisk), QDISK_RESERVED_SPACE + write_head_pos),
+            "Write head positions does not match. %"G_GINT64_FORMAT" Actual: %"G_GINT64_FORMAT,
+            QDISK_RESERVED_SPACE + backlog_head_pos, qdisk_get_writer_head(qdisk));
 }
 
 Test(qdisk, get_empty_space_non_wrapped)
@@ -441,21 +442,21 @@ Test(qdisk, get_empty_space_non_wrapped)
   // |---|------- ... -------------|
   //      ^^^^^^^^^^^^^^^^^^^^^^^^^
   _assert_backlog_and_write_head_pos(qdisk, 0, 0);
-  cr_assert_eq(qdisk_get_empty_space(qdisk), useful_size);
+  cr_assert(eq(i64, qdisk_get_empty_space(qdisk), useful_size));
 
   _push_data_to_qdisk(qdisk, small_amount_of_data);
   // 0   RESERVED=B      W         DBS
   // |---|--- ... -------|---------|
   //                      ^^^^^^^^^
   _assert_backlog_and_write_head_pos(qdisk, 0, small_amount_of_data);
-  cr_assert_eq(qdisk_get_empty_space(qdisk), useful_size - small_amount_of_data);
+  cr_assert(eq(i64, qdisk_get_empty_space(qdisk), useful_size - small_amount_of_data));
 
   _pop_and_ack(qdisk);
   // 0   RESERVED           B=W    DBS
   // |---|------- ... ------|------|
   //      ^^^^^^^^^^^^^^^^^^^^^^^^^
   _assert_backlog_and_write_head_pos(qdisk, small_amount_of_data, small_amount_of_data);
-  cr_assert_eq(qdisk_get_empty_space(qdisk), useful_size);
+  cr_assert(eq(i64, qdisk_get_empty_space(qdisk), useful_size));
 
   qdisk_reset_file_if_empty(qdisk);
   _push_data_to_qdisk(qdisk, small_amount_of_data);
@@ -465,7 +466,7 @@ Test(qdisk, get_empty_space_non_wrapped)
   // |---|---- ... ----|-----------|
   //      ^^^^^^^^^^^^^
   _assert_backlog_and_write_head_pos(qdisk, small_amount_of_data, useful_size);
-  cr_assert_eq(qdisk_get_empty_space(qdisk), small_amount_of_data);
+  cr_assert(eq(i64, qdisk_get_empty_space(qdisk), small_amount_of_data));
   _pop_and_ack(qdisk);
   qdisk_reset_file_if_empty(qdisk);
 
@@ -476,7 +477,7 @@ Test(qdisk, get_empty_space_non_wrapped)
   // |---|---- ... ----|-----------|------|
   //      ^^^^^^^^^^^^^
   _assert_backlog_and_write_head_pos(qdisk, small_amount_of_data, small_amount_of_data + useful_size);
-  cr_assert_eq(qdisk_get_empty_space(qdisk), small_amount_of_data);
+  cr_assert(eq(i64, qdisk_get_empty_space(qdisk), small_amount_of_data));
   _pop_and_ack(qdisk);
   qdisk_reset_file_if_empty(qdisk);
 
@@ -486,7 +487,7 @@ Test(qdisk, get_empty_space_non_wrapped)
   // |---|------ ... --------------|
   //      ^^^^^^^^^^^^^^^^^^^^^^^^^
   _assert_backlog_and_write_head_pos(qdisk, useful_size, useful_size);
-  cr_assert_eq(qdisk_get_empty_space(qdisk), useful_size);
+  cr_assert(eq(i64, qdisk_get_empty_space(qdisk), useful_size));
   qdisk_reset_file_if_empty(qdisk);
 
   _push_data_to_qdisk(qdisk, useful_size + small_amount_of_data);
@@ -495,7 +496,7 @@ Test(qdisk, get_empty_space_non_wrapped)
   // |---|------ ... --------------|------|
   //      ^^^^^^^^^^^^^^^^^^^^^^^^^
   _assert_backlog_and_write_head_pos(qdisk, useful_size + small_amount_of_data, useful_size + small_amount_of_data);
-  cr_assert_eq(qdisk_get_empty_space(qdisk), useful_size);
+  cr_assert(eq(i64, qdisk_get_empty_space(qdisk), useful_size));
   qdisk_reset_file_if_empty(qdisk);
 
   // These cases cannot be achieved with recent qdisk logic, only with older versions:
@@ -533,7 +534,7 @@ Test(qdisk, get_empty_space_wrapped)
   // |---|--- ... ---|---|---------|-----|
   //                  ^^^
   _assert_backlog_and_write_head_pos(qdisk, small_amount_of_data * 2, small_amount_of_data);
-  cr_assert_eq(qdisk_get_empty_space(qdisk), small_amount_of_data);
+  cr_assert(eq(i64, qdisk_get_empty_space(qdisk), small_amount_of_data));
   _pop_and_ack(qdisk);
   _pop_and_ack(qdisk);
   qdisk_reset_file_if_empty(qdisk);
@@ -545,7 +546,7 @@ Test(qdisk, get_empty_space_wrapped)
   // |---|---- ... ----|-----------|
   //                    ^^^^^^^^^^^
   _assert_backlog_and_write_head_pos(qdisk, useful_size, small_amount_of_data);
-  cr_assert_eq(qdisk_get_empty_space(qdisk), useful_size - small_amount_of_data);
+  cr_assert(eq(i64, qdisk_get_empty_space(qdisk), useful_size - small_amount_of_data));
   _pop_and_ack(qdisk);
   qdisk_reset_file_if_empty(qdisk);
 
@@ -556,7 +557,7 @@ Test(qdisk, get_empty_space_wrapped)
   // |---|---- ... ----|-----------|-----|
   //                    ^^^^^^^^^^^
   _assert_backlog_and_write_head_pos(qdisk, useful_size + small_amount_of_data, small_amount_of_data);
-  cr_assert_eq(qdisk_get_empty_space(qdisk), useful_size - small_amount_of_data);
+  cr_assert(eq(i64, qdisk_get_empty_space(qdisk), useful_size - small_amount_of_data));
   _pop_and_ack(qdisk);
   qdisk_reset_file_if_empty(qdisk);
 
@@ -613,7 +614,7 @@ _update_capacity_bytes(QDisk *qdisk, gint64 capacity_bytes)
 static gboolean
 _no_message_was_saved(QDiskMemoryQueueType type, LogMessage *msg, gpointer user_data)
 {
-  cr_assert(FALSE, "a message was saved, the tests do not expect that");
+  cr_fatal("a message was saved, the tests do not expect that");
   return FALSE;
 }
 
@@ -650,8 +651,8 @@ _pop_and_maybe_ack(QDisk *qdisk)
 static void
 _assert_empty(QDisk *qdisk)
 {
-  cr_assert_eq(qdisk_get_length(qdisk), 0);
-  cr_assert_eq(qdisk_get_backlog_count(qdisk), 0);
+  cr_assert(eq(i64, qdisk_get_length(qdisk), 0));
+  cr_assert(eq(i64, qdisk_get_backlog_count(qdisk), 0));
 }
 
 /* The second record of the tail crosses the boundary.
@@ -670,7 +671,7 @@ _wrap_qdisk(QDisk *qdisk)
   _push_data_to_qdisk(qdisk, small_amount_of_data);
   // 0   RESERVED    W   B         DBS   FS
   // |---|--- ... ---|---|---------|-----|
-  cr_assert_lt(qdisk_get_writer_head(qdisk), qdisk_get_backlog_head(qdisk));
+  cr_assert(lt(i64, qdisk_get_writer_head(qdisk), qdisk_get_backlog_head(qdisk)));
 }
 
 /* The record before the tail is consumed first, so the push of the record that crosses the boundary
@@ -688,8 +689,8 @@ _wrap_qdisk_without_pushing_behind_the_tail(QDisk *qdisk)
   _push_data_to_qdisk(qdisk, useful_size / 2 + small_amount_of_data);
   // 0   RESERVED=W  B                  DBS   FS
   // |---|-----------|--- ... ----------|-----|
-  cr_assert_eq(qdisk_get_writer_head(qdisk), QDISK_RESERVED_SPACE);
-  cr_assert_lt(qdisk_get_writer_head(qdisk), qdisk_get_backlog_head(qdisk));
+  cr_assert(eq(i64, qdisk_get_writer_head(qdisk), QDISK_RESERVED_SPACE));
+  cr_assert(lt(i64, qdisk_get_writer_head(qdisk), qdisk_get_backlog_head(qdisk)));
 }
 
 Test(qdisk, grow_applies_at_start)
@@ -701,7 +702,7 @@ Test(qdisk, grow_applies_at_start)
   cr_assert(push_dummy_record(qdisk, 100));
 
   _restart_with_capacity_bytes(qdisk, MiB(2));
-  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(2));
+  cr_assert(eq(i64, qdisk_get_maximum_size(qdisk), MiB(2)));
 
   GString *record = g_string_new(NULL);
   cr_assert(qdisk_pop_head(qdisk, record));
@@ -722,12 +723,12 @@ Test(qdisk, grow_cannot_apply_at_start_while_wrapped_then_applies_at_ack)
   _wrap_qdisk(qdisk);
 
   _restart_with_capacity_bytes(qdisk, MiB(2));
-  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(1));
+  cr_assert(eq(i64, qdisk_get_maximum_size(qdisk), MiB(1)));
 
   _pop_and_maybe_ack(qdisk);
-  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(1));
+  cr_assert(eq(i64, qdisk_get_maximum_size(qdisk), MiB(1)));
   _pop_and_maybe_ack(qdisk);
-  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(2));
+  cr_assert(eq(i64, qdisk_get_maximum_size(qdisk), MiB(2)));
 
   _pop_and_maybe_ack(qdisk);
   _assert_empty(qdisk);
@@ -746,7 +747,7 @@ Test(qdisk, grow_applies_at_update)
   cr_assert(push_dummy_record(qdisk, 100));
 
   _update_capacity_bytes(qdisk, MiB(2));
-  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(2));
+  cr_assert(eq(i64, qdisk_get_maximum_size(qdisk), MiB(2)));
 
   cr_assert(qdisk_stop(qdisk, NULL, NULL));
   cleanup_qdisk(filename, qdisk);
@@ -760,7 +761,7 @@ Test(qdisk, grow_applies_at_update_with_prealloc)
   disk_queue_options_set_prealloc(opts, TRUE);
   QDisk *qdisk = qdisk_new(opts, "TEST", filename);
   cr_assert(qdisk_start(qdisk, NULL, NULL));
-  cr_assert_eq(qdisk_get_file_size(qdisk), MiB(1));
+  cr_assert(eq(i64, qdisk_get_file_size(qdisk), MiB(1)));
 
   const gsize records = 3;
   for (gsize i = 0; i < records; i++)
@@ -770,12 +771,12 @@ Test(qdisk, grow_applies_at_update_with_prealloc)
   disk_queue_options_set_prealloc(larger_opts, TRUE);
   qdisk_set_options(qdisk, larger_opts);
   qdisk_update_capacity_bytes_if_needed(qdisk);
-  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(2));
-  cr_assert_eq(qdisk_get_file_size(qdisk), MiB(2));
+  cr_assert(eq(i64, qdisk_get_maximum_size(qdisk), MiB(2)));
+  cr_assert(eq(i64, qdisk_get_file_size(qdisk), MiB(2)));
 
   struct stat file_stats;
-  cr_assert(stat(filename, &file_stats) == 0, "Stat call failed, errno: %d", errno);
-  cr_assert_eq(file_stats.st_size, MiB(2));
+  cr_assert(eq(int, stat(filename, &file_stats), 0), "Stat call failed, errno: %d", errno);
+  cr_assert(eq(i64, file_stats.st_size, MiB(2)));
 
   /* the preallocation must not touch the records */
   GString *record = g_string_new(NULL);
@@ -800,12 +801,12 @@ Test(qdisk, grow_cannot_apply_at_update_while_wrapped_then_applies_at_ack)
   _wrap_qdisk(qdisk);
 
   _update_capacity_bytes(qdisk, MiB(2));
-  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(1));
+  cr_assert(eq(i64, qdisk_get_maximum_size(qdisk), MiB(1)));
 
   _pop_and_maybe_ack(qdisk);
-  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(1));
+  cr_assert(eq(i64, qdisk_get_maximum_size(qdisk), MiB(1)));
   _pop_and_maybe_ack(qdisk);
-  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(2));
+  cr_assert(eq(i64, qdisk_get_maximum_size(qdisk), MiB(2)));
 
   _pop_and_maybe_ack(qdisk);
   _assert_empty(qdisk);
@@ -825,16 +826,16 @@ Test(qdisk, grow_cannot_apply_at_update_while_backlog_wrapped_then_applies_at_ac
   _wrap_qdisk(qdisk);
   _pop_head(qdisk);
   _pop_head(qdisk);
-  cr_assert_lt(qdisk_get_reader_head(qdisk), qdisk_get_backlog_head(qdisk));
+  cr_assert(lt(i64, qdisk_get_reader_head(qdisk), qdisk_get_backlog_head(qdisk)));
 
   _update_capacity_bytes(qdisk, MiB(2));
-  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(1));
+  cr_assert(eq(i64, qdisk_get_maximum_size(qdisk), MiB(1)));
 
   cr_assert(qdisk_ack_backlog(qdisk));
-  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(1));
+  cr_assert(eq(i64, qdisk_get_maximum_size(qdisk), MiB(1)));
   cr_assert(qdisk_ack_backlog(qdisk));
-  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(2));
-  cr_assert_eq(qdisk_get_backlog_head(qdisk), qdisk_get_reader_head(qdisk));
+  cr_assert(eq(i64, qdisk_get_maximum_size(qdisk), MiB(2)));
+  cr_assert(eq(i64, qdisk_get_backlog_head(qdisk), qdisk_get_reader_head(qdisk)));
 
   _pop_and_maybe_ack(qdisk);
   _assert_empty(qdisk);
@@ -853,15 +854,15 @@ Test(qdisk, grow_cannot_apply_at_update_while_wrapped_then_applies_at_reset)
   _wrap_qdisk_without_pushing_behind_the_tail(qdisk);
 
   _update_capacity_bytes(qdisk, MiB(2));
-  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(1));
+  cr_assert(eq(i64, qdisk_get_maximum_size(qdisk), MiB(1)));
 
   _pop_and_maybe_ack(qdisk);
-  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(1));
+  cr_assert(eq(i64, qdisk_get_maximum_size(qdisk), MiB(1)));
   /* the pop of the record that crosses the boundary empties the file, the reset applies the change */
   _pop_and_maybe_ack(qdisk);
   _assert_empty(qdisk);
-  cr_assert_eq(qdisk_get_writer_head(qdisk), QDISK_RESERVED_SPACE);
-  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(2));
+  cr_assert(eq(i64, qdisk_get_writer_head(qdisk), QDISK_RESERVED_SPACE));
+  cr_assert(eq(i64, qdisk_get_maximum_size(qdisk), MiB(2)));
 
   cr_assert(qdisk_stop(qdisk, NULL, NULL));
   cleanup_qdisk(filename, qdisk);
@@ -877,12 +878,12 @@ Test(qdisk, grow_cannot_apply_at_update_while_wrapped_then_applies_at_pop)
   _wrap_qdisk(qdisk);
 
   _update_capacity_bytes(qdisk, MiB(2));
-  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(1));
+  cr_assert(eq(i64, qdisk_get_maximum_size(qdisk), MiB(1)));
 
   _pop_and_maybe_ack(qdisk);
-  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(1));
+  cr_assert(eq(i64, qdisk_get_maximum_size(qdisk), MiB(1)));
   _pop_and_maybe_ack(qdisk);
-  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(2));
+  cr_assert(eq(i64, qdisk_get_maximum_size(qdisk), MiB(2)));
 
   _pop_and_maybe_ack(qdisk);
   _assert_empty(qdisk);
@@ -901,9 +902,9 @@ Test(qdisk, shrink_applies_at_start)
   cr_assert(push_dummy_record(qdisk, 100));
 
   _restart_with_capacity_bytes(qdisk, MiB(1));
-  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(1));
+  cr_assert(eq(i64, qdisk_get_maximum_size(qdisk), MiB(1)));
   /* a file below the new capacity stays as it is */
-  cr_assert_lt(qdisk_get_file_size(qdisk), MiB(1));
+  cr_assert(lt(i64, qdisk_get_file_size(qdisk), MiB(1)));
 
   GString *record = g_string_new(NULL);
   cr_assert(qdisk_pop_head(qdisk, record));
@@ -925,15 +926,15 @@ Test(qdisk, shrink_applies_at_start_non_reliable)
   _wrap_qdisk(qdisk);
   _pop_and_maybe_ack(qdisk);
   _pop_and_maybe_ack(qdisk);
-  cr_assert_lt(qdisk_get_backlog_head(qdisk), qdisk_get_writer_head(qdisk));
-  cr_assert_gt(qdisk_get_file_size(qdisk), MiB(1));
+  cr_assert(lt(i64, qdisk_get_backlog_head(qdisk), qdisk_get_writer_head(qdisk)));
+  cr_assert(gt(i64, qdisk_get_file_size(qdisk), MiB(1)));
 
   _restart_with_capacity_bytes(qdisk, MiB(1));
-  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(1));
+  cr_assert(eq(i64, qdisk_get_maximum_size(qdisk), MiB(1)));
 
   struct stat file_stats;
-  cr_assert(stat(filename, &file_stats) == 0, "Stat call failed, errno: %d", errno);
-  cr_assert_leq(file_stats.st_size, MiB(1));
+  cr_assert(eq(int, stat(filename, &file_stats), 0), "Stat call failed, errno: %d", errno);
+  cr_assert(le(i64, file_stats.st_size, MiB(1)));
 
   _pop_and_maybe_ack(qdisk);
   _assert_empty(qdisk);
@@ -952,15 +953,15 @@ Test(qdisk, shrink_cannot_apply_at_start_while_content_does_not_fit_then_applies
   _push_data_to_qdisk(qdisk, MiB(1) + 100);
 
   _restart_with_capacity_bytes(qdisk, MiB(1));
-  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(2));
+  cr_assert(eq(i64, qdisk_get_maximum_size(qdisk), MiB(2)));
 
   /* the file is not wrapped, but the write head is still beyond the new boundary */
   _pop_and_maybe_ack(qdisk);
-  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(2));
+  cr_assert(eq(i64, qdisk_get_maximum_size(qdisk), MiB(2)));
 
   qdisk_reset_file_if_empty(qdisk);
-  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(1));
-  cr_assert_leq(qdisk_get_file_size(qdisk), MiB(1));
+  cr_assert(eq(i64, qdisk_get_maximum_size(qdisk), MiB(1)));
+  cr_assert(le(i64, qdisk_get_file_size(qdisk), MiB(1)));
 
   cr_assert(qdisk_stop(qdisk, NULL, NULL));
   cleanup_qdisk(filename, qdisk);
@@ -976,9 +977,9 @@ Test(qdisk, shrink_applies_at_update)
   cr_assert(push_dummy_record(qdisk, 100));
 
   _update_capacity_bytes(qdisk, MiB(1));
-  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(1));
+  cr_assert(eq(i64, qdisk_get_maximum_size(qdisk), MiB(1)));
   /* a file below the new capacity stays as it is */
-  cr_assert_lt(qdisk_get_file_size(qdisk), MiB(1));
+  cr_assert(lt(i64, qdisk_get_file_size(qdisk), MiB(1)));
 
   cr_assert(qdisk_stop(qdisk, NULL, NULL));
   cleanup_qdisk(filename, qdisk);
@@ -994,19 +995,19 @@ Test(qdisk, shrink_cannot_apply_at_update_while_content_does_not_fit_then_applie
   _push_data_to_qdisk(qdisk, MiB(1) + 100);
 
   _update_capacity_bytes(qdisk, MiB(1));
-  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(2));
+  cr_assert(eq(i64, qdisk_get_maximum_size(qdisk), MiB(2)));
 
   /* the file is not wrapped, but the write head is still beyond the new boundary */
   _pop_and_maybe_ack(qdisk);
-  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(2));
+  cr_assert(eq(i64, qdisk_get_maximum_size(qdisk), MiB(2)));
 
   qdisk_reset_file_if_empty(qdisk);
-  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(1));
-  cr_assert_leq(qdisk_get_file_size(qdisk), MiB(1));
+  cr_assert(eq(i64, qdisk_get_maximum_size(qdisk), MiB(1)));
+  cr_assert(le(i64, qdisk_get_file_size(qdisk), MiB(1)));
 
   struct stat file_stats;
-  cr_assert(stat(filename, &file_stats) == 0, "Stat call failed, errno: %d", errno);
-  cr_assert_leq(file_stats.st_size, MiB(1));
+  cr_assert(eq(int, stat(filename, &file_stats), 0), "Stat call failed, errno: %d", errno);
+  cr_assert(le(i64, file_stats.st_size, MiB(1)));
 
   cr_assert(qdisk_stop(qdisk, NULL, NULL));
   cleanup_qdisk(filename, qdisk);
@@ -1023,13 +1024,13 @@ Test(qdisk, shrink_cannot_apply_at_update_while_wrapped_then_applies_at_ack)
   _wrap_qdisk(qdisk);
 
   _update_capacity_bytes(qdisk, MiB(1));
-  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(2));
+  cr_assert(eq(i64, qdisk_get_maximum_size(qdisk), MiB(2)));
 
   _pop_and_maybe_ack(qdisk);
-  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(2));
+  cr_assert(eq(i64, qdisk_get_maximum_size(qdisk), MiB(2)));
   _pop_and_maybe_ack(qdisk);
-  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(1));
-  cr_assert_eq(qdisk_get_file_size(qdisk), MiB(1));
+  cr_assert(eq(i64, qdisk_get_maximum_size(qdisk), MiB(1)));
+  cr_assert(eq(i64, qdisk_get_file_size(qdisk), MiB(1)));
 
   _pop_and_maybe_ack(qdisk);
   _assert_empty(qdisk);
@@ -1049,13 +1050,13 @@ Test(qdisk, shrink_cannot_apply_at_update_while_wrapped_then_applies_at_pop)
   _wrap_qdisk(qdisk);
 
   _update_capacity_bytes(qdisk, MiB(1));
-  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(2));
+  cr_assert(eq(i64, qdisk_get_maximum_size(qdisk), MiB(2)));
 
   _pop_and_maybe_ack(qdisk);
-  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(2));
+  cr_assert(eq(i64, qdisk_get_maximum_size(qdisk), MiB(2)));
   _pop_and_maybe_ack(qdisk);
-  cr_assert_eq(qdisk_get_maximum_size(qdisk), MiB(1));
-  cr_assert_eq(qdisk_get_file_size(qdisk), MiB(1));
+  cr_assert(eq(i64, qdisk_get_maximum_size(qdisk), MiB(1)));
+  cr_assert(eq(i64, qdisk_get_file_size(qdisk), MiB(1)));
 
   _pop_and_maybe_ack(qdisk);
   _assert_empty(qdisk);

@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/msg_parse_lib.h"
 
 #include "json-parser.h"
@@ -53,7 +54,7 @@ parse_json_into_log_message(const gchar *json, LogParser *json_parser)
   LogMessage *msg;
 
   msg = parse_json_into_log_message_no_check(json, json_parser);
-  cr_assert_not_null(msg, "expected json-parser success and it returned failure, json=%s", json);
+  cr_assert(not(zero(ptr, msg)), "expected json-parser success and it returned failure, json=%s", json);
   return msg;
 }
 
@@ -63,7 +64,7 @@ assert_json_parser_fails(const gchar *json, LogParser *json_parser)
   LogMessage *msg;
 
   msg = parse_json_into_log_message_no_check(json, json_parser);
-  cr_assert_null(msg, "expected json-parser failure and it returned success, json=%s", json);
+  cr_assert(zero(ptr, msg), "expected json-parser failure and it returned success, json=%s", json);
 }
 
 void setup(void)
@@ -263,7 +264,7 @@ Test(json_parser, test_json_parser_extracts_top_level_array_elements_into_matche
   assert_log_message_value_and_type_by_name(msg, "3", "", LM_VT_NULL);
   assert_log_message_value_and_type_by_name(msg, "4", "{\"foo\":\"bar\"}", LM_VT_JSON);
   assert_log_message_value_and_type_by_name(msg, "5", "{\"bar\":\"foo\"}", LM_VT_JSON);
-  cr_assert(msg->num_matches == 6);
+  cr_assert(eq(u8, msg->num_matches, 6));
   log_msg_unref(msg);
   log_pipe_unref(&json_parser->super);
 }

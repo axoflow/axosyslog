@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "secret-storage/secret-storage.h"
 #include "secret-storage/nondumpable-allocator.h"
@@ -54,13 +55,13 @@ Test(secretstorage, simple_store_get)
 {
   secret_storage_store_secret("key1", "value1", -1);
   Secret *secret = secret_storage_get_secret_by_name("key1");
-  cr_assert_str_eq(secret->data, "value1");
+  cr_assert(eq(str, secret->data, "value1"));
   secret_storage_put_secret(secret);
 }
 
 void secret_checker(Secret *secret, gpointer expected)
 {
-  cr_assert_str_eq(expected, secret->data);
+  cr_assert(eq(str, expected, secret->data));
 }
 
 Test(secretstorage, simple_store_with)
@@ -73,7 +74,7 @@ Test(secretstorage, simple_store_single_string)
 {
   secret_storage_store_string("key1", "value1");
   Secret *secret = secret_storage_get_secret_by_name("key1");
-  cr_assert_str_eq(secret->data, "value1");
+  cr_assert(eq(str, secret->data, "value1"));
   secret_storage_put_secret(secret);
 }
 
@@ -82,9 +83,9 @@ Test(secretstorage, store_multiple_secrets)
   secret_storage_store_string("key1", "value1");
   secret_storage_store_string("key2", "value2");
   Secret *secret1 = secret_storage_get_secret_by_name("key1");
-  cr_assert_str_eq(secret1->data, "value1");
+  cr_assert(eq(str, secret1->data, "value1"));
   Secret *secret2 = secret_storage_get_secret_by_name("key2");
-  cr_assert_str_eq(secret2->data, "value2");
+  cr_assert(eq(str, secret2->data, "value2"));
 
   secret_storage_put_secret(secret1);
   secret_storage_put_secret(secret2);
@@ -93,7 +94,7 @@ Test(secretstorage, store_multiple_secrets)
 Test(secretstorage, read_nonexistent_secret)
 {
   Secret *secret = secret_storage_get_secret_by_name("key");
-  cr_assert_eq(secret, NULL);
+  cr_assert(zero(ptr, secret));
 }
 
 Test(secretstorage, store_secret_with_embedded_zero)
@@ -101,7 +102,7 @@ Test(secretstorage, store_secret_with_embedded_zero)
   secret_storage_store_secret("key", "a\0b", 4);
   Secret *secret = secret_storage_get_secret_by_name("key");
   gint result = memcmp(secret->data, "a\0b", 4);
-  cr_assert_eq(result, 0);
+  cr_assert(eq(int, result, 0));
   secret_storage_put_secret(secret);
 }
 
@@ -114,7 +115,7 @@ Test(secretstorage, subscribe_before_store)
 {
   gboolean test_variable = FALSE;
   secret_storage_subscribe_for_key("key", set_variable_to_true_cb, &test_variable);
-  cr_assert_not(test_variable);
+  cr_assert(not(test_variable));
   secret_storage_store_string("key", "secret");
   cr_assert(test_variable);
 }
@@ -133,12 +134,12 @@ Test(secretstorage, subscriptions_per_keys)
   gboolean key2_test_variable = FALSE;
   secret_storage_subscribe_for_key("key1", set_variable_to_true_cb, &key1_test_variable);
   secret_storage_subscribe_for_key("key2", set_variable_to_true_cb, &key2_test_variable);
-  cr_assert_not(key1_test_variable);
-  cr_assert_not(key2_test_variable);
+  cr_assert(not(key1_test_variable));
+  cr_assert(not(key2_test_variable));
 
   secret_storage_store_string("key1", "secret");
   cr_assert(key1_test_variable);
-  cr_assert_not(key2_test_variable);
+  cr_assert(not(key2_test_variable));
 
   secret_storage_store_string("key2", "secret");
   cr_assert(key1_test_variable);
@@ -150,13 +151,13 @@ Test(secretstorage, two_subscribe_without_store)
   gboolean test_variable = FALSE;
   secret_storage_subscribe_for_key("key", set_variable_to_true_cb, &test_variable);
   secret_storage_subscribe_for_key("key", set_variable_to_true_cb, &test_variable);
-  cr_assert_not(test_variable);
+  cr_assert(not(test_variable));
 }
 
 void
 check_secret(Secret *secret, gpointer user_data)
 {
-  cr_assert_str_eq(secret->data, user_data);
+  cr_assert(eq(str, secret->data, user_data));
 }
 
 Test(secretstorage, subscribe_cb_check_secret)
@@ -171,8 +172,8 @@ Test(secretstorage, multiple_subscriptions_for_same_key)
   gboolean key2_test_variable = FALSE;
   secret_storage_subscribe_for_key("key", set_variable_to_true_cb, &key1_test_variable);
   secret_storage_subscribe_for_key("key", set_variable_to_true_cb, &key2_test_variable);
-  cr_assert_not(key1_test_variable);
-  cr_assert_not(key2_test_variable);
+  cr_assert(not(key1_test_variable));
+  cr_assert(not(key2_test_variable));
 
   secret_storage_store_string("key", "secret");
   cr_assert(key1_test_variable);
@@ -188,7 +189,7 @@ Test(secretstorage, subscription_reset_after_called)
 
   key_test_variable = FALSE;
   secret_storage_store_string("key", "secret");
-  cr_assert_not(key_test_variable);
+  cr_assert(not(key_test_variable));
 }
 
 typedef struct
@@ -200,7 +201,7 @@ typedef struct
 gboolean
 check_status_callback(SecretStatus *secret_status, gpointer user_data)
 {
-  cr_assert_str_eq(secret_status->key, ((UserDataWithEvidence *)user_data)->user_data);
+  cr_assert(eq(str, secret_status->key, ((UserDataWithEvidence *)user_data)->user_data));
   gboolean *evidence = ((UserDataWithEvidence *)user_data)->evidence;
   *evidence = TRUE;
   return TRUE;
@@ -232,7 +233,7 @@ Test(secretstorage, secret_status_can_stop_in_the_middle)
   secret_storage_store_string("key3", "secret");
   secret_storage_store_string("key4", "secret");
   secret_storage_status_foreach(stop_in_the_middle_callback, &test_variable);
-  cr_assert_eq(test_variable, 2);
+  cr_assert(eq(int, test_variable, 2));
 }
 
 void
@@ -251,7 +252,7 @@ Test(secretstorage, subscribe_until_success)
   gboolean test_variable = FALSE;
   secret_storage_subscribe_for_key("key", subscribe_until_success, &test_variable);
   secret_storage_store_string("key", "wrong_password");
-  cr_assert_not(test_variable);
+  cr_assert(not(test_variable));
   secret_storage_store_string("key", "good_password");
   cr_assert(test_variable);
 }
@@ -259,9 +260,9 @@ Test(secretstorage, subscribe_until_success)
 Test(secretstorage, test_rlimit)
 {
   struct rlimit locked_limit;
-  cr_assert(!getrlimit(RLIMIT_MEMLOCK, &locked_limit));
+  cr_assert(zero(int, getrlimit(RLIMIT_MEMLOCK, &locked_limit)));
   locked_limit.rlim_cur = MIN(locked_limit.rlim_max, 64 * 1024);
-  cr_assert(!setrlimit(RLIMIT_MEMLOCK, &locked_limit));
+  cr_assert(zero(int, setrlimit(RLIMIT_MEMLOCK, &locked_limit)));
   const gsize pagesize = sysconf(_SC_PAGE_SIZE);
 
   gchar key_fmt[32];
@@ -284,7 +285,7 @@ update_state_callback(Secret *secret, gpointer user_data)
 static gboolean
 assert_invalid_password_state(SecretStatus *secret_status, gpointer user_data)
 {
-  cr_assert_eq(secret_status->state, SECRET_STORAGE_STATUS_INVALID_PASSWORD);
+  cr_assert(eq(int, secret_status->state, SECRET_STORAGE_STATUS_INVALID_PASSWORD));
   return FALSE;
 }
 
@@ -299,12 +300,12 @@ Test(secretstorage, simple_store_get_and_wipe)
 {
   secret_storage_store_secret("key1", "value1", -1);
   Secret *secret = secret_storage_get_secret_by_name("key1");
-  cr_assert_str_eq(secret->data, "value1");
+  cr_assert(eq(str, secret->data, "value1"));
 
   secret_storage_wipe(secret->data, secret->len);
 
   for (gsize i = 0; i < secret->len; ++i)
-    cr_assert_eq(secret->data[i], 0);
+    cr_assert(eq(chr, secret->data[i], 0));
 
   secret_storage_put_secret(secret);
 }

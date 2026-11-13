@@ -25,6 +25,7 @@
 #include "python-main.h"
 #include "python-startup.h"
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "python-helpers.h"
 #include "python-bookmark.h"
@@ -72,7 +73,7 @@ test_save_bookmark(PyObject *self, PyObject *args)
   PyObject *bookmark_data;
   cr_assert(PyArg_ParseTuple(args, "O", &bookmark_data));
   cr_assert(PyBytes_Check(bookmark_data));
-  cr_assert_str_eq(PyBytes_AsString(bookmark_data), test_bookmark_data);
+  cr_assert(eq(str, PyBytes_AsString(bookmark_data), test_bookmark_data));
 
   PyList_Append(self, bookmark_data);
 
@@ -113,7 +114,7 @@ Test(python_bookmark, test_bookmark_saving)
   {
     PyGILState_STATE gstate = PyGILState_Ensure();
 
-    cr_assert_eq(PyList_Size(saved_bookmarks), 1);
+    cr_assert(eq(i64, PyList_Size(saved_bookmarks), 1));
 
     Py_CLEAR(py_bookmark);
     Py_CLEAR(saved_bookmarks);

@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include <stdio.h>
 #include <glib.h>
 #include <stdarg.h>
@@ -117,7 +118,7 @@ static void _assert_config_contains(const gchar *substr)
 
 static void _assert_config_not_contains(const gchar *substr)
 {
-  cr_assert(!_config_contains(substr), "config element unexpectedly found: \"%s\"", substr);
+  cr_assert(not(_config_contains(substr)), "config element unexpectedly found: \"%s\"", substr);
 }
 
 static void

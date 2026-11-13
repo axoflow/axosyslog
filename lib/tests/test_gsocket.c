@@ -20,6 +20,7 @@
  *
  */
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "gsocket.h"
 
 Test(test_gsocket, test_inet_ntoa)
@@ -30,15 +31,15 @@ Test(test_gsocket, test_inet_ntoa)
   ia.s_addr = htonl(0xffffffff);
 
   g_inet_ntoa(buf, sizeof(buf), ia);
-  cr_expect_str_eq(buf, "255.255.255.255");
+  cr_expect(eq(str, buf, "255.255.255.255"));
 
   ia.s_addr = htonl(0x7f000001);
 
   g_inet_ntoa(buf, sizeof(buf), ia);
-  cr_expect_str_eq(buf, "127.0.0.1");
+  cr_expect(eq(str, buf, "127.0.0.1"));
 
   ia.s_addr = htonl(0xc0a80001);
 
   g_inet_ntoa(buf, sizeof(buf), ia);
-  cr_expect_str_eq(buf, "192.168.0.1");
+  cr_expect(eq(str, buf, "192.168.0.1"));
 }

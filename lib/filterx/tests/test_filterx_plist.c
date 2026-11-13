@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "filterx/filterx-plist.h"
 #include "apphook.h"
 #include "scratch-buffers.h"
@@ -53,11 +54,11 @@ Test(filterx_plist, test_elements_can_be_added_and_iterated_in_unsealed_mode)
       filterx_pointer_list_add(&plist, GUINT_TO_POINTER(i));
     }
 
-  cr_assert(filterx_pointer_list_get_length(&plist) == i);
+  cr_assert(eq(i64, filterx_pointer_list_get_length(&plist), i));
   for (i = 0; i < 10; i++)
     {
       gpointer p = filterx_pointer_list_index(&plist, i);
-      cr_assert_eq(p, GUINT_TO_POINTER(i));
+      cr_assert(eq(ptr, p, GUINT_TO_POINTER(i)));
     }
   filterx_pointer_list_clear(&plist, _destroy_ptr);
 }
@@ -74,11 +75,11 @@ Test(filterx_plist, test_elements_can_be_added_and_iterated_in_sealed_mode)
     }
 
   filterx_pointer_list_seal(&plist);
-  cr_assert(filterx_pointer_list_get_length(&plist) == i);
+  cr_assert(eq(i64, filterx_pointer_list_get_length(&plist), i));
   for (i = 0; i < 10; i++)
     {
       gpointer p = filterx_pointer_list_index(&plist, i);
-      cr_assert_eq(p, GUINT_TO_POINTER(i));
+      cr_assert(eq(ptr, p, GUINT_TO_POINTER(i)));
     }
   filterx_pointer_list_clear(&plist, _destroy_ptr);
 }

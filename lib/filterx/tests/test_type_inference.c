@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "filterx/expr-arithmetic-operators.h"
 #include "filterx/filterx-type-inference.h"
@@ -102,7 +103,7 @@ Test(filterx_type_inference, literal_string_is_string)
 {
   FilterXExpr *lit = filterx_literal_new(filterx_string_new("hi", -1));
   lit = _optimize_and_infer(lit);
-  cr_assert_eq(lit->static_type, FILTERX_STATIC_TYPE_STRING);
+  cr_assert(eq(int, lit->static_type, FILTERX_STATIC_TYPE_STRING));
   filterx_expr_unref(lit);
 }
 
@@ -110,7 +111,7 @@ Test(filterx_type_inference, literal_double_is_double)
 {
   FilterXExpr *lit = filterx_literal_new(filterx_double_new(2.5));
   lit = _optimize_and_infer(lit);
-  cr_assert_eq(lit->static_type, FILTERX_STATIC_TYPE_DOUBLE);
+  cr_assert(eq(int, lit->static_type, FILTERX_STATIC_TYPE_DOUBLE));
   filterx_expr_unref(lit);
 }
 
@@ -124,7 +125,7 @@ Test(filterx_type_inference, assign_propagates_double_type_to_subsequent_reads)
   FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_d, read_d, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(read_d->static_type, FILTERX_STATIC_TYPE_DOUBLE);
+  cr_assert(eq(int, read_d->static_type, FILTERX_STATIC_TYPE_DOUBLE));
   filterx_expr_unref(block);
 }
 
@@ -146,7 +147,7 @@ Test(filterx_type_inference, integer_and_double_are_distinct_static_types)
   FilterXExpr *block = filterx_compound_expr_new_va(TRUE, iff, read_n, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(read_n->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  cr_assert(eq(int, read_n->static_type, FILTERX_STATIC_TYPE_UNKNOWN));
   filterx_expr_unref(block);
 }
 
@@ -154,7 +155,7 @@ Test(filterx_type_inference, literal_boolean_is_boolean)
 {
   FilterXExpr *lit = filterx_literal_new(filterx_boolean_new(TRUE));
   lit = _optimize_and_infer(lit);
-  cr_assert_eq(lit->static_type, FILTERX_STATIC_TYPE_BOOLEAN);
+  cr_assert(eq(int, lit->static_type, FILTERX_STATIC_TYPE_BOOLEAN));
   filterx_expr_unref(lit);
 }
 
@@ -165,7 +166,7 @@ Test(filterx_type_inference, comparison_is_boolean)
                                             filterx_literal_new(filterx_integer_new(1)),
                                             FCMPX_EQ | FCMPX_TYPE_AWARE);
   cmp = _optimize_and_infer(cmp);
-  cr_assert_eq(cmp->static_type, FILTERX_STATIC_TYPE_BOOLEAN);
+  cr_assert(eq(int, cmp->static_type, FILTERX_STATIC_TYPE_BOOLEAN));
   filterx_expr_unref(cmp);
 }
 
@@ -180,9 +181,9 @@ Test(filterx_type_inference, logical_operators_are_boolean)
   FilterXExpr *block = filterx_compound_expr_new_va(TRUE, not_expr, and_expr, or_expr, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(not_expr->static_type, FILTERX_STATIC_TYPE_BOOLEAN);
-  cr_assert_eq(and_expr->static_type, FILTERX_STATIC_TYPE_BOOLEAN);
-  cr_assert_eq(or_expr->static_type, FILTERX_STATIC_TYPE_BOOLEAN);
+  cr_assert(eq(int, not_expr->static_type, FILTERX_STATIC_TYPE_BOOLEAN));
+  cr_assert(eq(int, and_expr->static_type, FILTERX_STATIC_TYPE_BOOLEAN));
+  cr_assert(eq(int, or_expr->static_type, FILTERX_STATIC_TYPE_BOOLEAN));
   filterx_expr_unref(block);
 }
 
@@ -190,16 +191,16 @@ Test(filterx_type_inference, isset_is_boolean)
 {
   FilterXExpr *isset = filterx_isset_new(filterx_floating_variable_expr_new("a"));
   isset = _optimize_and_infer(isset);
-  cr_assert_eq(isset->static_type, FILTERX_STATIC_TYPE_BOOLEAN);
+  cr_assert(eq(int, isset->static_type, FILTERX_STATIC_TYPE_BOOLEAN));
   filterx_expr_unref(isset);
 }
 
 Test(filterx_type_inference, regexp_match_is_boolean)
 {
   FilterXExpr *match = filterx_expr_regexp_match_new(filterx_floating_variable_expr_new("a"), "^foo");
-  cr_assert_not_null(match);
+  cr_assert(not(zero(ptr, match)));
   match = _optimize_and_infer(match);
-  cr_assert_eq(match->static_type, FILTERX_STATIC_TYPE_BOOLEAN);
+  cr_assert(eq(int, match->static_type, FILTERX_STATIC_TYPE_BOOLEAN));
   filterx_expr_unref(match);
 }
 
@@ -210,7 +211,7 @@ Test(filterx_type_inference, membership_is_not_claimed_boolean)
   FilterXExpr *in_expr = filterx_membership_in_new(filterx_floating_variable_expr_new("a"),
                                                    filterx_floating_variable_expr_new("c"));
   in_expr = _optimize_and_infer(in_expr);
-  cr_assert_eq(in_expr->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  cr_assert(eq(int, in_expr->static_type, FILTERX_STATIC_TYPE_UNKNOWN));
   filterx_expr_unref(in_expr);
 }
 
@@ -226,7 +227,7 @@ Test(filterx_type_inference, assign_propagates_boolean_type_to_subsequent_reads)
   FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_b, read_b, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(read_b->static_type, FILTERX_STATIC_TYPE_BOOLEAN);
+  cr_assert(eq(int, read_b->static_type, FILTERX_STATIC_TYPE_BOOLEAN));
   filterx_expr_unref(block);
 }
 
@@ -248,7 +249,7 @@ Test(filterx_type_inference, boolean_and_integer_are_distinct_static_types)
   FilterXExpr *block = filterx_compound_expr_new_va(TRUE, iff, read_n, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(read_n->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  cr_assert(eq(int, read_n->static_type, FILTERX_STATIC_TYPE_UNKNOWN));
   filterx_expr_unref(block);
 }
 
@@ -259,7 +260,7 @@ Test(filterx_type_inference, boolean_is_not_numeric_for_the_plus_operator)
                        filterx_literal_new(filterx_boolean_new(TRUE)),
                        filterx_literal_new(filterx_integer_new(1)));
   sum = _optimize_and_infer(sum);
-  cr_assert_eq(sum->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  cr_assert(eq(int, sum->static_type, FILTERX_STATIC_TYPE_UNKNOWN));
   filterx_expr_unref(sum);
 }
 
@@ -272,9 +273,9 @@ Test(filterx_type_inference, control_flow_exprs_are_boolean)
   FilterXExpr *block = filterx_compound_expr_new_va(TRUE, brk, drop, done, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(brk->static_type, FILTERX_STATIC_TYPE_BOOLEAN);
-  cr_assert_eq(drop->static_type, FILTERX_STATIC_TYPE_BOOLEAN);
-  cr_assert_eq(done->static_type, FILTERX_STATIC_TYPE_BOOLEAN);
+  cr_assert(eq(int, brk->static_type, FILTERX_STATIC_TYPE_BOOLEAN));
+  cr_assert(eq(int, drop->static_type, FILTERX_STATIC_TYPE_BOOLEAN));
+  cr_assert(eq(int, done->static_type, FILTERX_STATIC_TYPE_BOOLEAN));
   filterx_expr_unref(block);
 }
 
@@ -284,7 +285,7 @@ Test(filterx_type_inference, block_discarding_its_last_value_is_boolean)
                                                     filterx_literal_new(filterx_string_new("v", -1)),
                                                     NULL);
   block = _optimize_and_infer(block);
-  cr_assert_eq(block->static_type, FILTERX_STATIC_TYPE_BOOLEAN);
+  cr_assert(eq(int, block->static_type, FILTERX_STATIC_TYPE_BOOLEAN));
   filterx_expr_unref(block);
 }
 
@@ -292,7 +293,7 @@ Test(filterx_type_inference, empty_block_is_boolean)
 {
   FilterXExpr *block = filterx_compound_expr_new(TRUE);
   block = _optimize_and_infer(block);
-  cr_assert_eq(block->static_type, FILTERX_STATIC_TYPE_BOOLEAN);
+  cr_assert(eq(int, block->static_type, FILTERX_STATIC_TYPE_BOOLEAN));
   filterx_expr_unref(block);
 }
 
@@ -303,7 +304,7 @@ Test(filterx_type_inference, if_without_an_else_meets_the_implicit_true)
   filterx_conditional_set_true_branch(iff, filterx_literal_new(filterx_boolean_new(TRUE)));
 
   iff = _optimize_and_infer(iff);
-  cr_assert_eq(iff->static_type, FILTERX_STATIC_TYPE_BOOLEAN);
+  cr_assert(eq(int, iff->static_type, FILTERX_STATIC_TYPE_BOOLEAN));
   filterx_expr_unref(iff);
 }
 
@@ -314,7 +315,7 @@ Test(filterx_type_inference, if_without_an_else_still_collapses_on_a_non_boolean
   filterx_conditional_set_true_branch(iff, filterx_literal_new(filterx_string_new("a", -1)));
 
   iff = _optimize_and_infer(iff);
-  cr_assert_eq(iff->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  cr_assert(eq(int, iff->static_type, FILTERX_STATIC_TYPE_UNKNOWN));
   filterx_expr_unref(iff);
 }
 
@@ -328,7 +329,7 @@ Test(filterx_type_inference, if_without_a_true_branch_takes_the_condition_type)
   filterx_conditional_set_false_branch(iff, filterx_literal_new(filterx_boolean_new(FALSE)));
 
   iff = _optimize_and_infer(iff);
-  cr_assert_eq(iff->static_type, FILTERX_STATIC_TYPE_BOOLEAN);
+  cr_assert(eq(int, iff->static_type, FILTERX_STATIC_TYPE_BOOLEAN));
   filterx_expr_unref(iff);
 }
 
@@ -336,7 +337,7 @@ Test(filterx_type_inference, literal_dict_is_dict)
 {
   FilterXExpr *empty_dict = filterx_literal_dict_new(NULL);
   empty_dict = _optimize_and_infer(empty_dict);
-  cr_assert_eq(empty_dict->static_type, FILTERX_STATIC_TYPE_DICT);
+  cr_assert(eq(int, empty_dict->static_type, FILTERX_STATIC_TYPE_DICT));
   filterx_expr_unref(empty_dict);
 }
 
@@ -344,7 +345,7 @@ Test(filterx_type_inference, literal_list_is_list)
 {
   FilterXExpr *empty_list = filterx_literal_list_new(NULL);
   empty_list = _optimize_and_infer(empty_list);
-  cr_assert_eq(empty_list->static_type, FILTERX_STATIC_TYPE_LIST);
+  cr_assert(eq(int, empty_list->static_type, FILTERX_STATIC_TYPE_LIST));
   filterx_expr_unref(empty_list);
 }
 
@@ -358,7 +359,7 @@ Test(filterx_type_inference, assign_propagates_rhs_type_to_subsequent_reads)
   FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_x, read_x, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(read_x->static_type, FILTERX_STATIC_TYPE_STRING);
+  cr_assert(eq(int, read_x->static_type, FILTERX_STATIC_TYPE_STRING));
   filterx_expr_unref(block);
 }
 
@@ -373,7 +374,7 @@ Test(filterx_type_inference, reassignment_with_different_type_collapses_later_re
   FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_dict, assign_str, read_y, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(read_y->static_type, FILTERX_STATIC_TYPE_STRING);
+  cr_assert(eq(int, read_y->static_type, FILTERX_STATIC_TYPE_STRING));
   filterx_expr_unref(block);
 }
 
@@ -396,7 +397,7 @@ Test(filterx_type_inference, if_branch_meet_keeps_agreement)
   FilterXExpr *block = filterx_compound_expr_new_va(TRUE, iff, read_z, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(read_z->static_type, FILTERX_STATIC_TYPE_STRING);
+  cr_assert(eq(int, read_z->static_type, FILTERX_STATIC_TYPE_STRING));
   filterx_expr_unref(block);
 }
 
@@ -419,7 +420,7 @@ Test(filterx_type_inference, if_branch_meet_drops_on_disagreement)
   FilterXExpr *block = filterx_compound_expr_new_va(TRUE, iff, read_w, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(read_w->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  cr_assert(eq(int, read_w->static_type, FILTERX_STATIC_TYPE_UNKNOWN));
   filterx_expr_unref(block);
 }
 
@@ -439,7 +440,7 @@ Test(filterx_type_inference, if_one_sided_assign_collapses_to_unknown)
   FilterXExpr *block = filterx_compound_expr_new_va(TRUE, iff, read_u, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(read_u->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  cr_assert(eq(int, read_u->static_type, FILTERX_STATIC_TYPE_UNKNOWN));
   filterx_expr_unref(block);
 }
 
@@ -450,7 +451,7 @@ Test(filterx_type_inference, plus_of_two_strings_is_string)
                      filterx_literal_new(filterx_string_new("b", -1)));
   p = _optimize_and_infer(p);
   /* plus optimizes literal+literal to a literal; either way the static_type should resolve. */
-  cr_assert_eq(p->static_type, FILTERX_STATIC_TYPE_STRING);
+  cr_assert(eq(int, p->static_type, FILTERX_STATIC_TYPE_STRING));
   filterx_expr_unref(p);
 }
 
@@ -473,7 +474,7 @@ Test(filterx_type_inference, plus_of_two_integers_is_integer)
                                                     sum, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(sum->static_type, FILTERX_STATIC_TYPE_INTEGER);
+  cr_assert(eq(int, sum->static_type, FILTERX_STATIC_TYPE_INTEGER));
   filterx_expr_unref(block);
 }
 
@@ -491,8 +492,8 @@ Test(filterx_type_inference, plus_of_integer_and_double_is_double)
                                                     int_first, double_first, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(int_first->static_type, FILTERX_STATIC_TYPE_DOUBLE);
-  cr_assert_eq(double_first->static_type, FILTERX_STATIC_TYPE_DOUBLE);
+  cr_assert(eq(int, int_first->static_type, FILTERX_STATIC_TYPE_DOUBLE));
+  cr_assert(eq(int, double_first->static_type, FILTERX_STATIC_TYPE_DOUBLE));
   filterx_expr_unref(block);
 }
 
@@ -506,7 +507,7 @@ Test(filterx_type_inference, plus_of_integer_and_unknown_is_unknown)
                                                     sum, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(sum->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  cr_assert(eq(int, sum->static_type, FILTERX_STATIC_TYPE_UNKNOWN));
   filterx_expr_unref(block);
 }
 
@@ -524,8 +525,8 @@ Test(filterx_type_inference, mixed_numeric_sum_does_not_poison_a_later_sum)
                                                     assign_x, outer, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(inner->static_type, FILTERX_STATIC_TYPE_DOUBLE);
-  cr_assert_eq(outer->static_type, FILTERX_STATIC_TYPE_DOUBLE);
+  cr_assert(eq(int, inner->static_type, FILTERX_STATIC_TYPE_DOUBLE));
+  cr_assert(eq(int, outer->static_type, FILTERX_STATIC_TYPE_DOUBLE));
   filterx_expr_unref(block);
 }
 
@@ -548,9 +549,9 @@ Test(filterx_type_inference, folded_literal_dict_records_a_type_per_key)
   FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign, read_a, read_b, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(assign->static_type, FILTERX_STATIC_TYPE_DICT);
-  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_STRING);
-  cr_assert_eq(read_b->static_type, FILTERX_STATIC_TYPE_STRING);
+  cr_assert(eq(int, assign->static_type, FILTERX_STATIC_TYPE_DICT));
+  cr_assert(eq(int, read_a->static_type, FILTERX_STATIC_TYPE_STRING));
+  cr_assert(eq(int, read_b->static_type, FILTERX_STATIC_TYPE_STRING));
   filterx_expr_unref(block);
 }
 
@@ -570,8 +571,8 @@ Test(filterx_type_inference, folded_literal_dict_of_boolean_records_its_keys)
   FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign, read_a, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(assign->static_type, FILTERX_STATIC_TYPE_DICT);
-  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_BOOLEAN);
+  cr_assert(eq(int, assign->static_type, FILTERX_STATIC_TYPE_DICT));
+  cr_assert(eq(int, read_a->static_type, FILTERX_STATIC_TYPE_BOOLEAN));
   filterx_expr_unref(block);
 }
 
@@ -596,9 +597,9 @@ Test(filterx_type_inference, partially_evaluated_literal_dict_types_its_holes)
   FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign, read_a, read_b, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(assign->static_type, FILTERX_STATIC_TYPE_DICT);
-  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_BOOLEAN);
-  cr_assert_eq(read_b->static_type, FILTERX_STATIC_TYPE_BOOLEAN);
+  cr_assert(eq(int, assign->static_type, FILTERX_STATIC_TYPE_DICT));
+  cr_assert(eq(int, read_a->static_type, FILTERX_STATIC_TYPE_BOOLEAN));
+  cr_assert(eq(int, read_b->static_type, FILTERX_STATIC_TYPE_BOOLEAN));
   filterx_expr_unref(block);
 }
 
@@ -622,10 +623,10 @@ Test(filterx_type_inference, folded_literal_dict_chain_types_all_three_levels)
   FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign, read_l3, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(assign->static_type, FILTERX_STATIC_TYPE_DICT);
-  cr_assert_eq(read_l1->static_type, FILTERX_STATIC_TYPE_DICT);
-  cr_assert_eq(read_l2->static_type, FILTERX_STATIC_TYPE_DICT);
-  cr_assert_eq(read_l3->static_type, FILTERX_STATIC_TYPE_STRING);
+  cr_assert(eq(int, assign->static_type, FILTERX_STATIC_TYPE_DICT));
+  cr_assert(eq(int, read_l1->static_type, FILTERX_STATIC_TYPE_DICT));
+  cr_assert(eq(int, read_l2->static_type, FILTERX_STATIC_TYPE_DICT));
+  cr_assert(eq(int, read_l3->static_type, FILTERX_STATIC_TYPE_STRING));
   filterx_expr_unref(block);
 }
 
@@ -652,10 +653,10 @@ Test(filterx_type_inference, mixed_value_types_in_literal_dict_stay_distinct_per
   FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign, read_a, read_b, read_dynamic, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(assign->static_type, FILTERX_STATIC_TYPE_DICT);
-  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_STRING);
-  cr_assert_eq(read_b->static_type, FILTERX_STATIC_TYPE_LIST);
-  cr_assert_eq(read_dynamic->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  cr_assert(eq(int, assign->static_type, FILTERX_STATIC_TYPE_DICT));
+  cr_assert(eq(int, read_a->static_type, FILTERX_STATIC_TYPE_STRING));
+  cr_assert(eq(int, read_b->static_type, FILTERX_STATIC_TYPE_LIST));
+  cr_assert(eq(int, read_dynamic->static_type, FILTERX_STATIC_TYPE_UNKNOWN));
   filterx_expr_unref(block);
 }
 
@@ -678,8 +679,8 @@ Test(filterx_type_inference, a_folded_literal_list_does_not_type_its_elements)
   FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_v, read_l, read_elem, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(read_l->static_type, FILTERX_STATIC_TYPE_LIST);
-  cr_assert_eq(read_elem->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  cr_assert(eq(int, read_l->static_type, FILTERX_STATIC_TYPE_LIST));
+  cr_assert(eq(int, read_elem->static_type, FILTERX_STATIC_TYPE_UNKNOWN));
   filterx_expr_unref(block);
 }
 
@@ -701,7 +702,7 @@ Test(filterx_type_inference, literal_subscript_read_resolves_its_key)
   FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign, read, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(read->static_type, FILTERX_STATIC_TYPE_STRING);
+  cr_assert(eq(int, read->static_type, FILTERX_STATIC_TYPE_STRING));
   filterx_expr_unref(block);
 }
 
@@ -727,10 +728,10 @@ Test(filterx_type_inference, getattr_chain_propagates_through_three_levels)
   FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign, get_c, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(read_var->static_type, FILTERX_STATIC_TYPE_DICT);
-  cr_assert_eq(get_a->static_type, FILTERX_STATIC_TYPE_DICT);
-  cr_assert_eq(get_b->static_type, FILTERX_STATIC_TYPE_DICT);
-  cr_assert_eq(get_c->static_type, FILTERX_STATIC_TYPE_STRING);
+  cr_assert(eq(int, read_var->static_type, FILTERX_STATIC_TYPE_DICT));
+  cr_assert(eq(int, get_a->static_type, FILTERX_STATIC_TYPE_DICT));
+  cr_assert(eq(int, get_b->static_type, FILTERX_STATIC_TYPE_DICT));
+  cr_assert(eq(int, get_c->static_type, FILTERX_STATIC_TYPE_STRING));
   filterx_expr_unref(block);
 }
 
@@ -754,10 +755,10 @@ Test(filterx_type_inference, set_subscript_on_variable_leaves_the_other_keys_alo
   FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign, set, read, read_a, read_b, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(assign->static_type, FILTERX_STATIC_TYPE_DICT);
-  cr_assert_eq(read->static_type, FILTERX_STATIC_TYPE_DICT);
-  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_STRING);
-  cr_assert_eq(read_b->static_type, FILTERX_STATIC_TYPE_INTEGER);
+  cr_assert(eq(int, assign->static_type, FILTERX_STATIC_TYPE_DICT));
+  cr_assert(eq(int, read->static_type, FILTERX_STATIC_TYPE_DICT));
+  cr_assert(eq(int, read_a->static_type, FILTERX_STATIC_TYPE_STRING));
+  cr_assert(eq(int, read_b->static_type, FILTERX_STATIC_TYPE_INTEGER));
   filterx_expr_unref(block);
 }
 
@@ -778,9 +779,9 @@ Test(filterx_type_inference, incremental_dict_build_tracks_nested_element_types)
                                                     read_d, read_a, read_ab, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(read_d->static_type, FILTERX_STATIC_TYPE_DICT);
-  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_DICT);
-  cr_assert_eq(read_ab->static_type, FILTERX_STATIC_TYPE_DICT);
+  cr_assert(eq(int, read_d->static_type, FILTERX_STATIC_TYPE_DICT));
+  cr_assert(eq(int, read_a->static_type, FILTERX_STATIC_TYPE_DICT));
+  cr_assert(eq(int, read_ab->static_type, FILTERX_STATIC_TYPE_DICT));
   filterx_expr_unref(block);
 }
 
@@ -797,8 +798,8 @@ Test(filterx_type_inference, per_key_type_survives_heterogeneous_sibling)
   FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_d, set_a, set_b, read_a, read_b, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_DICT);
-  cr_assert_eq(read_b->static_type, FILTERX_STATIC_TYPE_STRING);
+  cr_assert(eq(int, read_a->static_type, FILTERX_STATIC_TYPE_DICT));
+  cr_assert(eq(int, read_b->static_type, FILTERX_STATIC_TYPE_STRING));
   filterx_expr_unref(block);
 }
 
@@ -813,7 +814,7 @@ Test(filterx_type_inference, per_key_type_survives_non_container_sibling)
   FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_d, set_x, set_y, read_y, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(read_y->static_type, FILTERX_STATIC_TYPE_DICT);
+  cr_assert(eq(int, read_y->static_type, FILTERX_STATIC_TYPE_DICT));
   filterx_expr_unref(block);
 }
 
@@ -838,8 +839,8 @@ Test(filterx_type_inference, a_list_element_has_no_type_of_its_own)
   FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_l, set_0, read_0, read_l, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(read_0->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
-  cr_assert_eq(read_l->static_type, FILTERX_STATIC_TYPE_LIST);
+  cr_assert(eq(int, read_0->static_type, FILTERX_STATIC_TYPE_UNKNOWN));
+  cr_assert(eq(int, read_l->static_type, FILTERX_STATIC_TYPE_LIST));
   filterx_expr_unref(block);
 }
 
@@ -858,7 +859,7 @@ Test(filterx_type_inference, one_sided_branch_write_survives_the_join)
   FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_d, iff, read_a, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_DICT);
+  cr_assert(eq(int, read_a->static_type, FILTERX_STATIC_TYPE_DICT));
   filterx_expr_unref(block);
 }
 
@@ -877,7 +878,7 @@ Test(filterx_type_inference, incremental_build_past_depth_cap_is_safe)
   /* a write past FILTERX_ACCESS_PATH_MAX_DEPTH has no address to land on, so it opens the deepest
    * ancestor it can name */
   enum { DEPTH = 20 };
-  cr_assert_gt(DEPTH, FILTERX_ACCESS_PATH_MAX_DEPTH);
+  cr_assert(gt(int, DEPTH, FILTERX_ACCESS_PATH_MAX_DEPTH));
   gchar key_storage[DEPTH][8];
   const gchar *keys[DEPTH];
   for (gint i = 0; i < DEPTH; i++)
@@ -902,8 +903,8 @@ Test(filterx_type_inference, incremental_build_past_depth_cap_is_safe)
 
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(read_within_cap->static_type, FILTERX_STATIC_TYPE_DICT);
-  cr_assert_eq(read_deepest->static_type, FILTERX_STATIC_TYPE_DICT);
+  cr_assert(eq(int, read_within_cap->static_type, FILTERX_STATIC_TYPE_DICT));
+  cr_assert(eq(int, read_deepest->static_type, FILTERX_STATIC_TYPE_DICT));
   filterx_expr_unref(block);
 }
 
@@ -923,7 +924,7 @@ Test(filterx_type_inference, reassigning_root_invalidates_the_whole_range_under_
   FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_dict, set_a, reassign_str, read_a, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  cr_assert(eq(int, read_a->static_type, FILTERX_STATIC_TYPE_UNKNOWN));
   filterx_expr_unref(block);
 }
 
@@ -956,9 +957,9 @@ Test(filterx_type_inference, merging_into_root_invalidates_stale_per_key_type)
   block = _optimize_and_infer(block);
 
   /* dict += dict keeps the outer static type, and the right-hand side's keys win. */
-  cr_assert_eq(merge->static_type, FILTERX_STATIC_TYPE_DICT);
-  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_STRING);
-  cr_assert_eq(sum->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  cr_assert(eq(int, merge->static_type, FILTERX_STATIC_TYPE_DICT));
+  cr_assert(eq(int, read_a->static_type, FILTERX_STATIC_TYPE_STRING));
+  cr_assert(eq(int, sum->static_type, FILTERX_STATIC_TYPE_UNKNOWN));
   filterx_expr_unref(block);
 }
 
@@ -979,8 +980,8 @@ Test(filterx_type_inference, merging_into_nested_dict_invalidates_stale_per_key_
                                                     read_sub_a, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(merge->static_type, FILTERX_STATIC_TYPE_DICT);
-  cr_assert_eq(read_sub_a->static_type, FILTERX_STATIC_TYPE_STRING);
+  cr_assert(eq(int, merge->static_type, FILTERX_STATIC_TYPE_DICT));
+  cr_assert(eq(int, read_sub_a->static_type, FILTERX_STATIC_TYPE_STRING));
   filterx_expr_unref(block);
 }
 
@@ -1001,8 +1002,8 @@ Test(filterx_type_inference, merging_into_a_key_keeps_sibling_per_key_types)
                                                     merge, read_a, read_subscription, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_INTEGER);
-  cr_assert_eq(read_subscription->static_type, FILTERX_STATIC_TYPE_STRING);
+  cr_assert(eq(int, read_a->static_type, FILTERX_STATIC_TYPE_INTEGER));
+  cr_assert(eq(int, read_subscription->static_type, FILTERX_STATIC_TYPE_STRING));
   filterx_expr_unref(block);
 }
 
@@ -1023,9 +1024,9 @@ _assert_replacing_a_key_retypes_its_subtree(FilterXExpr *replace_a, FilterXStati
   FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_v, set_a, set_a_b, replace_a, sum, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(read_a_b->static_type, expected_b);
-  cr_assert_eq(sum->static_type, FILTERX_STATIC_TYPE_UNKNOWN,
-               "whatever v.a.b became, it is not an integer, so the sum cannot be one either");
+  cr_assert(eq(int, read_a_b->static_type, expected_b));
+  cr_assert(eq(int, sum->static_type, FILTERX_STATIC_TYPE_UNKNOWN),
+            "whatever v.a.b became, it is not an integer, so the sum cannot be one either");
   filterx_expr_unref(block);
 }
 
@@ -1074,8 +1075,8 @@ Test(filterx_type_inference, a_key_written_after_a_dynamic_write_keeps_its_type)
   FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_d, set_dynamic, set_a, read_a, read_d, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_INTEGER);
-  cr_assert_eq(read_d->static_type, FILTERX_STATIC_TYPE_DICT);
+  cr_assert(eq(int, read_a->static_type, FILTERX_STATIC_TYPE_INTEGER));
+  cr_assert(eq(int, read_d->static_type, FILTERX_STATIC_TYPE_DICT));
   filterx_expr_unref(block);
 }
 
@@ -1096,8 +1097,8 @@ Test(filterx_type_inference, a_dynamic_write_keeps_the_container_and_drops_its_l
   FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_d, set_a, set_dynamic, read_a, read_d, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
-  cr_assert_eq(read_d->static_type, FILTERX_STATIC_TYPE_DICT);
+  cr_assert(eq(int, read_a->static_type, FILTERX_STATIC_TYPE_UNKNOWN));
+  cr_assert(eq(int, read_d->static_type, FILTERX_STATIC_TYPE_DICT));
   filterx_expr_unref(block);
 }
 
@@ -1120,9 +1121,9 @@ Test(filterx_type_inference, a_dynamic_write_one_level_down_leaves_its_siblings_
                                                     set_dynamic, read_a_x, read_a, read_sibling, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(read_a_x->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
-  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_DICT);
-  cr_assert_eq(read_sibling->static_type, FILTERX_STATIC_TYPE_STRING);
+  cr_assert(eq(int, read_a_x->static_type, FILTERX_STATIC_TYPE_UNKNOWN));
+  cr_assert(eq(int, read_a->static_type, FILTERX_STATIC_TYPE_DICT));
+  cr_assert(eq(int, read_sibling->static_type, FILTERX_STATIC_TYPE_STRING));
   filterx_expr_unref(block);
 }
 
@@ -1147,9 +1148,9 @@ Test(filterx_type_inference, replacing_a_key_keeps_sibling_per_key_types)
                                                     read_sub, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_INTEGER);
-  cr_assert_eq(read_subscription->static_type, FILTERX_STATIC_TYPE_STRING);
-  cr_assert_eq(read_sub->static_type, FILTERX_STATIC_TYPE_DICT);
+  cr_assert(eq(int, read_a->static_type, FILTERX_STATIC_TYPE_INTEGER));
+  cr_assert(eq(int, read_subscription->static_type, FILTERX_STATIC_TYPE_STRING));
+  cr_assert(eq(int, read_sub->static_type, FILTERX_STATIC_TYPE_DICT));
   filterx_expr_unref(block);
 }
 
@@ -1160,8 +1161,8 @@ _unset_of(FilterXExpr *target)
   GError *err = NULL;
   GList *args = g_list_append(NULL, filterx_function_arg_new(NULL, target));
   FilterXExpr *unset = filterx_function_unset_new(filterx_function_args_new(args, &err), &err);
-  cr_assert_null(err);
-  cr_assert_not_null(unset);
+  cr_assert(zero(ptr, err));
+  cr_assert(not(zero(ptr, unset)));
   return unset;
 }
 
@@ -1171,8 +1172,8 @@ _move_of(FilterXExpr *target)
   GError *err = NULL;
   GList *args = g_list_append(NULL, filterx_function_arg_new(NULL, target));
   FilterXExpr *move = filterx_function_move_new(filterx_function_args_new(args, &err), &err);
-  cr_assert_null(err);
-  cr_assert_not_null(move);
+  cr_assert(zero(ptr, err));
+  cr_assert(not(zero(ptr, move)));
   return move;
 }
 
@@ -1180,7 +1181,7 @@ Test(filterx_type_inference, unset_is_boolean)
 {
   FilterXExpr *unset = _unset_of(filterx_floating_variable_expr_new("v"));
   unset = _optimize_and_infer(unset);
-  cr_assert_eq(unset->static_type, FILTERX_STATIC_TYPE_BOOLEAN);
+  cr_assert(eq(int, unset->static_type, FILTERX_STATIC_TYPE_BOOLEAN));
   filterx_expr_unref(unset);
 }
 
@@ -1204,8 +1205,8 @@ Test(filterx_type_inference, unset_of_a_key_invalidates_its_subtree)
                                                     unset_a, read_a_b, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
-  cr_assert_eq(read_a_b->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  cr_assert(eq(int, read_a->static_type, FILTERX_STATIC_TYPE_UNKNOWN));
+  cr_assert(eq(int, read_a_b->static_type, FILTERX_STATIC_TYPE_UNKNOWN));
   filterx_expr_unref(block);
 }
 
@@ -1222,8 +1223,8 @@ Test(filterx_type_inference, unset_of_a_variable_retires_everything_under_it)
   FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_v, set_a, unset_v, read_v, read_a, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(read_v->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
-  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  cr_assert(eq(int, read_v->static_type, FILTERX_STATIC_TYPE_UNKNOWN));
+  cr_assert(eq(int, read_a->static_type, FILTERX_STATIC_TYPE_UNKNOWN));
   filterx_expr_unref(block);
 }
 
@@ -1240,7 +1241,7 @@ Test(filterx_type_inference, unset_of_a_key_keeps_sibling_per_key_types)
                                                     read_a, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_INTEGER);
+  cr_assert(eq(int, read_a->static_type, FILTERX_STATIC_TYPE_INTEGER));
   filterx_expr_unref(block);
 }
 
@@ -1260,8 +1261,8 @@ Test(filterx_type_inference, move_returns_the_source_type_and_invalidates_it)
                                                     read_x, read_a, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(read_x->static_type, FILTERX_STATIC_TYPE_INTEGER);
-  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  cr_assert(eq(int, read_x->static_type, FILTERX_STATIC_TYPE_INTEGER));
+  cr_assert(eq(int, read_a->static_type, FILTERX_STATIC_TYPE_UNKNOWN));
   filterx_expr_unref(block);
 }
 
@@ -1279,8 +1280,8 @@ _static_type_after_plus_assign(FilterXObject *seed, FilterXObject *addend)
   block = _optimize_and_infer(block);
 
   FilterXStaticType static_type = read_n->static_type;
-  cr_assert_eq(static_type, add->static_type,
-               "the += expression's own type must match what the variable ends up with");
+  cr_assert(eq(int, static_type, add->static_type),
+            "the += expression's own type must match what the variable ends up with");
   filterx_expr_unref(block);
   return static_type;
 }
@@ -1289,24 +1290,24 @@ Test(filterx_type_inference, plus_assign_promotes_a_numeric_pair)
 {
   /* += widens the same way + does: adding a double to an integer leaves a double behind, which
    * a plain meet of the two static types would have discarded as UNKNOWN. */
-  cr_assert_eq(_static_type_after_plus_assign(filterx_integer_new(1), filterx_integer_new(2)),
-               FILTERX_STATIC_TYPE_INTEGER);
-  cr_assert_eq(_static_type_after_plus_assign(filterx_integer_new(1), filterx_double_new(2.5)),
-               FILTERX_STATIC_TYPE_DOUBLE);
-  cr_assert_eq(_static_type_after_plus_assign(filterx_double_new(2.5), filterx_integer_new(1)),
-               FILTERX_STATIC_TYPE_DOUBLE);
-  cr_assert_eq(_static_type_after_plus_assign(filterx_double_new(2.5), filterx_double_new(1.5)),
-               FILTERX_STATIC_TYPE_DOUBLE);
+  cr_assert(eq(int, _static_type_after_plus_assign(filterx_integer_new(1), filterx_integer_new(2)),
+               FILTERX_STATIC_TYPE_INTEGER));
+  cr_assert(eq(int, _static_type_after_plus_assign(filterx_integer_new(1), filterx_double_new(2.5)),
+               FILTERX_STATIC_TYPE_DOUBLE));
+  cr_assert(eq(int, _static_type_after_plus_assign(filterx_double_new(2.5), filterx_integer_new(1)),
+               FILTERX_STATIC_TYPE_DOUBLE));
+  cr_assert(eq(int, _static_type_after_plus_assign(filterx_double_new(2.5), filterx_double_new(1.5)),
+               FILTERX_STATIC_TYPE_DOUBLE));
 }
 
 Test(filterx_type_inference, plus_assign_promotes_only_numeric_pairs)
 {
   /* A non-numeric side has no numeric domain to promote in: string += string stays a STRING via
    * the meet, and a mixed pair collapses (`1 += "x"` is a runtime error). */
-  cr_assert_eq(_static_type_after_plus_assign(filterx_string_new("a", -1), filterx_string_new("b", -1)),
-               FILTERX_STATIC_TYPE_STRING);
-  cr_assert_eq(_static_type_after_plus_assign(filterx_integer_new(1), filterx_string_new("x", -1)),
-               FILTERX_STATIC_TYPE_UNKNOWN);
+  cr_assert(eq(int, _static_type_after_plus_assign(filterx_string_new("a", -1), filterx_string_new("b", -1)),
+               FILTERX_STATIC_TYPE_STRING));
+  cr_assert(eq(int, _static_type_after_plus_assign(filterx_integer_new(1), filterx_string_new("x", -1)),
+               FILTERX_STATIC_TYPE_UNKNOWN));
 }
 
 Test(filterx_type_inference, merging_into_an_empty_dict_commits_its_element_type)
@@ -1322,8 +1323,8 @@ Test(filterx_type_inference, merging_into_an_empty_dict_commits_its_element_type
   FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_v, merge, read_v, read_a, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(read_v->static_type, FILTERX_STATIC_TYPE_DICT);
-  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_STRING);
+  cr_assert(eq(int, read_v->static_type, FILTERX_STATIC_TYPE_DICT));
+  cr_assert(eq(int, read_a->static_type, FILTERX_STATIC_TYPE_STRING));
   filterx_expr_unref(block);
 }
 
@@ -1341,8 +1342,8 @@ Test(filterx_type_inference, merging_an_empty_dict_keeps_the_target_keys)
   FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_v, merge, read_v, read_a, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(read_v->static_type, FILTERX_STATIC_TYPE_DICT);
-  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_STRING);
+  cr_assert(eq(int, read_v->static_type, FILTERX_STATIC_TYPE_DICT));
+  cr_assert(eq(int, read_a->static_type, FILTERX_STATIC_TYPE_STRING));
   filterx_expr_unref(block);
 }
 
@@ -1369,8 +1370,8 @@ Test(filterx_type_inference, merging_an_opened_dict_retires_the_target_keys)
                                                     read_a, read_v, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
-  cr_assert_eq(read_v->static_type, FILTERX_STATIC_TYPE_DICT);
+  cr_assert(eq(int, read_a->static_type, FILTERX_STATIC_TYPE_UNKNOWN));
+  cr_assert(eq(int, read_v->static_type, FILTERX_STATIC_TYPE_DICT));
   filterx_expr_unref(block);
 }
 
@@ -1388,9 +1389,9 @@ Test(filterx_type_inference, writing_into_a_nested_empty_dict_commits_the_deeper
                                                     read_a_b, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(read_v->static_type, FILTERX_STATIC_TYPE_DICT);
-  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_DICT);
-  cr_assert_eq(read_a_b->static_type, FILTERX_STATIC_TYPE_STRING);
+  cr_assert(eq(int, read_v->static_type, FILTERX_STATIC_TYPE_DICT));
+  cr_assert(eq(int, read_a->static_type, FILTERX_STATIC_TYPE_DICT));
+  cr_assert(eq(int, read_a_b->static_type, FILTERX_STATIC_TYPE_STRING));
   filterx_expr_unref(block);
 }
 
@@ -1420,7 +1421,7 @@ Test(filterx_type_inference, switch_meet_keeps_agreement_with_preswitch_state)
   FilterXExpr *block = filterx_compound_expr_new_va(TRUE, seed_z, sw, read_z, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(read_z->static_type, FILTERX_STATIC_TYPE_STRING);
+  cr_assert(eq(int, read_z->static_type, FILTERX_STATIC_TYPE_STRING));
   filterx_expr_unref(block);
 }
 
@@ -1432,7 +1433,7 @@ Test(filterx_type_inference, macro_variable_is_always_unknown)
   cr_assert(filterx_variable_expr_is_macro(read_facility));
 
   read_facility = _optimize_and_infer(read_facility);
-  cr_assert_eq(read_facility->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  cr_assert(eq(int, read_facility->static_type, FILTERX_STATIC_TYPE_UNKNOWN));
   filterx_expr_unref(read_facility);
 }
 
@@ -1457,8 +1458,8 @@ Test(filterx_type_inference, getattr_and_a_literal_subscript_write_the_same_loca
                                                     read_via_subscript, read_via_getattr, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(read_via_subscript->static_type, FILTERX_STATIC_TYPE_INTEGER);
-  cr_assert_eq(read_via_getattr->static_type, FILTERX_STATIC_TYPE_INTEGER);
+  cr_assert(eq(int, read_via_subscript->static_type, FILTERX_STATIC_TYPE_INTEGER));
+  cr_assert(eq(int, read_via_getattr->static_type, FILTERX_STATIC_TYPE_INTEGER));
   filterx_expr_unref(block);
 }
 
@@ -1476,7 +1477,7 @@ Test(filterx_type_inference, writing_a_key_twice_overwrites_rather_than_meets)
                                                     read_b, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(read_b->static_type, FILTERX_STATIC_TYPE_INTEGER);
+  cr_assert(eq(int, read_b->static_type, FILTERX_STATIC_TYPE_INTEGER));
   filterx_expr_unref(block);
 }
 
@@ -1500,8 +1501,8 @@ Test(filterx_type_inference, a_write_below_a_dynamic_subscript_retires_the_conta
                                                     read_a_x, read_d, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(read_a_x->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
-  cr_assert_eq(read_d->static_type, FILTERX_STATIC_TYPE_DICT);
+  cr_assert(eq(int, read_a_x->static_type, FILTERX_STATIC_TYPE_UNKNOWN));
+  cr_assert(eq(int, read_d->static_type, FILTERX_STATIC_TYPE_DICT));
   filterx_expr_unref(block);
 }
 
@@ -1518,8 +1519,8 @@ Test(filterx_type_inference, a_dynamic_read_has_no_location_to_read)
   FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_a, set_x, read_dynamic, read_x, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(read_dynamic->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
-  cr_assert_eq(read_x->static_type, FILTERX_STATIC_TYPE_INTEGER);
+  cr_assert(eq(int, read_dynamic->static_type, FILTERX_STATIC_TYPE_UNKNOWN));
+  cr_assert(eq(int, read_x->static_type, FILTERX_STATIC_TYPE_INTEGER));
   filterx_expr_unref(block);
 }
 
@@ -1543,8 +1544,8 @@ Test(filterx_type_inference, a_branch_write_over_an_opened_container_does_not_su
   FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_d, set_dynamic, iff, read_a, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_neq(read_a->static_type, FILTERX_STATIC_TYPE_STRING);
-  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  cr_assert(ne(int, read_a->static_type, FILTERX_STATIC_TYPE_STRING));
+  cr_assert(eq(int, read_a->static_type, FILTERX_STATIC_TYPE_UNKNOWN));
   filterx_expr_unref(block);
 }
 
@@ -1563,8 +1564,8 @@ Test(filterx_type_inference, copying_a_container_into_its_own_subtree_terminates
                                                     read_sub, read_sub_a, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(read_sub->static_type, FILTERX_STATIC_TYPE_DICT);
-  cr_assert_eq(read_sub_a->static_type, FILTERX_STATIC_TYPE_INTEGER);
+  cr_assert(eq(int, read_sub->static_type, FILTERX_STATIC_TYPE_DICT));
+  cr_assert(eq(int, read_sub_a->static_type, FILTERX_STATIC_TYPE_INTEGER));
   filterx_expr_unref(block);
 }
 
@@ -1583,7 +1584,7 @@ Test(filterx_type_inference, hoisting_a_subtree_over_its_own_root_terminates)
                                                     read_a, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_STRING);
+  cr_assert(eq(int, read_a->static_type, FILTERX_STATIC_TYPE_STRING));
   filterx_expr_unref(block);
 }
 
@@ -1603,8 +1604,8 @@ Test(filterx_type_inference, a_non_literal_key_leaves_the_container_empty)
   FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_d, read_named, read_d, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(read_named->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
-  cr_assert_eq(read_d->static_type, FILTERX_STATIC_TYPE_DICT);
+  cr_assert(eq(int, read_named->static_type, FILTERX_STATIC_TYPE_UNKNOWN));
+  cr_assert(eq(int, read_d->static_type, FILTERX_STATIC_TYPE_DICT));
   filterx_expr_unref(block);
 }
 
@@ -1625,7 +1626,7 @@ Test(filterx_type_inference, a_nullv_element_records_no_key_at_all)
   FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_x, assign_d, read_a, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  cr_assert(eq(int, read_a->static_type, FILTERX_STATIC_TYPE_UNKNOWN));
   filterx_expr_unref(block);
 }
 
@@ -1650,7 +1651,7 @@ Test(filterx_type_inference, a_nullv_element_costs_the_container_its_closed_key_
   FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_x, assign_d, iff, read_a, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  cr_assert(eq(int, read_a->static_type, FILTERX_STATIC_TYPE_UNKNOWN));
   filterx_expr_unref(block);
 }
 
@@ -1668,7 +1669,7 @@ Test(filterx_type_inference, nullv_setattr_meets_the_written_type_with_the_exist
   FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_d, set_a, nullv_set, read_a, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  cr_assert(eq(int, read_a->static_type, FILTERX_STATIC_TYPE_UNKNOWN));
   filterx_expr_unref(block);
 }
 
@@ -1685,7 +1686,7 @@ Test(filterx_type_inference, nullv_setattr_keeps_a_type_both_outcomes_agree_on)
   FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_d, set_a, nullv_set, read_a, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_INTEGER);
+  cr_assert(eq(int, read_a->static_type, FILTERX_STATIC_TYPE_INTEGER));
   filterx_expr_unref(block);
 }
 
@@ -1706,7 +1707,7 @@ Test(filterx_type_inference, nullv_set_subscript_meets_the_written_type_with_the
   FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_d, set_a, nullv_set, read_a, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  cr_assert(eq(int, read_a->static_type, FILTERX_STATIC_TYPE_UNKNOWN));
   filterx_expr_unref(block);
 }
 
@@ -1722,8 +1723,8 @@ Test(filterx_type_inference, a_dpath_write_retires_its_root)
   GList *elements = g_list_append(NULL, filterx_dpath_elem_object_new(filterx_string_new("a", -1)));
   FilterXExpr *dpath = filterx_dpath_lvalue_new(filterx_floating_variable_expr_new("d"),
                                                 elements, &error);
-  cr_assert_null(error);
-  cr_assert_not_null(dpath);
+  cr_assert(zero(ptr, error));
+  cr_assert(not(zero(ptr, dpath)));
 
   FilterXExpr *write = filterx_assign_new(dpath, filterx_literal_new(filterx_string_new("s", -1)));
   FilterXExpr *read_a = _read_attr("d", "a");
@@ -1731,7 +1732,7 @@ Test(filterx_type_inference, a_dpath_write_retires_its_root)
   FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_d, set_a, write, read_a, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  cr_assert(eq(int, read_a->static_type, FILTERX_STATIC_TYPE_UNKNOWN));
   filterx_expr_unref(block);
 }
 
@@ -1745,8 +1746,8 @@ Test(filterx_type_inference, a_function_call_opens_the_containers_it_was_handed)
   FilterXExpr *set_a = _write_attr("d", "a", filterx_literal_new(filterx_integer_new(1)));
   GList *args = g_list_append(NULL, filterx_function_arg_new(NULL, filterx_floating_variable_expr_new("d")));
   FilterXExpr *call = filterx_function_unset_empties_new(filterx_function_args_new(args, &error), &error);
-  cr_assert_null(error);
-  cr_assert_not_null(call);
+  cr_assert(zero(ptr, error));
+  cr_assert(not(zero(ptr, call)));
 
   FilterXExpr *read_d = filterx_floating_variable_expr_new("d");
   FilterXExpr *read_a = _read_attr("d", "a");
@@ -1754,8 +1755,8 @@ Test(filterx_type_inference, a_function_call_opens_the_containers_it_was_handed)
   FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_d, set_a, call, read_d, read_a, NULL);
   block = _optimize_and_infer(block);
 
-  cr_assert_eq(read_d->static_type, FILTERX_STATIC_TYPE_DICT);
-  cr_assert_eq(read_a->static_type, FILTERX_STATIC_TYPE_UNKNOWN);
+  cr_assert(eq(int, read_d->static_type, FILTERX_STATIC_TYPE_DICT));
+  cr_assert(eq(int, read_a->static_type, FILTERX_STATIC_TYPE_UNKNOWN));
   filterx_expr_unref(block);
 }
 
@@ -1780,7 +1781,7 @@ Test(filterx_type_inference, env_entries_outlive_the_expression_tree_they_came_f
   path.root = handle;
   filterx_access_path_append_step(&path, filterx_access_path_intern_key("a_borrowed_key_name"));
 
-  cr_assert_eq(filterx_type_env_get_static_type_at_path(env, &path), FILTERX_STATIC_TYPE_STRING);
+  cr_assert(eq(int, filterx_type_env_get_static_type_at_path(env, &path), FILTERX_STATIC_TYPE_STRING));
   filterx_type_env_free(env);
 }
 

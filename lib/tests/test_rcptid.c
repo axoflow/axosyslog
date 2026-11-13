@@ -22,6 +22,7 @@
  *
  */
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/persist_lib.h"
 
 #include "apphook.h"
@@ -67,7 +68,7 @@ Test(rcptid, test_rcptid_is_persistent_across_persist_backend_reinits)
   PersistState *state = setup_persist_id_test("test_values.backend_reinits");
   rcptid_set_id(0xFFFFFFFFFFFFFFFE);
   rcptid = rcptid_generate_id();
-  cr_assert_eq(rcptid, 0xFFFFFFFFFFFFFFFE, "Rcptid initialization to specific value failed!");
+  cr_assert(eq(u64, rcptid, 0xFFFFFFFFFFFFFFFE), "Rcptid initialization to specific value failed!");
 
   state = restart_persist_state(state);
 
@@ -75,7 +76,7 @@ Test(rcptid, test_rcptid_is_persistent_across_persist_backend_reinits)
   rcptid_init(state, TRUE);
 
   rcptid = rcptid_generate_id();
-  cr_assert_eq(rcptid, 0xFFFFFFFFFFFFFFFF, "Rcptid did not persisted across persist backend reinit!");
+  cr_assert(eq(u64, rcptid, 0xFFFFFFFFFFFFFFFF), "Rcptid did not persisted across persist backend reinit!");
   teardown_persist_id_test(state);
 }
 
@@ -87,7 +88,7 @@ Test(rcptid, test_rcptid_overflows_at_64bits_and_is_reset_to_one)
   rcptid_set_id(0xFFFFFFFFFFFFFFFF);
   rcptid = rcptid_generate_id();
   rcptid = rcptid_generate_id();
-  cr_assert_eq(rcptid, (guint64) 1, "Rcptid counter overflow handling did not work!");
+  cr_assert(eq(u64, rcptid, (guint64) 1), "Rcptid counter overflow handling did not work!");
   teardown_persist_id_test(state);
 }
 
@@ -96,7 +97,7 @@ Test(rcptid, test_rcptid_is_formatted_as_a_number_when_nonzero)
   PersistState *state = setup_persist_id_test("test_values.nonzero");
   GString *formatted_rcptid = g_string_sized_new(0);
   rcptid_append_formatted_id(formatted_rcptid, 1);
-  cr_assert_str_eq(formatted_rcptid->str, "1", "RCPTID macro formatting for non-zero number failed!");
+  cr_assert(eq(str, formatted_rcptid->str, "1"), "RCPTID macro formatting for non-zero number failed!");
   g_string_free(formatted_rcptid, TRUE);
   teardown_persist_id_test(state);
 }
@@ -106,7 +107,7 @@ Test(rcptid, test_rcptid_is_an_empty_string_when_zero)
   PersistState *state = setup_persist_id_test("test_values.zero");
   GString *formatted_rcptid = g_string_sized_new(0);
   rcptid_append_formatted_id(formatted_rcptid, 0);
-  cr_assert_str_eq(formatted_rcptid->str, "", "RCPTID macro formatting for zero value failed!");
+  cr_assert(eq(str, formatted_rcptid->str, ""), "RCPTID macro formatting for zero value failed!");
   g_string_free(formatted_rcptid, TRUE);
   teardown_persist_id_test(state);
 }

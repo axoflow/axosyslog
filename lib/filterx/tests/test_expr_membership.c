@@ -21,6 +21,7 @@
  *
  */
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/filterx-lib.h"
 
 #include "filterx/expr-membership.h"
@@ -36,10 +37,10 @@ Test(filterx_expr_membership, in_over_a_non_container_is_not_folded_and_fails_at
   FilterXExpr *expr = filterx_membership_in_new(filterx_literal_new(filterx_integer_new(1)),
                                                 filterx_literal_new(filterx_integer_new(2)));
   expr = filterx_expr_optimize(expr);
-  cr_assert_not_null(expr);
+  cr_assert(not(zero(ptr, expr)));
 
   FilterXObject *result = init_and_eval_expr(expr);
-  cr_assert_null(result);
+  cr_assert(zero(ptr, result));
 
   filterx_eval_clear_errors();
   filterx_expr_unref(expr);

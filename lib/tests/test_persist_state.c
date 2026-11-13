@@ -25,6 +25,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/persist_lib.h"
 
 #include "persist-state.h"
@@ -60,12 +61,12 @@ _write_test_file_for_test_in_use_handle(gboolean in_use_handle, const gchar *fil
 static void
 _foreach_callback_assertions(gchar *name, gint size, gpointer entry, gpointer userdata)
 {
-  cr_assert_str_eq((gchar *) userdata, "test_userdata", "Userdata is not passed correctly to foreach func!");
-  cr_assert_str_eq(name, "test", "Name of persist entry does not match!");
+  cr_assert(eq(str, (gchar *) userdata, "test_userdata"), "Userdata is not passed correctly to foreach func!");
+  cr_assert(eq(str, name, "test"), "Name of persist entry does not match!");
 
   TestState *state = (TestState *) entry;
-  cr_assert_eq(state->value, 3, "Content of state does not match!");
-  cr_assert_eq(size, sizeof(TestState), "Size of state does not match!");
+  cr_assert(eq(u32, state->value, 3), "Content of state does not match!");
+  cr_assert(eq(int, size, sizeof(TestState)), "Size of state does not match!");
 }
 
 TestSuite(persist_state, .init = app_startup, .fini = app_shutdown);
@@ -81,7 +82,7 @@ Test(persist_state, test_persist_state_open_success_on_invalid_file)
 
   fd = open(persist_file, O_CREAT | O_RDWR, 0660);
   ssize_t ret = write(fd, "aaa", 3);
-  cr_assert_eq(ret, 3, "Write error on invalid persist file: %s", strerror(errno));
+  cr_assert(eq(i64, ret, 3), "Write error on invalid persist file: %s", strerror(errno));
   close(fd);
 
   state = persist_state_new(persist_file);
@@ -99,12 +100,12 @@ Test(persist_state, test_persist_state_open_fails_on_invalid_file_with_dump)
 
   fd = open(persist_file, O_CREAT | O_RDWR, 0660);
   ssize_t ret = write(fd, "aaa", 3);
-  cr_assert_eq(ret, 3, "Write error on invalid persist file: %s", strerror(errno));
+  cr_assert(eq(i64, ret, 3), "Write error on invalid persist file: %s", strerror(errno));
   close(fd);
 
   state = persist_state_new(persist_file);
-  cr_assert_not(persist_state_start_dump(state),
-                "persist_state_start_dump returned with success when persist file was invalid!");
+  cr_assert(not(persist_state_start_dump(state)),
+            "persist_state_start_dump returned with success when persist file was invalid!");
 
   cancel_and_destroy_persist_state(state);
 }
@@ -117,8 +118,8 @@ Test(persist_state, test_persist_state_open_failes_when_file_open_fails)
 
   state = persist_state_new(persist_file);
 
-  cr_assert_not(persist_state_start_dump(state),
-                "persist_state_start_dump returned with success when persist file open failed!");
+  cr_assert(not(persist_state_start_dump(state)),
+            "persist_state_start_dump returned with success when persist file open failed!");
 
   cancel_and_destroy_persist_state(state);
 }
@@ -138,7 +139,7 @@ Test(persist_state, test_persist_state_in_use_handle_is_loaded)
 
   handle = persist_state_lookup_entry(state, "alma", &size, &version);
 
-  cr_assert_neq(handle, 0, "lookup failed when looking for simple entry with in_use = TRUE!");
+  cr_assert(ne(u32, handle, 0), "lookup failed when looking for simple entry with in_use = TRUE!");
 
   cancel_and_destroy_persist_state(state);
 }
@@ -158,7 +159,7 @@ Test(persist_state, test_persist_state_not_in_use_handle_is_not_loaded)
 
   handle = persist_state_lookup_entry(state, "alma", &size, &version);
 
-  cr_assert_eq(handle, 0, "lookup succeeded when looking for simple entry with in_use = FALSE!");
+  cr_assert(eq(u32, handle, 0), "lookup succeeded when looking for simple entry with in_use = FALSE!");
 
   cancel_and_destroy_persist_state(state);
 }
@@ -179,7 +180,7 @@ Test(persist_state, test_persist_state_not_in_use_handle_is_loaded_in_dump_mode)
 
   handle = persist_state_lookup_entry(state, "alma", &size, &version);
 
-  cr_assert_neq(handle, 0, "lookup failed in dump mode when looking for simple entry with in_use = FALSE!");
+  cr_assert(ne(u32, handle, 0), "lookup failed in dump mode when looking for simple entry with in_use = FALSE!");
 
   cancel_and_destroy_persist_state(state);
 }
@@ -194,14 +195,14 @@ Test(persist_state, test_persist_state_remove_entry)
   PersistEntryHandle handle = persist_state_alloc_entry(state, "test", sizeof(TestState));
 
   handle = persist_state_lookup_entry(state, "test", &size, &version);
-  cr_assert_neq(handle, 0, "lookup failed before removing entry");
+  cr_assert(ne(u32, handle, 0), "lookup failed before removing entry");
 
   persist_state_remove_entry(state, "test");
 
   state = restart_persist_state(state);
 
   handle = persist_state_lookup_entry(state, "test", &size, &version);
-  cr_assert_eq(handle, 0, "lookup succeeded after removing entry");
+  cr_assert(eq(u32, handle, 0), "lookup succeeded after removing entry");
 
   cancel_and_destroy_persist_state(state);
 }
@@ -222,8 +223,8 @@ Test(persist_state, test_persist_state_string_alloc_test)
   persist_state_alloc_string(state, "test", "test_short", -1);
   handle_2 = persist_state_lookup_entry(state, "test", &size_2, &version);
 
-  cr_assert_eq(size_1, size_2, "allocation sizes do not match");
-  cr_assert_eq(handle_1, handle_2, "allocation handles do not match");
+  cr_assert(eq(sz, size_1, size_2), "allocation sizes do not match");
+  cr_assert(eq(u32, handle_1, handle_2), "allocation handles do not match");
 
   cancel_and_destroy_persist_state(state);
 }
@@ -334,9 +335,9 @@ Test(persist_state, test_persist_state_temp_file_cleanup_on_cancel)
 
   cancel_and_destroy_persist_state(state);
 
-  cr_assert(access("test_persist_state_temp_file_cleanup_on_cancel.persist", F_OK) != 0,
+  cr_assert(ne(int, access("test_persist_state_temp_file_cleanup_on_cancel.persist", F_OK), 0),
             "persist file is removed on destroy()");
-  cr_assert(access("test_persist_state_temp_file_cleanup_on_cancel.persist-", F_OK) != 0,
+  cr_assert(ne(int, access("test_persist_state_temp_file_cleanup_on_cancel.persist-", F_OK), 0),
             "backup persist file is removed on destroy()");
 }
 
@@ -347,9 +348,9 @@ Test(persist_state, test_persist_state_temp_file_cleanup_on_commit_destroy)
 
   commit_and_destroy_persist_state(state);
 
-  cr_assert(access("test_persist_state_temp_file_cleanup_on_commit_destroy.persist", F_OK) != 0,
+  cr_assert(ne(int, access("test_persist_state_temp_file_cleanup_on_commit_destroy.persist", F_OK), 0),
             "persist file is removed on destroy(), even after commit");
-  cr_assert(access("test_persist_state_temp_file_cleanup_on_commit_destroy.persist-", F_OK) != 0,
+  cr_assert(ne(int, access("test_persist_state_temp_file_cleanup_on_commit_destroy.persist-", F_OK), 0),
             "backup persist file is removed on destroy(), even after commit");
 }
 
@@ -365,7 +366,7 @@ void
 assert_test_state_value(PersistState *state, PersistEntryHandle handle, guint32 expected_value)
 {
   TestState *test_state = (TestState *) persist_state_map_entry(state, handle);
-  cr_assert_eq(test_state->value, expected_value);
+  cr_assert(eq(u32, test_state->value, expected_value));
   persist_state_unmap_entry(state, handle);
 }
 
@@ -382,13 +383,13 @@ Test(persist_state, test_persist_state_move_entry)
   guint8 version;
   gsize size;
   PersistEntryHandle new_handle = persist_state_lookup_entry(state, "new_name", &size, &version);
-  cr_assert_neq(new_handle, 0, "moved entry does not exist in the new location");
+  cr_assert(ne(u32, new_handle, 0), "moved entry does not exist in the new location");
   assert_test_state_value(state, new_handle, 0xDEC0DE);
 
   state = restart_persist_state(state);
 
-  cr_assert_eq(persist_state_lookup_entry(state, "to_be_moved", &size, &version), 0,
-               "moved persist entry has not been removed");
+  cr_assert(eq(u32, persist_state_lookup_entry(state, "to_be_moved", &size, &version), 0),
+            "moved persist entry has not been removed");
 
   cancel_and_destroy_persist_state(state);
 }

@@ -20,6 +20,7 @@
  *
  */
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/parameterized.h"
 
 #include "str-utils.h"
@@ -48,7 +49,7 @@ static StrChrTestData test_str_utils_is_null_params[] =
 
 StaticParameterizedTest(StrChrTestData *test_data, test_str_utils_is_null_params, str_utils, test_str_utils_is_null)
 {
-  cr_assert_null(strchr_under_test(test_data->str, test_data->c), "expected a NULL return");
+  cr_assert(zero(ptr, strchr_under_test(test_data->str, test_data->c)), "expected a NULL return");
 }
 
 static StrChrTestData test_str_utils_find_char_params[] =
@@ -69,13 +70,13 @@ StaticParameterizedTest(StrChrTestData *test_data, test_str_utils_find_char_para
 {
   const char *result = strchr_under_test(test_data->str, test_data->c);
 
-  cr_assert_not_null(result, "expected a non-NULL return");
-  cr_assert(result - test_data->str <= strlen(test_data->str),
+  cr_assert(not(zero(ptr, result)), "expected a non-NULL return");
+  cr_assert(le(i64, result - test_data->str, strlen(test_data->str)),
             "Expected the strchr() return value to point into the input string or the terminating NUL, it points past the NUL");
-  cr_assert(result >= test_data->str,
+  cr_assert(ge(ptr, result, test_data->str),
             "Expected the strchr() return value to point into the input string or the terminating NUL, it points before the start of the string");
-  cr_assert_eq((result - test_data->str), test_data->ofs,
-               "Expected the strchr() return value to point right to the specified offset");
+  cr_assert(eq(i64, (result - test_data->str), test_data->ofs),
+            "Expected the strchr() return value to point right to the specified offset");
 }
 
 Test(str_utils, strn_eq_strz_with_shorter_and_longer_asciiz_strings)
@@ -88,12 +89,12 @@ Test(str_utils, strn_eq_strz_with_shorter_and_longer_asciiz_strings)
   cr_assert(strn_eq_strz(str, "foo", str_len));
 
   /* asciiz short */
-  cr_assert(!strn_eq_strz(str, "fo", str_len));
-  cr_assert(!strn_eq_strz(str, "", str_len));
+  cr_assert(not(strn_eq_strz(str, "fo", str_len)));
+  cr_assert(not(strn_eq_strz(str, "", str_len)));
 
   /* asciiz long */
-  cr_assert(!strn_eq_strz(str, "foo`", str_len));
-  cr_assert(!strn_eq_strz(str, "fooabc", str_len));
+  cr_assert(not(strn_eq_strz(str, "foo`", str_len)));
+  cr_assert(not(strn_eq_strz(str, "fooabc", str_len)));
 }
 
 Test(strsplit, when_tokens_not_limited_find_all_tokens)
@@ -101,12 +102,12 @@ Test(strsplit, when_tokens_not_limited_find_all_tokens)
   gchar **tokens = strsplit("  ABB   CCC DDDD          111", ' ', 0);
 
   gint tokens_n = g_strv_length(tokens);
-  cr_expect_eq(tokens_n, 4);
-  cr_expect_str_eq(tokens[0], "ABB");
-  cr_expect_str_eq(tokens[1], "CCC");
-  cr_expect_str_eq(tokens[2], "DDDD");
-  cr_expect_str_eq(tokens[3], "111");
-  cr_expect_null(tokens[4]);
+  cr_expect(eq(int, tokens_n, 4));
+  cr_expect(eq(str, tokens[0], "ABB"));
+  cr_expect(eq(str, tokens[1], "CCC"));
+  cr_expect(eq(str, tokens[2], "DDDD"));
+  cr_expect(eq(str, tokens[3], "111"));
+  cr_expect(zero(ptr, tokens[4]));
 
   g_strfreev(tokens);
 }
@@ -116,10 +117,10 @@ Test(strsplit, when_string_without_delim_return_the_string)
   gchar **tokens = strsplit("111", ' ', 0);
 
   gint tokens_n = g_strv_length(tokens);
-  cr_expect_eq(tokens_n, 1);
+  cr_expect(eq(int, tokens_n, 1));
 
-  cr_expect_str_eq(tokens[0], "111");
-  cr_expect_null(tokens[1]);
+  cr_expect(eq(str, tokens[0], "111"));
+  cr_expect(zero(ptr, tokens[1]));
 
   g_strfreev(tokens);
 }
@@ -128,10 +129,10 @@ Test(strsplit, when_empty_string_return_the_empty_string)
 {
   gchar **tokens = strsplit("", ' ', 0);
   gint tokens_n = g_strv_length(tokens);
-  cr_expect_eq(tokens_n, 1);
+  cr_expect(eq(int, tokens_n, 1));
 
-  cr_expect_str_eq(tokens[0], "");
-  cr_expect_null(tokens[1]);
+  cr_expect(eq(str, tokens[0], ""));
+  cr_expect(zero(ptr, tokens[1]));
 
   g_strfreev(tokens);
 }
@@ -139,13 +140,13 @@ Test(strsplit, when_empty_string_return_the_empty_string)
 Test(strsplit, when_null_str_or_null_delim_return_null)
 {
   gchar **tokens = strsplit(NULL, ' ', 0);
-  cr_expect_null(tokens);
+  cr_expect(zero(ptr, tokens));
 
   tokens = strsplit(NULL, '\0', 0);
-  cr_expect_null(tokens);
+  cr_expect(zero(ptr, tokens));
 
   tokens = strsplit("AAA ", '\0', 0);
-  cr_expect_null(tokens);
+  cr_expect(zero(ptr, tokens));
 }
 
 Test(strsplit, when_tokens_limited_join_remaining_tokens)
@@ -153,11 +154,11 @@ Test(strsplit, when_tokens_limited_join_remaining_tokens)
   gchar **tokens = strsplit("  ABB   CCC DDDD          111", ' ', 3);
 
   gint tokens_n = g_strv_length(tokens);
-  cr_expect_eq(tokens_n, 3);
-  cr_expect_str_eq(tokens[0], "ABB");
-  cr_expect_str_eq(tokens[1], "CCC");
-  cr_expect_str_eq(tokens[2], "DDDD          111");
-  cr_expect_null(tokens[3]);
+  cr_expect(eq(int, tokens_n, 3));
+  cr_expect(eq(str, tokens[0], "ABB"));
+  cr_expect(eq(str, tokens[1], "CCC"));
+  cr_expect(eq(str, tokens[2], "DDDD          111"));
+  cr_expect(zero(ptr, tokens[3]));
 
   g_strfreev(tokens);
 }

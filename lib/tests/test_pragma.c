@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "pragma-parser.h"
 
@@ -29,61 +30,61 @@ Test(pragma_parser, process_valid_major_minor)
 {
   const guint version = process_version_string("3.27");
 
-  cr_assert_eq(0x031b, version);
+  cr_assert(eq(uint, 0x031b, version));
 }
 
 Test(pragma_parser, process_version_large_minor)
 {
   guint version = process_version_string("42.4294957319");
 
-  cr_assert_eq(version, 0);
+  cr_assert(eq(uint, version, 0));
 }
 
 Test(pragma_parser, process_version_large_major)
 {
   guint version = process_version_string("4294967299.7");
 
-  cr_assert_eq(version, 0);
+  cr_assert(eq(uint, version, 0));
 }
 
 Test(pragma_parser, process_version_overflow_major)
 {
   guint version = process_version_string("72057594037927939.7");
 
-  cr_assert_eq(version, 0);
+  cr_assert(eq(uint, version, 0));
 }
 
 Test(pragma_parser, process_version_invalid_minor)
 {
   guint version = process_version_string("4.x");
 
-  cr_assert_eq(version, 0);
+  cr_assert(eq(uint, version, 0));
 }
 
 Test(pragma_parser, process_version_random_suffix)
 {
   guint version = process_version_string("3.7.6.5.4.3.2.1.ignition.orbital.launch-successful!");
 
-  cr_assert_eq(version, 0);
+  cr_assert(eq(uint, version, 0));
 }
 
 Test(pragma_parser, process_version_random_prefix)
 {
   guint version = process_version_string(".+3.7");
 
-  cr_assert_eq(version, 0);
+  cr_assert(eq(uint, version, 0));
 }
 
 Test(pragma_parser, process_version_negative_major)
 {
   guint version = process_version_string("-1.1031");
 
-  cr_assert_eq(version, 0);
+  cr_assert(eq(uint, version, 0));
 }
 
 Test(pragma_parser, process_version_negative_minor)
 {
   guint version = process_version_string("42.-9977");
 
-  cr_assert_eq(version, 0);
+  cr_assert(eq(uint, version, 0));
 }

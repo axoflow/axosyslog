@@ -23,6 +23,7 @@
 
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "apphook.h"
 #include "logmsg/logmsg.h"
@@ -48,15 +49,15 @@ Test(stats_alias_counter, register_ctr)
     stats_register_counter(0, &sc_key, SC_TYPE_PROCESSED, &counter);
     stats_cluster_logpipe_key_legacy_set(&sc_key, SCS_GLOBAL, "test_ctr.alias", NULL);
     StatsCluster *sc = stats_register_alias_counter(0, &sc_key, SC_TYPE_PROCESSED, counter);
-    cr_assert_not_null(sc);
+    cr_assert(not(zero(ptr, sc)));
     alias_counter = stats_cluster_get_counter(sc, SC_TYPE_PROCESSED);
   }
   stats_unlock();
 
   cr_expect(alias_counter->external);
-  cr_expect_eq(&counter->value, alias_counter->value_ref);
+  cr_expect(eq(ptr, &counter->value, alias_counter->value_ref));
   stats_counter_set(counter, 12);
-  cr_expect_eq(stats_counter_get(alias_counter), 12);
+  cr_expect(eq(sz, stats_counter_get(alias_counter), 12));
 
   stats_lock();
   {
@@ -64,17 +65,17 @@ Test(stats_alias_counter, register_ctr)
     stats_cluster_logpipe_key_legacy_set(&sc_key, SCS_GLOBAL, "test_ctr.alias", NULL);
     stats_unregister_alias_counter(&sc_key, SC_TYPE_PROCESSED, counter);
     stats_counter_dec(counter);
-    cr_expect_eq(stats_counter_get(counter), 11);
+    cr_expect(eq(sz, stats_counter_get(counter), 11));
     StatsCluster *sc = stats_register_alias_counter(0, &sc_key, SC_TYPE_PROCESSED, counter);
     alias_counter = stats_cluster_get_counter(sc, SC_TYPE_PROCESSED);
     cr_expect(alias_counter->external);
-    cr_expect_eq(&counter->value, alias_counter->value_ref);
+    cr_expect(eq(ptr, &counter->value, alias_counter->value_ref));
     stats_cluster_logpipe_key_legacy_set(&sc_key, SCS_GLOBAL, "test_ctr", NULL);
     stats_unregister_counter(&sc_key, SC_TYPE_PROCESSED, &counter);
-    cr_expect_eq(stats_counter_get(alias_counter), 11);
+    cr_expect(eq(sz, stats_counter_get(alias_counter), 11));
     stats_register_counter(0, &sc_key, SC_TYPE_PROCESSED, &counter);
     stats_counter_inc(counter);
-    cr_expect_eq(stats_counter_get(alias_counter), 12);
+    cr_expect(eq(sz, stats_counter_get(alias_counter), 12));
   }
   stats_unlock();
 }

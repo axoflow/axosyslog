@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include <stdarg.h>
 #include "filterx-lib.h"
 #include "cr_template.h"
@@ -42,9 +43,9 @@ assert_marshaled_object(FilterXObject *obj, const gchar *repr, LogMessageValueTy
   /* check if we _overwrite_ the string with the marshalled value */
   g_string_append(b, "PREFIX");
 
-  cr_assert(filterx_object_marshal(obj, b, &t) == TRUE);
-  cr_assert_str_eq(b->str, repr);
-  cr_assert_eq(t, type);
+  cr_assert(filterx_object_marshal(obj, b, &t));
+  cr_assert(eq(str, b->str, repr));
+  cr_assert(eq(u8, t, type));
   g_string_free(b, TRUE);
 }
 
@@ -54,7 +55,7 @@ assert_object_json_equals(FilterXObject *obj, const gchar *expected_json_repr)
   GString *b = g_string_sized_new(0);
 
   filterx_object_to_json(obj, b);
-  cr_assert_str_eq(b->str, expected_json_repr);
+  cr_assert(eq(str, b->str, expected_json_repr));
   g_string_free(b, TRUE);
 }
 
@@ -64,8 +65,8 @@ assert_object_repr_equals(FilterXObject *obj, const gchar *expected_repr)
   GString *repr = g_string_new("foobar");
   gsize len = repr->len;
 
-  cr_assert(filterx_object_repr_append(obj, repr) == TRUE);
-  cr_assert_str_eq(repr->str + len, expected_repr);
+  cr_assert(filterx_object_repr_append(obj, repr));
+  cr_assert(eq(str, repr->str + len, expected_repr));
   g_string_free(repr, TRUE);
 }
 
@@ -75,8 +76,8 @@ assert_object_str_equals(FilterXObject *obj, const gchar *expected_str)
   GString *str = g_string_new("foobar");
   gsize len = str->len;
 
-  cr_assert(filterx_object_str_append(obj, str) == TRUE);
-  cr_assert_str_eq(str->str + len, expected_str);
+  cr_assert(filterx_object_str_append(obj, str));
+  cr_assert(eq(str, str->str + len, expected_str));
   g_string_free(str, TRUE);
 }
 

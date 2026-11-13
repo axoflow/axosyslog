@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "plugin.h"
 #include "apphook.h"
@@ -58,8 +59,8 @@ queue_and_assert_statistics(LogFilterPipe *pipe, gchar *msg, guint32 matched_exp
   LogMessage *logmsg = msg_format_parse(&parse_options, (const guchar *) msg, strlen(msg));
   LogPipe *p = (LogPipe *)pipe;
   p->queue(p, logmsg, &path_options);
-  cr_assert_eq(stats_counter_get(pipe->not_matched), not_matched_expected);
-  cr_assert_eq(stats_counter_get(pipe->matched), matched_expected);
+  cr_assert(eq(sz, stats_counter_get(pipe->not_matched), not_matched_expected));
+  cr_assert(eq(sz, stats_counter_get(pipe->matched), matched_expected));
 }
 
 void

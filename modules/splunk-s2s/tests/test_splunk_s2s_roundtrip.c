@@ -23,6 +23,7 @@
 /* these tests cannot catch both sides drifting the same way */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "libtest/mock-transport.h"
 #include "libtest/proto_lib.h"
@@ -195,10 +196,10 @@ static void
 _assert_metadata(const DecodedMessage *message, const gchar *index, const gchar *source,
                  const gchar *sourcetype, const gchar *host)
 {
-  cr_assert_str_eq(message->index, index, "index mismatch");
-  cr_assert_str_eq(message->source, source, "source mismatch");
-  cr_assert_str_eq(message->sourcetype, sourcetype, "sourcetype mismatch");
-  cr_assert_str_eq(message->host, host, "host mismatch");
+  cr_assert(eq(str, message->index, index), "index mismatch");
+  cr_assert(eq(str, message->source, source), "source mismatch");
+  cr_assert(eq(str, message->sourcetype, sourcetype), "sourcetype mismatch");
+  cr_assert(eq(str, message->host, host), "host mismatch");
 }
 
 static void
@@ -234,10 +235,10 @@ _run_client_handshake(LogProtoClient *client)
 {
   for (gint i = 0; i < 100 && !_client_handshake_done(client); i++)
     {
-      cr_assert_eq(log_proto_client_flush(client), LPS_SUCCESS);
+      cr_assert(eq(int, log_proto_client_flush(client), LPS_SUCCESS));
       if (_client_handshake_done(client))
         break;
-      cr_assert_eq(log_proto_client_process_in(client), LPS_SUCCESS);
+      cr_assert(eq(int, log_proto_client_process_in(client), LPS_SUCCESS));
     }
   return _client_handshake_done(client);
 }
@@ -259,7 +260,7 @@ Test(splunk_s2s_roundtrip, codec_preserves_events_across_the_metadata_and_size_m
   GString *big = g_string_new(NULL);
   for (gint i = 0; i < 5000; i++)
     g_string_append_printf(big, "line %d of a large aggregated event\n", i);
-  cr_assert_gt(big->len, 64 * 1024);
+  cr_assert(gt(sz, big->len, 64 * 1024));
 
   struct
   {
@@ -282,8 +283,8 @@ Test(splunk_s2s_roundtrip, codec_preserves_events_across_the_metadata_and_size_m
     {
       LogMessage *msg = _msg_new(cases[i].index, cases[i].source, cases[i].sourcetype, cases[i].host, 1700000000 + i);
       gboolean consumed = FALSE;
-      cr_assert_eq(log_proto_client_post(client, msg, (guchar *) g_strdup(cases[i].payload),
-                                         strlen(cases[i].payload), &consumed), LPS_SUCCESS);
+      cr_assert(eq(int, log_proto_client_post(client, msg, (guchar *) g_strdup(cases[i].payload),
+                                              strlen(cases[i].payload), &consumed), LPS_SUCCESS));
       cr_assert(consumed);
       log_msg_unref(msg);
     }
@@ -302,24 +303,31 @@ Test(splunk_s2s_roundtrip, codec_preserves_events_across_the_metadata_and_size_m
    * handshake, which the server surfaces as the first (internal) message */
   guint expected = 1 + G_N_ELEMENTS(cases);
   GPtrArray *messages = _collect_messages(server, expected);
-  cr_assert_eq(messages->len, expected, "expected %u messages, got %u", expected, messages->len);
+  cr_assert(eq(uint, messages->len, expected), "expected %u messages, got %u", expected, messages->len);
 
   DecodedMessage *info = g_ptr_array_index(messages, 0);
-  cr_assert_str_eq(info->index, "_internal");
+  cr_assert(eq(str, info->index, "_internal"));
 
   for (gsize i = 0; i < G_N_ELEMENTS(cases); i++)
     {
       DecodedMessage *message = g_ptr_array_index(messages, i + 1);
 
-      cr_assert_eq(message->raw->len, strlen(cases[i].payload), "payload length mismatch for case %zu", i);
-      cr_assert_arr_eq(message->raw->str, cases[i].payload, message->raw->len);
+      cr_assert(eq(sz, message->raw->len, strlen(cases[i].payload)), "payload length mismatch for case %zu", i);
+      cr_assert(eq(mem, ((struct cr_mem)
+      {
+        .data = message->raw->str, .size = message->raw->len
+      }),
+      ((struct cr_mem)
+      {
+        .data = cases[i].payload, .size = message->raw->len
+      })));
 
       _assert_metadata(message,
                        cases[i].index ? cases[i].index : "main",
                        cases[i].source ? cases[i].source : "axosyslog",
                        cases[i].sourcetype ? cases[i].sourcetype : "axosyslog",
                        cases[i].host ? cases[i].host : host_name);
-      cr_assert_eq(message->timestamp, 1700000000 + i, "timestamp mismatch for case %zu", i);
+      cr_assert(eq(u64, message->timestamp, 1700000000 + i), "timestamp mismatch for case %zu", i);
     }
 
   g_ptr_array_free(messages, TRUE);
@@ -358,15 +366,15 @@ Test(splunk_s2s_roundtrip, live_session_delivers_events_and_flows_acks_back)
 
   for (gint i = 0; i < 200 && !_client_handshake_done(client); i++)
     {
-      cr_assert_eq(log_proto_client_flush(client), LPS_SUCCESS);
+      cr_assert(eq(int, log_proto_client_flush(client), LPS_SUCCESS));
       _pump(client_transport, server_transport);
 
       LogProtoStatus status;
-      cr_assert_null(_fetch_once(server, &status), "no message expected during the handshake");
-      cr_assert_neq(status, LPS_ERROR, "server handshake failed");
+      cr_assert(zero(ptr, _fetch_once(server, &status)), "no message expected during the handshake");
+      cr_assert(ne(int, status, LPS_ERROR), "server handshake failed");
       _pump(server_transport, client_transport);
 
-      cr_assert_eq(log_proto_client_process_in(client), LPS_SUCCESS);
+      cr_assert(eq(int, log_proto_client_process_in(client), LPS_SUCCESS));
     }
   cr_assert(_client_handshake_done(client), "handshake did not converge");
 
@@ -376,7 +384,8 @@ Test(splunk_s2s_roundtrip, live_session_delivers_events_and_flows_acks_back)
       LogMessage *msg = _msg_new("idx", "src", "st", "h", 1700000000 + i);
       gboolean consumed = FALSE;
       gchar *payload = g_strdup_printf("event %d", i);
-      cr_assert_eq(log_proto_client_post(client, msg, (guchar *) payload, strlen(payload), &consumed), LPS_SUCCESS);
+      cr_assert(eq(int, log_proto_client_post(client, msg, (guchar *) payload, strlen(payload), &consumed),
+                   LPS_SUCCESS));
       cr_assert(consumed);
       log_msg_unref(msg);
     }
@@ -384,21 +393,28 @@ Test(splunk_s2s_roundtrip, live_session_delivers_events_and_flows_acks_back)
 
   guint expected = 1 + n_events;
   GPtrArray *messages = _collect_messages(server, expected);
-  cr_assert_eq(messages->len, expected, "expected %u messages, got %u", expected, messages->len);
+  cr_assert(eq(uint, messages->len, expected), "expected %u messages, got %u", expected, messages->len);
   for (gint i = 0; i < n_events; i++)
     {
       DecodedMessage *message = g_ptr_array_index(messages, i + 1);
       gchar *want = g_strdup_printf("event %d", i);
-      cr_assert_arr_eq(message->raw->str, want, message->raw->len);
+      cr_assert(eq(mem, ((struct cr_mem)
+      {
+        .data = message->raw->str, .size = message->raw->len
+      }),
+      ((struct cr_mem)
+      {
+        .data = want, .size = message->raw->len
+      })));
       g_free(want);
     }
 
   /* the server emitted acks while decoding; carry them back and let the
    * client confirm the whole batch */
   _pump(server_transport, client_transport);
-  cr_assert_eq(log_proto_client_process_in(client), LPS_SUCCESS);
-  cr_assert_eq(acks, n_events, "indexer acks did not confirm every event");
-  cr_assert_eq(rewinds, 0);
+  cr_assert(eq(int, log_proto_client_process_in(client), LPS_SUCCESS));
+  cr_assert(eq(int, acks, n_events), "indexer acks did not confirm every event");
+  cr_assert(eq(int, rewinds, 0));
 
   g_ptr_array_free(messages, TRUE);
   log_proto_server_free(server);

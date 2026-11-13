@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/cr_template.h"
 #include "libtest/msg_parse_lib.h"
 
@@ -47,7 +48,7 @@ stardate_assert(const gchar *msg_str, const int precision, const gchar *expected
   else
     ret_val = asprintf(&template_command, "$(stardate --digits %d $UNIXTIME)", precision);
 
-  cr_assert(ret_val != -1, "Memory allocation failed in asprintf.");
+  cr_assert(ne(int, ret_val, -1), "Memory allocation failed in asprintf.");
   assert_template_format_msg(template_command, expected, logmsg);
   free(template_command);
 

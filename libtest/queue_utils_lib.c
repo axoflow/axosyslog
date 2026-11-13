@@ -29,6 +29,7 @@
 #include <iv.h>
 #include <iv_thread.h>
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 int acked_messages = 0;
 int fed_messages = 0;
@@ -101,7 +102,7 @@ send_some_messages(LogQueue *q, gint n, gboolean remove_from_backlog)
   for (i = 0; i < n; i++)
     {
       LogMessage *msg = log_queue_pop_head(q, &path_options);
-      cr_assert_not_null(msg);
+      cr_assert(not(zero(ptr, msg)));
 
       if (path_options.ack_needed)
         {

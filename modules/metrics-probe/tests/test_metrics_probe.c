@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "metrics-probe.h"
 #include "metrics-probe-test.h"
@@ -103,7 +104,7 @@ Test(metrics_probe, test_metrics_probe_custom_labels_only)
   LogParser *metrics_probe = (LogParser *) log_pipe_clone(&tmp_metrics_probe->super);
   log_pipe_unref(&tmp_metrics_probe->super);
 
-  cr_assert_not(log_pipe_init(&metrics_probe->super), "metrics-probe should have failed to init");
+  cr_assert(not(log_pipe_init(&metrics_probe->super)), "metrics-probe should have failed to init");
 
   log_pipe_unref(&metrics_probe->super);
 }
@@ -233,8 +234,8 @@ Test(metrics_probe, test_metrics_probe_stats_max_dynamics)
   };
 
   cr_assert(log_parser_process(metrics_probe, &msg, NULL, "", -1), "Failed to apply metrics-probe");
-  cr_assert_not(metrics_probe_test_stats_cluster_exists("custom_key", expected_labels_2,
-                                                        G_N_ELEMENTS(expected_labels_2)));
+  cr_assert(not(metrics_probe_test_stats_cluster_exists("custom_key", expected_labels_2,
+                                                        G_N_ELEMENTS(expected_labels_2))));
 
   log_msg_unref(msg);
   log_pipe_deinit(&metrics_probe->super);
@@ -285,13 +286,13 @@ Test(metrics_probe, test_metrics_probe_level)
   configuration->stats_options.level = STATS_LEVEL0;
   cr_assert(cfg_init(configuration));
   cr_assert(log_parser_process(metrics_probe, &msg, NULL, "", -1), "Failed to apply metrics-probe");
-  cr_assert_not(metrics_probe_test_stats_cluster_exists("custom_key", expected_labels, G_N_ELEMENTS(expected_labels)));
+  cr_assert(not(metrics_probe_test_stats_cluster_exists("custom_key", expected_labels, G_N_ELEMENTS(expected_labels))));
   cr_assert(cfg_deinit(configuration));
 
   configuration->stats_options.level = STATS_LEVEL1;
   cr_assert(cfg_init(configuration));
   cr_assert(log_parser_process(metrics_probe, &msg, NULL, "", -1), "Failed to apply metrics-probe");
-  cr_assert_not(metrics_probe_test_stats_cluster_exists("custom_key", expected_labels, G_N_ELEMENTS(expected_labels)));
+  cr_assert(not(metrics_probe_test_stats_cluster_exists("custom_key", expected_labels, G_N_ELEMENTS(expected_labels))));
   cr_assert(cfg_deinit(configuration));
 
   configuration->stats_options.level = STATS_LEVEL2;

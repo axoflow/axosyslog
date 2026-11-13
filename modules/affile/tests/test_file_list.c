@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "file-list.h"
 
@@ -39,9 +40,9 @@ Test(hashed_queue, normal)
   gchar *f1 = pending_file_list_pop(queue);
   gchar *f2 = pending_file_list_pop(queue);
   gchar *f3 = pending_file_list_pop(queue);
-  cr_assert_str_eq(f1, "file1");
-  cr_assert_str_eq(f2, "file2");
-  cr_assert_str_eq(f3, "file3");
+  cr_assert(eq(str, f1, "file1"));
+  cr_assert(eq(str, f2, "file2"));
+  cr_assert(eq(str, f3, "file3"));
 
   g_free(f1);
   g_free(f2);
@@ -56,11 +57,11 @@ Test(hashed_queue, delete_first)
   pending_file_list_add(queue, "file2");
   pending_file_list_add(queue, "file3");
 
-  cr_assert_eq(pending_file_list_remove(queue, "file1"), TRUE);
+  cr_assert(pending_file_list_remove(queue, "file1"));
   gchar *f2 = pending_file_list_pop(queue);
   gchar *f3 = pending_file_list_pop(queue);
-  cr_assert_str_eq(f2, "file2");
-  cr_assert_str_eq(f3, "file3");
+  cr_assert(eq(str, f2, "file2"));
+  cr_assert(eq(str, f3, "file3"));
 
   g_free(f2);
   g_free(f3);
@@ -74,11 +75,11 @@ Test(hashed_queue, delete_middle)
   pending_file_list_add(queue, "file2");
   pending_file_list_add(queue, "file3");
 
-  cr_assert_eq(pending_file_list_remove(queue, "file2"), TRUE);
+  cr_assert(pending_file_list_remove(queue, "file2"));
   gchar *f1 = pending_file_list_pop(queue);
   gchar *f3 = pending_file_list_pop(queue);
-  cr_assert_str_eq(f1, "file1");
-  cr_assert_str_eq(f3, "file3");
+  cr_assert(eq(str, f1, "file1"));
+  cr_assert(eq(str, f3, "file3"));
 
   g_free(f1);
   g_free(f3);
@@ -92,13 +93,13 @@ Test(hashed_queue, delete_last)
   pending_file_list_add(queue, "file2");
   pending_file_list_add(queue, "file3");
 
-  cr_assert_eq(pending_file_list_remove(queue, "file3"), TRUE);
+  cr_assert(pending_file_list_remove(queue, "file3"));
   gchar *f1 = pending_file_list_pop(queue);
   gchar *f2 = pending_file_list_pop(queue);
   gchar *f3 = pending_file_list_pop(queue);
-  cr_assert_str_eq(f1, "file1");
-  cr_assert_str_eq(f2, "file2");
-  cr_assert_eq(f3, NULL);
+  cr_assert(eq(str, f1, "file1"));
+  cr_assert(eq(str, f2, "file2"));
+  cr_assert(zero(ptr, f3));
 
   g_free(f1);
   g_free(f2);
@@ -112,13 +113,13 @@ Test(hashed_queue, delete_non_existent)
   pending_file_list_add(queue, "file2");
   pending_file_list_add(queue, "file3");
 
-  cr_assert_eq(pending_file_list_remove(queue, "file4"), FALSE);
+  cr_assert(not(pending_file_list_remove(queue, "file4")));
   gchar *f1 = pending_file_list_pop(queue);
   gchar *f2 = pending_file_list_pop(queue);
   gchar *f3 = pending_file_list_pop(queue);
-  cr_assert_str_eq(f1, "file1");
-  cr_assert_str_eq(f2, "file2");
-  cr_assert_str_eq(f3, "file3");
+  cr_assert(eq(str, f1, "file1"));
+  cr_assert(eq(str, f2, "file2"));
+  cr_assert(eq(str, f3, "file3"));
 
   g_free(f1);
   g_free(f2);
@@ -137,10 +138,10 @@ Test(hashed_queue, no_duplication)
   gchar *f1 = pending_file_list_pop(queue);
   gchar *f2 = pending_file_list_pop(queue);
   gchar *f3 = pending_file_list_pop(queue);
-  cr_assert(pending_file_list_pop(queue) == NULL);
-  cr_assert_str_eq(f1, "file1");
-  cr_assert_str_eq(f2, "file2");
-  cr_assert_str_eq(f3, "file3");
+  cr_assert(zero(ptr, pending_file_list_pop(queue)));
+  cr_assert(eq(str, f1, "file1"));
+  cr_assert(eq(str, f2, "file2"));
+  cr_assert(eq(str, f3, "file3"));
 
   g_free(f1);
   g_free(f2);
@@ -153,7 +154,7 @@ Test(hashed_queue, reverse_iterator_in_empty)
   PendingFileList *queue = pending_file_list_new();
 
   GList *f1 = pending_file_list_begin(queue);
-  cr_assert_null(f1);
+  cr_assert(zero(ptr, f1));
 
   pending_file_list_free(queue);
 }
@@ -165,8 +166,8 @@ Test(hashed_queue, reverse_iterator_one_entry)
 
   GList *f1 = pending_file_list_begin(queue);
 
-  cr_assert_not_null(f1);
-  cr_assert_str_eq(f1->data, "file1");
+  cr_assert(not(zero(ptr, f1)));
+  cr_assert(eq(str, f1->data, "file1"));
 
   pending_file_list_free(queue);
 }
@@ -179,8 +180,8 @@ Test(hashed_queue, reverse_iterator_two_entry)
 
   GList *f1 = pending_file_list_begin(queue);
 
-  cr_assert_not_null(f1);
-  cr_assert_str_eq(f1->data, "file3");
+  cr_assert(not(zero(ptr, f1)));
+  cr_assert(eq(str, f1->data, "file3"));
 
   pending_file_list_free(queue);
 }
@@ -195,8 +196,8 @@ Test(hashed_queue, reverse_iterator_second_entry)
   GList *it = pending_file_list_begin(queue);
   it = pending_file_list_next(it);
 
-  cr_assert_not_null(it);
-  cr_assert_str_eq(it->data, "file2");
+  cr_assert(not(zero(ptr, it)));
+  cr_assert(eq(str, it->data, "file2"));
 
   pending_file_list_free(queue);
 }
@@ -213,7 +214,7 @@ Test(hashed_queue, reverse_iterator_count_entries)
        it = pending_file_list_next(it))
     ++length;
 
-  cr_assert_eq(length, 3);
+  cr_assert(eq(int, length, 3));
 
   pending_file_list_free(queue);
 }
@@ -225,7 +226,7 @@ Test(hashed_queue, steal_from_empty)
   GList *it = pending_file_list_begin(queue);
   pending_file_list_steal(queue, it);
 
-  cr_assert_null(it);
+  cr_assert(zero(ptr, it));
 
   pending_file_list_free(queue);
 }
@@ -238,10 +239,10 @@ Test(hashed_queue, steal_from_one_entry)
   GList *it = pending_file_list_begin(queue);
   pending_file_list_steal(queue, it);
 
-  cr_assert_not_null(it);
-  cr_assert_str_eq(it->data, "file1");
+  cr_assert(not(zero(ptr, it)));
+  cr_assert(eq(str, it->data, "file1"));
 
-  cr_assert_null(pending_file_list_begin(queue));
+  cr_assert(zero(ptr, pending_file_list_begin(queue)));
 
   g_free(it->data);
   g_list_free_1(it);

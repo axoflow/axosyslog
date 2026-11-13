@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "messages.h"
 #include "apphook.h"
@@ -32,7 +33,7 @@ TestSuite(test_messages, .init = app_startup, .fini = app_shutdown);
 
 void simple_test_asserter(LogMessage *msg)
 {
-  cr_assert_str_eq(log_msg_get_value_by_name(msg, "MESSAGE", NULL), "simple test;");
+  cr_assert(eq(str, log_msg_get_value_by_name(msg, "MESSAGE", NULL), "simple test;"));
   log_msg_unref(msg);
 }
 
@@ -46,7 +47,7 @@ void test_errno_asserter(LogMessage *msg)
 {
   gchar expected_message[100];
   g_snprintf(expected_message, sizeof(expected_message), "test errno; error='%s (%d)'", strerror(5), 5);
-  cr_assert_str_eq(log_msg_get_value_by_name(msg, "MESSAGE", NULL), expected_message);
+  cr_assert(eq(str, log_msg_get_value_by_name(msg, "MESSAGE", NULL), expected_message));
   log_msg_unref(msg);
 }
 
@@ -63,7 +64,8 @@ void test_errno_capture_asserter(LogMessage *msg)
   gchar pattern[100];
   g_snprintf(pattern, sizeof(pattern), "error='%s (%d)'", strerror(9), 9);
   const gchar *msg_content = log_msg_get_value_by_name(msg, "MESSAGE", NULL);
-  cr_assert(g_strstr_len(msg_content, -1, pattern), "searching: >>%s<< in >>%s<<", pattern, msg_content);
+  cr_assert(not(zero(ptr, g_strstr_len(msg_content, -1, pattern))),
+            "searching: >>%s<< in >>%s<<", pattern, msg_content);
   log_msg_unref(msg);
 }
 
@@ -81,59 +83,59 @@ Test(test_messages, test_msg_set_log_level_sets_flags_correctly)
   trace_flag = FALSE;
 
   msg_set_log_level(0);
-  cr_assert_not(verbose_flag);
-  cr_assert_not(debug_flag);
-  cr_assert_not(trace_flag);
-  cr_assert_eq(msg_get_log_level(), 0);
+  cr_assert(not(verbose_flag));
+  cr_assert(not(debug_flag));
+  cr_assert(not(trace_flag));
+  cr_assert(eq(int, msg_get_log_level(), 0));
 
   msg_set_log_level(1);
   cr_assert(verbose_flag);
-  cr_assert_not(debug_flag);
-  cr_assert_not(trace_flag);
-  cr_assert_eq(msg_get_log_level(), 1);
+  cr_assert(not(debug_flag));
+  cr_assert(not(trace_flag));
+  cr_assert(eq(int, msg_get_log_level(), 1));
 
   msg_set_log_level(2);
   cr_assert(verbose_flag);
   cr_assert(debug_flag);
-  cr_assert_not(trace_flag);
-  cr_assert_eq(msg_get_log_level(), 2);
+  cr_assert(not(trace_flag));
+  cr_assert(eq(int, msg_get_log_level(), 2));
 
   msg_set_log_level(3);
   cr_assert(verbose_flag);
   cr_assert(debug_flag);
   cr_assert(trace_flag);
-  cr_assert_eq(msg_get_log_level(), 3);
+  cr_assert(eq(int, msg_get_log_level(), 3));
 
   /* this does nothing */
   msg_set_log_level(-1);
   cr_assert(verbose_flag);
   cr_assert(debug_flag);
   cr_assert(trace_flag);
-  cr_assert_eq(msg_get_log_level(), 3);
+  cr_assert(eq(int, msg_get_log_level(), 3));
 
   msg_set_log_level(0);
-  cr_assert_not(verbose_flag);
-  cr_assert_not(debug_flag);
-  cr_assert_not(trace_flag);
-  cr_assert_eq(msg_get_log_level(), 0);
+  cr_assert(not(verbose_flag));
+  cr_assert(not(debug_flag));
+  cr_assert(not(trace_flag));
+  cr_assert(eq(int, msg_get_log_level(), 0));
 
   /* this does nothing */
   msg_set_log_level(-1);
-  cr_assert_not(verbose_flag);
-  cr_assert_not(debug_flag);
-  cr_assert_not(trace_flag);
-  cr_assert_eq(msg_get_log_level(), 0);
+  cr_assert(not(verbose_flag));
+  cr_assert(not(debug_flag));
+  cr_assert(not(trace_flag));
+  cr_assert(eq(int, msg_get_log_level(), 0));
 }
 
 Test(test_messages, test_msg_apply_config_log_level_sets_log_level_if_unset)
 {
   msg_apply_config_log_level(3);
-  cr_assert_eq(msg_get_log_level(), 3);
+  cr_assert(eq(int, msg_get_log_level(), 3));
 }
 
 Test(test_messages, test_msg_apply_config_log_level_is_ignored_if_already_set)
 {
   msg_apply_cmdline_log_level(1);
   msg_apply_config_log_level(3);
-  cr_assert_eq(msg_get_log_level(), 1);
+  cr_assert(eq(int, msg_get_log_level(), 1));
 }

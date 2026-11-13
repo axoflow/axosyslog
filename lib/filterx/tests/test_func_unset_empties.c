@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/filterx-lib.h"
 
 #include "filterx/func-unset-empties.h"
@@ -42,8 +43,8 @@ _assert_unset_empties_init_fail(GList *args)
   GError *err = NULL;
   GError *args_err = NULL;
   FilterXExpr *func = filterx_function_unset_empties_new(filterx_function_args_new(args, &args_err), &err);
-  cr_assert(!func);
-  cr_assert(err);
+  cr_assert(zero(ptr, func));
+  cr_assert(not(zero(ptr, err)));
   g_error_free(err);
 }
 
@@ -55,16 +56,16 @@ _assert_unset_empties(GList *args, const gchar *expected_repr)
   GError *err = NULL;
   GError *args_err = NULL;
   FilterXExpr *func = filterx_function_unset_empties_new(filterx_function_args_new(args, &args_err), &err);
-  cr_assert(!err);
+  cr_assert(zero(ptr, err));
 
   FilterXObject *obj = init_and_eval_expr(func);
-  cr_assert(obj);
+  cr_assert(not(zero(ptr, obj)));
   gboolean success;
   cr_assert(filterx_boolean_unwrap(obj, &success));
   cr_assert(success);
 
   FilterXObject *modifiable_object = init_and_eval_expr(modifiable_object_expr);
-  cr_assert(modifiable_object);
+  cr_assert(not(zero(ptr, modifiable_object)));
 
   assert_object_repr_equals(modifiable_object, expected_repr);
 
@@ -395,10 +396,10 @@ Test(filterx_func_unset_empties, large_dict_does_not_overflow_stack)
   GError *err = NULL;
   GError *args_err = NULL;
   FilterXExpr *func = filterx_function_unset_empties_new(filterx_function_args_new(args, &args_err), &err);
-  cr_assert(!err);
+  cr_assert(zero(ptr, err));
 
   FilterXObject *obj = init_and_eval_expr(func);
-  cr_assert(obj);
+  cr_assert(not(zero(ptr, obj)));
   gboolean success;
   cr_assert(filterx_boolean_unwrap(obj, &success));
   cr_assert(success);
@@ -433,11 +434,11 @@ Test(filterx_func_unset_empties, deeply_nested_does_not_overflow_stack)
   GError *err = NULL;
   GError *args_err = NULL;
   FilterXExpr *func = filterx_function_unset_empties_new(filterx_function_args_new(args, &args_err), &err);
-  cr_assert(!err);
+  cr_assert(zero(ptr, err));
 
   /* recursive defaults to true; the depth cap must keep this from overflowing */
   FilterXObject *obj = init_and_eval_expr(func);
-  cr_assert(obj);
+  cr_assert(not(zero(ptr, obj)));
   gboolean success;
   cr_assert(filterx_boolean_unwrap(obj, &success));
   cr_assert(success);

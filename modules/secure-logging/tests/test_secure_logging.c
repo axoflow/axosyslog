@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/cr_template.h"
 #include "libtest/msg_parse_lib.h"
 #include "libtest/stopwatch.h"
@@ -133,7 +134,7 @@ LogTemplate *createTemplate(TestData *testData)
 
   LogTemplate *slog_templ = compile_template(slog_templ_str->str);
 
-  cr_assert(slog_templ != NULL, "Template '%s' does not compile correctly", slog_templ_str->str);
+  cr_assert(not(zero(ptr, slog_templ)), "Template '%s' does not compile correctly", slog_templ_str->str);
 
   g_string_free(slog_templ_str, TRUE);
 
@@ -194,7 +195,7 @@ static void gstring_destroy (gpointer data)
 GString **verifyMaliciousMessages(guchar *hostkey, gchar *macFileName, GString **templateOutput,
                                   size_t totalNumberOfMessages, int *brokenEntries)
 {
-  cr_assert(totalNumberOfMessages > 0, "Total number of message must be >0");
+  cr_assert(gt(sz, totalNumberOfMessages, 0), "Total number of message must be >0");
 
   guchar keyZero[KEY_LENGTH];
   memcpy(keyZero, hostkey, KEY_LENGTH);
@@ -208,7 +209,7 @@ GString **verifyMaliciousMessages(guchar *hostkey, gchar *macFileName, GString *
   guchar mac[CMAC_LENGTH];
 
   gboolean ret = readAggregatedMAC(macFileName, mac);
-  cr_assert(ret == TRUE, "Unable to read aggregated MAC from file %s", macFileName);
+  cr_assert(ret, "Unable to read aggregated MAC from file %s", macFileName);
 
   int problemsFound = 0;
   guchar cmac_tag[CMAC_LENGTH];
@@ -218,7 +219,7 @@ GString **verifyMaliciousMessages(guchar *hostkey, gchar *macFileName, GString *
   g_ptr_array_add(tmpTemplate, templateOutput[0]);
 
   GHashTable *tab = g_hash_table_new_full(g_str_hash, g_str_equal, (GDestroyNotify)g_free, NULL);
-  cr_assert_not_null(tab, "Can not create GHashTable");
+  cr_assert(not(zero(ptr, tab)), "Can not create GHashTable");
 
   initVerify(totalNumberOfMessages, hostkey, &next, &start, tmpTemplate);
   g_ptr_array_free(tmpTemplate, TRUE);
@@ -244,7 +245,7 @@ GString **verifyMaliciousMessages(guchar *hostkey, gchar *macFileName, GString *
 
   ret = finalizeVerify(start, totalNumberOfMessages, mac, cmac_tag, &tab);
 
-  cr_assert(ret == FALSE, "Aggregated MAC is correct.");
+  cr_assert(not(ret), "Aggregated MAC is correct.");
 
   g_ptr_array_free(template, FALSE);
   g_ptr_array_free(output, TRUE);
@@ -271,40 +272,40 @@ void verifyMessages(guchar *hostkey, gchar *macFileName, GString **templateOutpu
     }
 
   GHashTable *tab = g_hash_table_new_full(g_str_hash, g_str_equal, (GDestroyNotify)g_free, NULL);
-  cr_assert_not_null(tab, "Can not create GHashTable");
+  cr_assert(not(zero(ptr, tab)), "Can not create GHashTable");
 
   gboolean b = initVerify(totalNumberOfMessages, hostkey, &next, &start, template);
-  cr_assert(b == TRUE, "Init verify returns FALSE.");
+  cr_assert(b, "Init verify returns FALSE.");
 
   GPtrArray *output = g_ptr_array_new_with_free_func (gstring_destroy);
 
   guchar mac[CMAC_LENGTH];
 
   gboolean ret = readAggregatedMAC(macFileName, mac);
-  cr_assert(ret == TRUE, "Unable to read aggregated MAC from file %s", macFileName);
+  cr_assert(ret, "Unable to read aggregated MAC from file %s", macFileName);
 
   guchar cmac_tag[CMAC_LENGTH];
   gsize cmac_tag_capacity = G_N_ELEMENTS(cmac_tag);
   ret = initVerify(totalNumberOfMessages, hostkey, &next, &start, template);
-  cr_assert(ret == TRUE, "initVerify failed");
+  cr_assert(ret, "initVerify failed");
 
   //------------ initial MAC file, mac0.dat
   char pathMac0[PATH_MAX]; //-- full path of MAC0 file mac0.dat
   ret = get_path_mac0(macFileName, pathMac0, PATH_MAX);
-  cr_assert(ret == TRUE, "Unable to get path of mac0.dat");
+  cr_assert(ret, "Unable to get path of mac0.dat");
   guchar MAC0[CMAC_LENGTH]; //-- initial MAC
   memset(MAC0, 0, CMAC_LENGTH);
   ret = readAggregatedMAC(pathMac0, MAC0);
-  cr_assert(ret == TRUE, "Unable to read initial MAC from file %s", pathMac0);
+  cr_assert(ret, "Unable to read initial MAC from file %s", pathMac0);
   memcpy(cmac_tag, MAC0, CMAC_LENGTH); //-- cmac_tag provides the initial MAC mac0
   //------------
 
   ret = iterateBuffer(totalNumberOfMessages, template, &next, hostkey, keyZero, 0, output,
                       &numberOfLogEntries, cmac_tag, cmac_tag_capacity, tab);
-  cr_assert(ret == TRUE, "iterateBuffer failed");
+  cr_assert(ret, "iterateBuffer failed");
 
   ret = finalizeVerify(start, totalNumberOfMessages, (guchar *)mac, cmac_tag, &tab);
-  cr_assert(ret == TRUE, "finalizeVerify failed");
+  cr_assert(ret, "finalizeVerify failed");
 
   for (size_t i = 0; i < totalNumberOfMessages; i++)
     {
@@ -329,8 +330,8 @@ void generateHostKey(guchar *hostkey, gchar *hostKeyFileName)
   cr_assert(ret, "Unable to generate master key");
 
   deriveHostKey(masterkey, macAddr, serial, hostkey);
-  cr_assert(hostkey != NULL, "Unable to derive host key from master key for addr %s and serial number %s", macAddr,
-            serial);
+  cr_assert(not(zero(ptr, hostkey)), "Unable to derive host key from master key for addr %s and serial number %s",
+            macAddr, serial);
 
   ret = writeKey(hostkey, 0, hostKeyFileName);
   cr_assert(ret, "Unable to write host key to file %s", hostKeyFileName);
@@ -347,7 +348,7 @@ GString *createTemporaryDirectory(gchar *template)
   // Create random directory
   gchar *tmpDir = g_mkdtemp(buf);
 
-  cr_assert(tmpDir != NULL, "Unable to create temporary directory %s: %s", template, strerror(errno));
+  cr_assert(not(zero(ptr, tmpDir)), "Unable to create temporary directory %s: %s", template, strerror(errno));
 
   GString *result = g_string_new(tmpDir);
 
@@ -456,11 +457,11 @@ void corruptKey(TestData *testData)
   GError *error = NULL;
   GIOChannel *keyfile = g_io_channel_new_file(testData->keyFile->str, "w+", &error);
 
-  cr_assert(keyfile != NULL, "Cannot open key file: %s", testData->keyFile->str);
+  cr_assert(not(zero(ptr, keyfile)), "Cannot open key file: %s", testData->keyFile->str);
 
   GIOStatus status = g_io_channel_set_encoding(keyfile, NULL, &error);
 
-  cr_assert(status == G_IO_STATUS_NORMAL, " Unable to set encoding for key file %s", testData->keyFile->str);
+  cr_assert(eq(int, status, G_IO_STATUS_NORMAL), " Unable to set encoding for key file %s", testData->keyFile->str);
 
   gsize outlen = 0;
 
@@ -486,12 +487,12 @@ void corruptKey(TestData *testData)
   // Write garbage to key file
   status = g_io_channel_write_chars(keyfile, data, buflen, &outlen, &error);
 
-  cr_assert(status == G_IO_STATUS_NORMAL, "Unable to write updated key to file %s", testData->keyFile->str);
+  cr_assert(eq(int, status, G_IO_STATUS_NORMAL), "Unable to write updated key to file %s", testData->keyFile->str);
 
   status = g_io_channel_shutdown(keyfile, TRUE, &error);
   g_io_channel_unref(keyfile);
 
-  cr_assert(status == G_IO_STATUS_NORMAL, " Unable to close key file %s", testData->keyFile->str);
+  cr_assert(eq(int, status, G_IO_STATUS_NORMAL), " Unable to close key file %s", testData->keyFile->str);
 }
 
 
@@ -750,11 +751,11 @@ void test_slog_malicious_modifications(void)
     {
       if(1 == findInArray(i, entriesToModify, mods))
         {
-          cr_assert(1 == findInArray(i, brokenEntries, mods), "Modified entry %lu not detected.", i);
+          cr_assert(eq(int, findInArray(i, brokenEntries, mods), 1), "Modified entry %lu not detected.", i);
         }
       else
         {
-          cr_assert(0 == findInArray(i, brokenEntries, mods), "Unmodified entry %lu detected as modified.", i);
+          cr_assert(eq(int, findInArray(i, brokenEntries, mods), 0), "Unmodified entry %lu detected as modified.", i);
         }
     }
 
@@ -813,9 +814,9 @@ void test_slog_helper_path_validation(void)
   gchar path_no[256] = "/usr/wtf33/bingo.txt";
   gchar path_yes[256] = "/tmp/bingo_test015708705702374095273094.txt";
   gboolean is_ok = is_file_path_safe_and_valid(path_no);
-  cr_assert(FALSE == is_ok, "Given path is not valid because the directoy is invalid");
+  cr_assert(not(is_ok), "Given path is not valid because the directoy is invalid");
   is_ok = is_file_path_safe_and_valid(path_yes);
-  cr_assert(TRUE == is_ok, "Given path is valid even the file does not exist");
+  cr_assert(is_ok, "Given path is valid even the file does not exist");
   GError *error = NULL;
   gchar *path_yes2 = NULL;
   gint fd = g_file_open_tmp("test_path_val_XXXXXX", &path_yes2, &error);
@@ -823,7 +824,7 @@ void test_slog_helper_path_validation(void)
     {
       //-- e.g.: "/tmp/test_path_val_A1B2C3"
       is_ok = is_file_path_safe_and_valid(path_yes2);
-      cr_assert(TRUE == is_ok, "Given path is valid and the file does exist");
+      cr_assert(is_ok, "Given path is valid and the file does exist");
       g_free(path_yes2);
       close(fd);
     }

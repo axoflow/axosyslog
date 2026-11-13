@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 
 #include "ack-tracker/batched_ack_tracker.h"
 #include "ack-tracker/ack_tracker_factory.h"
@@ -152,16 +153,16 @@ Test(batched_ack_tracker, request_bookmark_returns_the_same_until_not_track_msg)
 {
   gboolean acked = FALSE;
   LogSource *src = _init_log_source(batched_ack_tracker_factory_new(0, 1, _dummy_on_batch_acked, &acked));
-  cr_assert_not_null(src->ack_tracker);
+  cr_assert(not(zero(ptr, src->ack_tracker)));
   AckTracker *ack_tracker = src->ack_tracker;
   Bookmark *bm1 = ack_tracker_request_bookmark(ack_tracker);
   Bookmark *bm2 = ack_tracker_request_bookmark(ack_tracker);
-  cr_expect_eq(bm1, bm2);
+  cr_expect(eq(ptr, bm1, bm2));
   LogMessage *msg = log_msg_new_empty();
   ack_tracker_track_msg(ack_tracker, msg);
-  cr_expect_not(acked);
+  cr_expect(not(acked));
   Bookmark *bm3 = ack_tracker_request_bookmark(ack_tracker);
-  cr_expect_neq(bm3, bm1);
+  cr_expect(ne(ptr, bm3, bm1));
   ack_tracker_manage_msg_ack(ack_tracker, msg, AT_PROCESSED);
   cr_expect(acked);
   _deinit_log_source(src);
@@ -189,31 +190,31 @@ Test(batched_ack_tracker, bookmark_saving)
   LogSource *src = _init_log_source(batched_ack_tracker_factory_new(0, 2, _ack_all, NULL));
   TestLogPipeDst *dst = _init_test_logpipe_dst();
   log_pipe_append(&src->super, &dst->super);
-  cr_assert_not_null(src->ack_tracker);
+  cr_assert(not(zero(ptr, src->ack_tracker)));
   AckTracker *ack_tracker = src->ack_tracker;
   Bookmark *bm = ack_tracker_request_bookmark(ack_tracker);
   guint saved_ctr = 0;
   guint destroy_ctr = 0;
   _fill_bookmark(bm, &saved_ctr, &destroy_ctr);
   LogMessage *msg1 = log_msg_new_empty();
-  cr_expect_eq(window_size_counter_get(&src->window_size, NULL), 10);
+  cr_expect(eq(sz, window_size_counter_get(&src->window_size, NULL), 10));
   log_source_post(src, msg1);
-  cr_expect_eq(window_size_counter_get(&src->window_size, NULL), 9);
-  cr_assert_eq(msg1->ack_record->tracker, ack_tracker);
+  cr_expect(eq(sz, window_size_counter_get(&src->window_size, NULL), 9));
+  cr_assert(eq(ptr, msg1->ack_record->tracker, ack_tracker));
   LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
   log_msg_ack(msg1, &path_options, AT_PROCESSED);
-  cr_expect_eq(saved_ctr, 0);
-  cr_expect_eq(destroy_ctr, 0);
-  cr_expect_eq(window_size_counter_get(&src->window_size, NULL), 10);
+  cr_expect(eq(uint, saved_ctr, 0));
+  cr_expect(eq(uint, destroy_ctr, 0));
+  cr_expect(eq(sz, window_size_counter_get(&src->window_size, NULL), 10));
   LogMessage *msg2 = log_msg_new_empty();
   bm = ack_tracker_request_bookmark(ack_tracker);
   _fill_bookmark(bm, &saved_ctr, &destroy_ctr);
   log_source_post(src, msg2);
-  cr_expect_eq(window_size_counter_get(&src->window_size, NULL), 9);
+  cr_expect(eq(sz, window_size_counter_get(&src->window_size, NULL), 9));
   log_msg_ack(msg2, &path_options, AT_PROCESSED);
-  cr_expect_eq(window_size_counter_get(&src->window_size, NULL), 10);
-  cr_expect_eq(saved_ctr, 2);
-  cr_expect_eq(destroy_ctr, 2);
+  cr_expect(eq(sz, window_size_counter_get(&src->window_size, NULL), 10));
+  cr_expect(eq(uint, saved_ctr, 2));
+  cr_expect(eq(uint, destroy_ctr, 2));
   log_msg_unref(msg1);
   log_msg_unref(msg2);
   _deinit_log_source(src);
@@ -248,34 +249,34 @@ Test(batched_ack_tracker, batch_timeout)
   LogSource *src = _init_log_source(batched_ack_tracker_factory_new(500, 3, _ack_all, NULL));
   TestLogPipeDst *dst = _init_test_logpipe_dst();
   log_pipe_append(&src->super, &dst->super);
-  cr_assert_not_null(src->ack_tracker);
+  cr_assert(not(zero(ptr, src->ack_tracker)));
   AckTracker *ack_tracker = src->ack_tracker;
   Bookmark *bm = ack_tracker_request_bookmark(ack_tracker);
   guint saved_ctr = 0;
   guint destroy_ctr = 0;
   _fill_bookmark(bm, &saved_ctr, &destroy_ctr);
   LogMessage *msg1 = log_msg_new_empty();
-  cr_expect_eq(window_size_counter_get(&src->window_size, NULL), 10);
+  cr_expect(eq(sz, window_size_counter_get(&src->window_size, NULL), 10));
   log_source_post(src, msg1);
-  cr_expect_eq(window_size_counter_get(&src->window_size, NULL), 9);
-  cr_assert_eq(msg1->ack_record->tracker, ack_tracker);
+  cr_expect(eq(sz, window_size_counter_get(&src->window_size, NULL), 9));
+  cr_assert(eq(ptr, msg1->ack_record->tracker, ack_tracker));
   LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
   log_msg_ack(msg1, &path_options, AT_PROCESSED);
-  cr_expect_eq(saved_ctr, 0);
-  cr_expect_eq(destroy_ctr, 0);
-  cr_expect_eq(window_size_counter_get(&src->window_size, NULL), 10);
+  cr_expect(eq(uint, saved_ctr, 0));
+  cr_expect(eq(uint, destroy_ctr, 0));
+  cr_expect(eq(sz, window_size_counter_get(&src->window_size, NULL), 10));
   LogMessage *msg2 = log_msg_new_empty();
   bm = ack_tracker_request_bookmark(ack_tracker);
   _fill_bookmark(bm, &saved_ctr, &destroy_ctr);
   log_source_post(src, msg2);
-  cr_expect_eq(window_size_counter_get(&src->window_size, NULL), 9);
+  cr_expect(eq(sz, window_size_counter_get(&src->window_size, NULL), 9));
   log_msg_ack(msg2, &path_options, AT_PROCESSED);
-  cr_expect_eq(window_size_counter_get(&src->window_size, NULL), 10);
+  cr_expect(eq(sz, window_size_counter_get(&src->window_size, NULL), 10));
 
   _run_iv_main_for_n_seconds(1);
 
-  cr_expect_eq(saved_ctr, 2);
-  cr_expect_eq(destroy_ctr, 2);
+  cr_expect(eq(uint, saved_ctr, 2));
+  cr_expect(eq(uint, destroy_ctr, 2));
   log_msg_unref(msg1);
   log_msg_unref(msg2);
   _deinit_log_source(src);
@@ -288,37 +289,37 @@ Test(batched_ack_tracker, deinit_acks_partial_batch)
   LogSource *src = _init_log_source(batched_ack_tracker_factory_new(2000, 3, _ack_all, &ack_cb_called));
   TestLogPipeDst *dst = _init_test_logpipe_dst();
   log_pipe_append(&src->super, &dst->super);
-  cr_assert_not_null(src->ack_tracker);
+  cr_assert(not(zero(ptr, src->ack_tracker)));
   AckTracker *ack_tracker = src->ack_tracker;
   Bookmark *bm = ack_tracker_request_bookmark(ack_tracker);
   guint saved_ctr = 0;
   guint destroy_ctr = 0;
   _fill_bookmark(bm, &saved_ctr, &destroy_ctr);
   LogMessage *msg1 = log_msg_new_empty();
-  cr_expect_eq(window_size_counter_get(&src->window_size, NULL), 10);
+  cr_expect(eq(sz, window_size_counter_get(&src->window_size, NULL), 10));
   log_source_post(src, msg1);
-  cr_expect_eq(window_size_counter_get(&src->window_size, NULL), 9);
-  cr_assert_eq(msg1->ack_record->tracker, ack_tracker);
+  cr_expect(eq(sz, window_size_counter_get(&src->window_size, NULL), 9));
+  cr_assert(eq(ptr, msg1->ack_record->tracker, ack_tracker));
   LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
   log_msg_ack(msg1, &path_options, AT_PROCESSED);
-  cr_expect_eq(saved_ctr, 0);
-  cr_expect_eq(destroy_ctr, 0);
-  cr_expect_eq(window_size_counter_get(&src->window_size, NULL), 10);
+  cr_expect(eq(uint, saved_ctr, 0));
+  cr_expect(eq(uint, destroy_ctr, 0));
+  cr_expect(eq(sz, window_size_counter_get(&src->window_size, NULL), 10));
   LogMessage *msg2 = log_msg_new_empty();
   bm = ack_tracker_request_bookmark(ack_tracker);
   _fill_bookmark(bm, &saved_ctr, &destroy_ctr);
   log_source_post(src, msg2);
-  cr_expect_eq(window_size_counter_get(&src->window_size, NULL), 9);
+  cr_expect(eq(sz, window_size_counter_get(&src->window_size, NULL), 9));
   log_msg_ack(msg2, &path_options, AT_PROCESSED);
-  cr_expect_eq(window_size_counter_get(&src->window_size, NULL), 10);
+  cr_expect(eq(sz, window_size_counter_get(&src->window_size, NULL), 10));
 
   ack_tracker_deinit(ack_tracker);
   cr_expect(ack_cb_called);
 
   _run_iv_main_for_n_seconds(1);
 
-  cr_expect_eq(saved_ctr, 2);
-  cr_expect_eq(destroy_ctr, 2);
+  cr_expect(eq(uint, saved_ctr, 2));
+  cr_expect(eq(uint, destroy_ctr, 2));
   log_msg_unref(msg1);
   log_msg_unref(msg2);
   _deinit_log_source(src);

@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/cr_template.h"
 
 #include "logthrsource/logthrfetcherdrv.h"
@@ -237,7 +238,7 @@ Test(logthrfetcherdrv, test_simple_fetch)
   stop_test_threaded_fetcher(s);
 
   StatsCounterItem *recvd_messages = _get_source(s)->metrics.recvd_messages;
-  cr_assert(stats_counter_get(recvd_messages) == 10);
+  cr_assert(eq(sz, stats_counter_get(recvd_messages), 10));
 
   destroy_test_threaded_fetcher(s);
 }
@@ -257,8 +258,8 @@ Test(logthrfetcherdrv, test_reconnect)
   stop_test_threaded_fetcher(s);
 
   StatsCounterItem *recvd_messages = _get_source(s)->metrics.recvd_messages;
-  cr_assert(stats_counter_get(recvd_messages) == 10);
-  cr_assert_geq(s->connect_counter, 6);
+  cr_assert(eq(sz, stats_counter_get(recvd_messages), 10));
+  cr_assert(ge(int, s->connect_counter, 6));
 
   destroy_test_threaded_fetcher(s);
 }
@@ -310,17 +311,17 @@ Test(logthrfetcherdrv, test_try_again)
   s->super.fetch = _fetch_for_try_again_test;
 
   struct timespec start = {0};
-  cr_assert(!clock_gettime(CLOCK_MONOTONIC, &start));
+  cr_assert(zero(int, clock_gettime(CLOCK_MONOTONIC, &start)));
 
   start_test_threaded_fetcher(s);
   wait_for_messages(s);
   stop_test_threaded_fetcher(s);
 
   struct timespec stop = {0};
-  cr_assert(!clock_gettime(CLOCK_MONOTONIC, &stop));
+  cr_assert(zero(int, clock_gettime(CLOCK_MONOTONIC, &stop)));
 
   // Should not pass time_reopen in case of try_again
-  cr_assert(!stop.tv_sec - start.tv_sec < 2);
+  cr_assert(lt(i64, stop.tv_sec - start.tv_sec, 2));
 
   destroy_test_threaded_fetcher(s);
 }
@@ -372,16 +373,16 @@ Test(logthrfetcherdrv, test_no_data)
   s->super.fetch = _fetch_for_no_data;
 
   struct timespec start = {0};
-  cr_assert(!clock_gettime(CLOCK_MONOTONIC, &start));
+  cr_assert(zero(int, clock_gettime(CLOCK_MONOTONIC, &start)));
 
   start_test_threaded_fetcher(s);
   wait_for_messages(s);
   stop_test_threaded_fetcher(s);
 
   struct timespec stop = {0};
-  cr_assert(!clock_gettime(CLOCK_MONOTONIC, &stop));
+  cr_assert(zero(int, clock_gettime(CLOCK_MONOTONIC, &stop)));
 
-  cr_assert(stop.tv_sec - start.tv_sec >= 1);
+  cr_assert(ge(i64, stop.tv_sec - start.tv_sec, 1));
 
   destroy_test_threaded_fetcher(s);
 }

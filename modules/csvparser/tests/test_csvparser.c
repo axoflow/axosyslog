@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/parameterized.h"
 
 #include "csvparser.h"
@@ -838,8 +839,9 @@ StaticParameterizedTest(CsvParserTestParam *param, parser_params, parser, test_c
   success = log_parser_process(pclone, &logmsg, &path_options, log_msg_get_value(logmsg, LM_V_MESSAGE, NULL), -1);
   log_msg_unpin_payload(logmsg, pin);
 
-  cr_assert_not((success && !param->expected_values[0]), "unexpected match; msg=%s\n", param->msg);
-  cr_assert_not((!success && param->expected_values[0]), "unexpected non-match; msg=%s\n", param->msg);
+  cr_assert(not(success && !param->expected_values[0]), "unexpected match; msg=%s\n", param->msg);
+  cr_assert(not(param->expected_values[0] && !success), "unexpected non-match; msg=%s\n",
+            param->msg);
 
   log_pipe_deinit(&pclone->super);
   log_pipe_unref(&pclone->super);
@@ -854,21 +856,20 @@ StaticParameterizedTest(CsvParserTestParam *param, parser_params, parser, test_c
 
       if (param->expected_values[i] && param->expected_values[i][0])
         {
-          cr_assert(value
-                    && value[0],
+          cr_assert(value && value[0],
                     "Testcase failed: expected value set, but no actual value; msg=\n'%s'\n, cond='value && value[0]', value='%s', expected_value='%s'\n",
                     param->msg,
                     value,
                     param->expected_values[i]);
 
-          cr_assert(strlen(param->expected_values[i]) == value_len,
+          cr_assert(eq(i64, strlen(param->expected_values[i]), value_len),
                     "Testcase failed: value length doesn't match actual length; msg=\n'%s'\n, cond='strlen(expected_value) == value_len', value_len='%d', strlen(expected_value)='%d', value=%s, expected_value=%s\n",
                     param->msg, (int)value_len,
                     (int)strlen(param->expected_values[i]),
                     value,
                     param->expected_values[i]);
 
-          cr_assert(strncmp(value, param->expected_values[i], value_len) == 0,
+          cr_assert(eq(int, strncmp(value, param->expected_values[i], value_len), 0),
                     "Testcase failed: value does not match expected value; msg=\n'%s'\n, cond='strncmp(value, expected_value, value_len) == 0', value='%s', expected_value='%s' value_len=%d\n",
                     param->msg,
                     value,
@@ -877,8 +878,7 @@ StaticParameterizedTest(CsvParserTestParam *param, parser_params, parser, test_c
         }
       else
         {
-          cr_assert(!(value
-                      && value[0]),
+          cr_assert(not(value && value[0]),
                     "Testcase failed: expected unset, but actual value present; msg='%s', cond='!(value && value[0])', value='%s', expected_value='%s'\n",
                     param->msg, value, param->expected_values[i]);
         }

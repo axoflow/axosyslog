@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "filterx/expr-unset.h"
 #include "libtest/cr_template.h"
 #include "libtest/filterx-lib.h"
@@ -52,7 +53,7 @@ test_dummy_function(FilterXExpr *s, FilterXObject *args[], gsize args_len)
   for (int i = 0; i < args_len; i++)
     {
       FilterXObject *object = args[i];
-      cr_assert_not_null(object);
+      cr_assert(not(zero(ptr, object)));
       cr_assert(filterx_object_repr(object, repr));
       g_string_append(out, repr->str);
     }
@@ -65,10 +66,10 @@ Test(expr_function, test_function_null_args)
   GError *error = NULL;
   FilterXExpr *func = filterx_simple_function_new("test_dummy", filterx_function_args_new(NULL, NULL),
                                                   test_dummy_function, &error);
-  cr_assert_null(error);
+  cr_assert(zero(ptr, error));
   g_clear_error(&error);
 
-  cr_assert_not_null(func);
+  cr_assert(not(zero(ptr, func)));
   filterx_expr_unref(func);
 }
 
@@ -81,10 +82,10 @@ Test(expr_function, test_function_null_arg)
   FilterXExpr *func = filterx_simple_function_new("test_dummy", filterx_function_args_new(args, NULL),
                                                   test_dummy_function, &error);
 
-  cr_assert_not_null(error);
+  cr_assert(not(zero(ptr, error)));
   g_clear_error(&error);
 
-  cr_assert_null(func);
+  cr_assert(zero(ptr, func));
   filterx_expr_unref(func);
 }
 
@@ -93,12 +94,12 @@ Test(expr_function, test_function_without_args_evaluates)
   GError *error = NULL;
   FilterXExpr *func = filterx_simple_function_new("test_dummy", filterx_function_args_new(NULL, NULL),
                                                   test_dummy_function, &error);
-  cr_assert_not_null(func);
-  cr_assert_null(error);
+  cr_assert(not(zero(ptr, func)));
+  cr_assert(zero(ptr, error));
 
   FilterXObject *res = init_and_eval_expr(func);
-  cr_assert_not_null(res);
-  cr_assert_str_eq(filterx_string_get_value_as_cstr(res), "");
+  cr_assert(not(zero(ptr, res)));
+  cr_assert(eq(str, filterx_string_get_value_as_cstr(res), ""));
   filterx_expr_unref(func);
   filterx_object_unref(res);
 }
@@ -111,16 +112,16 @@ Test(expr_function, test_function_valid_arg)
   GError *error = NULL;
   FilterXExpr *func = filterx_simple_function_new("test_dummy", filterx_function_args_new(args, NULL),
                                                   test_dummy_function, &error);
-  cr_assert_not_null(func);
+  cr_assert(not(zero(ptr, func)));
 
-  cr_assert_null(error);
+  cr_assert(zero(ptr, error));
   g_clear_error(&error);
 
   FilterXObject *res = init_and_eval_expr(func);
-  cr_assert_not_null(res);
+  cr_assert(not(zero(ptr, res)));
   cr_assert(filterx_object_is_type(res, &FILTERX_TYPE_NAME(string)));
   const gchar *str = filterx_string_get_value_as_cstr(res);
-  cr_assert_str_eq(str, "\"bad format 1\"");
+  cr_assert(eq(str, str, "\"bad format 1\""));
   filterx_expr_unref(func);
   filterx_object_unref(res);
 }
@@ -136,14 +137,14 @@ Test(expr_function, test_function_multiple_args)
   FilterXExpr *func = filterx_simple_function_new("test_dummy", filterx_function_args_new(args, NULL),
                                                   test_dummy_function, &error);
 
-  cr_assert_null(error);
+  cr_assert(zero(ptr, error));
   g_clear_error(&error);
-  cr_assert_not_null(func);
+  cr_assert(not(zero(ptr, func)));
   FilterXObject *res = init_and_eval_expr(func);
-  cr_assert_not_null(res);
+  cr_assert(not(zero(ptr, res)));
   cr_assert(filterx_object_is_type(res, &FILTERX_TYPE_NAME(string)));
   const gchar *str = filterx_string_get_value_as_cstr(res);
-  cr_assert_str_eq(str, "null443\"foobar\"");
+  cr_assert(eq(str, str, "null443\"foobar\""));
   filterx_expr_unref(func);
   filterx_object_unref(res);
 }
@@ -153,8 +154,8 @@ Test(expr_function, test_unset_rejects_a_non_unsettable_argument)
   GList *args = g_list_append(NULL, filterx_function_arg_new(NULL, filterx_literal_new(filterx_string_new("foo", -1))));
   GError *error = NULL;
   FilterXExpr *func = filterx_function_unset_new(filterx_function_args_new(args, NULL), &error);
-  cr_assert_null(func);
-  cr_assert_not_null(error);
+  cr_assert(zero(ptr, func));
+  cr_assert(not(zero(ptr, error)));
   g_error_free(error);
 }
 

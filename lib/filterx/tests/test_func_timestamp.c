@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/filterx-lib.h"
 
 #include "filterx/func-timestamp.h"
@@ -42,7 +43,7 @@ _create_set_timestamp(gint64 sec)
 
   GError *err = NULL;
   FilterXExpr *func = filterx_function_set_timestamp_new(filterx_function_args_new(args, NULL), &err);
-  cr_assert_null(err);
+  cr_assert(zero(ptr, err));
   return func;
 }
 
@@ -73,8 +74,8 @@ Test(filterx_func_set_timestamp, writes_unprotected_message_in_place)
   FilterXExpr *func = _create_set_timestamp(946684800);
 
   LogMessage *result = _eval_on_message(func, log_msg_ref(msg));
-  cr_assert_eq(result, msg);
-  cr_assert_eq(msg->timestamps[LM_TS_STAMP].ut_sec, 946684800);
+  cr_assert(eq(ptr, result, msg));
+  cr_assert(eq(i64, msg->timestamps[LM_TS_STAMP].ut_sec, 946684800));
 
   log_msg_unref(result);
   log_msg_unref(msg);
@@ -85,14 +86,14 @@ Test(filterx_func_set_timestamp, clones_write_protected_message)
 {
   LogMessage *msg = log_msg_new_empty();
   gint64 original_sec = msg->timestamps[LM_TS_STAMP].ut_sec;
-  cr_assert_neq(original_sec, 946684800);
+  cr_assert(ne(i64, original_sec, 946684800));
   log_msg_write_protect(msg);
   FilterXExpr *func = _create_set_timestamp(946684800);
 
   LogMessage *result = _eval_on_message(func, log_msg_ref(msg));
-  cr_assert_neq(result, msg);
-  cr_assert_eq(result->timestamps[LM_TS_STAMP].ut_sec, 946684800);
-  cr_assert_eq(msg->timestamps[LM_TS_STAMP].ut_sec, original_sec);
+  cr_assert(ne(ptr, result, msg));
+  cr_assert(eq(i64, result->timestamps[LM_TS_STAMP].ut_sec, 946684800));
+  cr_assert(eq(i64, msg->timestamps[LM_TS_STAMP].ut_sec, original_sec));
 
   log_msg_unref(result);
   log_msg_unref(msg);

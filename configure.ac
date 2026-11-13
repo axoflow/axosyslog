@@ -669,6 +669,8 @@ dnl reported at all, causing it to be unusable for detection purposes.
 
 AX_CHECK_COMPILE_FLAG(-Winitializer-overrides, CFLAGS_W_NO_INITIALIZER_OVERRIDES="-Wno-initializer-overrides",,"-Werror")
 AX_CHECK_COMPILE_FLAG(-Wold-style-declaration, CFLAGS_W_OLD_STYLE_DECLARATION="-Wold-style-declaration",,"-Werror")
+AX_CHECK_COMPILE_FLAG(-Wdiscarded-qualifiers, CFLAGS_W_NO_DISCARDED_QUALIFIERS="-Wno-discarded-qualifiers",,"-Werror")
+AX_CHECK_COMPILE_FLAG(-Wincompatible-pointer-types-discards-qualifiers, CFLAGS_W_NO_INCOMPATIBLE_POINTER_TYPES_DISCARDS_QUALIFIERS="-Wno-incompatible-pointer-types-discards-qualifiers",,"-Werror")
 
 AC_SUBST(CFLAGS_W_NO_INITIALIZER_OVERRIDES)
 AC_SUBST(CFLAGS_W_OLD_STYLE_DECLARATION)
@@ -1251,11 +1253,15 @@ PKG_CHECK_MODULES(CRITERION, criterion >= $CRITERION_MIN_VERSION,
   [with_criterion="system"],
   [AC_MSG_WARN([pkg-config was not able to find Criterion >= $CRITERION_MIN_VERSION]); with_criterion="no"])
 
+CRITERION_COMPAT_CFLAGS=""
 if test "$with_criterion" != "no"; then
    enable_tests=yes
+   PKG_CHECK_EXISTS([criterion >= 2.5.0], [],
+     [CRITERION_COMPAT_CFLAGS="-Wno-shadow -Wno-float-equal -Wno-unused-value $CFLAGS_W_NO_DISCARDED_QUALIFIERS $CFLAGS_W_NO_INCOMPATIBLE_POINTER_TYPES_DISCARDS_QUALIFIERS"])
 else
   enable_tests=no
 fi
+AC_SUBST(CRITERION_COMPAT_CFLAGS)
 
 dnl ***************************************************************************
 dnl ivykis headers/libraries

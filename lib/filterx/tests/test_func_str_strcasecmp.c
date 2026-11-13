@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/filterx-lib.h"
 
 #include "filterx/func-str.h"
@@ -40,7 +41,7 @@ _create_optimized_strcasecmp_expr(const gchar *a, const gchar *b)
 
   GError *error = NULL;
   FilterXExpr *fn = filterx_function_strcasecmp_new(filterx_function_args_new(args, NULL), &error);
-  cr_assert_null(error);
+  cr_assert(zero(ptr, error));
 
   return filterx_expr_optimize(fn);
 }
@@ -52,7 +53,7 @@ _assert_strcasecmp_folded(const gchar *a, const gchar *b, const gchar *expected)
   cr_assert(filterx_expr_is_literal(fn));
 
   FilterXObject *res = init_and_eval_expr(fn);
-  cr_assert_not_null(res);
+  cr_assert(not(zero(ptr, res)));
   assert_object_repr_equals(res, expected);
 
   filterx_object_unref(res);

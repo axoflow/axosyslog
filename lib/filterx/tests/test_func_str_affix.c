@@ -22,6 +22,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/filterx-lib.h"
 
 #include "filterx/func-str.h"
@@ -44,7 +45,7 @@ _create_optimized_affix_expr(FilterXAffixCtor ctor, const gchar *haystack, Filte
 
   GError *error = NULL;
   FilterXExpr *fn = ctor(filterx_function_args_new(args, NULL), &error);
-  cr_assert_null(error);
+  cr_assert(zero(ptr, error));
 
   return filterx_expr_optimize(fn);
 }
@@ -53,10 +54,10 @@ static void
 _assert_affix_not_folded(FilterXAffixCtor ctor, const gchar *haystack, FilterXExpr *needle, const gchar *expected)
 {
   FilterXExpr *fn = _create_optimized_affix_expr(ctor, haystack, needle);
-  cr_assert_not(filterx_expr_is_literal(fn), "a non-literal needle must not be folded at optimize time");
+  cr_assert(not(filterx_expr_is_literal(fn)), "a non-literal needle must not be folded at optimize time");
 
   FilterXObject *res = init_and_eval_expr(fn);
-  cr_assert_not_null(res);
+  cr_assert(not(zero(ptr, res)));
   assert_object_repr_equals(res, expected);
 
   filterx_object_unref(res);
@@ -101,7 +102,7 @@ Test(filterx_func_affix, literal_haystack_and_needle_is_folded)
   cr_assert(filterx_expr_is_literal(fn));
 
   FilterXObject *res = init_and_eval_expr(fn);
-  cr_assert_not_null(res);
+  cr_assert(not(zero(ptr, res)));
   assert_object_repr_equals(res, "true");
 
   filterx_object_unref(res);

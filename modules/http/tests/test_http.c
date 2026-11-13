@@ -21,6 +21,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/parameterized.h"
 
 #include "logmsg/logmsg.h"
@@ -138,10 +139,10 @@ StaticParameterizedTest(struct http_action_test_params *param, params, http, htt
   const gchar *url = "http://dummy.url";
 
   LogThreadedResult res =  default_map_http_status_to_worker_status(worker, url, param->http_code);
-  cr_assert_eq(res, param->expected_value,
-               "code: %ld, explanation: %s, actual: %s, expected: %s",
-               param->http_code, param->explanation, log_threaded_result_to_str(res),
-               log_threaded_result_to_str(param->expected_value));
+  cr_assert(eq(int, res, param->expected_value),
+            "code: %ld, explanation: %s, actual: %s, expected: %s",
+            param->http_code, param->explanation, log_threaded_result_to_str(res),
+            log_threaded_result_to_str(param->expected_value));
 
   log_threaded_dest_worker_deinit(&worker->super);
   log_threaded_dest_worker_free(&worker->super);
@@ -163,13 +164,13 @@ Test(http, set_urls)
   g_list_free(urls);
 
   HTTPLoadBalancer *lb = driver->load_balancer;
-  cr_assert_eq(lb->num_targets, 5);
+  cr_assert(eq(int, lb->num_targets, 5));
 
-  cr_assert_str_eq(lb->targets[0].url_template->template_str, "http://foo.bar");
-  cr_assert_str_eq(lb->targets[1].url_template->template_str, "http://bar.baz");
-  cr_assert_str_eq(lb->targets[2].url_template->template_str, "http://almafa.kortefa");
-  cr_assert_str_eq(lb->targets[3].url_template->template_str, "http://foo.bar/${FOOBAR}");
-  cr_assert_str_eq(lb->targets[4].url_template->template_str, "http://foo.bar/$(echo ${BARBAZ})");
+  cr_assert(eq(str, lb->targets[0].url_template->template_str, "http://foo.bar"));
+  cr_assert(eq(str, lb->targets[1].url_template->template_str, "http://bar.baz"));
+  cr_assert(eq(str, lb->targets[2].url_template->template_str, "http://almafa.kortefa"));
+  cr_assert(eq(str, lb->targets[3].url_template->template_str, "http://foo.bar/${FOOBAR}"));
+  cr_assert(eq(str, lb->targets[4].url_template->template_str, "http://foo.bar/$(echo ${BARBAZ})"));
 
   log_pipe_unref(&driver->super.super.super.super);
 }
@@ -182,10 +183,10 @@ _test_set_urls_fail(HTTPDestinationDriver *driver, gchar *url, const gchar *expe
   urls = g_list_append(urls, url);
 
   GError *error = NULL;
-  cr_assert_not(http_dd_set_urls(&driver->super.super.super, urls, &error));
+  cr_assert(not(http_dd_set_urls(&driver->super.super.super, urls, &error)));
   g_list_free(urls);
 
-  cr_assert_str_eq(error->message, expected_error_msg);
+  cr_assert(eq(str, error->message, expected_error_msg));
   g_error_free(error);
 }
 

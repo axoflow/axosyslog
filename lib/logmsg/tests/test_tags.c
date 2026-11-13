@@ -23,6 +23,7 @@
  */
 
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include <criterion/logging.h>
 #include <criterion/parameterized.h>
 
@@ -62,7 +63,7 @@ Test(tags, test_tags)
           first_tag_id = id;
         cr_log_info("%s tag %s %d\n", check ? "Checking" : "Adding", name, id);
 
-        cr_assert_eq(id, first_tag_id + i, "Invalid tag id %d %s", id, name);
+        cr_assert(eq(uint, id, first_tag_id + i), "Invalid tag id %d %s", id, name);
 
         g_free(name);
       }
@@ -75,8 +76,8 @@ Test(tags, test_tags)
       tag_name = log_tags_get_by_id(id);
       cr_log_info("Looking up tag by id %d %s(%s)\n", id, tag_name, name);
 
-      cr_assert_not_null(tag_name, "Error looking up tag by id %d %s\n", id, name);
-      cr_assert_str_eq(name, tag_name, "Bad tag name for id %d %s (%s)\n", id, tag_name, name);
+      cr_assert(not(zero(ptr, tag_name)), "Error looking up tag by id %d %s\n", id, name);
+      cr_assert(eq(str, name, tag_name), "Bad tag name for id %d %s (%s)\n", id, tag_name, name);
 
       g_free(name);
     }
@@ -87,7 +88,7 @@ Test(tags, test_tags)
 
       cr_log_info("Looking up tag by invalid id %d\n", id);
       tag_name = log_tags_get_by_id(id);
-      cr_assert_not(tag_name, "Found tag name for invalid id %d %s\n", id, tag_name);
+      cr_assert(zero(ptr, tag_name), "Found tag name for invalid id %d %s\n", id, tag_name);
     }
 }
 
@@ -112,7 +113,8 @@ Test(tags, test_msg_tags)
             log_msg_clear_tag_by_name(msg, name);
           cr_log_info("%s tag %d %s\n", set ? "Setting" : "Clearing", id, name);
 
-          cr_assert_not(set ^ log_msg_is_tag_by_id(msg, id), "Tag %s is %sset now (by id) %d", name, set ? "not " : "", id);
+          cr_assert(zero(int, set ^ log_msg_is_tag_by_id(msg, id)),
+                    "Tag %s is %sset now (by id) %d", name, set ? "not " : "", id);
 
           g_free(name);
         }
@@ -134,10 +136,11 @@ Test(tags, test_msg_tags)
 
           cr_log_info("%s tag %d %s\n", set ? "Setting" : "Clearing", id, name);
 
-          cr_assert_not(set ^ log_msg_is_tag_by_id(msg, id), "Tag is %sset now (by id) %d\n", set ? "not " : "", id);
+          cr_assert(zero(int, set ^ log_msg_is_tag_by_id(msg, id)),
+                    "Tag is %sset now (by id) %d\n", set ? "not " : "", id);
 
-          cr_assert_not(set && id < sizeof(gulong) * 8
-                        && msg->num_tags != 0, "Small IDs are set which should be stored in-line but num_tags is non-zero");
+          cr_assert(not(set && id < sizeof(gulong) * 8 && msg->num_tags != 0),
+                    "Small IDs are set which should be stored in-line but num_tags is non-zero");
 
           g_free(name);
         }
@@ -172,7 +175,7 @@ Test(tags, test_filters_true)
 
       log_msg_set_tag_by_id(msg, id);
 
-      cr_assert(((i % 3 == 1) ^ filter_expr_eval(f, msg)), "Failed to match message by tag %d\n", id);
+      cr_assert(ne(int, (i % 3 == 1) ^ filter_expr_eval(f, msg), 0), "Failed to match message by tag %d\n", id);
 
       cr_log_info("Testing filter, message no tag\n");
 
@@ -211,13 +214,13 @@ Test(tags, test_filters_false)
 
       log_msg_set_tag_by_id(msg, id);
 
-      cr_assert_not(((i % 3 == 1) ^ filter_expr_eval(f, msg)), "Failed to match message by tag %d\n", id);
+      cr_assert(zero(int, (i % 3 == 1) ^ filter_expr_eval(f, msg)), "Failed to match message by tag %d\n", id);
 
       cr_log_info("Testing filter, message no tag\n");
 
       log_msg_clear_tag_by_id(msg, id);
 
-      cr_assert_not(filter_expr_eval(f, msg), "Failed to match message with no tags\n");
+      cr_assert(not(filter_expr_eval(f, msg)), "Failed to match message with no tags\n");
     }
 
   filter_expr_unref(f);
