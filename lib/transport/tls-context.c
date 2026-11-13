@@ -599,6 +599,12 @@ tls_context_setup_context(TLSContext *self)
   if (self->crl_dir)
     verify_flags |= X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL;
 
+  if (self->ssl_options & TSO_PARTIAL_CHAIN)
+    {
+      verify_flags |= X509_V_FLAG_PARTIAL_CHAIN;
+      X509_STORE_set_flags(SSL_CTX_get_cert_store(self->ssl_ctx), X509_V_FLAG_PARTIAL_CHAIN);
+    }
+
   X509_VERIFY_PARAM_set_flags(SSL_CTX_get0_param(self->ssl_ctx), verify_flags);
 
   if (self->mode == TM_SERVER)
@@ -750,6 +756,8 @@ tls_context_set_ssl_options_by_name(TLSContext *self, GList *options)
         self->ssl_options |= TSO_IGNORE_HOSTNAME_MISMATCH;
       else if (strcasecmp(l->data, "ignore-validity-period") == 0 || strcasecmp(l->data, "ignore_validity_period") == 0)
         self->ssl_options |= TSO_IGNORE_VALIDITY_PERIOD;
+      else if (strcasecmp(l->data, "partial-chain") == 0 || strcasecmp(l->data, "partial_chain") == 0)
+        self->ssl_options |= TSO_PARTIAL_CHAIN;
       else
         return FALSE;
     }
@@ -981,6 +989,28 @@ tls_context_set_sni(TLSContext *self, const gchar *sni)
   self->sni = g_strdup(sni);
 }
 
+const gchar *
+tls_context_get_sni(TLSContext *self)
+{
+  if (self->sni && self->server_name)
+    return self->server_name;
+
+  return self->sni;
+}
+
+void
+tls_context_set_server_name(TLSContext *self, const gchar *server_name)
+{
+  g_free(self->server_name);
+  self->server_name = (server_name && server_name[0]) ? g_strdup(server_name) : NULL;
+}
+
+const gchar *
+tls_context_get_server_name(TLSContext *self)
+{
+  return self->server_name;
+}
+
 void
 tls_context_set_ocsp_stapling_verify(TLSContext *self, gboolean ocsp_stapling_verify)
 {
@@ -1038,6 +1068,7 @@ _tls_context_free(TLSContext *self)
   g_free(self->client_sigalgs);
   g_free(self->ecdh_curve_list);
   g_free(self->sni);
+  g_free(self->server_name);
   g_free(self->keylog_file_path);
 
   if(self->keylog_file)
