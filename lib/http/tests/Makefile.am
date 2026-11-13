@@ -1,4 +1,5 @@
 lib_http_tests_TESTS = \
+  lib/http/tests/test_http-ack-state \
   lib/http/tests/test_http-message \
   lib/http/tests/test_http-parser \
   lib/http/tests/test_http-source
@@ -6,6 +7,9 @@ lib_http_tests_TESTS = \
 EXTRA_DIST += lib/http/tests/CMakeLists.txt
 
 check_PROGRAMS += ${lib_http_tests_TESTS}
+
+lib_http_tests_test_http_ack_state_CFLAGS = $(TEST_CFLAGS)
+lib_http_tests_test_http_ack_state_LDADD = $(TEST_LDADD)
 
 lib_http_tests_test_http_message_CFLAGS = $(TEST_CFLAGS)
 lib_http_tests_test_http_message_LDADD = $(TEST_LDADD)
