@@ -1,0 +1,1 @@
+{ n = len("abc"); j = json({"k": 1}); i = string(42); u = upper("hi"); }

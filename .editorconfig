@@ -14,3 +14,7 @@ max_line_length = 120
 
 [news/*.md]
 max_line_length = 120
+
+# Fuzz seeds are byte-exact inputs.
+[lib/filterx/tests/fuzz/corpus/**]
+insert_final_newline = false
