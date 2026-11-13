@@ -370,8 +370,7 @@ _log_dest_driver_unregister_rejected_counter(LogDestDriver *self)
 void
 log_dest_driver_reject_message(LogDestDriver *self, LogMessage *msg, const LogPathOptions *path_options)
 {
-  if (path_options->matched)
-    *path_options->matched = FALSE;
+  log_path_options_mark_unmatched(path_options);
   stats_counter_inc(self->rejected_messages);
   log_msg_drop(msg, path_options, AT_PROCESSED);
 }
