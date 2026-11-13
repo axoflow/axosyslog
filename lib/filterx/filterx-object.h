@@ -25,6 +25,7 @@
 #include "logmsg/logmsg.h"
 #include "compat/json.h"
 #include "atomic.h"
+#include "filterx/filterx-allocator.h"
 
 typedef struct _FilterXType FilterXType;
 typedef struct _FilterXObject FilterXObject;
@@ -48,6 +49,10 @@ struct _FilterXType
   FilterXObject *(*clone)(FilterXObject *self);
   FilterXObject *(*clone_container)(FilterXObject *self, FilterXObject *container, FilterXObject *child_of_interest,
                                     gboolean dup);
+  /* replace the message backed leaves below @self with copies, in place,
+   * recursing through the children; the containers and the xref implement
+   * it, see filterx_object_make_direct() */
+  void (*make_direct)(FilterXObject *self);
   gboolean (*truthy)(FilterXObject *self);
 
   /* attribute access */
@@ -192,7 +197,9 @@ struct _FilterXObject
    *
    *     is_dirty          -- marks that the object was changed (mutable objects only)
    *
-   *     allocator_used    -- object was allocated using the FilterX allocator
+   *     allocator_id      -- the FilterXAllocator the object was allocated
+   *                          from (FILTERX_ALLOCATOR_ID_*); 0 (heap) if it was
+   *                          g_malloc()ed, or lives on the stack
    *
    *     floating_ref      -- object is a FilterXRef that is floating
    *
@@ -207,8 +214,9 @@ struct _FilterXObject
    *     flags             -- to be used by descendant types
    *
    */
-  guint weak_referenced:1, is_dirty:1, allocator_used:1, floating_ref:1, early_allocation:1, early_allocation_checked:1,
-        is_nvtable_backed:1, is_hashable:1, flags:5;
+  /* "0 +": astyle takes name:MACRO for a label and breaks the line */
+  guint weak_referenced:1, is_dirty:1, allocator_id:0 + FILTERX_ALLOCATOR_ID_BITS, floating_ref:1,
+        early_allocation:1, early_allocation_checked:1, is_nvtable_backed:1, is_hashable:1, flags:5;
   volatile guint32 hash;
   FilterXType *type;
 };
@@ -309,16 +317,48 @@ filterx_object_is_preserved(FilterXObject *self)
   return self->ref_cnt >= FILTERX_OBJECT_REFCOUNT_PRESERVED;
 }
 
+static inline gboolean
+filterx_object_is_hibernated(FilterXObject *self)
+{
+  return self->ref_cnt == FILTERX_OBJECT_REFCOUNT_HIBERNATED;
+}
+
+static inline gboolean
+filterx_object_is_frozen(FilterXObject *self)
+{
+  return self->ref_cnt == FILTERX_OBJECT_REFCOUNT_FROZEN;
+}
+
+static inline gboolean
+filterx_object_is_refcounted(FilterXObject *self)
+{
+  return self->ref_cnt < FILTERX_OBJECT_REFCOUNT_BARRIER;
+}
+
+static inline gboolean
+filterx_object_is_stack_allocated(FilterXObject *self)
+{
+  return self->ref_cnt == FILTERX_OBJECT_REFCOUNT_STACK;
+}
+
 /* NOTE: these two macros actually require the inclusion of filterx-eval.h
  * which works in an implementation file, but not here */
 
 #define filterx_new_object(t) ((t *) filterx_eval_malloc_object(sizeof(t), sizeof(t)))
 #define filterx_new_object_with_extra(t, extra) ((t *) filterx_eval_malloc_object(sizeof(t), sizeof(t) + extra))
 
+/* TRUE if @self lives in a FilterXAllocator arena (whichever one): its memory
+ * is released with that arena, not by its reference count */
+static inline gboolean
+filterx_object_is_allocator_resident(FilterXObject *self)
+{
+  return self->allocator_id != FILTERX_ALLOCATOR_ID_HEAP;
+}
+
 static inline void
 filterx_free_object(FilterXObject *object)
 {
-  if (object->allocator_used)
+  if (filterx_object_is_allocator_resident(object))
     {
       /* allocated using the allocator, do nothing */
       return;
@@ -879,12 +919,97 @@ filterx_object_cow_fork(FilterXObject **pself)
   return filterx_object_cow_fork2(*pself, pself);
 }
 
-/* */
+/* TRUE if @self borrows its bytes from a LogMessage's NVTable, or is a
+ * container holding something that does; for an xref, the value behind it
+ * is what counts.  Such an object is only valid as long as the message is,
+ * see filterx_object_note_child_stored() for how the mark spreads. */
+static inline gboolean
+filterx_object_borrows_from_message(FilterXObject *self)
+{
+  return self->is_nvtable_backed || filterx_ref_unwrap_ro(self)->is_nvtable_backed;
+}
+
+/* is_nvtable_backed is transitive: a container holding a message backed
+ * value borrows from the message just as much.  Every store marks the
+ * immediate container, the xref mutators carry the mark up the chain (see
+ * _filterx_ref_propagate_nvtable_backed()) and nothing clears it. */
+static inline void
+filterx_object_note_child_stored(FilterXObject *container, FilterXObject *child)
+{
+  if (container && filterx_object_borrows_from_message(child))
+    container->is_nvtable_backed = TRUE;
+}
+
+/*
+ * Stop @self from borrowing bytes from the message: a string or a
+ * message_value is replaced by its copy, a container with a make_direct
+ * method replaces its message backed children in place.  An xref is always
+ * kept, so the parent_container links pointing at it stay valid; the value
+ * behind it is kept too unless its type has no in-place path (see
+ * _filterx_ref_make_direct()).  The mark stays on the container (it is
+ * never cleared, see above): a later call walks it again and finds nothing
+ * left to copy.  Clearing it would open a hole: another xref on a shared
+ * child can still carry the mark, and the upward propagation stops at the
+ * first marked xref, so a cleared ancestor would stay unmarked while a new
+ * message backed leaf lands below it.
+ */
+static inline void
+filterx_object_make_direct(FilterXObject **pself)
+{
+  FilterXObject *self = *pself;
+
+  if (!self || !filterx_object_borrows_from_message(self))
+    return;
+
+  if (self->type->make_direct)
+    {
+      self->type->make_direct(self);
+      return;
+    }
+
+  *pself = filterx_object_dup(self);
+  filterx_object_unref(self);
+}
+
+/*
+ * A container's children must live where the container does, or outlive it:
+ * in the same arena, on the heap, or preserved.  Anything else dangles as
+ * soon as the child's arena is emptied while the container is still around
+ * (a context snapshot, an aggregate() group, a persisted value).  That is a
+ * contract for the code doing the store: allocate the child in the right
+ * place -- switch the allocator (filterx_eval_switch_allocator()) or copy it
+ * -- before storing it.  Checked in debug builds, at every store site.
+ */
+static inline void
+filterx_object_assert_child_storable(FilterXObject *container, FilterXObject *child)
+{
+#if SYSLOG_NG_ENABLE_DEBUG
+  if (!container)
+    return;
+
+  FilterXObject *value = filterx_ref_unwrap_ro(child);
+  g_assert(("a container must not point at a child from another allocator" &&
+            (!filterx_object_is_allocator_resident(child) || child->allocator_id == container->allocator_id)));
+  g_assert(("a container must not point at a child's value from another allocator" &&
+            (!filterx_object_is_allocator_resident(value) || value->allocator_id == container->allocator_id)));
+#endif
+}
+
+/*
+ * Store @pself into @container: prepare it for copy-on-write and hand back
+ * the (grounded) reference the container is to keep.  @container is the
+ * object that will hold the value; NULL when the holder is not an object
+ * (e.g.  a variable slot), in which case nothing is checked.
+ */
 static inline FilterXObject *
-filterx_object_cow_store(FilterXObject **pself)
+filterx_object_cow_store(FilterXObject *container, FilterXObject **pself)
 {
   filterx_object_cow_prepare(pself);
-  return filterx_ref_ground(filterx_object_ref(*pself));
+  filterx_object_note_child_stored(container, *pself);
+
+  FilterXObject *stored = filterx_ref_ground(filterx_object_ref(*pself));
+  filterx_object_assert_child_storable(container, stored);
+  return stored;
 }
 
 #endif

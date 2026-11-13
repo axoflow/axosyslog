@@ -159,15 +159,23 @@ _set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject **new_value)
       return TRUE;
     }
 
+  /* the label borrows key_str/value_str from the objects kept in
+   * self->objects, so those are children of ours, the same rule applies as
+   * for any container (see filterx_object_assert_child_storable()) */
+  FilterXObject *stored_key = filterx_object_ref(key);
+  filterx_object_assert_child_storable(s, stored_key);
+  filterx_object_assert_child_storable(s, value);
+
   g_array_set_size(self->labels, self->labels->len + 1);
   StatsClusterLabel *label = &g_array_index(self->labels, StatsClusterLabel, self->labels->len-1);
   *label = stats_cluster_label_len(key_str, key_len, value_str, value_len);
 
-  /* take a ref to our borrowed key argument */
-  g_ptr_array_add(self->objects, filterx_object_ref(key));
+  g_ptr_array_add(self->objects, stored_key);
+  filterx_object_note_child_stored(s, stored_key);
 
   /* sink the ref we got from _obj_to_string */
   g_ptr_array_add(self->objects, value);
+  filterx_object_note_child_stored(s, value);
 
   self->sorted = FALSE;
   self->deduped = FALSE;
@@ -248,6 +256,13 @@ _iter(FilterXObject *s, FilterXObjectIterFunc func, gpointer user_data)
   return TRUE;
 }
 
+/* A real copy.  The labels borrow their bytes from the objects in
+ * self->objects, so sharing those (as a shallow copy would) would leave the
+ * clone depending on the original's storage: the allocator, the message,
+ * whatever the originals happened to borrow from.  Re-create every name and
+ * value as a string of the clone's own instead -- filterx_object_dup() is
+ * expected to hand back an independent object, that is what the retain
+ * machinery builds on. */
 static FilterXObject *
 _clone(FilterXObject *s)
 {
@@ -262,12 +277,15 @@ _clone(FilterXObject *s)
       StatsClusterLabel *label = &g_array_index(self->labels, StatsClusterLabel, i);
       StatsClusterLabel *cloned_label = &g_array_index(cloned->labels, StatsClusterLabel, i);
 
-      *cloned_label = *label;
-    }
+      FilterXObject *name = filterx_string_new(label->name, label->name_len);
+      FilterXObject *value = filterx_string_new(label->value, label->value_len);
+      gsize name_len, value_len;
+      const gchar *name_str = filterx_string_get_value_ref(name, &name_len);
+      const gchar *value_str = filterx_string_get_value_ref(value, &value_len);
 
-  for (guint i = 0; i < self->objects->len; i++)
-    {
-      g_ptr_array_add(cloned->objects, filterx_object_ref(g_ptr_array_index(self->objects, i)));
+      *cloned_label = stats_cluster_label_len(name_str, name_len, value_str, value_len);
+      g_ptr_array_add(cloned->objects, name);
+      g_ptr_array_add(cloned->objects, value);
     }
 
   return &cloned->super.super;

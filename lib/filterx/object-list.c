@@ -147,7 +147,7 @@ _filterx_list_set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject 
   FilterXObject **slot = (FilterXObject **) &g_ptr_array_index(self->array, normalized_index);
   filterx_ref_unset_parent_container(*slot);
   filterx_object_unref(*slot);
-  *slot = filterx_object_cow_store(new_value);
+  *slot = filterx_object_cow_store(s, new_value);
   return TRUE;
 }
 
@@ -258,7 +258,25 @@ _filterx_list_clone_container(FilterXObject *s, FilterXObject *container, Filter
       g_ptr_array_add(clone->array, el);
     }
   g_assert(child_found || child_of_interest == NULL);
+
+  /* a shallow (copy-on-write) clone shares the children, so it borrows from
+   * the message just like the original; a deep one copied them */
+  if (!dup)
+    clone->super.super.is_nvtable_backed = s->is_nvtable_backed;
   return &clone->super.super;
+}
+
+static void
+_filterx_list_make_direct(FilterXObject *s)
+{
+  FilterXListObject *self = (FilterXListObject *) s;
+
+  for (gsize i = 0; i < self->array->len; i++)
+    {
+      FilterXObject **slot = (FilterXObject **) &g_ptr_array_index(self->array, i);
+      filterx_object_make_direct(slot);
+      filterx_object_assert_child_storable(s, *slot);
+    }
 }
 
 static gboolean
@@ -422,6 +440,7 @@ FILTERX_DEFINE_TYPE(list, FILTERX_TYPE_NAME(sequence),
                     .repr = _filterx_list_repr,
                     .clone = _filterx_list_clone,
                     .clone_container = _filterx_list_clone_container,
+                    .make_direct = _filterx_list_make_direct,
                     .get_subscript = _filterx_list_get_subscript,
                     .set_subscript = _filterx_list_set_subscript,
                     .is_key_set = _filterx_list_is_key_set,
