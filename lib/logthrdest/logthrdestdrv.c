@@ -25,6 +25,7 @@
 #include "stats/stats-cluster-single.h"
 #include "stats/aggregator/stats-aggregator-registry.h"
 #include "logthrdestdrv.h"
+#include "logmsg/logmsg-free-queue.h"
 #include "seqnum.h"
 #include "scratch-buffers.h"
 #include "template/eval.h"
@@ -860,6 +861,9 @@ _worker_thread_init(MainLoopThreadedWorker *s)
   iv_event_register(&self->wake_up_event);
   iv_event_register(&self->shutdown_event);
 
+  /* hand the messages the worker drops back to their allocating threads */
+  log_msg_free_queue_thread_start();
+
   return log_threaded_dest_worker_init(self);
 }
 
@@ -869,6 +873,7 @@ _worker_thread_deinit(MainLoopThreadedWorker *s)
   LogThreadedDestWorker *self = (LogThreadedDestWorker *) s->data;
 
   log_threaded_dest_worker_deinit(self);
+  log_msg_free_queue_thread_stop();
 
   iv_event_unregister(&self->wake_up_event);
   iv_event_unregister(&self->shutdown_event);
