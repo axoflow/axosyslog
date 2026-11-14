@@ -302,6 +302,10 @@ log_msg_free_queue_push(LogMessage *msg)
   if (origin_thread_id == 0 || !queueing || origin_thread_id == current_id)
     return FALSE;
 
+  /* freeing a clone unrefs its original, which must not happen while a batch is being freed */
+  if (msg->original)
+    return FALSE;
+
   LogMessageFreeBatch *batch = last_batch;
 
   if (!batch || batch->origin_thread_id != origin_thread_id)
