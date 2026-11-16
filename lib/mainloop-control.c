@@ -281,11 +281,28 @@ exit:
   control_connection_send_reply(cc, result);
 }
 
+static const gchar notice[] =
+  "AxoSyslog " SYSLOG_NG_VERSION "\n"
+  "Copyright (c) 2023-2026 Axoflow\n"
+  "Copyright (c) 2018-2026 One Identity\n"
+  "Copyright (c) 2002-2015 Balabit\n"
+  "Copyright (c) 1998-2026 Balázs Scheidler\n"
+  "Copyright (c) 1998-2026 syslog-ng and axosyslog contributors\n"
+  "\n"
+  "AxoSyslog is free software: you can redistribute it and/or modify it\n"
+  "under the terms of the GNU General Public License as published by the Free\n"
+  "Software Foundation, either version 3 of the License, or (at your option)\n"
+  "any later version (SPDX: GPL-3.0-or-later). It comes with ABSOLUTELY NO\n"
+  "WARRANTY, to the extent permitted by law; see the GNU General Public License\n"
+  "for details: https://www.gnu.org/licenses/gpl-3.0.html\n";
+
 static void
 show_ose_license_info(ControlConnection *cc, GString *command, gpointer user_data, gboolean *cancelled)
 {
-  control_connection_send_reply(cc,
-                                g_string_new("OK You are using the Open Source Edition of syslog-ng."));
+  GString *reply = g_string_new("OK ");
+
+  g_string_append(reply, notice);
+  control_connection_send_reply(cc, reply);
 }
 
 static inline void
