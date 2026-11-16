@@ -79,7 +79,7 @@ jobs:
       - name: Prepare
         env:
           PLATFORM: ${{ matrix.platform }}
-          REBUILD_DEPS: main/musl main/jemalloc main/json-c main/glib community/grpc main/python3
+          REBUILD_DEPS: main/musl main/jemalloc main/json-c main/glib main/python3
         run: |
           echo "PLATFORM_PAIR=${PLATFORM//\//-}" >> $GITHUB_ENV
           if [ $PLATFORM = "linux/arm/v7" ]; then

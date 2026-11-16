@@ -1,0 +1,245 @@
+# Contributor: Duncan Bellamy <dunk@denkimushi.com>
+# Maintainer: Duncan Bellamy <dunk@denkimushi.com>
+pkgname=apache-arrow
+pkgver=23.0.1
+pkgrel=3
+_dotver=${pkgver//./}
+pkgdesc="multi-language toolbox for accelerated data interchange and in-memory processing"
+url="https://arrow.apache.org/"
+arch="all"
+license="Apache-2.0"
+options="!check"
+_py3depends="
+	cython
+	py3-gpep517
+	py3-numpy-dev
+	py3-setuptools
+	py3-setuptools_scm
+	py3-typing-extensions
+	py3-wheel
+	python3-dev
+	"
+makedepends="
+	abseil-cpp-dev
+	apache-orc-dev
+	boost-dev
+	brotli-dev
+	bzip2-dev
+	cmake
+	glog-dev
+	grpc-dev
+	gtest-dev
+	lz4-dev
+	openssl-dev
+	protobuf-dev
+	rapidjson-dev
+	re2-dev
+	samurai
+	snappy-dev
+	thrift-dev
+	utf8proc-dev
+	xsimd-dev
+	zlib-dev
+	zstd-dev
+	$_py3depends
+	"
+_py3checkdepends="
+	py3-cffi
+	py3-hypothesis
+	py3-pandas
+	py3-pytest
+	py3-pytest-xdist
+	"
+checkdepends="bash grep gzip perl python3 tzdata $_py3checkdepends"
+somask="libarrow_python.so.$_dotver libarrow_python_flight.so.$_dotver libarrow_python_parquet_encryption.so.$_dotver"
+subpackages="
+	$pkgname-dev
+	$pkgname-doc
+	$pkgname-gdb
+	py3-pyarrow-pyc
+	py3-pyarrow:python_arrow
+	libarrow:lib
+	libarrow_acero:lib
+	libarrow_dataset:lib
+	libarrow_flight:lib
+	libparquet:lib
+	"
+_arrowsha="8da05fdd62a7243ef77aa9757acb62e0586a4d0c"
+_parquetsha="a3d96a65e11e2bbca7d22a894e8313ede90a33a3"
+# cpp/thirdparty/versions.txt
+_mimalloc_ver=3.1.5
+source="https://archive.apache.org/dist/arrow/arrow-$pkgver/apache-arrow-$pkgver.tar.gz
+	$pkgname-arrow-testing-$_arrowsha.tar.gz::https://github.com/apache/arrow-testing/archive/$_arrowsha.tar.gz
+	$pkgname-parquet-testing-$_parquetsha.tar.gz::https://github.com/apache/parquet-testing/archive/$_parquetsha.tar.gz
+	mimalloc-$_mimalloc_ver.tar.gz::https://github.com/microsoft/mimalloc/archive/v$_mimalloc_ver.tar.gz
+	"
+
+case "$CARCH" in
+armhf|armv7|s390x|x86)
+	# s390x has endian problems in tests
+	# 32-bit systems can run out of VA space while running tests
+	options="!check"
+	;;
+esac
+
+prepare() {
+	default_prepare
+	patch -d $srcdir/mimalloc-$_mimalloc_ver -p1 -i "$builddir/cpp/cmake_modules/mimalloc-1138.patch"
+}
+
+build() {
+	if [ "$CBUILD" != "$CHOST" ]; then
+		local cmake_crossopts="-DCMAKE_SYSTEM_NAME=Linux -DCMAKE_HOST_SYSTEM_NAME=Linux"
+	fi
+	local _tests="$(want_check && echo ON || echo OFF)"
+	case "$CARCH" in
+	aarch64)
+		local _simd="MAX"
+		local _comp_simd="NONE" ;;
+	x86|x86_64)
+		local _simd="MAX"
+		local _comp_simd="SSE4_2" ;;
+	arm*)
+		local _cpu="-DARROW_CPU_FLAG=aarch32"
+		local _simd="NONE"
+		local _comp_simd="NONE" ;;
+	ppc64le)
+		_tests=OFF
+		local _simd="MAX"
+		local _comp_simd="NONE" ;;
+	*)
+		local _simd="NONE"
+		local _comp_simd="NONE" ;;
+	esac
+
+	export CFLAGS="$CFLAGS -O2 -DNDEBUG"
+	export CXXFLAGS="$CXXFLAGS -O2 -DNDEBUG"
+
+	export ARROW_MIMALLOC_URL="$srcdir/mimalloc-$_mimalloc_ver"
+	cmake -B build-cpp -G Ninja \
+		-DCMAKE_INSTALL_PREFIX=/usr \
+		-DCMAKE_INSTALL_LIBDIR=lib \
+		-DCMAKE_BUILD_TYPE=MinSizeRel \
+		-DARROW_BUILD_STATIC=OFF \
+		-DARROW_DEPENDENCY_SOURCE=SYSTEM \
+		-DARROW_RUNTIME_SIMD_LEVEL="$_simd" \
+		-DARROW_BUILD_EXAMPLES=OFF \
+		-DARROW_BUILD_TESTS="$_tests" \
+		-DARROW_COMPUTE=ON \
+		-DARROW_CSV=ON \
+		-DARROW_DATASET=ON \
+		-DARROW_FILESYSTEM=ON \
+		-DARROW_FLIGHT=ON \
+		-DARROW_HDFS=ON \
+		-DARROW_JSON=ON \
+		-DARROW_PARQUET=ON \
+		-DARROW_SIMD_LEVEL="$_comp_simd" \
+		-DARROW_TENSORFLOW=ON \
+		-DARROW_USE_GLOG=ON \
+		-DARROW_ORC=ON \
+		-DARROW_WITH_BROTLI=ON \
+		-DARROW_WITH_BZ2=ON \
+		-DARROW_WITH_LZ4=ON \
+		-DARROW_WITH_MUSL=ON \
+		-DARROW_WITH_SNAPPY=ON \
+		-DARROW_WITH_ZLIB=ON \
+		-DARROW_WITH_ZSTD=ON \
+		-DPARQUET_REQUIRE_ENCRYPTION=ON $_cpu \
+		-S cpp \
+		$cmake_crossopts
+	cmake3.5 --build build-cpp
+
+	# install in Arrow_DIR for python build to find
+	DESTDIR="$builddir/dist-cpp" cmake --install build-cpp
+
+	cd python
+	export SETUPTOOLS_SCM_PRETEND_VERSION=$pkgver
+	export Arrow_DIR="$builddir/dist-cpp/usr"
+	export PYARROW_CMAKE_OPTIONS="-DCMAKE_PREFIX_PATH=$Arrow_DIR -DARROW_RUNTIME_SIMD_LEVEL=$_simd $_cpu"
+	gpep517 build-wheel \
+		--wheel-dir .dist \
+		--output-fd 3 3>&1 >&2
+}
+
+check() {
+	export PARQUET_TEST_DATA="$srcdir/parquet-testing-$_parquetsha/data"
+	export ARROW_TEST_DATA="$srcdir/arrow-testing-$_arrowsha/data"
+	python3 -m venv --clear --without-pip --system-site-packages .testenv
+	local _pypath=".testenv$(.testenv/bin/python3 -c 'import site; print(site.getsitepackages()[0].partition(".testenv")[2])')/pyarrow/tests"
+	.testenv/bin/python3 -m installer python/.dist/*.whl
+
+	case "$CARCH" in
+	arm*)
+		local _extratests="|arrow-flight-test"
+		local _pyextratests="--deselect=$_pypath/test_flight.py --deselect=$_pypath/test_dataset.py"
+		;;
+	s390x)
+		local _extratests="|arrow-dataset-file-parquet-test|arrow-dataset-file-parquet-encryption-test|arrow-ipc-message-internal-test|\
+parquet-.*-test"
+		local _pyextratests="--deselect=$_pypath/test_parquet.py::TestCDCSingleRowGroup --deselect=$_pypath/test_dataset.py"
+		;;
+	x86_64)
+		# passess locally
+		local _extratests="|arrow-dataset-dataset-writer-test"
+		;;
+	ppc64le) return ;;
+	esac
+	# exclude broken tests
+	ctest -j2 --test-dir build-cpp -E "arrow-csv-test|arrow-compute-scalar-temporal-test|arrow-orc-adapter-test$_extratests"
+
+	#python tests broken on s390x and x86_64 runs out of resources
+	[ "$CARCH" = "s390x" ] && return
+	[ "$CARCH" = "x86_64" ] && return
+	PARQUET_TEST_DATA="$srcdir/parquet-testing-$_parquetsha/data" \
+	LD_LIBRARY_PATH="$PWD/dist-cpp/usr/lib:$LD_LIBRARY_PATH" \
+	.testenv/bin/python3 -m pytest -n1 --pyargs pyarrow \
+		--deselect="$_pypath"/test_orc.py::test_timezone_database_absent \
+		--deselect="$_pypath"/test_orc.py::test_timezone_absent \
+		--deselect="$_pypath"/test_orc.py::test_example_using_json \
+		--deselect="$_pypath"/test_extension_type.py::test_cpp_extension_in_python \
+		--deselect="$_pypath"/test_cython.py::test_visit_strings \
+		--deselect="$_pypath"/test_cython.py::test_cython_api $_pyextratests
+}
+
+package() {
+	DESTDIR="$pkgdir" cmake --install build-cpp
+
+	cd python
+	python3 -m installer -d "$pkgdir" .dist/*.whl
+
+	rm -r "$pkgdir"/usr/lib/python3*/site-packages/pyarrow/tests
+}
+
+python_arrow() {
+	pkgdesc="$pkgdesc (python module)"
+	depends="python3 py3-cffi py3-numpy"
+
+	# renamed from this to avoid confusion as in python this is "pyarrow"
+	provides="py3-apache-arrow=$pkgver-r$pkgrel"
+	replaces="py3-apache-arrow"
+
+	amove usr/lib/python3*
+}
+
+gdb() {
+	pkgdesc="$pkgdesc (gdb integration)"
+	install_if="$pkgname=$pkgver-r$pkgrel gdb"
+
+	amove \
+		usr/share/arrow/gdb/ \
+		usr/share/gdb/
+}
+
+lib() {
+	pkgdesc="$pkgdesc ($subpkgname library)"
+	depends="$pkgname=$pkgver-r$pkgrel"
+
+	amove usr/lib/$subpkgname.so.*
+}
+
+sha512sums="
+c687e50dfcdbf7e0e39710224360d35d9aa734452b3a47adc8c101f3019b6b4116310c05b9f3cd0a5ed4ad9b7bd8fb88edb70e79b3cbd413a57e5e35e4554a6c  apache-arrow-23.0.1.tar.gz
+035e69717b9aa6deaebbc51646dc4aaea49e367eac4d08fd8188fbda39924c5612841247ea8fc0d097a78c4198434ced1de5c937daf7f3cc99cf2e43a787839f  apache-arrow-arrow-testing-8da05fdd62a7243ef77aa9757acb62e0586a4d0c.tar.gz
+2559f3c3d5f4cc22299482f352ad67a5145a9d0727675932031f8b5977acaabfe29838b0e147d72066bd8cad6c046ee60cc60b364118cd9187be37fd22937205  apache-arrow-parquet-testing-a3d96a65e11e2bbca7d22a894e8313ede90a33a3.tar.gz
+616351e549707318c1f8b164251141684a73d5bf8205b905736f48ab21fbb19bfaa4d52c4e63642fcb144345b6a5331944b6c8e0827925000553e46f2c2c31e9  mimalloc-3.1.5.tar.gz
+"
