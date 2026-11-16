@@ -79,16 +79,6 @@ SourceDriver::SourceDriver(GrpcSourceDriver *s)
 }
 
 void
-SourceDriver::shutdown_server()
-{
-  if (this->server)
-    {
-      msg_debug("Shutting down OpenTelemetry server", evt_tag_int("port", this->port));
-      this->server->Shutdown(std::chrono::system_clock::now() + std::chrono::seconds(30));
-    }
-}
-
-void
 SourceDriver::format_stats_key(StatsClusterKeyBuilder *kb)
 {
   stats_cluster_key_builder_add_legacy_label(kb, stats_cluster_label("driver", "opentelemetry"));
@@ -137,17 +127,9 @@ SourceDriver::init()
   if (!workers_inited)
     return false;
 
-  if (this->server)
-    goto exit;
+  if (!this->start_server(builder))
+    return false;
 
-  this->server = builder.BuildAndStart();
-  if (!this->server)
-    {
-      msg_error("Failed to start OpenTelemetry server", evt_tag_int("port", this->port));
-      return false;
-    }
-
-exit:
   msg_info("OpenTelemetry server accepting connections", evt_tag_int("port", this->port));
   return true;
 }

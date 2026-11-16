@@ -70,10 +70,8 @@ private:
 
   void reload_save(LogThreadedSourceWorker **workers, gint num_workers);
   LogThreadedSourceWorker **reload_restore(gint *num_workers);
-  void shutdown_server();
 
 private:
-  std::unique_ptr<::grpc::Server> server;
   std::list<std::unique_ptr<::grpc::ServerCompletionQueue>> cqs;
 };
 
