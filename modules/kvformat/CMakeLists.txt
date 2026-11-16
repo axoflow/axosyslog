@@ -21,3 +21,4 @@ add_module(
 )
 
 add_test_subdirectory(tests)
+add_fuzz_target(TARGET fuzz_parse_kv DEPENDS kvformat)

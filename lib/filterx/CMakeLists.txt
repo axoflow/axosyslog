@@ -281,3 +281,7 @@ if(SYSLOG_NG_ENABLE_JIT)
 endif()
 
 add_test_subdirectory(tests)
+
+if (ENABLE_FUZZING)
+  add_subdirectory(tests/fuzz)
+endif()

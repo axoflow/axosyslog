@@ -540,6 +540,20 @@ if (SANITIZER)
   SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O1 -fsanitize=${SANITIZE_MODE} -fno-omit-frame-pointer -fno-optimize-sibling-calls")
 endif()
 
+option(ENABLE_FUZZING "Build libFuzzer fuzz targets and instrument the build with -fsanitize=fuzzer-no-link (needs clang and a SANITIZER)" OFF)
+
+if (ENABLE_FUZZING)
+  add_compile_options(-fsanitize=fuzzer-no-link)
+  add_link_options(-fsanitize=fuzzer-no-link)
+
+  # OSS-Fuzz sets $LIB_FUZZING_ENGINE in the environment.
+  if (DEFINED ENV{LIB_FUZZING_ENGINE})
+    set(LIB_FUZZING_ENGINE "$ENV{LIB_FUZZING_ENGINE}")
+  else()
+    set(LIB_FUZZING_ENGINE "-fsanitize=fuzzer")
+  endif()
+endif()
+
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
