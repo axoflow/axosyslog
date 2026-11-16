@@ -321,6 +321,36 @@ _filterx_ref_cow_recurse(FilterXObject *s, gpointer user_data)
   return TRUE;
 }
 
+/*
+ * is_nvtable_backed is transitive (see filterx_object_note_child_stored()):
+ * the store marked our value, this carries the mark up the container chain,
+ * the same chain _filterx_ref_cow_recurse() walks.  A marked xref implies
+ * marked ancestors (they were marked along with it, or, if it got stored
+ * into a new parent later, that store marked the parent and the parent's
+ * own mutator brought the mark up from there), so the walk stops at the
+ * first ancestor already carrying the mark.
+ */
+static gboolean
+_filterx_ref_mark_nvtable_backed(FilterXObject *s, gpointer user_data)
+{
+  FilterXRef *self = (FilterXRef *) s;
+
+  if (self->super.is_nvtable_backed)
+    return TRUE;
+
+  self->super.is_nvtable_backed = TRUE;
+  self->value->is_nvtable_backed = TRUE;
+  filterx_weakref_invoke(&self->parent_container, _filterx_ref_mark_nvtable_backed, NULL);
+  return TRUE;
+}
+
+static inline void
+_filterx_ref_propagate_nvtable_backed(FilterXRef *self)
+{
+  if (G_UNLIKELY(self->value->is_nvtable_backed && !self->super.is_nvtable_backed))
+    _filterx_ref_mark_nvtable_backed(&self->super, NULL);
+}
+
 /* mutator methods */
 
 static gboolean
@@ -332,7 +362,10 @@ _filterx_ref_setattr(FilterXObject *s, FilterXObject *attr, FilterXObject **new_
 
   gboolean result = filterx_object_setattr(self->value, attr, new_value);
   if (result)
-    filterx_ref_set_parent_container(*new_value, s);
+    {
+      filterx_ref_set_parent_container(*new_value, s);
+      _filterx_ref_propagate_nvtable_backed(self);
+    }
   return result;
 }
 
@@ -345,7 +378,10 @@ _filterx_ref_set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject *
 
   gboolean result = filterx_object_set_subscript(self->value, key, new_value);
   if (result)
-    filterx_ref_set_parent_container(*new_value, s);
+    {
+      filterx_ref_set_parent_container(*new_value, s);
+      _filterx_ref_propagate_nvtable_backed(self);
+    }
   return result;
 }
 
@@ -507,6 +543,30 @@ _filterx_ref_iter(FilterXObject *s, FilterXObjectIterFunc func, gpointer user_da
   return filterx_object_iter(self->value, func, user_data);
 }
 
+static void
+_filterx_ref_make_direct(FilterXObject *s)
+{
+  FilterXRef *self = (FilterXRef *) s;
+
+  /* no _filterx_ref_cow() first: the children get replaced by copies of
+   * equal content, which no other xref on the same value can tell apart, and
+   * a fork here would be the deep copy this path exists to avoid */
+  if (self->value->type->make_direct)
+    {
+      self->value->type->make_direct(self->value);
+      return;
+    }
+
+  /* a mutable object without an in-place path (metrics_labels): this xref
+   * gets a copy, any other xref on the old value keeps the old value, the
+   * way a copy-on-write fork would leave them */
+  FilterXObject *direct = filterx_object_dup(self->value);
+  g_atomic_counter_dec_and_test(_get_fx_ref_cnt(self));
+  filterx_object_unref(self->value);
+  self->value = direct;
+  g_atomic_counter_inc(_get_fx_ref_cnt(self));
+}
+
 static gboolean
 _filterx_ref_repr_append(FilterXObject *s, GString *repr)
 {
@@ -609,6 +669,8 @@ _filterx_ref_new(FilterXObject *value)
   filterx_object_init_instance(&self->super, &FILTERX_TYPE_NAME(ref));
 
   self->value = value;
+  /* the mark travels with the value, whichever xref it is seen through */
+  self->super.is_nvtable_backed = value->is_nvtable_backed;
   g_atomic_counter_inc(_get_fx_ref_cnt(self));
 
   return &self->super;
@@ -629,6 +691,7 @@ FILTERX_DEFINE_TYPE(ref, FILTERX_TYPE_NAME(object),
                     .unset_key = _filterx_ref_unset_key,
                     .move_key = _filterx_ref_move_key,
                     .iter = _filterx_ref_iter,
+                    .make_direct = _filterx_ref_make_direct,
                     .repr = _filterx_ref_repr_append,
                     .str = _filterx_ref_str_append,
                     .len = _filterx_ref_len,

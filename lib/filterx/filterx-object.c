@@ -74,6 +74,7 @@ _filterx_type_init_methods(FilterXType *type)
   INIT_TYPE_METHOD(type, unmarshal);
   INIT_TYPE_METHOD(type, marshal);
   INIT_TYPE_METHOD(type, clone);
+  INIT_TYPE_METHOD(type, make_direct);
   INIT_TYPE_METHOD(type, truthy);
   INIT_TYPE_METHOD(type, getattr);
   INIT_TYPE_METHOD(type, setattr);

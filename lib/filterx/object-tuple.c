@@ -130,6 +130,20 @@ _filterx_tuple_is_key_set(FilterXObject *s, FilterXObject *key)
 }
 
 static gboolean
+_make_element_direct(gsize index, FilterXObject **slot, gpointer user_data)
+{
+  filterx_object_make_direct(slot);
+  filterx_object_assert_child_storable((FilterXObject *) user_data, *slot);
+  return TRUE;
+}
+
+static void
+_filterx_tuple_make_direct(FilterXObject *s)
+{
+  filterx_tuple_foreach((FilterXTuple *) s, _make_element_direct, s);
+}
+
+static gboolean
 _filterx_tuple_iter(FilterXObject *s, FilterXObjectIterFunc func, gpointer user_data)
 {
   FilterXTuple *self = (FilterXTuple *) s;
@@ -414,6 +428,7 @@ FILTERX_DEFINE_TYPE(tuple, FILTERX_TYPE_NAME(sequence),
                     .marshal = _filterx_tuple_marshal,
                     .repr = _filterx_tuple_repr,
                     .clone = _filterx_tuple_clone,
+                    .make_direct = _filterx_tuple_make_direct,
                     .get_subscript = _filterx_tuple_get_subscript,
                     .is_key_set = _filterx_tuple_is_key_set,
                     .iter = _filterx_tuple_iter,
