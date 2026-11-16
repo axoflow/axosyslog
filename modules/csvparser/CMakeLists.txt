@@ -17,3 +17,5 @@ add_module(
 )
 
 add_test_subdirectory(tests)
+add_fuzz_target(TARGET fuzz_parse_csv DEPENDS csvparser)
+add_fuzz_target(TARGET fuzz_format_csv DEPENDS csvparser)
