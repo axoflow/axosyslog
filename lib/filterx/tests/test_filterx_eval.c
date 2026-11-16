@@ -84,7 +84,7 @@ Test(filterx_eval, test_filterx_eval_full_error_stack)
   LogMessage *msg = log_msg_new_empty();
   FilterXEvalContext eval_context, *prev_eval_context = NULL;
 
-  FILTERX_EVAL_BEGIN_CONTEXT(eval_context, prev_eval_context, msg, NULL)
+  FILTERX_EVAL_BEGIN_CONTEXT(eval_context, prev_eval_context, NULL, msg, NULL)
   {
     FilterXExpr *expr = _create_embedded_exprs(FILTERX_CONTEXT_ERROR_STACK_SIZE, TRUE);
 
@@ -106,7 +106,7 @@ Test(filterx_eval, test_filterx_eval_error_stack_overflow)
   LogMessage *msg = log_msg_new_empty();
   FilterXEvalContext eval_context, *prev_eval_context = NULL;
 
-  FILTERX_EVAL_BEGIN_CONTEXT(eval_context, prev_eval_context, msg, NULL)
+  FILTERX_EVAL_BEGIN_CONTEXT(eval_context, prev_eval_context, NULL, msg, NULL)
   {
     FilterXExpr *expr = _create_embedded_exprs(FILTERX_CONTEXT_ERROR_STACK_SIZE + 1, TRUE);
 
@@ -134,7 +134,7 @@ Test(filterx_eval, test_filterx_eval_context_dup_creates_independent_snapshot)
   FilterXEvalContext eval_context, *prev_eval_context = NULL;
   FilterXEvalContext *dup_context = NULL;
 
-  FILTERX_EVAL_BEGIN_CONTEXT(eval_context, prev_eval_context, msg, layout)
+  FILTERX_EVAL_BEGIN_CONTEXT(eval_context, prev_eval_context, NULL, msg, layout)
   {
     FilterXVariable *v = filterx_scope_register_variable(eval_context.scope, FX_VAR_DECLARED_FLOATING, handles[0], 0);
     FilterXObject *o = filterx_boolean_new(TRUE);
@@ -173,7 +173,7 @@ Test(filterx_eval, test_filterx_eval_context_dup_keeps_cloned_parent_containers_
   FilterXEvalContext eval_context, *prev_eval_context = NULL;
   FilterXEvalContext *dup_context = NULL;
 
-  FILTERX_EVAL_BEGIN_CONTEXT(eval_context, prev_eval_context, msg, layout)
+  FILTERX_EVAL_BEGIN_CONTEXT(eval_context, prev_eval_context, NULL, msg, layout)
   {
     FilterXObject *r = filterx_object_from_json("{\"c\":{\"cc\":{\"ccc\":\"orig\"}}}", -1, NULL);
     cr_assert(filterx_object_is_ref(r));

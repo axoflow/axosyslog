@@ -53,7 +53,7 @@ _eval_on_message(FilterXExpr *func, LogMessage *msg)
   LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
   FilterXEvalContext context;
 
-  FILTERX_EVAL_BEGIN_CONTEXT(context, filterx_eval_get_context(), msg, NULL)
+  FILTERX_EVAL_BEGIN_CONTEXT(context, filterx_eval_get_context(), NULL, msg, NULL)
   {
     context.path_options = &path_options;
 

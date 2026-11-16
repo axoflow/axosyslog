@@ -28,6 +28,7 @@
 #include "filterx/filterx-object.h"
 #include "filterx/filterx-allocator.h"
 #include "filterx/filterx-env.h"
+#include "filterx/filterx-stashed-object.h"
 #include "template/eval.h"
 
 #define FILTERX_CONTEXT_ERROR_STACK_SIZE (32)
@@ -83,6 +84,8 @@ struct _FilterXEvalContext
   GArray *failure_info;
   gint weak_refs_offset;
   FilterXEnvironment *env;
+  /* borrowed: the evaluation takes no reference to it */
+  FilterXStashedObject **config_stash;
 };
 
 FilterXEvalContext *filterx_eval_get_context(void);
@@ -105,12 +108,14 @@ EVTTAG *filterx_format_eval_result(FilterXEvalResult result);
 void filterx_eval_dump_errors(const gchar *message);
 
 void filterx_eval_begin_context(FilterXEvalContext *context, FilterXEvalContext *previous_context,
+                                FilterXStashedObject **config_stash,
                                 FilterXScope *scope_storage, LogMessage *msg);
 void filterx_eval_end_context(FilterXEvalContext *context);
 LogMessage *filterx_eval_make_message_writable(FilterXEvalContext *context);
 void filterx_eval_begin_restricted_context(FilterXEvalContext *context, FilterXEnvironment *env);
 void filterx_eval_end_restricted_context(FilterXEvalContext *context);
 
+FilterXStashedObject **filterx_eval_get_config_stash(GlobalConfig *cfg);
 void filterx_eval_begin_compile(FilterXEvalContext *context, GlobalConfig *cfg);
 void filterx_eval_end_compile(FilterXEvalContext *context);
 void filterx_eval_freeze_object(FilterXObject **object);
@@ -201,7 +206,7 @@ filterx_eval_store_weak_ref(FilterXObject *object)
     }
 }
 
-#define FILTERX_EVAL_BEGIN_CONTEXT(eval_context, previous_context, msg, scope_var_layout) \
+#define FILTERX_EVAL_BEGIN_CONTEXT(eval_context, previous_context, config_stash, msg, scope_var_layout) \
   do { \
     FilterXEvalContext *_prev_ctx = (FilterXEvalContext *)(previous_context); \
     FilterXScope *fx_scope = NULL; \
@@ -214,7 +219,7 @@ filterx_eval_store_weak_ref(FilterXObject *object)
         filterx_scope_init_instance(fx_scope, alloc_size, _prev_ctx ? _prev_ctx->scope : NULL, scope_var_layout); \
         local_scope = TRUE; \
       } \
-    filterx_eval_begin_context(&eval_context, _prev_ctx, fx_scope, msg); \
+    filterx_eval_begin_context(&eval_context, _prev_ctx, config_stash, fx_scope, msg); \
     do
 
 

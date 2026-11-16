@@ -340,7 +340,7 @@ init_libtest_filterx(void)
   filterx_world.msg = create_sample_message();
   filterx_world.scope = filterx_scope_new(NULL, NULL);
   filterx_env_init(&filterx_world.test_env);
-  filterx_eval_begin_context(&filterx_world.context, NULL, filterx_world.scope, filterx_world.msg);
+  filterx_eval_begin_context(&filterx_world.context, NULL, NULL, filterx_world.scope, filterx_world.msg);
   filterx_world.context.env = &filterx_world.test_env;
   filterx_world.context.allocator = NULL;
 }
