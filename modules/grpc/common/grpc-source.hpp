@@ -42,6 +42,12 @@
 namespace syslogng {
 namespace grpc {
 
+struct ServerState
+{
+  std::unique_ptr<::grpc::Server> server;
+  std::shared_ptr<CertificateProvider> certificate_provider;
+};
+
 class SourceDriver
 {
 public:
@@ -109,6 +115,8 @@ public:
 protected:
   bool prepare_server_builder(::grpc::ServerBuilder &builder);
   bool start_server(::grpc::ServerBuilder &builder);
+  ServerState release_server();
+  void restore_server(ServerState state);
   std::string get_unique_id_fragment();
 
 private:
@@ -125,9 +133,9 @@ protected:
   int concurrent_requests = 2;
   std::list<std::pair<std::string, long>> int_extra_channel_args;
   std::list<std::pair<std::string, std::string>> string_extra_channel_args;
-  std::unique_ptr<::grpc::Server> server;
 
 private:
+  std::unique_ptr<::grpc::Server> server;
   GrpcServerCredentialsBuilderW credentials_builder_wrapper;
 };
 

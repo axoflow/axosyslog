@@ -113,6 +113,20 @@ SourceDriver::shutdown_server()
   this->server->Shutdown(std::chrono::system_clock::now() + std::chrono::seconds(30));
 }
 
+ServerState
+SourceDriver::release_server()
+{
+  return { std::move(this->server), this->credentials_builder.get_certificate_provider() };
+}
+
+void
+SourceDriver::restore_server(ServerState state)
+{
+  this->server = std::move(state.server);
+  this->credentials_builder.set_certificate_provider(std::move(state.certificate_provider));
+  this->credentials_builder.update_certificates();
+}
+
 std::string
 SourceDriver::get_unique_id_fragment()
 {
