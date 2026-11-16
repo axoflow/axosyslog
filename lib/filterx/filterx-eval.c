@@ -467,7 +467,7 @@ void
 filterx_eval_begin_compile(FilterXEvalContext *context, GlobalConfig *cfg)
 {
   FilterXConfig *config = filterx_config_get(cfg);
-  filterx_eval_begin_restricted_context(context, &config->global_env);
+  filterx_eval_begin_restricted_context(context, &config->global_stash->env);
 }
 
 void
