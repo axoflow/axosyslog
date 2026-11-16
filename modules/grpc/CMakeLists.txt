@@ -65,6 +65,11 @@ module_switch(ENABLE_GRPC "Enable GRPC" GRPC_DEPS_FOUND)
 if (ENABLE_GRPC)
   include(ProtobufGenerateCpp)
 
+  set(CMAKE_REQUIRED_LIBRARIES gRPC::grpc++)
+  set(CMAKE_EXTRA_INCLUDE_FILES grpcpp/security/tls_certificate_provider.h)
+  check_type_size(grpc::experimental::InMemoryCertificateProvider GRPC_IN_MEMORY_CERTIFICATE_PROVIDER LANGUAGE CXX)
+  set(SYSLOG_NG_HAVE_GRPC_IN_MEMORY_CERTIFICATE_PROVIDER ${HAVE_GRPC_IN_MEMORY_CERTIFICATE_PROVIDER} CACHE INTERNAL "")
+
   set(MODULE_GRPC_LIBS
     gRPC::grpc
     gRPC::grpc++

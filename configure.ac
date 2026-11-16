@@ -1522,6 +1522,17 @@ if ! test "x$enable_grpc" = "xno"; then
         else
             enable_grpc=no
         fi
+    else
+        CPPFLAGS_SAVE="$CPPFLAGS"
+        CPPFLAGS="$CPPFLAGS $GRPCPP_CFLAGS"
+        AC_LANG_PUSH([C++])
+        AC_CHECK_TYPE([grpc::experimental::InMemoryCertificateProvider],
+                      [have_grpc_in_memory_certificate_provider=1],
+                      [have_grpc_in_memory_certificate_provider=0],
+                      [[#include <grpcpp/security/tls_certificate_provider.h>]])
+        AC_LANG_POP([C++])
+        CPPFLAGS="$CPPFLAGS_SAVE"
+        AC_DEFINE_UNQUOTED(HAVE_GRPC_IN_MEMORY_CERTIFICATE_PROVIDER, $have_grpc_in_memory_certificate_provider, [gRPC has grpc::experimental::InMemoryCertificateProvider])
     fi
 fi
 
