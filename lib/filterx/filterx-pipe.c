@@ -35,6 +35,7 @@ typedef struct _LogFilterXPipe
   FilterXExpr *block;
   FilterXScopeVariableLayout *scope_var_layout;
   FilterXJITExecFunc jit_exec;
+  FilterXStashedObject **config_stash;
 } LogFilterXPipe;
 
 static inline const gchar *
@@ -99,6 +100,8 @@ log_filterx_pipe_init(LogPipe *s)
   if (!self->name)
     self->name = cfg_tree_get_rule_name(&cfg->tree, ENC_FILTER, s->expr_node);
 
+  self->config_stash = filterx_eval_get_config_stash(cfg);
+
   FilterXEvalContext compile_context;
   filterx_eval_begin_compile(&compile_context, cfg);
 
@@ -158,7 +161,7 @@ log_filterx_pipe_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_o
   FilterXEvalContext *previous_context = path_options->filterx_context;
 
   LogMessagePin pin = log_msg_pin_payload(msg);
-  FILTERX_EVAL_BEGIN_CONTEXT(eval_context, previous_context, msg, self->scope_var_layout)
+  FILTERX_EVAL_BEGIN_CONTEXT(eval_context, previous_context, self->config_stash, msg, self->scope_var_layout)
   {
     FilterXEvalResult eval_res;
     LogPathOptions local_path_options;

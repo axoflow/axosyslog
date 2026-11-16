@@ -138,7 +138,7 @@ _post_log_record_as_filterx_dicts(SourceWorker &worker, FilterXScopeVariableLayo
   gboolean converted = FALSE;
   FilterXEvalContext eval_context;
 
-  FILTERX_EVAL_BEGIN_CONTEXT(eval_context, NULL, msg, layout)
+  FILTERX_EVAL_BEGIN_CONTEXT(eval_context, NULL, NULL, msg, layout)
   {
     /* schema_url is a member of the ResourceLogs and ScopeLogs wrappers, which
      * have no dict of their own */

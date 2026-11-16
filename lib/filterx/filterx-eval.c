@@ -365,6 +365,7 @@ exit:
 void
 filterx_eval_begin_context(FilterXEvalContext *context,
                            FilterXEvalContext *previous_context,
+                           FilterXStashedObject **config_stash,
                            FilterXScope *scope,
                            LogMessage *msg)
 {
@@ -400,6 +401,7 @@ filterx_eval_begin_context(FilterXEvalContext *context,
 
   context->eval_control_modifier = FXC_UNSET;
   context->allocations_shared = FALSE;
+  context->config_stash = config_stash;
   filterx_eval_set_context(context);
 }
 
@@ -459,6 +461,12 @@ filterx_eval_end_restricted_context(FilterXEvalContext *context)
 {
   _clear_errors(context);
   filterx_eval_set_context(context->previous_context);
+}
+
+FilterXStashedObject **
+filterx_eval_get_config_stash(GlobalConfig *cfg)
+{
+  return &filterx_config_get(cfg)->global_stash;
 }
 
 void

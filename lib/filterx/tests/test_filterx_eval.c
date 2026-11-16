@@ -82,7 +82,7 @@ Test(filterx_eval, test_filterx_eval_full_error_stack)
   LogMessage *msg = log_msg_new_empty();
   FilterXEvalContext eval_context, *prev_eval_context = NULL;
 
-  FILTERX_EVAL_BEGIN_CONTEXT(eval_context, prev_eval_context, msg, NULL)
+  FILTERX_EVAL_BEGIN_CONTEXT(eval_context, prev_eval_context, NULL, msg, NULL)
   {
     FilterXExpr *expr = _create_embedded_exprs(FILTERX_CONTEXT_ERROR_STACK_SIZE, TRUE);
 
@@ -104,7 +104,7 @@ Test(filterx_eval, test_filterx_eval_error_stack_overflow)
   LogMessage *msg = log_msg_new_empty();
   FilterXEvalContext eval_context, *prev_eval_context = NULL;
 
-  FILTERX_EVAL_BEGIN_CONTEXT(eval_context, prev_eval_context, msg, NULL)
+  FILTERX_EVAL_BEGIN_CONTEXT(eval_context, prev_eval_context, NULL, msg, NULL)
   {
     FilterXExpr *expr = _create_embedded_exprs(FILTERX_CONTEXT_ERROR_STACK_SIZE + 1, TRUE);
 
