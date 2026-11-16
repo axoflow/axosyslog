@@ -638,7 +638,7 @@ _filterx_dict_set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject 
   self->table = _table_resize_if_needed(self->table);
 
   /* the key is ours to keep just like the value, the same rule applies */
-  FilterXObject *stored_key = filterx_object_vref(key);
+  FilterXObject *stored_key = filterx_object_ref_as_child(key);
   filterx_object_assert_child_storable(s, stored_key);
   _table_insert(self->table, stored_key, filterx_object_cow_store(s, new_value));
 
