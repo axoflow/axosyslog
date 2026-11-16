@@ -27,10 +27,20 @@
 #include <grpcpp/security/credentials.h>
 #include "grpc-credentials-builder.h"
 
+#if SYSLOG_NG_HAVE_GRPC_IN_MEMORY_CERTIFICATE_PROVIDER
+#include <grpcpp/security/tls_certificate_provider.h>
+#endif
+
 #include <string>
 
 namespace syslogng {
 namespace grpc {
+
+#if SYSLOG_NG_HAVE_GRPC_IN_MEMORY_CERTIFICATE_PROVIDER
+using CertificateProvider = ::grpc::experimental::InMemoryCertificateProvider;
+#else
+class CertificateProvider;
+#endif
 
 class ServerCredentialsBuilder
 {
@@ -39,14 +49,21 @@ public:
   using ServerTlsPeerVerify = GrpcServerTlsPeerVerify;
 
   void set_mode(ServerAuthMode mode);
-  bool validate() const;
-  std::shared_ptr<::grpc::ServerCredentials> build() const;
+  bool validate();
+  std::shared_ptr<::grpc::ServerCredentials> build();
+  static constexpr bool are_certs_reloadable()
+  {
+    return SYSLOG_NG_HAVE_GRPC_IN_MEMORY_CERTIFICATE_PROVIDER;
+  }
 
   /* TLS */
   bool set_tls_ca_path(const char *ca_path);
   bool set_tls_key_path(const char *key_path);
   bool set_tls_cert_path(const char *cert_path);
   void set_tls_peer_verify(ServerTlsPeerVerify peer_verify);
+  std::shared_ptr<CertificateProvider> get_certificate_provider() const;
+  void set_certificate_provider(std::shared_ptr<CertificateProvider> provider);
+  bool update_certificates();
 
   std::string get_unique_id();
 
@@ -56,7 +73,9 @@ private:
   /* TLS */
   ::grpc::SslServerCredentialsOptions ssl_server_credentials_options { GRPC_SSL_REQUEST_AND_REQUIRE_CLIENT_CERTIFICATE_AND_VERIFY };
   std::string ca_path;
+  std::string key_path;
   std::string cert_path;
+  std::shared_ptr<CertificateProvider> certificate_provider;
 
   /* ALTS */
   ::grpc::experimental::AltsServerCredentialsOptions alts_server_credentials_options;
