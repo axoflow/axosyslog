@@ -102,6 +102,18 @@ filterx_stashed_object_new(FilterXObject *object, FilterXEnvironment *env)
   return self;
 }
 
+/* A stash of an environment alone: there is no object to retrieve, what
+ * gets frozen into its environment lives as long as the stash does. */
+FilterXStashedObject *
+filterx_stashed_env_new(void)
+{
+  FilterXStashedObject *self = g_new0(FilterXStashedObject, 1);
+  g_atomic_counter_set(&self->ref_cnt, 1);
+
+  filterx_env_init(&self->env);
+  return self;
+}
+
 static GRWLock stash_rwl;
 
 FilterXObject *
