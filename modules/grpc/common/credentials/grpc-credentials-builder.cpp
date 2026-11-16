@@ -284,7 +284,12 @@ ServerCredentialsBuilder::get_unique_id()
       id << "insecure";
       break;
     case GSAM_TLS:
-      id << "tls(" << peer_verify << ", " << this->ca_path << ", " << this->cert_path << ")";
+      id << "tls(" << peer_verify;
+      if constexpr (are_certs_reloadable())
+        id << ", " << (this->ca_path.empty() ? "no-ca" : "ca");
+      else
+        id << ", " << this->ca_path << ", " << this->cert_path;
+      id << ")";
       break;
     case GSAM_ALTS:
       id << "alts";
