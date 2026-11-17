@@ -29,6 +29,8 @@
 #include "filterx/filterx-expr.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/object-primitive.h"
+#include "filterx/object-list.h"
+#include "filterx/filterx-sequence.h"
 #include "apphook.h"
 #include "scratch-buffers.h"
 
@@ -43,6 +45,26 @@ Test(filterx_expr_membership, in_over_a_non_container_is_not_folded_and_fails_at
   cr_assert(zero(ptr, result));
 
   filterx_eval_clear_errors();
+  filterx_expr_unref(expr);
+}
+
+Test(filterx_expr_membership, in_over_a_list_of_lists_does_not_match_a_scalar)
+{
+  FilterXObject *elem = filterx_list_new();
+  FilterXObject *haystack = filterx_list_new();
+  cr_assert(filterx_sequence_append(haystack, &elem));
+  filterx_object_unref(elem);
+
+  FilterXExpr *expr = filterx_membership_in_new(filterx_literal_new(filterx_integer_new(1)),
+                                                filterx_literal_new(haystack));
+  expr = filterx_expr_optimize(expr);
+  cr_assert(not(zero(ptr, expr)));
+
+  FilterXObject *result = init_and_eval_expr(expr);
+  cr_assert(not(zero(ptr, result)));
+  cr_assert(not(filterx_object_truthy(result)));
+
+  filterx_object_unref(result);
   filterx_expr_unref(expr);
 }
 

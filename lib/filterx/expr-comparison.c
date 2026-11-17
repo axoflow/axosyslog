@@ -204,6 +204,9 @@ filterx_compare_objects(FilterXObject *lhs, FilterXObject *rhs, gint cmp)
 {
   gint op = cmp & FCMPX_OP_MASK;
 
+  lhs = filterx_ref_unwrap_ro(lhs);
+  rhs = filterx_ref_unwrap_ro(rhs);
+
   switch (cmp & FCMPX_MODE_MASK)
     {
     case FCMPX_TYPE_AWARE:
@@ -255,7 +258,7 @@ _eval_comparison(FilterXExpr *s)
       goto exit;
     }
 
-  gboolean result = filterx_compare_objects(filterx_ref_unwrap_ro(lhs), filterx_ref_unwrap_ro(rhs), self->operator);
+  gboolean result = filterx_compare_objects(lhs, rhs, self->operator);
   result_obj = filterx_boolean_new(result);
 
 exit:

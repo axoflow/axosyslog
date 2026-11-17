@@ -34,6 +34,7 @@
 #include "filterx/object-null.h"
 #include "filterx/object-datetime.h"
 #include "filterx/object-message-value.h"
+#include "filterx/object-list.h"
 
 #include "apphook.h"
 #include "scratch-buffers.h"
@@ -660,6 +661,19 @@ Test(expr_comparison, test_type_aware_fallback_type_and_value_based_comparison)
   _assert_comparison(filterx_message_value_new("5", 1, LM_VT_BYTES), filterx_message_value_new("5", 1, LM_VT_BYTES),
                      FCMPX_EQ | FCMPX_TYPE_AND_VALUE_BASED, TRUE);
 
+}
+
+Test(expr_comparison, test_compare_objects_takes_xref_operands)
+{
+  FilterXObject *list = filterx_list_new();
+  FilterXObject *integer = filterx_integer_new(5);
+
+  cr_assert(not(filterx_compare_objects(integer, list, FCMPX_EQ | FCMPX_TYPE_AND_VALUE_BASED)));
+  cr_assert(filterx_compare_objects(list, integer, FCMPX_NE | FCMPX_TYPE_AND_VALUE_BASED));
+  cr_assert(not(filterx_compare_objects(list, integer, FCMPX_EQ | FCMPX_TYPE_AWARE)));
+
+  filterx_object_unref(integer);
+  filterx_object_unref(list);
 }
 
 static void
