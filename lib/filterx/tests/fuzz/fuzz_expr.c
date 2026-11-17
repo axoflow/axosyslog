@@ -42,16 +42,6 @@
 #include "filterx/filterx-scope-var-layout.h"
 #include "filterx/filterx-object.h"
 
-/* Bison error recovery discards semantic values without freeing them, so every
- * malformed input leaks and LeakSanitizer, which libFuzzer enables by default,
- * aborts before the target reaches its second input. Suppressing by the
- * yyparse frame keeps leak detection alive for optimize, init and eval. */
-const char *
-__lsan_default_suppressions(void)
-{
-  return "leak:filterx_parse";
-}
-
 int
 LLVMFuzzerInitialize(int *argc, char ***argv)
 {
