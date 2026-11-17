@@ -178,7 +178,6 @@ _assign_location(FilterXExpr *expr, CfgLexer *lexer, CFG_LTYPE *lloc)
 %type <ptr> regexp_match
 %type <num> boolean
 %type <ptr> conditional
-%type <ptr> condition
 %type <ptr> if
 %type <ptr> ternary
 %type <ptr> default
