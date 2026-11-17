@@ -34,6 +34,7 @@ set(FILTERX_HEADERS
     filterx/expr-string-operators.h
     filterx/filterx-access-path.h
     filterx/filterx-allocator.h
+    filterx/filterx-ast.h
     filterx/filterx-config.h
     filterx/filterx-error.h
     filterx/filterx-eval.h
@@ -50,6 +51,7 @@ set(FILTERX_HEADERS
     filterx/filterx-ref.h
     filterx/filterx-scope.h
     filterx/filterx-scope-var-layout.h
+    filterx/filterx-script.h
     filterx/filterx-stashed-object.h
     filterx/filterx-type-inference.h
     filterx/filterx-type-inference-private.h
@@ -131,6 +133,7 @@ set(FILTERX_SOURCES
     filterx/expr-string-operators.c
     filterx/filterx-access-path.c
     filterx/filterx-allocator.c
+    filterx/filterx-ast.c
     filterx/filterx-config.c
     filterx/filterx-error.c
     filterx/filterx-eval.c
@@ -147,6 +150,7 @@ set(FILTERX_SOURCES
     filterx/filterx-ref.c
     filterx/filterx-scope.c
     filterx/filterx-scope-var-layout.c
+    filterx/filterx-script.c
     filterx/filterx-stashed-object.c
     filterx/filterx-type-inference.c
     filterx/filterx-variable.c

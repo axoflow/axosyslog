@@ -267,6 +267,7 @@ include packaging/Makefile.am
 include dbld/Makefile.am
 include cmake/Makefile.am
 include persist-tool/Makefile.am
+include filterx-tool/Makefile.am
 
 TEST_EXTENSIONS = .sh
 @VALGRIND_CHECK_RULES@
