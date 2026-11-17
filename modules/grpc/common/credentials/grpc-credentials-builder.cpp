@@ -26,6 +26,10 @@
 #include "messages.h"
 #include "compat/cpp-end.h"
 
+#if SYSLOG_NG_HAVE_GRPC_IN_MEMORY_CERTIFICATE_PROVIDER
+#include <grpcpp/security/tls_credentials_options.h>
+#endif
+
 #include <fstream>
 #include <sstream>
 
@@ -47,6 +51,36 @@ _get_file_content(const char *path, std::string &content)
   return true;
 }
 
+#if SYSLOG_NG_HAVE_GRPC_IN_MEMORY_CERTIFICATE_PROVIDER
+static absl::Status
+_update_certificate_provider(CertificateProvider &provider, const ::grpc::SslServerCredentialsOptions &options)
+{
+  const auto &key_cert_pair = options.pem_key_cert_pairs.at(0);
+  std::vector<::grpc::experimental::IdentityKeyOrSignerCertPair> identity_key_cert_pairs;
+  identity_key_cert_pairs.push_back({key_cert_pair.private_key, key_cert_pair.cert_chain});
+
+  absl::Status status = provider.UpdateIdentityKeyCertPair(std::move(identity_key_cert_pairs));
+  if (status.ok() && !options.pem_root_certs.empty())
+    status = provider.UpdateRoot(options.pem_root_certs);
+
+  return status;
+}
+
+static absl::Status
+_validate_certificates(const ::grpc::SslServerCredentialsOptions &options)
+{
+  CertificateProvider provider;
+
+  absl::Status status = _update_certificate_provider(provider, options);
+  if (status.ok() && options.pem_root_certs.empty())
+    status = provider.UpdateRoot(options.pem_key_cert_pairs.at(0).cert_chain);
+  if (status.ok())
+    status = provider.ValidateCredentials();
+
+  return status;
+}
+#endif
+
 /* Server */
 
 void
@@ -56,7 +90,7 @@ ServerCredentialsBuilder::set_mode(GrpcServerAuthMode mode_)
 }
 
 bool
-ServerCredentialsBuilder::validate() const
+ServerCredentialsBuilder::validate()
 {
   switch (mode)
     {
@@ -71,6 +105,20 @@ ServerCredentialsBuilder::validate() const
                     "Make sure to set the auth(tls(key-file() and cert-file())) options");
           return false;
         }
+#if SYSLOG_NG_HAVE_GRPC_IN_MEMORY_CERTIFICATE_PROVIDER
+      {
+        absl::Status status = _validate_certificates(ssl_server_credentials_options);
+        if (!status.ok())
+          {
+            msg_error("gRPC: Invalid TLS key or certificates",
+                      evt_tag_str("key_file", key_path.c_str()),
+                      evt_tag_str("cert_file", cert_path.c_str()),
+                      evt_tag_str("ca_file", ca_path.c_str()),
+                      evt_tag_str("error", status.ToString().c_str()));
+            return false;
+          }
+      }
+#endif
       break;
     case GSAM_ALTS:
       break;
@@ -82,7 +130,7 @@ ServerCredentialsBuilder::validate() const
 }
 
 std::shared_ptr<::grpc::ServerCredentials>
-ServerCredentialsBuilder::build() const
+ServerCredentialsBuilder::build()
 {
   switch (mode)
     {
@@ -90,7 +138,22 @@ ServerCredentialsBuilder::build() const
       return ::grpc::InsecureServerCredentials();
     case GSAM_TLS:
     {
+#if SYSLOG_NG_HAVE_GRPC_IN_MEMORY_CERTIFICATE_PROVIDER
+      certificate_provider = std::make_shared<CertificateProvider>();
+      if (!update_certificates())
+        return nullptr;
+
+      auto options = ::grpc::experimental::TlsServerCredentialsOptions::Create(certificate_provider);
+      if (!options.ok())
+        return nullptr;
+
+      if (!ssl_server_credentials_options.pem_root_certs.empty())
+        options->set_root_certificate_provider(certificate_provider);
+      options->set_cert_request_type(ssl_server_credentials_options.client_certificate_request);
+      return ::grpc::experimental::TlsServerCredentials(*options);
+#else
       return ::grpc::SslServerCredentials(ssl_server_credentials_options);
+#endif
     }
     case GSAM_ALTS:
       return ::grpc::experimental::AltsServerCredentials(alts_server_credentials_options);
@@ -98,6 +161,36 @@ ServerCredentialsBuilder::build() const
       g_assert_not_reached();
     }
   g_assert_not_reached();
+}
+
+std::shared_ptr<CertificateProvider>
+ServerCredentialsBuilder::get_certificate_provider() const
+{
+  return certificate_provider;
+}
+
+void
+ServerCredentialsBuilder::set_certificate_provider(std::shared_ptr<CertificateProvider> provider)
+{
+  certificate_provider = std::move(provider);
+}
+
+bool
+ServerCredentialsBuilder::update_certificates()
+{
+#if SYSLOG_NG_HAVE_GRPC_IN_MEMORY_CERTIFICATE_PROVIDER
+  if (mode != GSAM_TLS || !certificate_provider)
+    return true;
+
+  absl::Status status = _update_certificate_provider(*certificate_provider, ssl_server_credentials_options);
+  if (!status.ok())
+    {
+      msg_error("gRPC: Failed to update TLS credentials", evt_tag_str("error", status.ToString().c_str()));
+      return false;
+    }
+#endif
+
+  return true;
 }
 
 bool
@@ -108,7 +201,7 @@ ServerCredentialsBuilder::set_tls_ca_path(const char *ca_path_)
 }
 
 bool
-ServerCredentialsBuilder::set_tls_key_path(const char *key_path)
+ServerCredentialsBuilder::set_tls_key_path(const char *key_path_)
 {
   if (ssl_server_credentials_options.pem_key_cert_pairs.size() == 0)
     {
@@ -116,7 +209,9 @@ ServerCredentialsBuilder::set_tls_key_path(const char *key_path)
       ssl_server_credentials_options.pem_key_cert_pairs.push_back(key_cert_pair);
     }
 
-  return _get_file_content(key_path, ssl_server_credentials_options.pem_key_cert_pairs.at(0).private_key);
+  this->key_path = key_path_;
+
+  return _get_file_content(key_path_, ssl_server_credentials_options.pem_key_cert_pairs.at(0).private_key);
 }
 
 bool
@@ -189,7 +284,12 @@ ServerCredentialsBuilder::get_unique_id()
       id << "insecure";
       break;
     case GSAM_TLS:
-      id << "tls(" << peer_verify << ", " << this->ca_path << ", " << this->cert_path << ")";
+      id << "tls(" << peer_verify;
+      if constexpr (are_certs_reloadable())
+        id << ", " << (this->ca_path.empty() ? "no-ca" : "ca");
+      else
+        id << ", " << this->ca_path << ", " << this->cert_path;
+      id << ")";
       break;
     case GSAM_ALTS:
       id << "alts";

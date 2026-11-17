@@ -23,6 +23,7 @@
 
 #include "grpc-source.hpp"
 
+#include <chrono>
 #include <string>
 #include <sstream>
 
@@ -84,6 +85,46 @@ SourceDriver::prepare_server_builder(::grpc::ServerBuilder &builder)
     builder.AddChannelArgument(nv.first, nv.second);
 
   return true;
+}
+
+bool
+SourceDriver::start_server(::grpc::ServerBuilder &builder)
+{
+  if (this->server)
+    return true;
+
+  this->server = builder.BuildAndStart();
+  if (!this->server)
+    {
+      msg_error("Failed to start gRPC server", evt_tag_int("port", this->port));
+      return false;
+    }
+
+  return true;
+}
+
+void
+SourceDriver::shutdown_server()
+{
+  if (!this->server)
+    return;
+
+  msg_debug("Shutting down gRPC server", evt_tag_int("port", this->port));
+  this->server->Shutdown(std::chrono::system_clock::now() + std::chrono::seconds(30));
+}
+
+ServerState
+SourceDriver::release_server()
+{
+  return { std::move(this->server), this->credentials_builder.get_certificate_provider() };
+}
+
+void
+SourceDriver::restore_server(ServerState state)
+{
+  this->server = std::move(state.server);
+  this->credentials_builder.set_certificate_provider(std::move(state.certificate_provider));
+  this->credentials_builder.update_certificates();
 }
 
 std::string

@@ -41,7 +41,7 @@ struct CfgReloadEntry
 {
   LogThreadedSourceWorker **workers;
   int num_workers;
-  std::unique_ptr<::grpc::Server> server;
+  syslogng::grpc::ServerState server_state;
   std::unique_ptr<TraceService> trace_service;
   std::unique_ptr<LogsService> logs_service;
   std::unique_ptr<MetricsService> metrics_service;
@@ -56,7 +56,7 @@ _destroy_reload_entry(void *c)
 {
   CfgReloadEntry *e = static_cast<CfgReloadEntry *>(c);
 
-  e->server->Shutdown(std::chrono::system_clock::now() + std::chrono::seconds(30));
+  e->server_state.server->Shutdown(std::chrono::system_clock::now() + std::chrono::seconds(30));
 
   /* a queued message can keep a worker alive past this entry, and the
    * requests in its queue refer to the server deleted below */
@@ -76,16 +76,6 @@ SourceDriver::SourceDriver(GrpcSourceDriver *s)
   this->trace_service = std::make_unique<TraceService>(TRACE_EXPORT_METHOD);
   this->logs_service = std::make_unique<LogsService>(LOGS_EXPORT_METHOD);
   this->metrics_service = std::make_unique<MetricsService>(METRICS_EXPORT_METHOD);
-}
-
-void
-SourceDriver::shutdown_server()
-{
-  if (this->server)
-    {
-      msg_debug("Shutting down OpenTelemetry server", evt_tag_int("port", this->port));
-      this->server->Shutdown(std::chrono::system_clock::now() + std::chrono::seconds(30));
-    }
 }
 
 void
@@ -137,17 +127,9 @@ SourceDriver::init()
   if (!workers_inited)
     return false;
 
-  if (this->server)
-    goto exit;
+  if (!this->start_server(builder))
+    return false;
 
-  this->server = builder.BuildAndStart();
-  if (!this->server)
-    {
-      msg_error("Failed to start OpenTelemetry server", evt_tag_int("port", this->port));
-      return false;
-    }
-
-exit:
   msg_info("OpenTelemetry server accepting connections", evt_tag_int("port", this->port));
   return true;
 }
@@ -161,7 +143,7 @@ SourceDriver::reload_save(LogThreadedSourceWorker **workers, gint num_workers)
   {
     workers,
     num_workers,
-    std::move(this->server),
+    this->release_server(),
     std::move(this->trace_service),
     std::move(this->logs_service),
     std::move(this->metrics_service),
@@ -183,7 +165,7 @@ SourceDriver::reload_restore(gint *num_workers)
   this->trace_service = std::move(reload_entry->trace_service);
   this->logs_service = std::move(reload_entry->logs_service);
   this->metrics_service = std::move(reload_entry->metrics_service);
-  this->server = std::move(reload_entry->server);
+  this->restore_server(std::move(reload_entry->server_state));
   LogThreadedSourceWorker **workers = reload_entry->workers;
   *num_workers = reload_entry->num_workers;
 

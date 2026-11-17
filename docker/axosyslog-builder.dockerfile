@@ -22,10 +22,11 @@
 #############################################################################
 
 # must be in sync with axosyslog
+# TODO revert the custom grpc+apache-arrow build commit when bumping to 3.25
 ARG ALPINE_VERSION=3.24
 
 # improve perf output (due to -fno-omit-frame-pointer compilation)
-ARG REBUILD_DEPS="main/musl main/jemalloc main/json-c main/glib community/grpc main/python3"
+ARG REBUILD_DEPS="main/musl main/jemalloc main/json-c main/glib main/python3"
 
 FROM alpine:$ALPINE_VERSION
 ARG ALPINE_VERSION
@@ -58,6 +59,12 @@ RUN mkdir packages || true \
     && abuild -r \
     && cd ../c-ares \
     && abuild checksum \
+    && abuild -r \
+    && cd ../grpc \
+    && abuild -r
+
+RUN cd axoflow/apache-arrow \
+    && export MAKEFLAGS="-j$(nproc)" \
     && abuild -r
 
 RUN \

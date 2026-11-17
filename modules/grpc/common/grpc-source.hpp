@@ -37,9 +37,16 @@
 #include <grpcpp/server_builder.h>
 
 #include <list>
+#include <memory>
 
 namespace syslogng {
 namespace grpc {
+
+struct ServerState
+{
+  std::unique_ptr<::grpc::Server> server;
+  std::shared_ptr<CertificateProvider> certificate_provider;
+};
 
 class SourceDriver
 {
@@ -52,6 +59,8 @@ public:
   virtual void format_stats_key(StatsClusterKeyBuilder *kb) = 0;
   virtual const char *generate_persist_name() = 0;
   virtual LogThreadedSourceWorker *construct_worker(int worker_index) = 0;
+
+  void shutdown_server();
 
   void set_ip(std::string ipaddr)
   {
@@ -105,6 +114,9 @@ public:
 
 protected:
   bool prepare_server_builder(::grpc::ServerBuilder &builder);
+  bool start_server(::grpc::ServerBuilder &builder);
+  ServerState release_server();
+  void restore_server(ServerState state);
   std::string get_unique_id_fragment();
 
 private:
@@ -123,6 +135,7 @@ protected:
   std::list<std::pair<std::string, std::string>> string_extra_channel_args;
 
 private:
+  std::unique_ptr<::grpc::Server> server;
   GrpcServerCredentialsBuilderW credentials_builder_wrapper;
 };
 
