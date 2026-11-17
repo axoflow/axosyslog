@@ -70,6 +70,7 @@ filterx_stashed_object_unref(FilterXStashedObject *self)
 }
 
 FilterXStashedObject *filterx_stashed_env_new(void);
+FilterXStashedObject *filterx_stash_pin(FilterXStashedObject **stash);
 FilterXObject *filterx_stash_retrieve(FilterXStashedObject **stash);
 gboolean filterx_stash_store(FilterXStashedObject **stash, FilterXObject *object, FilterXEnvironment *env);
 

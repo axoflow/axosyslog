@@ -116,8 +116,10 @@ filterx_stashed_env_new(void)
 
 static GRWLock stash_rwl;
 
-FilterXObject *
-filterx_stash_retrieve(FilterXStashedObject **stash)
+/* Keeps what @stash holds right now alive for as long as the current
+ * FilterXEvalContext.  Returns it, NULL if the stash is empty. */
+FilterXStashedObject *
+filterx_stash_pin(FilterXStashedObject **stash)
 {
   g_rw_lock_reader_lock(&stash_rwl);
   FilterXStashedObject *stashed_object = *stash;
@@ -137,6 +139,17 @@ filterx_stash_retrieve(FilterXStashedObject **stash)
    * use of atomics.  */
   filterx_eval_store_weak_ref(stashed_reference);
   filterx_object_unref(stashed_reference);
+
+  return stashed_object;
+}
+
+FilterXObject *
+filterx_stash_retrieve(FilterXStashedObject **stash)
+{
+  FilterXStashedObject *stashed_object = filterx_stash_pin(stash);
+
+  if (!stashed_object)
+    return NULL;
 
   /* this filterx_object_ref() is normally a noop as the object itself is
    * frozen, but is here as a matter of correctness. */
