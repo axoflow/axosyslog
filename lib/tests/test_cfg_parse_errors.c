@@ -28,14 +28,6 @@
 #include "cfg-grammar.h"
 #include "apphook.h"
 
-/* bison error recovery discards semantic values without freeing them, and
- * every input here is a syntax error */
-const char *
-__lsan_default_suppressions(void)
-{
-  return "leak:filterx_parse";
-}
-
 static gboolean
 _parse(const gchar *config)
 {
@@ -61,6 +53,34 @@ Test(cfg_parse_errors, multi_line_error_location_past_the_line_end_is_reported)
 Test(cfg_parse_errors, invalid_regexp_in_a_match_sub_expression_is_a_parse_error)
 {
   cr_assert(not(_parse("log { filterx { x = (\"a\" =~ \"(\"); }; };")));
+}
+
+/* LeakSanitizer fails the test if the parser leaks what it built before the error */
+Test(cfg_parse_errors, syntax_error_frees_the_partially_built_filterx_block)
+{
+  const gchar *configs[] =
+  {
+    "log { filterx { x = 1; y = 2; ( }; };",
+    "log { filterx { x = 1 + 2 ( }; };",
+    "log { filterx { x = {\"a\": 1, \"b\": 2, ( }; };",
+    "log { filterx { x = [1, 2, ( }; };",
+    "log { filterx { x = (1, 2, ( }; };",
+    "log { filterx { x = len(1, 2, ( }; };",
+    "log { filterx { x = len(a=1, ( }; };",
+    "log { filterx { dpath($x.a[1].b ( }; };",
+    "log { filterx { if (x) { y = 1; } elif (z) { y = 2; } else ( }; };",
+    "log { filterx { switch (x) { case 1: y = 1; case 2: ( }; };",
+    "log { filterx { x = 1; ) }; };",
+    "log { filterx { switch (x) { case 1: ) }; };",
+    "log { filterx { x = {\"a\": 1, ; }; };",
+    "log { filterx { x = [1, ; }; };",
+    "log { filterx { x = (1, 2 ; }; };",
+    "log { filterx { [a, b] = ; }; };",
+    "log { filterx { (a, b) = ; }; };",
+  };
+
+  for (gint i = 0; i < G_N_ELEMENTS(configs); i++)
+    cr_assert(not(_parse(configs[i])), "%s", configs[i]);
 }
 
 static void

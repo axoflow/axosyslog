@@ -185,6 +185,17 @@ _assign_location(FilterXExpr *expr, CfgLexer *lexer, CFG_LTYPE *lloc)
 %type <cptr> func_name
 %type <cptr> gen_func_name
 
+%destructor { filterx_expr_unref($$); } <node> block case dict_literal list_literal tuple_literal regexp_match conditional if ternary default
+%destructor { g_list_free_full($$, (GDestroyNotify) filterx_expr_unref); } stmts cases
+%destructor { filterx_function_arg_free($$); } first_argument rest_argument
+%destructor { g_list_free_full($$, (GDestroyNotify) filterx_function_arg_free); } arguments
+%destructor { filterx_literal_element_free($$); } dict_element list_element tuple_element
+%destructor { g_list_free_full($$, (GDestroyNotify) filterx_literal_element_free); } dict_elements list_elements tuple_elements tuple_list
+%destructor { filterx_dpath_elem_free($$); } dpath_element
+%destructor { g_list_free_full($$, (GDestroyNotify) filterx_dpath_elem_free); } dpath_elements
+%destructor { filterx_object_unref($$); } literal_object
+%destructor { log_template_unref($$); } template
+
 %%
 
 start
