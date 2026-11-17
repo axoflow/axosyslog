@@ -64,6 +64,14 @@ _eval_literal(FilterXExpr *s)
   return filterx_object_ref(self->object);
 }
 
+/* a write through the frozen xref would change the literal itself */
+static FilterXObject *
+_eval_mutable_literal(FilterXExpr *s)
+{
+  FilterXLiteral *self = (FilterXLiteral *) s;
+  return filterx_object_cow_fork2(filterx_object_ref(self->object), NULL);
+}
+
 static void
 _free(FilterXExpr *s)
 {
@@ -94,8 +102,11 @@ static FilterXIRValue
 _literal_compile(FilterXExpr *s, FilterXJIT *jit)
 {
   FilterXLiteral *self = (FilterXLiteral *) s;
+  FilterXIRValue object = fx_jit_emit_object_ref(jit, fx_jit_emit_const_ptr(jit, self->object));
 
-  return fx_jit_emit_object_ref(jit, fx_jit_emit_const_ptr(jit, self->object));
+  if (filterx_object_is_ref(self->object))
+    return fx_jit_emit_object_cow_fork2(jit, object);
+  return object;
 }
 
 #endif
@@ -107,7 +118,7 @@ filterx_literal_init_instance(FilterXLiteral *s, FilterXObject *object)
   FilterXLiteral *self = (FilterXLiteral *) s;
 
   filterx_expr_init_instance(&self->super, FILTERX_EXPR_TYPE_NAME(literal), FXE_READ);
-  self->super.eval = _eval_literal;
+  self->super.eval = filterx_object_is_ref(object) ? _eval_mutable_literal : _eval_literal;
   self->super.walk_children = _literal_walk;
   self->super.free_fn = _free;
 #if SYSLOG_NG_ENABLE_JIT
