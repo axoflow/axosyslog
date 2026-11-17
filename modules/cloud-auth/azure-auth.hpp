@@ -27,6 +27,7 @@
 #include "azure-auth.h"
 #include "cloud-auth.hpp"
 
+#include <memory>
 #include <mutex>
 #include <jwt-cpp/jwt.h>
 
@@ -34,23 +35,60 @@ namespace syslogng {
 namespace cloud_auth {
 namespace azure {
 
+class ClientCredential
+{
+public:
+  virtual ~ClientCredential() {};
+  virtual std::string form_fields(const std::string &client_id, const std::string &token_url) = 0;
+};
+
+class ClientSecret: public ClientCredential
+{
+public:
+  ClientSecret(const char *secret);
+
+  std::string form_fields(const std::string &client_id, const std::string &token_url);
+
+private:
+  std::string secret;
+};
+
+class ClientCertificate: public ClientCredential
+{
+public:
+  ClientCertificate(const char *cert_path, const char *key_path);
+
+  std::string form_fields(const std::string &client_id, const std::string &token_url);
+
+private:
+  std::string thumbprint;
+  jwt::algorithm::ps256 signer;
+};
+
 class AzureMonitorAuthenticator: public syslogng::cloud_auth::Authenticator
 {
 public:
-  AzureMonitorAuthenticator(const char *auth_url_base, const char *tenant_id,
-                            const char *app_id, const char *app_secret, const char *scope);
+  AzureMonitorAuthenticator(const char *auth_url_base, const char *tenant_id, const char *app_id,
+                            const char *scope, const char *ca_file, const char *ca_dir,
+                            std::unique_ptr<ClientCredential> credential);
   ~AzureMonitorAuthenticator() {};
 
   void handle_http_header_request(HttpRequestSignalData *data);
+  void handle_http_response(HttpResponseSignalData *data);
 
 private:
   std::string auth_url;
-  std::string auth_body;
+  std::string app_id;
+  std::string scope;
+  std::string ca_file;
+  std::string ca_dir;
+  std::unique_ptr<ClientCredential> credential;
 
   std::mutex lock;
   std::string cached_token;
   std::chrono::system_clock::time_point refresh_token_after;
 
+  std::string auth_body();
   void add_token_to_header(HttpRequestSignalData *data);
   bool parse_token_and_expiry_from_response(const std::string &response_payload,
                                             std::string &token, long *expiry);

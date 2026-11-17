@@ -42,6 +42,7 @@ _attach(LogDriverPlugin *s, LogDriver *d)
 
   SignalSlotConnector *ssc = driver->super.signal_slot_connector;
   CONNECT(ssc, signal_http_request, cloud_authenticator_handle_http_header_request, self->authenticator);
+  CONNECT(ssc, signal_http_response, cloud_authenticator_handle_http_response, self->authenticator);
 
   return TRUE;
 }
@@ -56,6 +57,7 @@ _detach(LogDriverPlugin *s, LogDriver *d)
 
   SignalSlotConnector *ssc = driver->super.signal_slot_connector;
   DISCONNECT(ssc, signal_http_request, cloud_authenticator_handle_http_header_request, self->authenticator);
+  DISCONNECT(ssc, signal_http_response, cloud_authenticator_handle_http_response, self->authenticator);
 }
 
 void
