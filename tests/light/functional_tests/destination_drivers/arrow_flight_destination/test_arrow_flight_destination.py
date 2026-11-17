@@ -37,6 +37,13 @@ ARROW_FLIGHT_OPTIONS = {
 }
 
 
+def get_request_count(config, port, response_code):
+    labels = {"driver": "arrow-flight", "url": f"grpc://localhost:{port}", "response_code": response_code}
+    samples = config.get_prometheus_samples([MetricFilter("syslogng_output_grpc_requests_total", labels)])
+    assert len(samples) == 1
+    return samples[0].value
+
+
 def test_arrow_flight_destination_single_message(config, syslog_ng, port_allocator):
     custom_msg = f"test message {uuid.uuid4()}"
     generator_source = config.create_example_msg_generator_source(num=1, template=stringify(custom_msg))
@@ -81,6 +88,7 @@ def test_arrow_flight_destination_batching(config, syslog_ng, port_allocator):
     num_messages = 9
     batch_size = 3
     custom_msg = f"test message {uuid.uuid4()}"
+    config.update_global_options(stats_level=1)
     generator_source = config.create_example_msg_generator_source(num=num_messages, template=stringify(custom_msg))
 
     options = {
@@ -88,7 +96,8 @@ def test_arrow_flight_destination_batching(config, syslog_ng, port_allocator):
         "batch-lines": batch_size,
         "batch-timeout": 10000,
     }
-    arrow_flight_destination = config.create_arrow_flight_destination(port=port_allocator(), **options)
+    port = port_allocator()
+    arrow_flight_destination = config.create_arrow_flight_destination(port=port, **options)
     config.create_logpath(statements=[generator_source, arrow_flight_destination])
 
     arrow_flight_destination.start_listener()
@@ -99,6 +108,7 @@ def test_arrow_flight_destination_batching(config, syslog_ng, port_allocator):
     assert arrow_flight_destination.get_row_count(ARROW_FLIGHT_PATH) == num_messages
     assert arrow_flight_destination.get_stream_count(ARROW_FLIGHT_PATH) == 1
     assert arrow_flight_destination.get_batch_count(ARROW_FLIGHT_PATH) == num_messages // batch_size
+    assert get_request_count(config, port, "ok") == num_messages // batch_size
 
 
 def test_arrow_flight_destination_multiple_schema_fields(config, syslog_ng, port_allocator):
@@ -402,12 +412,14 @@ def test_arrow_flight_destination_batch_bytes(config, syslog_ng, port_allocator)
 
 def test_arrow_flight_destination_permanent_error(config, syslog_ng, port_allocator):
     num_messages = 5
+    config.update_global_options(stats_level=1)
     file_source = config.create_file_source(file_name="input.log", flags="no-parse")
     options = {
         **ARROW_FLIGHT_OPTIONS,
         "batch-lines": 1,
     }
-    arrow_flight_destination = config.create_arrow_flight_destination(port=port_allocator(), **options)
+    port = port_allocator()
+    arrow_flight_destination = config.create_arrow_flight_destination(port=port, **options)
     config.create_logpath(statements=[file_source, arrow_flight_destination])
 
     arrow_flight_destination.start_listener()
@@ -420,6 +432,8 @@ def test_arrow_flight_destination_permanent_error(config, syslog_ng, port_alloca
     assert wait_until_true(lambda: arrow_flight_destination.get_stats().get("dropped", 0) == num_messages)
     assert arrow_flight_destination.get_stats()["written"] == 0
     assert arrow_flight_destination.get_row_count(ARROW_FLIGHT_PATH) == 0
+    assert get_request_count(config, port, "invalid") == num_messages
+    assert get_request_count(config, port, "ok") == 0
 
 
 def test_arrow_flight_destination_temporary_error(config, syslog_ng, port_allocator):
