@@ -233,7 +233,7 @@ stmt_expr
 
 assignment
 	/* TODO extract lvalues */
-	: variable KW_ASSIGN expr		{ $$ = filterx_assign_new($1, $3); }
+	: variable KW_ASSIGN expr		{ $$ = filterx_assign_new(_assign_location($1, lexer, &@1), $3); }
 	| expr '.' identifier KW_ASSIGN expr	{ $$ = filterx_setattr_new($1, filterx_string_new_frozen($3), $5); free($3); }
 	| expr '[' expr ']' KW_ASSIGN expr	{ $$ = filterx_set_subscript_new($1, $3, $6); }
 	| expr '[' ']' KW_ASSIGN expr  		{ $$ = filterx_set_subscript_new($1, NULL, $5); }
@@ -245,7 +245,7 @@ assignment
 	;
 
 nullv_assignment
-	: variable KW_NULLV_ASSIGN expr			{ $$ = filterx_nullv_assign_new($1, $3); }
+	: variable KW_NULLV_ASSIGN expr			{ $$ = filterx_nullv_assign_new(_assign_location($1, lexer, &@1), $3); }
 	| expr '.' identifier KW_NULLV_ASSIGN expr	{ $$ = filterx_nullv_setattr_new($1, filterx_string_new_frozen($3), $5); free($3); }
 	| expr '[' expr ']' KW_NULLV_ASSIGN expr	{ $$ = filterx_nullv_set_subscript_new($1, $3, $6); }
 	| expr '[' ']' KW_NULLV_ASSIGN expr  		{ $$ = filterx_nullv_set_subscript_new($1, NULL, $5); }
@@ -253,7 +253,7 @@ nullv_assignment
 	;
 
 plus_assignment
-	: variable KW_PLUS_ASSIGN expr		{ $$ = filterx_operator_plus_assign_new($1, $3); }
+	: variable KW_PLUS_ASSIGN expr		{ $$ = filterx_operator_plus_assign_new(_assign_location($1, lexer, &@1), $3); }
 	| expr '[' expr ']' KW_PLUS_ASSIGN expr	{ $$ = filterx_set_subscript_new(filterx_expr_ref($1), filterx_expr_ref($3), filterx_operator_plus_new(filterx_get_subscript_new($1, $3), $6)); }
 	| expr '.' identifier KW_PLUS_ASSIGN expr
 						{
@@ -270,7 +270,7 @@ dpath_lvalue
 	: KW_DPATH '(' variable dpath_elements ')'
 		{
 		  GError *error = NULL;
-		  FilterXExpr *res = filterx_dpath_lvalue_new($3, $4, &error);
+		  FilterXExpr *res = filterx_dpath_lvalue_new(_assign_location($3, lexer, &@3), $4, &error);
 		  CHECK_FUNCTION_ERROR(res, @$, "dpath", error);
 		  $$ = _assign_location(res, lexer, &@$);
 		}
@@ -287,7 +287,7 @@ dpath_element
 	;
 
 declaration
-    : KW_DECLARE filterx_variable KW_ASSIGN expr	{ filterx_variable_expr_declare($2); $$ = filterx_assign_new($2, $4); }
+    : KW_DECLARE filterx_variable KW_ASSIGN expr	{ filterx_variable_expr_declare($2); $$ = filterx_assign_new(_assign_location($2, lexer, &@2), $4); }
     ;
 
 expr: __expr				{ $$ = _assign_location($1, lexer, &@1); }

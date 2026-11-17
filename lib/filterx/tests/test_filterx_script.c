@@ -185,6 +185,28 @@ Test(filterx_script, ast_nodes_carry_their_source_text_and_location)
   json_object_put(ast);
 }
 
+Test(filterx_script, ast_of_an_assignment_target_carries_its_text_and_location)
+{
+  struct json_object *ast = _compile_ast("foo = 1;\n"
+                                         "$MSG =?? foo;\n"
+                                         "declare bar = foo;\n");
+  struct json_object *floating = _get_child(_get_child(ast, 0, 3), 0, 2);
+  struct json_object *message = _get_child(_get_child(ast, 1, 3), 0, 2);
+  struct json_object *declared = _get_child(_get_child(ast, 2, 3), 0, 2);
+
+  cr_assert(eq(str, _get_str(floating, "type"), "variable"));
+  cr_assert(eq(str, _get_str(floating, "text"), "foo"));
+  cr_assert(eq(int, json_object_get_int(_get(_get(floating, "location"), "line")), 1));
+
+  cr_assert(eq(str, _get_str(message, "text"), "$MSG"));
+  cr_assert(eq(int, json_object_get_int(_get(_get(message, "location"), "line")), 2));
+
+  cr_assert(eq(str, _get_str(declared, "text"), "bar"));
+  cr_assert(eq(int, json_object_get_int(_get(_get(declared, "location"), "line")), 3));
+
+  json_object_put(ast);
+}
+
 Test(filterx_script, ast_is_dumped_after_optimization)
 {
   struct json_object *ast = _compile_ast("$MSG = 1 + 2;\n");
