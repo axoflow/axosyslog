@@ -364,7 +364,7 @@ filterx_function_arg_new(const gchar *name, FilterXExpr *value)
   return self;
 }
 
-static void
+void
 filterx_function_arg_free(FilterXFunctionArg *self)
 {
   g_free(self->name);
