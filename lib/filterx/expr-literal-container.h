@@ -31,6 +31,7 @@ typedef struct FilterXLiteralContainer_ FilterXLiteralContainer;
 
 FilterXLiteralElement *filterx_literal_element_new(FilterXExpr *key, FilterXExpr *value);
 FilterXLiteralElement *filterx_nullv_literal_element_new(FilterXExpr *key, FilterXExpr *value);
+void filterx_literal_element_free(FilterXLiteralElement *self);
 
 /* Literal Object expressions */
 
