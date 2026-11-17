@@ -504,8 +504,9 @@ filterx_eval_set_control_modifier(FilterXEvalContext *context, FilterXEvalContro
  *
  * A preserved object is shared: a hibernated one lasts as long as the
  * process, a frozen one as long as the stash references of the snapshot,
- * see _pin_stashes().  Anything else is copied, with whatever allocator
- * the snapshot context has in effect.
+ * see _pin_stashes().  An immutable heap object is shared too.  Anything
+ * else is copied, with whatever allocator the snapshot context has in
+ * effect.
  */
 static FilterXObject *
 _snapshot_value(FilterXObject *value, gpointer user_data)
@@ -520,6 +521,13 @@ _snapshot_value(FilterXObject *value, gpointer user_data)
    * so the snapshot gets one of its own, the frozen value is shared */
   if (filterx_object_is_ref(value) && filterx_object_is_preserved(filterx_ref_unwrap_ro(value)))
     return _filterx_ref_new(filterx_object_ref(filterx_ref_unwrap_ro(value)));
+
+  /* an immutable heap object is shared: its reference count is atomic.  One
+   * that borrows from the message is not: the message of the snapshot is a
+   * clone */
+  if (!value->type->is_mutable && !filterx_object_is_allocator_resident(value) &&
+      !filterx_object_is_nvtable_backed(value))
+    return filterx_object_ref(value);
 
   return filterx_object_dup(value);
 }

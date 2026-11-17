@@ -128,7 +128,8 @@ void filterx_eval_freeze_object(FilterXObject **object);
  * current_frame_meta.  Every value is copied into the snapshot, except a
  * preserved one, which is shared: a hibernated one lasts as long as the
  * process, a frozen one as long as the stash references the snapshot
- * takes.
+ * takes.  An immutable heap object that does not borrow from the message
+ * is shared too, the reference count of a heap object is atomic.
  *
  * The result is a heap allocated, standalone FilterXEvalContext with no
  * previous_context and an arena of its own.  So it can be kept around

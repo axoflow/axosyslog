@@ -713,10 +713,10 @@ Test(filterx_retain, snapshot_copies_allocator_allocated_variable_values)
   filterx_scope_variable_layout_free(layout);
 }
 
-/* a heap object is reference counted, but the count is not atomic and the
- * live evaluation still holds the object: a reference would share it with
- * the thread that resumes the snapshot */
-Test(filterx_retain, snapshot_copies_a_heap_refcounted_variable_value)
+/* a resumed evaluation writes through the snapshot, so a heap container is
+ * copied.  An immutable heap object is shared: the reference count of a
+ * heap object is atomic */
+Test(filterx_retain, snapshot_copies_a_heap_container_and_shares_an_immutable_heap_object)
 {
   FilterXVariableHandle handles[] =
   {
@@ -736,6 +736,7 @@ Test(filterx_retain, snapshot_copies_a_heap_refcounted_variable_value)
   FilterXObject *str = filterx_string_new("heap-string", -1);
   filterx_scope_set_variable(scope, v, &str, TRUE);
 
+  guint32 str_refs = str->ref_cnt;
   FilterXEvalContext *dup = filterx_eval_context_dup(filterx_eval_get_context());
 
   FilterXObject *ddict = filterx_variable_borrow_value(filterx_scope_lookup_variable(dup->scope, handles[0], 0));
@@ -745,8 +746,8 @@ Test(filterx_retain, snapshot_copies_a_heap_refcounted_variable_value)
   assert_object_json_equals(ddict, NESTED_DICT_JSON);
 
   FilterXObject *dstr = filterx_variable_borrow_value(filterx_scope_lookup_variable(dup->scope, handles[1], 1));
-  cr_assert_neq(dstr, str, "the snapshot shares a heap string with the live evaluation");
-  assert_object_str_equals(dstr, "heap-string");
+  cr_assert_eq(dstr, str, "the snapshot copied an immutable heap object");
+  cr_assert_eq(str->ref_cnt, str_refs + 1, "the snapshot holds no reference of its own");
 
   filterx_object_unref(dict);
   filterx_object_unref(str);
