@@ -376,7 +376,12 @@ filterx_object_vref(FilterXObject *self)
   filterx_object_check_early_allocation(self);
   g_assert(r + 1 < FILTERX_OBJECT_REFCOUNT_BARRIER && r > 0);
 
-  self->ref_cnt++;
+  /* a heap object can have references in more than one thread, an allocator
+   * resident one never has */
+  if (G_LIKELY(filterx_object_is_allocator_resident(self)))
+    self->ref_cnt++;
+  else
+    g_atomic_int_inc((gint *) &self->ref_cnt);
   return self;
 }
 
@@ -426,7 +431,13 @@ filterx_object_vunref(FilterXObject *self)
   filterx_object_check_early_allocation(self);
   g_assert(r > 0);
 
-  if (--self->ref_cnt == 0)
+  gboolean last_ref;
+  if (G_LIKELY(filterx_object_is_allocator_resident(self)))
+    last_ref = (--self->ref_cnt == 0);
+  else
+    last_ref = g_atomic_int_dec_and_test((gint *) &self->ref_cnt);
+
+  if (last_ref)
     {
       self->type->free_fn(self);
       filterx_free_object(self);
