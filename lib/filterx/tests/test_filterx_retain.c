@@ -55,6 +55,7 @@
 #include "filterx/filterx-eval.h"
 #include "filterx/filterx-allocator.h"
 #include "filterx/filterx-env.h"
+#include "filterx/filterx-stashed-object.h"
 #include "filterx/filterx-ref.h"
 #include "filterx/filterx-scope.h"
 #include "filterx/filterx-variable.h"
@@ -777,6 +778,96 @@ Test(filterx_retain, snapshot_copies_a_message_backed_variable_value)
 
   filterx_eval_context_free_dup(dup);
   filterx_scope_variable_layout_free(layout);
+}
+
+/* The evaluation takes no reference to the stash of its configuration, the
+ * snapshot takes one. */
+Test(filterx_retain, snapshot_takes_a_reference_to_the_stash_of_the_configuration)
+{
+  FilterXStashedObject *config_stash = filterx_stashed_env_new();
+  LogMessage *msg = log_msg_new_empty();
+  FilterXEvalContext *standing_context = filterx_eval_get_context();
+  FilterXEvalContext eval_context;
+  FilterXEvalContext *dup = NULL;
+
+  FILTERX_EVAL_BEGIN_CONTEXT(eval_context, NULL, &config_stash, msg, NULL)
+  {
+    cr_assert_eq(g_atomic_counter_get(&config_stash->ref_cnt), 1);
+
+    dup = filterx_eval_context_dup(&eval_context);
+    cr_assert_eq(g_atomic_counter_get(&config_stash->ref_cnt), 2);
+  }
+  FILTERX_EVAL_END_CONTEXT(eval_context);
+  filterx_eval_set_context(standing_context);
+
+  cr_assert_eq(g_atomic_counter_get(&config_stash->ref_cnt), 2);
+  filterx_eval_context_free_dup(dup);
+  cr_assert_eq(g_atomic_counter_get(&config_stash->ref_cnt), 1);
+
+  log_msg_unref(msg);
+  filterx_stashed_object_unref(config_stash);
+}
+
+typedef struct
+{
+  FilterXObject *literal;
+  FilterXVariableHandle handle;
+  FilterXScopeVariableLayout *layout;
+  FilterXEvalContext *dup;
+} ConfigLiteralSnapshot;
+
+/* A snapshot of an evaluation that assigned a literal of its configuration
+ * to a variable.  On return the evaluation is over and the configuration
+ * has dropped its stash: only the snapshot keeps the literal alive. */
+static void
+_snapshot_a_config_literal(ConfigLiteralSnapshot *self)
+{
+  FilterXStashedObject *config_stash = filterx_stashed_env_new();
+  self->literal = _new_frozen_in_env(&config_stash->env, _new_nested_dict);
+
+  self->handle = filterx_map_varname_to_handle("literalvar", FX_VAR_DECLARED_FLOATING);
+  self->layout = filterx_scope_variable_layout_new_from_handles(&self->handle, 1);
+  FilterXScope *scope = filterx_scope_new(NULL, self->layout);
+  set_libtest_filterx_scope(scope);
+
+  /* the evaluation runs under this configuration */
+  filterx_eval_get_context()->config_stash = &config_stash;
+  _enable_allocator();
+
+  /* an assignment leaves an xref of the evaluation around the frozen value */
+  FilterXVariable *v = filterx_scope_register_variable(scope, FX_VAR_DECLARED_FLOATING, self->handle, 0);
+  FilterXObject *value = filterx_object_cow_fork2(filterx_object_ref(self->literal), NULL);
+  filterx_scope_set_variable(scope, v, &value, TRUE);
+  filterx_object_unref(value);
+
+  self->dup = filterx_eval_context_dup(filterx_eval_get_context());
+
+  filterx_eval_get_context()->config_stash = NULL;
+  set_libtest_filterx_scope(filterx_scope_new(NULL, NULL));
+  _release_allocator_memory();
+  g_ptr_array_set_size(filterx_eval_get_context()->weak_refs, 0);
+  filterx_stashed_object_unref(config_stash);
+}
+
+static void
+_free_snapshot(ConfigLiteralSnapshot *self)
+{
+  filterx_eval_context_free_dup(self->dup);
+  filterx_scope_variable_layout_free(self->layout);
+}
+
+/* An error of a resumed evaluation can hold a frozen object too. */
+Test(filterx_retain, snapshot_releases_its_stash_references_after_its_errors)
+{
+  ConfigLiteralSnapshot snapshot;
+  _snapshot_a_config_literal(&snapshot);
+
+  FilterXEvalContext *standing_context = filterx_eval_get_context();
+  filterx_eval_set_context(snapshot.dup);
+  filterx_eval_push_error("an error of the resumed evaluation", snapshot.literal);
+  filterx_eval_set_context(standing_context);
+
+  _free_snapshot(&snapshot);
 }
 
 Test(filterx_retain, snapshot_syncs_a_whiteout_into_its_message)

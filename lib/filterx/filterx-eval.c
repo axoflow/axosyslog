@@ -516,6 +516,21 @@ _snapshot_value(FilterXObject *value, gpointer user_data)
   return filterx_object_dup(value);
 }
 
+/* The stash references go last: a weak ref can be an xref around a frozen
+ * object, and that xref still touches the object on its way out. */
+static void
+_free_weak_refs_of_dup(GPtrArray *weak_refs)
+{
+  for (guint i = 0; i < weak_refs->len; i++)
+    {
+      FilterXObject **weak_ref = (FilterXObject **) &g_ptr_array_index(weak_refs, i);
+
+      if (!filterx_object_is_type(*weak_ref, &FILTERX_TYPE_NAME(stash_reference)))
+        g_clear_pointer(weak_ref, filterx_object_unref);
+    }
+  g_ptr_array_free(weak_refs, TRUE);
+}
+
 FilterXEvalContext *
 filterx_eval_context_dup(FilterXEvalContext *context)
 {
@@ -541,6 +556,10 @@ filterx_eval_context_dup(FilterXEvalContext *context)
    * which has to be the new one */
   filterx_eval_set_context(new_context);
 
+  /* the snapshot can outlive the configuration */
+  if (context->config_stash)
+    filterx_stash_pin(context->config_stash);
+
   new_context->scope = filterx_scope_dup(context->scope, _snapshot_value, NULL);
   /* borrowed, the scope holds the reference */
   new_context->msg = new_context->scope->msg;
@@ -560,13 +579,14 @@ filterx_eval_context_free_dup(FilterXEvalContext *context)
   filterx_scope_free_dup(context->scope);
 
   filterx_object_unref(context->current_frame_meta);
-  g_ptr_array_free(context->weak_refs, TRUE);
   _clear_errors(context);
   if (context->failure_info)
     {
       _clear_failure_info(context->failure_info);
       g_array_free(context->failure_info, TRUE);
     }
+  /* after the errors, which can hold a frozen object too */
+  _free_weak_refs_of_dup(context->weak_refs);
 
   /* last: everything released above may still have touched objects living
    * in the arena (their free_fn, the parent_container links) */
