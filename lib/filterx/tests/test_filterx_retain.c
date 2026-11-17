@@ -925,11 +925,70 @@ _snapshot_a_config_literal(ConfigLiteralSnapshot *self)
   filterx_stashed_object_unref(config_stash);
 }
 
+static FilterXObject *
+_snapshot_value(ConfigLiteralSnapshot *self)
+{
+  return filterx_variable_borrow_value(filterx_scope_lookup_variable(self->dup->scope, self->handle, 0));
+}
+
 static void
 _free_snapshot(ConfigLiteralSnapshot *self)
 {
   filterx_eval_context_free_dup(self->dup);
   filterx_scope_variable_layout_free(self->layout);
+}
+
+Test(filterx_retain, snapshot_shares_a_config_literal_and_keeps_it_alive)
+{
+  ConfigLiteralSnapshot snapshot;
+  _snapshot_a_config_literal(&snapshot);
+
+  FilterXObject *dvalue = _snapshot_value(&snapshot);
+  cr_assert_eq(filterx_ref_unwrap_ro(dvalue), filterx_ref_unwrap_ro(snapshot.literal),
+               "the config literal was copied into the snapshot");
+  _assert_decoupled(dvalue, "snapshot");
+  assert_object_json_equals(dvalue, NESTED_DICT_JSON);
+
+  _free_snapshot(&snapshot);
+}
+
+Test(filterx_retain, a_write_through_the_snapshot_does_not_change_a_config_literal)
+{
+  ConfigLiteralSnapshot snapshot;
+  _snapshot_a_config_literal(&snapshot);
+
+  FilterXEvalContext *standing_context = filterx_eval_get_context();
+  filterx_eval_set_context(snapshot.dup);
+  _dict_set(_snapshot_value(&snapshot), "added", filterx_string_new("by-the-resumed-evaluation", -1));
+  filterx_eval_set_context(standing_context);
+
+  FilterXObject *dvalue = _snapshot_value(&snapshot);
+  cr_assert_neq(filterx_ref_unwrap_ro(dvalue), filterx_ref_unwrap_ro(snapshot.literal),
+                "the write went into the frozen literal");
+  assert_object_json_equals(snapshot.literal, NESTED_DICT_JSON);
+  assert_object_json_equals(dvalue, "{\"name\":\"nested-value\",\"items\":[4242,\"list-element\"],"
+                                    "\"added\":\"by-the-resumed-evaluation\"}");
+
+  _free_snapshot(&snapshot);
+}
+
+/* A resumed evaluation that reads into the literal leaves an xref around a
+ * frozen object in the weak refs of the snapshot.  That xref touches the
+ * object when it is released, so the environment has to be still there. */
+Test(filterx_retain, snapshot_releases_its_stash_references_last)
+{
+  ConfigLiteralSnapshot snapshot;
+  _snapshot_a_config_literal(&snapshot);
+
+  FilterXEvalContext *standing_context = filterx_eval_get_context();
+  filterx_eval_set_context(snapshot.dup);
+  FilterXObject *items = filterx_object_getattr_string(_snapshot_value(&snapshot), "items");
+  cr_assert_not_null(items);
+  assert_object_json_equals(items, "[4242,\"list-element\"]");
+  filterx_object_unref(items);
+  filterx_eval_set_context(standing_context);
+
+  _free_snapshot(&snapshot);
 }
 
 /* An error of a resumed evaluation can hold a frozen object too. */
