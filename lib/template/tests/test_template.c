@@ -593,8 +593,10 @@ assert_template_literal_value(const gchar *template_code, const gchar *expected_
 
   cr_assert(log_template_is_literal_string(template));
 
-  const gchar *literal_val = log_template_get_literal_value(template, NULL);
+  gssize literal_len = -1;
+  const gchar *literal_val = log_template_get_literal_value(template, &literal_len);
   cr_assert(eq(str, literal_val, expected_value));
+  cr_assert(eq(i64, literal_len, (gssize) strlen(expected_value)));
 
   GString *formatted_value = g_string_sized_new(64);
   LogMessage *msg = create_sample_message();
