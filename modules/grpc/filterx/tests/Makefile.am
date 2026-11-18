@@ -17,7 +17,8 @@ modules_grpc_filterx_tests_test_protobuf_message_CFLAGS = \
 modules_grpc_filterx_tests_test_protobuf_message_LDADD = \
   $(TEST_LDADD) \
   $(top_builddir)/modules/grpc/common/libgrpc-common.la \
-  $(top_builddir)/modules/grpc/filterx/libgrpc-filterx.la
+  $(top_builddir)/modules/grpc/filterx/libgrpc-filterx.la \
+  $(top_builddir)/modules/grpc/protos/libgrpc-protos.la
 
 endif
 

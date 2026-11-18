@@ -29,10 +29,12 @@
 #include "socket/transport-mapper.h"
 #include "driver.h"
 #include "logwriter.h"
+#include "logbalancer.h"
 
 #include <iv.h>
 
 typedef struct _AFSocketDestDriver AFSocketDestDriver;
+typedef struct _AFSocketDestConnection AFSocketDestConnection;
 typedef struct _AFSocketDestKeptAliveConnection AFSocketDestKeptAliveConnection;
 
 typedef enum
@@ -47,27 +49,44 @@ typedef enum
   AFSOCKET_DD_CONNECTION_FAILURE_MAX
 } AFSocketDestConnectionFailure;
 
+/* A single connection of the destination, with its own writer and queue.
+ * The destination distributes messages between its connections. */
+struct _AFSocketDestConnection
+{
+  AFSocketDestDriver *owner;
+  gint index;
+
+  gint fd;
+  LogWriter *writer;
+  GSockAddr *dest_addr;
+  gboolean initialized;
+  struct iv_fd connect_fd;
+  struct iv_timer reconnect_timer;
+
+  /* read by source threads, see afsocket_dd_queue() */
+  gboolean currently_unreachable;
+};
+
 struct _AFSocketDestDriver
 {
   LogDestDriver super;
 
   guint
   connections_kept_alive_across_reloads:1;
-  gint fd;
-  LogWriter *writer;
   LogWriterOptions writer_options;
   LogProtoClientFactory *proto_factory;
 
   GSockAddr *bind_addr;
-  GSockAddr *dest_addr;
-  gboolean connection_initialized;
-  struct iv_fd connect_fd;
-  struct iv_timer reconnect_timer;
   SocketOptions *socket_options;
   TransportMapper *transport_mapper;
   gchar *driver_name;
 
-  gboolean currently_unreachable;
+  AFSocketDestConnection *connections;
+  gint num_connections;
+  LogBalancerOptions balancer_options;
+  LogBalancer *balancer;
+  /* number of connections currently unreachable */
+  gint unreachable_connections;
 
   struct
   {
@@ -76,13 +95,13 @@ struct _AFSocketDestDriver
   } metrics;
 
   LogWriter *(*construct_writer)(AFSocketDestDriver *self);
-  LogProtoClient *(*construct_proto)(AFSocketDestDriver *self, gint fd);
-  gboolean (*setup_addresses)(AFSocketDestDriver *s);
+  LogProtoClient *(*construct_proto)(AFSocketDestDriver *self, AFSocketDestConnection *conn, gint fd);
+  gboolean (*setup_addresses)(AFSocketDestDriver *s, AFSocketDestConnection *conn);
   const gchar *(*get_dest_name)(const AFSocketDestDriver *s);
 
-  void (*save_connection)(AFSocketDestDriver *s);
+  void (*save_connection)(AFSocketDestDriver *s, AFSocketDestConnection *conn);
   gboolean (*should_restore_connection)(AFSocketDestDriver *s, AFSocketDestKeptAliveConnection *c);
-  void (*restore_connection)(AFSocketDestDriver *s, AFSocketDestKeptAliveConnection *c);
+  void (*restore_connection)(AFSocketDestDriver *s, AFSocketDestConnection *conn, AFSocketDestKeptAliveConnection *c);
 };
 
 struct _AFSocketDestKeptAliveConnection
@@ -104,9 +123,9 @@ afsocket_dd_construct_writer(AFSocketDestDriver *self)
 }
 
 static inline gboolean
-afsocket_dd_setup_addresses(AFSocketDestDriver *s)
+afsocket_dd_setup_addresses(AFSocketDestDriver *s, AFSocketDestConnection *conn)
 {
-  return s->setup_addresses(s);
+  return s->setup_addresses(s, conn);
 }
 
 static inline const gchar *
@@ -116,24 +135,29 @@ afsocket_dd_get_dest_name(const AFSocketDestDriver *s)
 }
 
 LogWriter *afsocket_dd_construct_writer_method(AFSocketDestDriver *self);
-LogProtoClient *afsocket_dd_construct_proto_method(AFSocketDestDriver *self, gint fd);
-gboolean afsocket_dd_setup_addresses_method(AFSocketDestDriver *self);
+LogProtoClient *afsocket_dd_construct_proto_method(AFSocketDestDriver *self, AFSocketDestConnection *conn, gint fd);
+gboolean afsocket_dd_setup_addresses_method(AFSocketDestDriver *self, AFSocketDestConnection *conn);
 void afsocket_dd_set_keep_alive(LogDriver *self, gint enable);
+void afsocket_dd_set_num_connections(LogDriver *self, gint num_connections);
+void afsocket_dd_set_partition_key_ref(LogDriver *self, LogTemplate *partition_key);
+void afsocket_dd_set_batch_size(LogDriver *self, gint batch_size);
 void afsocket_dd_init_instance(AFSocketDestDriver *self, SocketOptions *socket_options,
                                TransportMapper *transport_mapper, const gchar *driver_name,
                                GlobalConfig *cfg);
-void afsocket_dd_reconnect(AFSocketDestDriver *self);
-void afsocket_dd_stop_watches(AFSocketDestDriver *self);
+void afsocket_dd_reconnect(AFSocketDestConnection *conn);
+void afsocket_dd_stop_watches(AFSocketDestConnection *conn);
 
 gboolean afsocket_dd_init(LogPipe *s);
 gboolean afsocket_dd_deinit(LogPipe *s);
 void afsocket_dd_free(LogPipe *s);
-void afsocket_dd_connected_with_fd(gpointer self, gint fd, GSockAddr *saddr);
+void afsocket_dd_connected_with_fd(AFSocketDestConnection *conn, gint fd, GSockAddr *saddr);
 
 
-void afsocket_dd_save_connection(AFSocketDestDriver *self, AFSocketDestKeptAliveConnection *c);
+void afsocket_dd_save_connection(AFSocketDestDriver *self, AFSocketDestConnection *conn,
+                                 AFSocketDestKeptAliveConnection *c);
 gboolean afsocket_dd_should_restore_connection_method(AFSocketDestDriver *self, AFSocketDestKeptAliveConnection *c);
-void afsocket_dd_restore_connection_method(AFSocketDestDriver *self, AFSocketDestKeptAliveConnection *item);
+void afsocket_dd_restore_connection_method(AFSocketDestDriver *self, AFSocketDestConnection *conn,
+                                           AFSocketDestKeptAliveConnection *item);
 
 void afsocket_kept_alive_connection_init_instance(AFSocketDestKeptAliveConnection *s,
                                                   const gchar *transport, const gchar *proto,

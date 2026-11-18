@@ -1,0 +1,97 @@
+/*
+ * Copyright (c) 2026 Balazs Scheidler <balazs.scheidler@axoflow.com>
+ *
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *
+ * As an additional exemption you are allowed to compile & link against the
+ * OpenSSL libraries as published by the OpenSSL project. See the file
+ * COPYING for details.
+ *
+ */
+
+#ifndef LOGBALANCER_H_INCLUDED
+#define LOGBALANCER_H_INCLUDED
+
+#include "logmsg/logmsg.h"
+#include "template/templates.h"
+#include "stats/stats-counter.h"
+#include "cfg.h"
+
+/*
+ * LogBalancer distributes messages between a fixed set of targets (e.g.
+ * workers, partitions or connections), identified by their index in the
+ * [0, num_targets) range.  It only decides which target a message should
+ * go to, delivery is up to the caller.
+ *
+ * Without a partition key, targets are selected in a round-robin fashion,
+ * batch_size consecutive messages are sent to the same target.
+ *
+ * With a partition key, selection is "sticky": messages with the same key
+ * go to the same target, which retains their ordering.  With autoscaling,
+ * targets are assigned to keys in proportion to their message rate, see
+ * logbalancer-autoscale.h.
+ *
+ * Targets may be temporarily unavailable (e.g. their connection is down),
+ * which is reported by an optional callback.  If requested, unavailable
+ * targets are skipped by round-robin selection.  Sticky selection never
+ * moves a key to another target, as that would break its ordering.
+ *
+ * log_balancer_select() is called from source threads.  Round-robin state
+ * is kept per input thread, so no locking happens on the hot path.
+ */
+
+typedef struct _LogBalancerOptions
+{
+  /* round-robin: number of consecutive messages sent to the same target */
+  gint batch_size;
+
+  /* sticky: messages with the same key go to the same target */
+  LogTemplate *partition_key;
+  /* sticky: spread the messages of a single key over this many
+   * targets, based on their receipt time within the second */
+  LogTemplate *partition_buckets;
+  /* sticky: assign targets to keys based on their message rate */
+  gboolean partition_autoscaling;
+  /* sticky: number of targets reserved for low rate keys */
+  gint partition_autoscaling_wfo;
+} LogBalancerOptions;
+
+typedef struct _LogBalancer LogBalancer;
+
+/* called from source threads, should be cheap, e.g. an atomic read */
+typedef gboolean (*LogBalancerIsAvailableFunc)(gint target, gpointer user_data);
+
+void log_balancer_options_set_partition_key_ref(LogBalancerOptions *options, LogTemplate *partition_key);
+void log_balancer_options_set_partition_buckets_ref(LogBalancerOptions *options, LogTemplate *partition_buckets);
+void log_balancer_options_defaults(LogBalancerOptions *options);
+/* @location is used in error messages, may be NULL */
+gboolean log_balancer_options_init(LogBalancerOptions *options, GlobalConfig *cfg, LogExprNode *location);
+void log_balancer_options_destroy(LogBalancerOptions *options);
+
+/* Returns a target index in [0, num_targets).  With @available_only, only
+ * available targets are returned and -1 is returned if the message has no
+ * available target. */
+gint log_balancer_select(LogBalancer *self, LogMessage *msg, gboolean available_only);
+gint log_balancer_get_num_targets(LogBalancer *self);
+
+/* number of active partitions with autoscaling, maintained in @counter */
+void log_balancer_set_active_partitions_counter(LogBalancer *self, StatsCounterItem *counter);
+
+void log_balancer_set_availability_check(LogBalancer *self, LogBalancerIsAvailableFunc is_available,
+                                         gpointer user_data);
+
+LogBalancer *log_balancer_new(const LogBalancerOptions *options, gint num_targets);
+void log_balancer_free(LogBalancer *self);
+
+#endif
