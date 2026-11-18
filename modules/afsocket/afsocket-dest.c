@@ -493,6 +493,13 @@ _afsocket_dd_set_flush_lines(AFSocketDestDriver *self, gboolean explicit)
 {
   GlobalConfig *cfg = log_pipe_get_config(&self->super.super.super);
 
+  /* each message has to remain a separate datagram */
+  if (self->transport_mapper->sock_type == SOCK_DGRAM)
+    {
+      self->writer_options.proto_options.super.flush_lines = 1;
+      return;
+    }
+
   if (cfg_is_config_version_older(cfg, VERSION_VALUE_4_26) && !explicit)
     {
       msg_warning_once("WARNING: with " VERSION_4_26 ", network() and tcp() destinations using "
@@ -503,8 +510,6 @@ _afsocket_dd_set_flush_lines(AFSocketDestDriver *self, gboolean explicit)
       self->writer_options.proto_options.super.flush_lines = 1;
       return;
     }
-
-  self->writer_options.proto_options.super.flush_lines = self->writer_options.flush_lines;
 }
 
 static gboolean
@@ -512,7 +517,7 @@ afsocket_dd_setup_writer_options(AFSocketDestDriver *self)
 {
   GlobalConfig *cfg = log_pipe_get_config(&self->super.super.super);
 
-  gboolean flush_lines_explicit = (self->writer_options.flush_lines != -1);
+  gboolean flush_lines_explicit = (self->writer_options.proto_options.super.flush_lines != -1);
 
   log_writer_options_init(&self->writer_options, cfg, 0);
 

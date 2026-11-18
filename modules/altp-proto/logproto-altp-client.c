@@ -1239,7 +1239,7 @@ _batch_frame_bound(LogProtoAltpClient *self)
  * an oversized message costs at most one extra Batch boundary.
  */
 static LogProtoStatus
-_drop_oversized_message(LogProtoAltpClient *self, guchar *msg, gsize msg_len, gboolean *consumed)
+_drop_oversized_message(LogProtoAltpClient *self, const guchar *msg, gsize msg_len, gboolean *consumed)
 {
   if (self->frames_posted > 0)
     return LPS_SUCCESS;
@@ -1251,7 +1251,6 @@ _drop_oversized_message(LogProtoAltpClient *self, guchar *msg, gsize msg_len, gb
   stats_counter_inc(self->metrics.frames_dropped);
 
   log_proto_client_msg_ack(&self->super, 1);
-  g_free(msg);
   *consumed = TRUE;
 
   return LPS_SUCCESS;
@@ -1267,7 +1266,8 @@ _drop_oversized_message(LogProtoAltpClient *self, guchar *msg, gsize msg_len, gb
  * every reconnect.
  */
 static LogProtoStatus
-log_proto_altp_client_post(LogProtoClient *s, LogMessage *logmsg, guchar *msg, gsize msg_len, gboolean *consumed)
+log_proto_altp_client_post(LogProtoClient *s, LogMessage *logmsg, const guchar *msg, gsize msg_len,
+                           gboolean *consumed)
 {
   LogProtoAltpClient *self = (LogProtoAltpClient *) s;
 
@@ -1288,7 +1288,6 @@ log_proto_altp_client_post(LogProtoClient *s, LogMessage *logmsg, guchar *msg, g
     return LPS_SUCCESS;
 
   _append_frame(self, msg, msg_len);
-  g_free(msg);
   *consumed = TRUE;
 
   if (self->frames_posted >= _batch_frame_bound(self))

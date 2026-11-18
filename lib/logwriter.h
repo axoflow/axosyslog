@@ -52,9 +52,6 @@ typedef struct _LogWriterOptions
   /* bitmask of LWO_* */
   guint32 options;
 
-  /* minimum number of entries to trigger a flush */
-  gint flush_lines;
-
   LogTemplate *template;
   LogTemplate *file_template;
   LogTemplate *proto_template;
