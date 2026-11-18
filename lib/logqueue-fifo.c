@@ -75,7 +75,7 @@ QueueType log_queue_fifo_type = "FIFO";
  */
 
 /* propagate the per-thread input queue to the wait queue once it is this
- * long, the check runs on every 128th item, so keep it a multiple of that */
+ * long */
 #define INPUT_QUEUE_FLUSH_LEN 1024
 
 /* Per-thread input queue.  Each input thread writes its own slot on every
@@ -396,17 +396,20 @@ log_queue_fifo_push_tail(LogQueue *s, LogMessage *msg, const LogPathOptions *pat
         self->input_queues[thread_index].non_flow_controlled_len++;
 
       gboolean flush_input_queue = FALSE;
-      if ((qlen & 0x7F) == 0)
+      if (qlen >= INPUT_QUEUE_FLUSH_LEN)
+        {
+          flush_input_queue = TRUE;
+        }
+      else if ((qlen & 0x7F) == 0)
         {
           /* don't check the elapsed time for every message, once every 128
            * should be sufficient to keep our delays low.
            */
-
           gint64 input_queue_age_msec =
             unix_time_diff_in_msec(&msg->timestamps[LM_TS_RECVD],
                                    _input_queue_first_message_recvd(&self->input_queues[thread_index]));
 
-          flush_input_queue = qlen >= INPUT_QUEUE_FLUSH_LEN || input_queue_age_msec > 100;
+          flush_input_queue = input_queue_age_msec > 100;
         }
       log_msg_unref(msg);
 
