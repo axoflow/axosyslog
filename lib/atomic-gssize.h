@@ -114,7 +114,7 @@ atomic_gssize_and(atomic_gssize *a, gsize value)
 static inline gboolean
 atomic_gssize_compare_and_exchange(atomic_gssize *a, gssize oldval, gssize newval)
 {
-  return g_atomic_pointer_compare_and_exchange(&a->value, oldval, newval);
+  return (g_atomic_pointer_compare_and_exchange)(&a->value, (gpointer) oldval, (gpointer) newval);
 }
 
 static inline gssize
