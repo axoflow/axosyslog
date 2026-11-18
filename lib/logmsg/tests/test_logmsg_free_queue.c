@@ -178,6 +178,24 @@ _allocated_bytes(void)
   return stats_counter_get(allocated_bytes);
 }
 
+Test(logmsg_free_queue, clone_is_handed_over_to_its_origin)
+{
+  gsize baseline = _allocated_bytes();
+  OriginThread *origin = origin_thread_new();
+  LogMessage *clone = _new_clone_in(origin, origin);
+  gsize allocated = _allocated_bytes();
+
+  cr_assert(gt(sz, allocated, baseline));
+
+  log_msg_unref(clone);
+  _flush_test_thread();
+  cr_assert(eq(sz, _allocated_bytes(), allocated),
+            "the clone or its original was freed outside of the origin thread");
+
+  origin_thread_free(origin);
+  cr_assert(eq(sz, _allocated_bytes(), baseline));
+}
+
 Test(logmsg_free_queue, clone_in_a_batch_rejected_by_a_stopped_origin)
 {
   gsize baseline = _allocated_bytes();
