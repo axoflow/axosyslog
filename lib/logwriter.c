@@ -1770,9 +1770,6 @@ log_writer_close(LogWriter *self)
 
   log_writer_stop_watches(self);
 
-  if (self->partial_write)
-    log_queue_rewind_backlog_all(self->queue);
-
   log_writer_free_proto(self);
   log_writer_set_proto(self, NULL);
   self->closed = TRUE;
