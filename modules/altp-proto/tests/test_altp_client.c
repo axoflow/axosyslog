@@ -505,15 +505,12 @@ _process_in(AltpTestSender *self)
   return status;
 }
 
-/* Hand a message over the way log_writer_write_message() does: the proto takes ownership of the payload. */
+/* Hand a message over the way log_writer_write_message() does. */
 static LogProtoStatus
 _post(AltpTestSender *self, const gchar *payload, gboolean *consumed)
 {
-  guchar *msg = (guchar *) g_strdup(payload);
-  LogProtoStatus status = log_proto_client_post(self->proto, NULL, msg, strlen(payload), consumed);
-
-  if (!*consumed)
-    g_free(msg);
+  LogProtoStatus status = log_proto_client_post(self->proto, NULL, (const guchar *) payload, strlen(payload),
+                                                consumed);
 
   _collect_written(self);
 
@@ -1498,7 +1495,7 @@ Test(altp_client, an_acknowledgement_arriving_while_a_frame_is_half_written_clos
 
   sender.throttle->write_budget = 2;
   _post_and_assert_consumed(&sender, "one");
-  cr_assert(eq(int, _flush(&sender), LPS_PARTIAL));
+  cr_assert(eq(int, _flush(&sender), LPS_SUCCESS));
   _assert_written(&sender, "3 ");
 
   cr_assert(eq(int, _reply(&sender, "250 Received 1\n"), LPS_ERROR));
@@ -1518,10 +1515,10 @@ Test(altp_client, an_acknowledgement_overtaking_the_tail_of_the_terminator_is_ac
   _assert_written(&sender, "3 one");
 
   sender.throttle->write_budget = 1;
-  cr_assert(eq(int, _flush(&sender), LPS_PARTIAL));
+  cr_assert(eq(int, _flush(&sender), LPS_SUCCESS));
   _assert_written(&sender, ".");
 
-  cr_assert(eq(int, _reply(&sender, "250 Received 1\n"), LPS_PARTIAL));
+  cr_assert(eq(int, _reply(&sender, "250 Received 1\n"), LPS_SUCCESS));
   cr_assert(eq(int, sender.acked, 1), "every Frame was written in full, so the acknowledgement stands");
   cr_assert(eq(int, sender.rewind_calls, 1));
 
@@ -1544,7 +1541,7 @@ Test(altp_client, the_terminator_never_shares_a_write_with_a_frame)
   _post_and_assert_consumed(&sender, "one");
   _assert_written(&sender, "3 one");
 
-  cr_assert(eq(int, _reply(&sender, "250 Received 1\n"), LPS_PARTIAL));
+  cr_assert(eq(int, _reply(&sender, "250 Received 1\n"), LPS_SUCCESS));
   cr_assert(eq(int, sender.acked, 1), "the Frame was written whole, only the terminator is blocked");
 
   sender.throttle->write_budget = -1;

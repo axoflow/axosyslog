@@ -24,6 +24,7 @@
 #define LOGSCHEDULER_H_INCLUDED
 
 #include "logpipe.h"
+#include "logbalancer.h"
 #include "mainloop-io-worker.h"
 #include "template/templates.h"
 #include "stats/stats-counter.h"
@@ -68,8 +69,6 @@ typedef struct _LogSchedulerThreadState
     guint32 len;
   } partitions[LOGSCHEDULER_MAX_PARTITIONS];
 
-  gint last_partition;
-  gint current_batch_size;
   gint input_batch_size;
   struct
   {
@@ -81,9 +80,12 @@ typedef struct _LogSchedulerThreadState
 typedef struct _LogSchedulerOptions
 {
   gint num_partitions;
+  /* the number of messages a batch is closed at, also the number of
+   * consecutive messages sent to the same partition without a partition key */
   gint batch_size;
-  LogTemplate *partition_key;
   gsize log_fetch_limit;
+  /* the partition key is stored here */
+  LogBalancerOptions balancer;
 } LogSchedulerOptions;
 
 typedef struct _LogScheduler
@@ -91,6 +93,7 @@ typedef struct _LogScheduler
   gchar *id;
   LogPipe *front_pipe;
   LogSchedulerOptions *options;
+  LogBalancer *balancer;
   gint num_input_threads;
   LogSchedulerPartition partitions[LOGSCHEDULER_MAX_PARTITIONS];
   StatsCounterItem *parallelize_failed_events_total;
@@ -109,7 +112,7 @@ void log_scheduler_free(LogScheduler *self);
 
 void log_scheduler_options_set_partition_key_ref(LogSchedulerOptions *options, LogTemplate *partition_key);
 void log_scheduler_options_defaults(LogSchedulerOptions *options);
-gboolean log_scheduler_options_init(LogSchedulerOptions *options, GlobalConfig *cfg);
+gboolean log_scheduler_options_init(LogSchedulerOptions *options, GlobalConfig *cfg, LogExprNode *location);
 void log_scheduler_options_destroy(LogSchedulerOptions *options);
 
 #endif

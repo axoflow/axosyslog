@@ -230,6 +230,28 @@ def test_destination_failover_file_destination_fails_over(config, syslog_ng, por
     assert not Path("missing-dir").exists()
 
 
+def test_destination_failover_file_destination_reopens_after_idle_close(config, syslog_ng, port_allocator):
+    # file() registers its counters from stats(level(1))
+    config.update_global_options(stats_level=1)
+    source = config.create_network_source(ip="localhost", port=port_allocator(), transport="tcp")
+    primary = config.create_file_destination(file_name="primary.log", time_reap=1)
+    secondary = config.create_file_destination(file_name="secondary.log")
+    _create_failover_logpath(config, source, primary, secondary)
+
+    syslog_ng.start(config)
+
+    before_close = _messages("before-close")
+    source.write_logs(_syslog_lines(before_close))
+    assert len(primary.read_until_logs(before_close)) == NUM_MESSAGES
+
+    syslog_ng.wait_for_messages_in_console_log(["Destination timed out, closing file"])
+
+    after_close = _messages("after-close")
+    source.write_logs(_syslog_lines(after_close))
+    assert len(primary.read_until_logs(after_close)) == NUM_MESSAGES
+    assert _rejected_counts(config) == []
+
+
 def test_destination_failover_file_destination_is_unreachable_per_file(config, syslog_ng, port_allocator):
     Path("dir-good").mkdir()
 
