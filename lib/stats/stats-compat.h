@@ -24,6 +24,7 @@
 
 #include "syslog-ng.h"
 #include "stats-counter.h"
+#include "stats-counter-batch.h"
 #include "stats-cluster.h"
 #include "stats-cluster-single.h"
 #include "stats-registry.h"
@@ -118,11 +119,11 @@ stats_byte_counter_add(StatsByteCounter *self, gsize add)
 
   if (self->counter_cache.value > (gssize) self->precision)
     {
-      stats_counter_add(self->counter, self->counter_cache.value / self->precision);
+      stats_counter_add_batched(self->counter, self->counter_cache.value / self->precision);
       self->counter_cache.value %= self->precision;
     }
 #else
-  stats_counter_add(self->counter, add);
+  stats_counter_add_batched(self->counter, add);
 #endif
 }
 

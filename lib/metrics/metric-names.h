@@ -54,6 +54,7 @@
   M(filtered_events_total) \
   M(fx_xxx_evals_total) \
   M(input_event_bytes_total) \
+  M(input_event_size_bytes) \
   M(input_events_total) \
   M(input_transport_errors_total) \
   M(input_window_available) \
