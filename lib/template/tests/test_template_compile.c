@@ -407,4 +407,11 @@ Test(template_compile, test_template_function_with_a_trailing_backslash_fails)
   g_clear_error(&error);
 }
 
+Test(template_compile, test_empty_template_function_compiles)
+{
+  GError *error = NULL;
+
+  cr_assert(log_template_compile(template, "$()", &error));
+}
+
 TestSuite(template_compile, .init = setup, .fini = teardown);

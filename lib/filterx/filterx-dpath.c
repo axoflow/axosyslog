@@ -75,7 +75,7 @@ filterx_dpath_elem_expr_new(FilterXExpr *expr)
   return self;
 }
 
-static void
+void
 filterx_dpath_elem_free(FilterXDPathElement *elem)
 {
   if (elem->type == FILTERX_DPATH_ELEMENT_OBJECT)

@@ -76,6 +76,7 @@ void filterx_function_deinit_method(FilterXFunction *s, GlobalConfig *cfg);
 void filterx_function_free_method(FilterXFunction *s);
 
 FilterXFunctionArg *filterx_function_arg_new(const gchar *name, FilterXExpr *value);
+void filterx_function_arg_free(FilterXFunctionArg *self);
 FilterXFunctionArgs *filterx_function_args_new(GList *args, GError **error);
 guint64 filterx_function_args_len(FilterXFunctionArgs *self);
 gboolean filterx_function_args_empty(FilterXFunctionArgs *self);

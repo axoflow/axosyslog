@@ -364,7 +364,7 @@ filterx_function_arg_new(const gchar *name, FilterXExpr *value)
   return self;
 }
 
-static void
+void
 filterx_function_arg_free(FilterXFunctionArg *self)
 {
   g_free(self->name);
@@ -382,7 +382,8 @@ filterx_function_args_new(GList *args, GError **error)
   self->positional_args = g_ptr_array_new_full(8, (GDestroyNotify) filterx_function_arg_free);
 
   gboolean has_named = FALSE;
-  for (GList *elem = args; elem; elem = elem->next)
+  GList *elem = args;
+  for (; elem; elem = elem->next)
     {
       FilterXFunctionArg *arg = (FilterXFunctionArg *) elem->data;
       if (!arg->name)
@@ -393,7 +394,7 @@ filterx_function_args_new(GList *args, GError **error)
                           "cannot set positional argument after a named argument");
               filterx_function_args_free(self);
               self = NULL;
-              goto exit;
+              break;
             }
           g_ptr_array_add(self->positional_args, arg);
         }
@@ -404,7 +405,8 @@ filterx_function_args_new(GList *args, GError **error)
         }
     }
 
-exit:
+  for (; elem; elem = elem->next)
+    filterx_function_arg_free((FilterXFunctionArg *) elem->data);
   g_list_free(args);
   return self;
 }
@@ -700,48 +702,36 @@ filterx_function_args_free(FilterXFunctionArgs *self)
 }
 
 
-static FilterXExpr *
-_lookup_simple_function(GlobalConfig *cfg, const gchar *function_name, FilterXFunctionArgs *args, GError **error)
+static FilterXSimpleFunctionProto
+_lookup_simple_function(GlobalConfig *cfg, const gchar *function_name)
 {
   // Checking filterx builtin functions first
   FilterXSimpleFunctionProto f = filterx_builtin_simple_function_lookup(function_name);
-  if (f != NULL)
-    {
-      return filterx_simple_function_new(function_name, args, f, error);
-    }
+  if (f)
+    return f;
 
   // fallback to plugin lookup
   Plugin *p = cfg_find_plugin(cfg, LL_CONTEXT_FILTERX_SIMPLE_FUNC, function_name);
-
-  if (p == NULL)
+  if (!p)
     return NULL;
 
-  f = plugin_construct(p);
-  if (f == NULL)
-    return NULL;
-
-  return filterx_simple_function_new(function_name, args, f, error);
+  return plugin_construct(p);
 }
 
-static FilterXExpr *
-_lookup_function(GlobalConfig *cfg, const gchar *function_name, FilterXFunctionArgs *args, GError **error)
+static FilterXFunctionCtor
+_lookup_function(GlobalConfig *cfg, const gchar *function_name)
 {
   // Checking filterx builtin functions first
   FilterXFunctionCtor ctor = filterx_builtin_function_ctor_lookup(function_name);
+  if (ctor)
+    return ctor;
 
-  if (!ctor)
-    {
-      // fallback to plugin lookup
-      Plugin *p = cfg_find_plugin(cfg, LL_CONTEXT_FILTERX_FUNC, function_name);
-      if (!p)
-        return NULL;
-      ctor = plugin_construct(p);
-    }
-
-  if (!ctor)
+  // fallback to plugin lookup
+  Plugin *p = cfg_find_plugin(cfg, LL_CONTEXT_FILTERX_FUNC, function_name);
+  if (!p)
     return NULL;
 
-  return ctor(args, error);
+  return plugin_construct(p);
 }
 
 /* NOTE: takes the reference of "args_list" */
@@ -752,15 +742,15 @@ filterx_function_lookup(GlobalConfig *cfg, const gchar *function_name, GList *ar
   if (!args)
     return NULL;
 
-  FilterXExpr *expr = _lookup_simple_function(cfg, function_name, args, error);
-  if (expr)
-    return expr;
+  FilterXSimpleFunctionProto f = _lookup_simple_function(cfg, function_name);
+  if (f)
+    return filterx_simple_function_new(function_name, args, f, error);
 
-  expr = _lookup_function(cfg, function_name, args, error);
-  if (expr)
-    return expr;
+  FilterXFunctionCtor ctor = _lookup_function(cfg, function_name);
+  if (ctor)
+    return ctor(args, error);
 
-  if (!(*error))
-    g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_FUNCTION_NOT_FOUND, "function not found");
+  filterx_function_args_free(args);
+  g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_FUNCTION_NOT_FOUND, "function not found");
   return NULL;
 }

@@ -62,8 +62,8 @@ _literal_element_is_literal(FilterXLiteralElement *self)
   return (!self->key || filterx_expr_is_literal(self->key)) && filterx_expr_is_literal(self->value);
 }
 
-static void
-_literal_element_free(FilterXLiteralElement *self)
+void
+filterx_literal_element_free(FilterXLiteralElement *self)
 {
   filterx_expr_unref(self->key);
   filterx_expr_unref(self->value);
@@ -179,7 +179,7 @@ _literal_container_free(FilterXExpr *s)
   FilterXLiteralContainer *self = (FilterXLiteralContainer *) s;
 
   filterx_object_unref(self->sparse_container);
-  filterx_pointer_list_clear(&self->elements, (GDestroyNotify) _literal_element_free);
+  filterx_pointer_list_clear(&self->elements, (GDestroyNotify) filterx_literal_element_free);
   filterx_pointer_list_clear(&self->nonliteral_elements, NULL);
   filterx_expr_free_method(s);
 }
