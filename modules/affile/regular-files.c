@@ -80,7 +80,6 @@ file_opener_for_regular_source_files_new(void)
 typedef struct _FileOpenerRegularDestFiles
 {
   FileOpener super;
-  const LogWriterOptions *writer_options;
   gboolean *use_fsync;
 } FileOpenerRegularDestFiles;
 
@@ -89,9 +88,7 @@ _construct_dst_proto(FileOpener *s, LogTransport *transport, LogProtoClientOptio
 {
   FileOpenerRegularDestFiles *self = (FileOpenerRegularDestFiles *) s;
 
-  return log_proto_file_writer_new(transport, proto_options,
-                                   self->writer_options->flush_lines,
-                                   *self->use_fsync);
+  return log_proto_file_writer_new(transport, proto_options, *self->use_fsync);
 }
 
 static LogTransport *
@@ -101,14 +98,13 @@ _construct_transport(FileOpener *s, gint fd)
 }
 
 FileOpener *
-file_opener_for_regular_dest_files_new(const LogWriterOptions *writer_options, gboolean *use_fsync)
+file_opener_for_regular_dest_files_new(gboolean *use_fsync)
 {
   FileOpenerRegularDestFiles *self = g_new0(FileOpenerRegularDestFiles, 1);
 
   file_opener_init_instance(&self->super);
   self->super.construct_transport = _construct_transport;
   self->super.construct_dst_proto = _construct_dst_proto;
-  self->writer_options = writer_options;
   self->use_fsync = use_fsync;
   return &self->super;
 }
