@@ -175,11 +175,11 @@ _deserialize_message_version_2x(LogMessageSerializationState *state)
   msg->flags |= LF_STATE_MASK;
   if (!serialize_read_uint16(sa, &msg->pri))
     return FALSE;
-  if (!g_sockaddr_deserialize(sa, &msg->saddr))
+  if (!g_sockaddr_deserialize_cached(sa, &msg->saddr, state->cache ? &state->cache->saddr : NULL))
     return FALSE;
   if (state->version >= LGM_V27)
     {
-      if (!g_sockaddr_deserialize(sa, &msg->daddr))
+      if (!g_sockaddr_deserialize_cached(sa, &msg->daddr, state->cache ? &state->cache->daddr : NULL))
         return FALSE;
     }
   if (state->version < LGM_V24)
@@ -519,13 +519,14 @@ _check_msg_version(LogMessageSerializationState *state)
 }
 
 LogMessage *
-log_msg_deserialize(SerializeArchive *sa)
+log_msg_deserialize_cached(SerializeArchive *sa, LogMessageDeserializeCache *cache)
 {
   LogMessageSerializationState state = { 0 };
   LogMessage *msg = log_msg_sized_new(0);
 
   state.sa = sa;
   state.msg = msg;
+  state.cache = cache;
   if (!_check_msg_version(&state))
     {
       log_msg_unref(msg);
@@ -552,4 +553,17 @@ log_msg_deserialize(SerializeArchive *sa)
                           (msg->payload ? nv_table_get_size(msg->payload) : 0);
   log_msg_update_allocation(msg, (gssize) allocated_bytes - (gssize) msg->allocated_bytes);
   return msg;
+}
+
+LogMessage *
+log_msg_deserialize(SerializeArchive *sa)
+{
+  return log_msg_deserialize_cached(sa, NULL);
+}
+
+void
+log_msg_deserialize_cache_clear(LogMessageDeserializeCache *cache)
+{
+  g_sockaddr_deserialize_cache_clear(&cache->saddr);
+  g_sockaddr_deserialize_cache_clear(&cache->daddr);
 }

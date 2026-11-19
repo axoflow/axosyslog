@@ -142,6 +142,7 @@ log_queue_disk_free_method(LogQueueDisk *self)
 {
   g_assert(!qdisk_started(self->qdisk));
   qdisk_free(self->qdisk);
+  log_msg_deserialize_cache_clear(&self->deserialize_cache);
 
   _unregister_counters(self);
 
@@ -464,9 +465,11 @@ log_queue_disk_serialize_msg(LogQueueDisk *self, LogMessage *msg, GString *seria
 static gboolean
 _deserialize_msg(SerializeArchive *sa, gpointer user_data)
 {
-  LogMessage **pmsg = user_data;
+  gpointer *args = user_data;
+  LogQueueDisk *self = args[0];
+  LogMessage **pmsg = args[1];
 
-  *pmsg = log_msg_deserialize(sa);
+  *pmsg = log_msg_deserialize_cached(sa, &self->deserialize_cache);
   return *pmsg != NULL;
 }
 
@@ -476,7 +479,9 @@ log_queue_disk_deserialize_msg(LogQueueDisk *self, GString *serialized, LogMessa
   LogMessage *local_msg = NULL;
   GError *error = NULL;
 
-  if (!qdisk_deserialize(serialized, _deserialize_msg, &local_msg, &error))
+  gpointer args[] = { self, &local_msg };
+
+  if (!qdisk_deserialize(serialized, _deserialize_msg, args, &error))
     {
       msg_error("Error deserializing message from the disk-queue file",
                 evt_tag_str("error", error->message),

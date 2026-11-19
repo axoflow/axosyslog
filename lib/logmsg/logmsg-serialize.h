@@ -27,6 +27,7 @@
 
 #include "serialize.h"
 #include "timeutils/unixtime.h"
+#include "logmsg/gsockaddr-serialize.h"
 
 /*
  * version   info
@@ -71,7 +72,17 @@ enum _LogMessageSerializationFlags
   LMSF_COMPACTION = 0x0001,
 };
 
+/* Lets a series of deserialized messages share the parts they have in
+ * common.  The caller serializes the access to it. */
+typedef struct _LogMessageDeserializeCache
+{
+  GSockAddrDeserializeCache saddr;
+  GSockAddrDeserializeCache daddr;
+} LogMessageDeserializeCache;
+
 LogMessage *log_msg_deserialize(SerializeArchive *sa);
+LogMessage *log_msg_deserialize_cached(SerializeArchive *sa, LogMessageDeserializeCache *cache);
+void log_msg_deserialize_cache_clear(LogMessageDeserializeCache *cache);
 gboolean log_msg_serialize_with_ts_processed(LogMessage *self, SerializeArchive *sa, const UnixTime *processed,
                                              guint32 flags);
 gboolean log_msg_serialize(LogMessage *self, SerializeArchive *sa, guint32 flags);
