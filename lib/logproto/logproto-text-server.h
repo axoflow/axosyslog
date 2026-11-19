@@ -24,7 +24,9 @@
 #define LOGPROTO_TEXT_SERVER_INCLUDED
 
 #include "logproto-buffered-server.h"
-#include "multi-line/multi-line-logic.h"
+#include "multi-line/multi-line-factory.h"
+
+#include <iv.h>
 
 typedef struct _LogProtoTextServer LogProtoTextServer;
 struct _LogProtoTextServer
@@ -32,12 +34,22 @@ struct _LogProtoTextServer
   LogProtoBufferedServer super;
   MultiLineLogic *multi_line;
 
+  gint multi_line_timeout;
+  struct iv_timer multi_line_timer;
+  /* iv_now when the last line was consumed into the pending message */
+  struct timespec multi_line_pending_since;
+  gint multi_line_timer_fired;
+
   const guchar *(*find_eom)(const guchar *s, gsize n);
   gint32 consumed_len;
   gint32 cached_eol_pos;
 };
 
-void log_proto_text_server_set_multi_line(LogProtoServer *s, MultiLineLogic *multi_line);
+/* the lines are merged, and their timeout kept, as @options say */
+void log_proto_text_server_set_multi_line(LogProtoServer *s, const MultiLineOptions *options);
+
+/* as if the timer had fired; the deadline is still checked, for tests */
+void log_proto_text_server_fire_multi_line_timeout(LogProtoServer *s);
 
 /* LogProtoTextServer
  *

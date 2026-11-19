@@ -47,6 +47,7 @@ struct _MultiLineLogic
                           gsize consumed_len,
                           const guchar *segment,
                           gsize segment_len);
+  void (*reset)(MultiLineLogic *self);
   void (*free_fn)(MultiLineLogic *s);
 };
 
@@ -95,6 +96,23 @@ multi_line_logic_accumulate_line(MultiLineLogic *self,
                                  gsize segment_len)
 {
   return self->accumulate_line(self, msg, msg_len, segment, segment_len);
+}
+
+/*
+ * multi_line_logic_reset():
+ *
+ * The caller handed the consumed data over on its own, without an
+ * MLL_EXTRACTED verdict asking for it: to cap the size of a message or on a
+ * timeout for instance.  An implementation that keeps state about the
+ * consumed data forgets it here, the next accumulate_line() call starts a
+ * new message.  What it knows about the stream itself, where in a trace the
+ * lines are for instance, is still true and stays.
+ */
+static inline void
+multi_line_logic_reset(MultiLineLogic *self)
+{
+  if (self->reset)
+    self->reset(self);
 }
 
 static inline void

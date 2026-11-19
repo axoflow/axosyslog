@@ -40,11 +40,16 @@ add_module(
 target_include_directories(splunk-s2s-server PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 set(SPLUNK_S2S_SOURCES
+    splunk-s2s-options.c
+    splunk-s2s-options.h
+    splunk-s2s-parser.c
+    splunk-s2s-parser.h
     splunk-s2s-plugin.c
 )
 
 add_module(
   TARGET splunk_s2s
+  GRAMMAR splunk-s2s-grammar
   DEPENDS splunk-s2s-protocol
   DEPENDS splunk-s2s-client
   DEPENDS splunk-s2s-server
