@@ -378,6 +378,42 @@ Test(filterx_expr, test_filterx_set_subscript)
   filterx_expr_unref(setattr);
 }
 
+Test(filterx_expr, test_filterx_setattr_leaves_a_literal_dict_intact)
+{
+  FilterXExpr *literal = filterx_literal_new(filterx_dict_new());
+  FilterXExpr *setattr = filterx_setattr_new(filterx_expr_ref(literal), filterx_string_new("foo", -1),
+                                             filterx_literal_new(filterx_string_new("bar", -1)));
+
+  FilterXObject *res = init_and_eval_expr(setattr);
+  cr_assert(not(zero(ptr, res)));
+  filterx_object_unref(res);
+
+  FilterXObject *dict = filterx_literal_get_value(literal);
+  assert_object_json_equals(dict, "{}");
+  filterx_object_unref(dict);
+
+  filterx_expr_unref(setattr);
+  filterx_expr_unref(literal);
+}
+
+Test(filterx_expr, test_filterx_set_subscript_leaves_a_literal_list_intact)
+{
+  FilterXExpr *literal = filterx_literal_new(filterx_list_new());
+  FilterXExpr *append = filterx_set_subscript_new(filterx_expr_ref(literal), NULL,
+                                                  filterx_literal_new(filterx_string_new("bar", -1)));
+
+  FilterXObject *res = init_and_eval_expr(append);
+  cr_assert(not(zero(ptr, res)));
+  filterx_object_unref(res);
+
+  FilterXObject *list = filterx_literal_get_value(literal);
+  assert_object_json_equals(list, "[]");
+  filterx_object_unref(list);
+
+  filterx_expr_unref(append);
+  filterx_expr_unref(literal);
+}
+
 static void
 setup(void)
 {
