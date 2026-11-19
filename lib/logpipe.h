@@ -250,6 +250,17 @@ log_path_options_chain(LogPathOptions *local_path_options, const LogPathOptions 
   return local_path_options;
 }
 
+/*
+ * Tell the enclosing junction (if any) that this message did not match the
+ * current path.
+ */
+static inline void
+log_path_options_mark_unmatched(const LogPathOptions *path_options)
+{
+  if (path_options->matched)
+    *path_options->matched = FALSE;
+}
+
 /* LogPathOptions are chained up at the start of a junction and teared down
  * at the end (see log_path_options_pop_junction().
  *

@@ -80,8 +80,8 @@ _queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_options)
   log_parser_queue_method(s, msg, &local_path_options);
 
   /* propagate our "matched" state */
-  if (path_options->matched && !matched && self->inject_mode != LDBP_IM_AGGREGATE_ONLY)
-    *path_options->matched = FALSE;
+  if (!matched && self->inject_mode != LDBP_IM_AGGREGATE_ONLY)
+    log_path_options_mark_unmatched(path_options);
 }
 
 void
