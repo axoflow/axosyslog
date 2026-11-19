@@ -93,6 +93,7 @@ struct _TLSContext
   gboolean ocsp_stapling_verify;
   gboolean extended_key_usage_verify;
   gboolean allow_compress;
+  gboolean optional;
 
   SSL_CTX *ssl_ctx;
   GList *conf_cmds_list;
@@ -145,6 +146,8 @@ void tls_context_set_server_name(TLSContext *self, const gchar *server_name);
 const gchar *tls_context_get_server_name(TLSContext *self);
 void tls_context_set_ocsp_stapling_verify(TLSContext *self, gboolean ocsp_stapling_verify);
 void tls_context_set_extended_key_usage_verify(TLSContext *self, gboolean extended_key_usage_verify);
+void tls_context_set_optional(TLSContext *self, gboolean optional);
+gboolean tls_context_is_optional(TLSContext *self);
 const gchar *tls_context_get_key_file(TLSContext *self);
 EVTTAG *tls_context_format_tls_error_tag(TLSContext *self);
 EVTTAG *tls_context_format_location_tag(TLSContext *self);
