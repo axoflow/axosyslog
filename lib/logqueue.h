@@ -82,6 +82,7 @@ struct _LogQueue
 
   /* queue management */
   gboolean (*keep_on_reload)(LogQueue *self);
+  gboolean (*flush_on_shutdown)(LogQueue *self);
   gint64 (*get_length)(LogQueue *self);
   gboolean (*is_empty_racy)(LogQueue *self);
   void (*push_tail)(LogQueue *self, LogMessage *msg, const LogPathOptions *path_options);
@@ -100,6 +101,14 @@ log_queue_keep_on_reload(LogQueue *self)
 {
   if (self->keep_on_reload)
     return self->keep_on_reload(self);
+  return TRUE;
+}
+
+static inline gboolean
+log_queue_flush_on_shutdown(LogQueue *self)
+{
+  if (self->flush_on_shutdown)
+    return self->flush_on_shutdown(self);
   return TRUE;
 }
 
