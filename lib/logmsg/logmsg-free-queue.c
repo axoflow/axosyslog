@@ -302,9 +302,12 @@ log_msg_free_queue_push(LogMessage *msg)
   if (origin_thread_id == 0 || !queueing || origin_thread_id == current_id)
     return FALSE;
 
-  /* freeing a clone unrefs its original, which must not happen while a batch is being freed */
-  if (msg->original)
-    return FALSE;
+  /* Freeing a clone unrefs its original, which may free another message,
+   * so it must not happen while a batch is being freed.  Detach the
+   * original before queueing the clone: the clone owns nothing it shares
+   * with the original, so freeing it does not need the original.  */
+  LogMessage *original = msg->original;
+  msg->original = NULL;
 
   LogMessageFreeBatch *batch = last_batch;
 
@@ -317,6 +320,9 @@ log_msg_free_queue_push(LogMessage *msg)
     _batch_hand_over(batch);
   else if (!iv_task_registered(&flush_task))
     iv_task_register(&flush_task);
+
+  /* last, as it may free the original, calling us recursively */
+  log_msg_unref(original);
   return TRUE;
 }
 

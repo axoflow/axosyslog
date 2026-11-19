@@ -38,6 +38,7 @@ lib_logmsg_tests_TESTS +=				\
 	lib/logmsg/tests/test_gsockaddr_serialize	\
 	lib/logmsg/tests/test_log_message \
 	lib/logmsg/tests/test_logmsg_ack \
+	lib/logmsg/tests/test_logmsg_free_queue \
 	lib/logmsg/tests/test_nvhandle_desc_array
 
 lib_logmsg_tests_test_nvtable_CFLAGS			= $(TEST_CFLAGS)
@@ -51,6 +52,9 @@ lib_logmsg_tests_test_log_message_LDADD			= $(TEST_LDADD)
 
 lib_logmsg_tests_test_logmsg_ack_LDADD = $(TEST_LDADD)
 lib_logmsg_tests_test_logmsg_ack_CFLAGS = $(TEST_CFLAGS)
+
+lib_logmsg_tests_test_logmsg_free_queue_LDADD = $(TEST_LDADD)
+lib_logmsg_tests_test_logmsg_free_queue_CFLAGS = $(TEST_CFLAGS)
 
 lib_logmsg_tests_test_nvhandle_desc_array_LDADD = $(TEST_LDADD)
 lib_logmsg_tests_test_nvhandle_desc_array_CFLAGS = $(TEST_CFLAGS)
