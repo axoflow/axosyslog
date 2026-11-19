@@ -58,6 +58,7 @@ from axosyslog_light.syslog_ng_config.statements.rewrite.rewrite import CreditCa
 from axosyslog_light.syslog_ng_config.statements.rewrite.rewrite import Set
 from axosyslog_light.syslog_ng_config.statements.rewrite.rewrite import SetPri
 from axosyslog_light.syslog_ng_config.statements.rewrite.rewrite import SetTag
+from axosyslog_light.syslog_ng_config.statements.sources.ehttp_source import EHttpSource
 from axosyslog_light.syslog_ng_config.statements.sources.example_msg_generator_source import ExampleMsgGeneratorSource
 from axosyslog_light.syslog_ng_config.statements.sources.file_source import FileSource
 from axosyslog_light.syslog_ng_config.statements.sources.inner_source import InnerSource
@@ -203,6 +204,9 @@ class SyslogNgConfig(object):
 
     def create_webhook_source(self, **options):
         return WebhookSource(self._stats_handler, self._prometheus_stats_handler, **options)
+
+    def create_ehttp_source(self, **options):
+        return EHttpSource(self._stats_handler, self._prometheus_stats_handler, **options)
 
     def create_webhook_json_source(self, **options):
         return WebhookJsonSource(self._stats_handler, self._prometheus_stats_handler, **options)
