@@ -24,6 +24,7 @@
 from pathlib import Path
 
 import pytest
+from axosyslog_light.common.blocking import wait_until_true
 from axosyslog_light.common.file import File
 from axosyslog_light.syslog_ng_config.statement_group import StatementGroup
 from axosyslog_light.syslog_ng_ctl.prometheus_stats_handler import MetricFilter
@@ -31,6 +32,7 @@ from axosyslog_light.syslog_ng_ctl.prometheus_stats_handler import MetricFilter
 NUM_MESSAGES = 10
 SHAPES = ["nested-final", "if-else"]
 OPEN_ATTEMPTS_FILE = "open-attempts.log"
+SLOW_RESPONSE_SECONDS = 2
 PYTHON_OUTPUT_FILE = "python-output.log"
 
 PREAMBLE = r"""
@@ -111,6 +113,11 @@ def _read_lines(path, count):
 def _rejected_counts(config):
     samples = config.get_prometheus_samples([MetricFilter("syslogng_output_events_total", {"result": "rejected"})])
     return [int(sample.value) for sample in samples if sample.value]
+
+
+def _delivered_count(config, driver):
+    metric_filter = MetricFilter("syslogng_output_events_total", {"result": "delivered", "driver": driver})
+    return sum(int(sample.value) for sample in config.get_prometheus_samples([metric_filter]))
 
 
 class _NamedDestinationReference(StatementGroup):
@@ -208,6 +215,45 @@ def test_destination_failover_threaded_destination_fails_over(config, syslog_ng,
     source.write_logs(_syslog_lines(messages))
     assert len(secondary.read_until_logs(messages)) == NUM_MESSAGES
     assert _rejected_counts(config) == [NUM_MESSAGES]
+
+
+def test_destination_failover_http_destination_stays_failed_over_while_its_retry_is_in_flight(config, syslog_ng, port_allocator):
+    source = config.create_network_source(ip="localhost", port=port_allocator(), transport="tcp")
+    # slow 503s, then 200s
+    primary = config.create_http_destination(
+        port=port_allocator(),
+        responses=[(503, "", SLOW_RESPONSE_SECONDS)] * 3 + [(200, "")],
+        time_reopen=1,
+    )
+    secondary = config.create_file_destination(file_name="secondary.log")
+    _create_failover_logpath(config, source, primary, secondary)
+
+    syslog_ng.start(config)
+
+    # http() has no connect step, only a failed send marks it unreachable
+    source.write_logs(_syslog_lines(["probe"]))
+    # each 5XX is logged right before the marking, so the second one proves
+    # the first was accounted for; the request after it is the retry in
+    # flight, during which the worker used to count as reachable again
+    syslog_ng.wait_for_messages_in_console_log(["Server returned with a 5XX", "Server returned with a 5XX"])
+    syslog_ng.wait_for_message_in_console_log("http: Sending HTTP request")
+
+    failover_messages = _messages("failover")
+    source.write_logs(_syslog_lines(failover_messages))
+    assert len(secondary.read_until_logs(failover_messages)) == NUM_MESSAGES
+    assert _rejected_counts(config) == [NUM_MESSAGES]
+
+    # the probe's delivery makes the primary reachable again
+    assert wait_until_true(lambda: _delivered_count(config, "http") == 1)
+
+    failback_messages = _messages("failback")
+    source.write_logs(_syslog_lines(failback_messages))
+    # the server saw the probe's three failed attempts and its delivery, and nothing else before the failback
+    assert primary.read_until_logs(failback_messages) == ["probe"] * 4 + failback_messages
+    assert _rejected_counts(config) == [NUM_MESSAGES]
+
+    syslog_ng.stop()
+    assert not any(message in line for line in secondary.read_all() for message in failback_messages)
 
 
 def test_destination_failover_file_destination_fails_over(config, syslog_ng, port_allocator):
