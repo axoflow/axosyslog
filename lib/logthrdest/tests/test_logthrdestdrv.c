@@ -870,17 +870,23 @@ _failover_worker_construct(LogThreadedDestDriver *o, gint worker_index)
   return self;
 }
 
-static void
-_wait_for_connect_attempts(gint worker_index, gint expected_attempts)
+static gboolean
+_spin_until_count(gint *counter, gint expected)
 {
   gint c = 0;
 
-  while (g_atomic_int_get(&failover_connect_attempts[worker_index]) < expected_attempts && c < MAX_SPIN_ITERATIONS)
+  while (g_atomic_int_get(counter) < expected && c < MAX_SPIN_ITERATIONS)
     {
       _sleep_msec(1);
       c++;
     }
-  cr_assert(ge(int, g_atomic_int_get(&failover_connect_attempts[worker_index]), expected_attempts),
+  return g_atomic_int_get(counter) >= expected;
+}
+
+static void
+_wait_for_connect_attempts(gint worker_index, gint expected_attempts)
+{
+  cr_assert(_spin_until_count(&failover_connect_attempts[worker_index], expected_attempts),
             "worker %d did not attempt to connect %d times", worker_index, expected_attempts);
 }
 
@@ -990,6 +996,149 @@ Test(logthrdestdrv_failover, unreachable_worker_still_buffers_without_destinatio
   cr_assert(eq(int, _queued_on_worker(FAILOVER_DOWN_WORKER), 1));
 }
 
+/* a paced worker: the test picks its insert result, and insert attempt N
+ * blocks until the test allows N attempts, so the test can act while a
+ * retry is in flight; its connect(), when it has one, always succeeds */
+
+static gint paced_insert_result;
+static gint paced_insert_allowance;
+static gboolean paced_worker_has_connect;
+
+static LogThreadedResult
+_paced_worker_insert(LogThreadedDestWorker *s, LogMessage *msg)
+{
+  gint attempt = g_atomic_int_add(&failover_inserts[s->worker_index], 1) + 1;
+
+  _spin_until_count(&paced_insert_allowance, attempt);
+  return g_atomic_int_get(&paced_insert_result);
+}
+
+static LogThreadedDestWorker *
+_paced_worker_construct(LogThreadedDestDriver *o, gint worker_index)
+{
+  LogThreadedDestWorker *self = g_new0(LogThreadedDestWorker, 1);
+
+  log_threaded_dest_worker_init_instance(self, o, worker_index);
+  if (paced_worker_has_connect)
+    self->connect = _failover_worker_connect;
+  self->insert = _paced_worker_insert;
+  return self;
+}
+
+static void
+_setup_paced_dd(LogThreadedResult insert_result, gint insert_allowance, gboolean with_connect)
+{
+  GlobalConfig *cfg = main_loop_get_current_config(main_loop);
+
+  failover_down_workers = 0;
+  memset(failover_inserts, 0, sizeof(failover_inserts));
+  g_atomic_int_set(&paced_insert_result, insert_result);
+  g_atomic_int_set(&paced_insert_allowance, insert_allowance);
+  paced_worker_has_connect = with_connect;
+
+  fdd = test_threaded_dd_new(cfg);
+  fdd->super.worker.construct = _paced_worker_construct;
+  /* the suspend timer fires at once, the blocking insert paces the retries */
+  fdd->super.time_reopen = 0;
+
+  cr_assert(log_pipe_pre_config_init(&fdd->super.super.super.super));
+  cr_assert(log_pipe_init(&fdd->super.super.super.super));
+  cr_assert(log_pipe_post_config_init(&fdd->super.super.super.super));
+}
+
+static void
+_wait_for_inserts(gint worker_index, gint expected_attempts)
+{
+  cr_assert(_spin_until_count(&failover_inserts[worker_index], expected_attempts),
+            "worker %d did not attempt %d inserts", worker_index, expected_attempts);
+}
+
+static void
+_wait_for_reachable(gint worker_index)
+{
+  gint *unreachable = &fdd->super.workers[worker_index]->unreachable;
+  gint c = 0;
+
+  while (g_atomic_int_get(unreachable) && c < MAX_SPIN_ITERATIONS)
+    {
+      _sleep_msec(1);
+      c++;
+    }
+  cr_assert(not(g_atomic_int_get(unreachable)), "worker %d did not become reachable", worker_index);
+}
+
+static void
+_assert_rewound_batch_is_the_probe(gboolean with_connect)
+{
+  _setup_paced_dd(LTR_NOT_CONNECTED, 1, with_connect);
+
+  /* nothing has failed yet */
+  cr_assert(_queue_message("1", TRUE));
+
+  /* the retry of the failed message is in flight: it is the only probe, so
+   * nothing new is accepted for failover, but the path without it buffers */
+  _wait_for_inserts(0, 2);
+  cr_assert(not(_queue_message("1", TRUE)));
+  cr_assert(eq(int, _queued_on_worker(0), 0));
+  cr_assert(_queue_message("1", FALSE));
+  cr_assert(eq(int, _queued_on_worker(0), 1));
+
+  /* a failed retry proves nothing */
+  g_atomic_int_set(&paced_insert_allowance, 2);
+  _wait_for_inserts(0, 3);
+  cr_assert(not(_queue_message("1", TRUE)));
+
+  /* a delivered one does */
+  g_atomic_int_set(&paced_insert_result, LTR_SUCCESS);
+  g_atomic_int_set(&paced_insert_allowance, G_MAXINT);
+  _spin_for_counter_value(fdd->super.metrics.written_messages, 2);
+  cr_assert(_queue_message("1", TRUE));
+  _spin_for_counter_value(fdd->super.metrics.written_messages, 3);
+  cr_assert(eq(sz, stats_counter_get(fdd->super.super.rejected_messages), 2));
+}
+
+Test(logthrdestdrv_failover, worker_stays_unreachable_until_its_rewound_batch_is_delivered)
+{
+  _assert_rewound_batch_is_the_probe(FALSE);
+}
+
+Test(logthrdestdrv_failover, successful_connect_alone_does_not_make_a_worker_reachable)
+{
+  _assert_rewound_batch_is_the_probe(TRUE);
+}
+
+Test(logthrdestdrv_failover, worker_is_reachable_again_after_dropping_its_batch)
+{
+  _setup_paced_dd(LTR_DROP, G_MAXINT, FALSE);
+
+  cr_assert(_queue_message("1", TRUE));
+  _spin_for_counter_value(fdd->super.metrics.dropped_messages, 1);
+
+  /* nothing left to retry: new messages are the only probe */
+  _wait_for_reachable(0);
+  g_atomic_int_set(&paced_insert_result, LTR_SUCCESS);
+  cr_assert(_queue_message("1", TRUE));
+  _spin_for_counter_value(fdd->super.metrics.written_messages, 1);
+}
+
+Test(logthrdestdrv_failover, worker_is_reachable_again_after_exhausting_its_retries)
+{
+  _setup_paced_dd(LTR_ERROR, 1, FALSE);
+  fdd->super.retries_on_error_max = 2;
+
+  cr_assert(_queue_message("1", TRUE));
+  _wait_for_inserts(0, 2);
+  cr_assert(not(_queue_message("1", TRUE)));
+
+  /* the last retry drops the batch without suspending */
+  g_atomic_int_set(&paced_insert_allowance, G_MAXINT);
+  _spin_for_counter_value(fdd->super.metrics.dropped_messages, 1);
+  _wait_for_reachable(0);
+  g_atomic_int_set(&paced_insert_result, LTR_SUCCESS);
+  cr_assert(_queue_message("1", TRUE));
+  _spin_for_counter_value(fdd->super.metrics.written_messages, 1);
+}
+
 static void
 failover_setup(void)
 {
@@ -1006,6 +1155,8 @@ failover_setup(void)
 static void
 failover_teardown(void)
 {
+  /* a blocked paced insert must not stall the worker's shutdown */
+  g_atomic_int_set(&paced_insert_allowance, G_MAXINT);
   main_loop_sync_worker_startup_and_teardown();
   log_pipe_deinit(&fdd->super.super.super.super);
   log_pipe_unref(&fdd->super.super.super.super);
