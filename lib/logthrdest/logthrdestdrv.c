@@ -139,10 +139,38 @@ log_threaded_dest_driver_process_flag(LogDriver *s, const gchar *flag)
 
 /* LogThreadedDestWorker */
 
+/* Read by the source threads in _lookup_worker() to keep
+ * flags(destination-failover) messages off workers that cannot deliver.
+ * A worker is unreachable from a failed connect or send until it delivers
+ * a batch again or has nothing left to retry.
+ *
+ * NOTE: runs in the worker thread */
+static void
+_mark_unreachable(LogThreadedDestWorker *self)
+{
+  g_atomic_int_set(&self->unreachable, TRUE);
+}
+
+/* NOTE: runs in the worker thread, or wherever a driver acks messages */
+static void
+_mark_reachable(LogThreadedDestWorker *self)
+{
+  g_atomic_int_set(&self->unreachable, FALSE);
+}
+
+static gboolean
+_is_reachable(LogThreadedDestWorker *self)
+{
+  return !g_atomic_int_get(&self->unreachable);
+}
+
 /* this should be used in combination with LTR_EXPLICIT_ACK_MGMT to actually confirm message delivery. */
 void
 log_threaded_dest_worker_ack_messages(LogThreadedDestWorker *self, gint batch_size)
 {
+  /* a delivered batch is the proof; an empty flush acks nothing and proves nothing */
+  if (batch_size > 0)
+    _mark_reachable(self);
   log_queue_ack_backlog(self->queue, batch_size);
   stats_counter_add(self->owner->metrics.written_messages, batch_size);
   self->retries_on_error_counter = 0;
@@ -270,28 +298,6 @@ _suspend(LogThreadedDestWorker *self)
   self->suspended = TRUE;
 }
 
-/* NOTE: runs in the worker thread, while the source threads read it in
- * _lookup_worker() to keep flags(destination-failover) messages off the
- * queues of workers that cannot deliver them */
-static void
-_mark_unreachable(LogThreadedDestWorker *self)
-{
-  g_atomic_int_set(&self->unreachable, TRUE);
-}
-
-/* NOTE: runs in the worker thread */
-static void
-_mark_reachable(LogThreadedDestWorker *self)
-{
-  g_atomic_int_set(&self->unreachable, FALSE);
-}
-
-static gboolean
-_is_reachable(LogThreadedDestWorker *self)
-{
-  return !g_atomic_int_get(&self->unreachable);
-}
-
 /* NOTE: runs in the worker thread */
 static void
 _connect(LogThreadedDestWorker *self)
@@ -304,10 +310,6 @@ _connect(LogThreadedDestWorker *self)
                 log_expr_node_location_tag(self->owner->super.super.super.expr_node));
       _suspend(self);
       _mark_unreachable(self);
-    }
-  else
-    {
-      _mark_reachable(self);
     }
 
   stats_counter_set(self->metrics.output_unreachable, !self->connected);
@@ -762,6 +764,10 @@ _perform_work(gpointer data)
     }
   else
     {
+      /* nothing queued, buffered or throttled: a worker left unreachable
+       * by a dropped batch can only probe with new messages */
+      _mark_reachable(self);
+
       /* NOTE: at this point we are not doing anything but keep the
        * parallel_push callback alive, which will call
        * _message_became_available_callback(), which in turn wakes us up by

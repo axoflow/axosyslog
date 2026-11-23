@@ -57,7 +57,10 @@ class HttpServerIO():
                 content_length = int(self.headers.get("Content-Length", 0))
                 body = self.rfile.read(content_length)
                 q.put((dict(self.headers), body.decode("utf-8")))
-                status_code, response_body = next_response()
+                status_code, response_body, *delay = next_response()
+                if delay:
+                    # a (status, body, seconds) entry answers late, keeping the request in flight
+                    time.sleep(delay[0])
                 response_bytes = response_body.encode("utf-8") if response_body else b""
                 self.send_response(status_code)
                 if response_bytes:
