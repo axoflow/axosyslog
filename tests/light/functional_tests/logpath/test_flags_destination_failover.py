@@ -276,6 +276,29 @@ def test_destination_failover_file_destination_fails_over(config, syslog_ng, por
     assert not Path("missing-dir").exists()
 
 
+def test_destination_failover_parallel_branch_without_destination_still_fails_over(config, syslog_ng, port_allocator):
+    # log { log { filterx { true; }; }; log { destination(primary); }; }: the
+    # matching branch delivers the message nowhere, it must not stop the failover
+    source = config.create_network_source(ip="localhost", port=port_allocator(), transport="tcp")
+    primary = config.create_inner_logpath(
+        statements=[
+            config.create_inner_logpath(statements=[config.create_filterx("true;")]),
+            config.create_inner_logpath(statements=[config.create_file_destination(file_name="missing-dir/primary.log")]),
+        ],
+    )
+    secondary = config.create_file_destination(file_name="secondary.log")
+    _create_failover_logpath(config, source, primary, secondary)
+
+    syslog_ng.start(config)
+
+    messages = _messages("failover")
+    source.write_logs(_syslog_lines(messages))
+    assert len(secondary.read_until_logs(messages)) == NUM_MESSAGES
+
+    syslog_ng.stop()
+    assert not Path("missing-dir").exists()
+
+
 def test_destination_failover_file_destination_is_unreachable_per_file(config, syslog_ng, port_allocator):
     Path("dir-good").mkdir()
 
@@ -323,6 +346,80 @@ destination d_dropping {
 
     syslog_ng.stop()
     assert not Path("dropped.log").exists()
+
+
+DROP_FILTERX = "if ($MSG =~ '^dropped') { drop; };"
+
+
+def test_destination_failover_drop_in_the_alternative_does_not_fail_over(config, syslog_ng, port_allocator):
+    # log {
+    #     source(s_network);
+    #     log {
+    #         log { filterx { if (...) { drop; }; }; destination(primary); flags(final); };
+    #         log { destination(secondary); flags(final); };
+    #         flags(destination-failover);
+    #     };
+    # };
+    #
+    # drop discards the message on purpose, unlike a filter that does not
+    # match: the alternative is not tried again elsewhere
+    source = config.create_network_source(ip="localhost", port=port_allocator(), transport="tcp")
+    primary = config.create_file_destination(file_name="primary.log")
+    secondary = config.create_file_destination(file_name="secondary.log")
+    alternatives = [
+        config.create_inner_logpath(statements=[config.create_filterx(DROP_FILTERX), primary], flags="final"),
+        config.create_inner_logpath(statements=[secondary], flags="final"),
+    ]
+    failover_logpath = config.create_inner_logpath(statements=alternatives, flags="destination-failover")
+    config.create_logpath(statements=[source, failover_logpath])
+
+    syslog_ng.start(config)
+
+    # the message after the dropped ones proves they have been processed
+    source.write_logs(_syslog_lines(_messages("dropped") + ["sync"]))
+    assert _read_lines("primary.log", 1)[-1].endswith("sync")
+
+    syslog_ng.stop()
+    assert not Path("secondary.log").exists()
+
+
+def test_destination_failover_drop_inside_destination_reference_accepts_the_message(config, syslog_ng, port_allocator):
+    config.add_preamble(
+        r"""
+destination d_dropping {
+    channel {
+        filterx { %s };
+        destination { file("primary.log"); };
+    };
+};
+""" % DROP_FILTERX,
+    )
+
+    # log {
+    #     source(s_network);
+    #     log {
+    #         log { destination(d_dropping); destination(tap); flags(final); };
+    #         log { destination(secondary); flags(final); };
+    #         flags(destination-failover);
+    #     };
+    # };
+    #
+    # the drop inside d_dropping counts as a delivery: the unreachable tap
+    # chained after it buffers instead of rejecting, nothing fails over
+    source = config.create_network_source(ip="localhost", port=port_allocator(), transport="tcp")
+    tap = config.create_file_destination(file_name="missing-dir/tap.log")
+    primary = config.create_inner_logpath(statements=[_NamedDestinationReference("d_dropping"), tap])
+    secondary = config.create_file_destination(file_name="secondary.log")
+    _create_failover_logpath(config, source, primary, secondary)
+
+    syslog_ng.start(config)
+
+    source.write_logs(_syslog_lines(_messages("dropped") + ["sync"]))
+    assert _read_lines("primary.log", 1)[-1].endswith("sync")
+    assert _rejected_counts(config) == []
+
+    syslog_ng.stop()
+    assert not Path("secondary.log").exists()
 
 
 @pytest.mark.parametrize("shape", SHAPES)
@@ -405,6 +502,64 @@ def test_destination_failover_elif_chain_fails_over_to_the_else_branch(config, s
     assert len(tertiary.read_until_logs(messages)) == NUM_MESSAGES
 
 
+@pytest.mark.parametrize("inner_secondary_reachable", [True, False], ids=["inner-secondary-up", "inner-down"])
+def test_destination_failover_nested_failover_junction(config, syslog_ng, port_allocator, inner_secondary_reachable):
+    # log {
+    #     source(s_network);
+    #     log {
+    #         log {
+    #             log { destination(inner_primary); flags(final); };
+    #             log { destination(inner_secondary); flags(final); };
+    #             flags(destination-failover, final);
+    #         };
+    #         log { destination(outer_secondary); flags(final); };
+    #         flags(destination-failover);
+    #     };
+    # };
+    #
+    # inner_primary is always down.  If inner_secondary is up, the inner
+    # junction delivers and the outer one must not fail over.  If it is down
+    # too, it rejects instead of buffering, as the outer junction still has
+    # an alternative to try.
+    source = config.create_network_source(ip="localhost", port=port_allocator(), transport="tcp")
+    inner_primary = config.create_file_destination(file_name="missing-dir/inner-primary.log")
+    inner_secondary = config.create_file_destination(
+        file_name="inner-secondary.log" if inner_secondary_reachable else "missing-dir2/inner-secondary.log",
+    )
+    outer_secondary = config.create_file_destination(file_name="outer-secondary.log")
+    inner_failover_logpath = config.create_inner_logpath(
+        statements=[
+            config.create_inner_logpath(statements=[inner_primary], flags="final"),
+            config.create_inner_logpath(statements=[inner_secondary], flags="final"),
+        ],
+        flags="destination-failover, final",
+    )
+    outer_failover_logpath = config.create_inner_logpath(
+        statements=[
+            inner_failover_logpath,
+            config.create_inner_logpath(statements=[outer_secondary], flags="final"),
+        ],
+        flags="destination-failover",
+    )
+    config.create_logpath(statements=[source, outer_failover_logpath])
+
+    syslog_ng.start(config)
+
+    messages = _messages("nested")
+    source.write_logs(_syslog_lines(messages))
+    if inner_secondary_reachable:
+        assert len(inner_secondary.read_until_logs(messages)) == NUM_MESSAGES
+    else:
+        assert len(outer_secondary.read_until_logs(messages)) == NUM_MESSAGES
+
+    syslog_ng.stop()
+    assert not Path("missing-dir").exists()
+    if inner_secondary_reachable:
+        assert not Path("outer-secondary.log").exists()
+    else:
+        assert not Path("missing-dir2").exists()
+
+
 def test_destination_failover_fallback_branch_is_the_last_alternative(config, syslog_ng, port_allocator):
     # log {
     #     source(s_network);
@@ -432,3 +587,96 @@ def test_destination_failover_fallback_branch_is_the_last_alternative(config, sy
     messages = _messages("failover")
     source.write_logs(_syslog_lines(messages))
     assert len(fallback.read_until_logs(messages)) == NUM_MESSAGES
+
+
+def test_destination_failover_rejected_message_skips_the_rest_of_the_destination_reference(config, syslog_ng, port_allocator):
+    config.add_preamble(
+        r"""
+destination d_unreachable_then_metric {
+    channel {
+        destination { file("missing-dir/primary.log"); };
+        filterx { update_metric("primary_accepted_total"); };
+        destination { file("after-primary.log"); };
+    };
+};
+
+destination d_secondary_then_metric {
+    channel {
+        destination { file("secondary.log"); };
+        filterx { update_metric("secondary_accepted_total"); };
+    };
+};
+""",
+    )
+
+    source = config.create_network_source(ip="localhost", port=port_allocator(), transport="tcp")
+    primary = _NamedDestinationReference("d_unreachable_then_metric")
+    secondary = _NamedDestinationReference("d_secondary_then_metric")
+    _create_failover_logpath(config, source, primary, secondary)
+
+    syslog_ng.start(config)
+
+    messages = _messages("failover")
+    source.write_logs(_syslog_lines(messages))
+    assert _read_lines("secondary.log", NUM_MESSAGES)[-1].endswith(messages[-1])
+
+    samples = config.get_prometheus_samples([MetricFilter("syslogng_secondary_accepted_total", {})])
+    assert [int(sample.value) for sample in samples] == [NUM_MESSAGES]
+    samples = config.get_prometheus_samples([MetricFilter("syslogng_primary_accepted_total", {})])
+    assert all(int(sample.value) == 0 for sample in samples)
+
+    syslog_ng.stop()
+    assert not Path("after-primary.log").exists()
+
+
+def _assert_primary_delivers_without_failover(config, syslog_ng, port_allocator, primary_body):
+    config.add_preamble(
+        r"""
+destination d_primary {
+    channel {
+        %s
+        filterx { update_metric("primary_accepted_total"); };
+    };
+};
+""" % primary_body,
+    )
+
+    source = config.create_network_source(ip="localhost", port=port_allocator(), transport="tcp")
+    primary = _NamedDestinationReference("d_primary")
+    secondary = config.create_file_destination(file_name="secondary.log")
+    _create_failover_logpath(config, source, primary, secondary)
+
+    syslog_ng.start(config)
+
+    messages = _messages("primary")
+    source.write_logs(_syslog_lines(messages))
+    assert _read_lines("primary.log", NUM_MESSAGES)[-1].endswith(messages[-1])
+
+    samples = config.get_prometheus_samples([MetricFilter("syslogng_primary_accepted_total", {})])
+    assert [int(sample.value) for sample in samples] == [NUM_MESSAGES]
+
+    syslog_ng.stop()
+    assert not Path("secondary.log").exists()
+
+
+def test_destination_failover_destination_chained_after_a_successful_one_does_not_fail_over(config, syslog_ng, port_allocator):
+    # the unreachable tap follows a destination that already accepted the
+    # message: it buffers instead of rejecting, no duplicate in secondary
+    _assert_primary_delivers_without_failover(
+        config, syslog_ng, port_allocator,
+        r"""
+        destination { file("primary.log"); };
+        destination { file("missing-dir/tap.log"); };
+        """,
+    )
+
+
+def test_destination_failover_drivers_of_a_destination_block_are_equivalent(config, syslog_ng, port_allocator):
+    # one of the drivers of the same destination block accepting the
+    # message means it is delivered, the failover happens above it
+    _assert_primary_delivers_without_failover(
+        config, syslog_ng, port_allocator,
+        r"""
+        destination { file("missing-dir/unreachable.log"); file("primary.log"); };
+        """,
+    )
