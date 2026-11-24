@@ -196,6 +196,27 @@
  *       original function
  **/
 
+/*
+ * The outcome of delivering a message along an alternative of
+ * flags(destination-failover), shared by everything on that alternative.
+ * It only moves forward: PENDING -> REJECTED -> ACCEPTED.
+ *
+ * PENDING: no destination on the alternative decided yet
+ *
+ * REJECTED: a destination on the alternative refused the message while
+ * unreachable, as there is another alternative to try, and none accepted it
+ * (yet)
+ *
+ * ACCEPTED: a destination on the alternative accepted the message, it is
+ * this alternative that delivers it
+ */
+typedef enum
+{
+  LOG_PATH_DELIVERY_PENDING,
+  LOG_PATH_DELIVERY_REJECTED,
+  LOG_PATH_DELIVERY_ACCEPTED,
+} LogPathDelivery;
+
 struct _LogPathOptions
 {
   /* ack_needed: an acknowledgement is "passed" to this path, an ACK is
@@ -216,17 +237,19 @@ struct _LogPathOptions
    * _before_ the destination driver, which will actually carry out the
    * required action.
    *
-   * destination_failover: set to TRUE while this message is in a
-   * flags(destination-failover) alternative that is followed by another
-   * one.  Sticky for the rest of this path.  A destination driver can check
-   * this to decide whether to refuse (instead of buffer) new messages while
-   * it considers itself unreachable.
+   * delivery: set while this message is in a flags(destination-failover)
+   * alternative that is followed by another one, points to the delivery
+   * outcome of that alternative.  Inherited through any further nesting.
+   * A destination driver can check log_path_options_may_reject() to decide
+   * whether to refuse (instead of buffer) new messages while it considers
+   * itself unreachable.
    */
-  guint ack_needed:1, flow_control_requested:1, destination_failover:1;
+  guint ack_needed:1, flow_control_requested:1;
 
   gboolean *matched;
   const LogPathOptions *lpo_parent_junction;
   FilterXEvalContext *filterx_context;
+  LogPathDelivery *delivery;
 };
 
 typedef enum
@@ -237,8 +260,8 @@ typedef enum
 
 typedef gboolean (*LogPathWalkFunc)(LogPipe *from, LogPathConnectionType type, LogPipe *to, gpointer user_data);
 
-#define LOG_PATH_OPTIONS_INIT { TRUE, FALSE, FALSE, NULL, NULL, NULL}
-#define LOG_PATH_OPTIONS_INIT_NOACK { FALSE, FALSE, FALSE, NULL, NULL, NULL }
+#define LOG_PATH_OPTIONS_INIT { TRUE, FALSE, NULL, NULL, NULL, NULL }
+#define LOG_PATH_OPTIONS_INIT_NOACK { FALSE, FALSE, NULL, NULL, NULL, NULL }
 
 /*
  * Embed a step in our LogPathOptions chain.
@@ -259,6 +282,35 @@ log_path_options_mark_unmatched(const LogPathOptions *path_options)
 {
   if (path_options->matched)
     *path_options->matched = FALSE;
+}
+
+/*
+ * A destination may refuse (instead of buffer) a message while it is
+ * unreachable if the message is on an alternative of
+ * flags(destination-failover) followed by another one, and no destination
+ * on it accepted the message yet.
+ */
+static inline gboolean
+log_path_options_may_reject(const LogPathOptions *path_options)
+{
+  return path_options->delivery && *path_options->delivery != LOG_PATH_DELIVERY_ACCEPTED;
+}
+
+/* a destination accepted the message, see log_multiplexer_queue() */
+static inline void
+log_path_options_mark_accepted(const LogPathOptions *path_options)
+{
+  if (path_options->delivery)
+    *path_options->delivery = LOG_PATH_DELIVERY_ACCEPTED;
+}
+
+/* a destination refused the message, see log_path_options_may_reject() */
+static inline void
+log_path_options_mark_rejected(const LogPathOptions *path_options)
+{
+  if (log_path_options_may_reject(path_options))
+    *path_options->delivery = LOG_PATH_DELIVERY_REJECTED;
+  log_path_options_mark_unmatched(path_options);
 }
 
 /* LogPathOptions are chained up at the start of a junction and teared down

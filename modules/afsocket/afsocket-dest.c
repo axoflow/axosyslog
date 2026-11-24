@@ -900,7 +900,7 @@ afsocket_dd_free(LogPipe *s)
 static gboolean
 afsocket_dd_reject_if_unreachable(AFSocketDestDriver *self, LogMessage *msg, const LogPathOptions *path_options)
 {
-  if (!path_options->destination_failover || !g_atomic_int_get(&self->currently_unreachable))
+  if (!log_path_options_may_reject(path_options) || !g_atomic_int_get(&self->currently_unreachable))
     return FALSE;
 
   log_dest_driver_reject_message(&self->super, msg, path_options);

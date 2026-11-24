@@ -100,14 +100,11 @@ log_multiplexer_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_op
   gint i;
   gboolean matched;
   LogPathOptions local_path_options;
+  LogPathDelivery delivery_outcome;
   gboolean delivered = FALSE;
   gint fallback;
 
   log_path_options_push_junction(&local_path_options, &matched, path_options);
-
-  /* destinations may only reject while there is an alternative left to try */
-  if (self->super.flags & PIF_DESTINATION_FAILOVER)
-    local_path_options.destination_failover = TRUE;
 
   if (_has_multiple_arcs(self))
     {
@@ -134,10 +131,23 @@ log_multiplexer_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_op
               continue;
             }
 
-          /* the last alternative buffers, unless an enclosing
-           * flags(destination-failover) still has alternatives of its own */
-          if (G_UNLIKELY(i == self->failover_fallback))
-            local_path_options.destination_failover = path_options->destination_failover;
+          if (G_UNLIKELY(self->super.flags & PIF_DESTINATION_FAILOVER))
+            {
+              /* flags(destination-failover) handling, make sure we collect
+               * the delivery outcome for embedded log paths */
+
+              if (i == self->failover_fallback)
+                {
+                  /* the last branch has nowhere to fail over to, it buffers
+                   * normally (or how our parent mpx instructs us) */
+                  local_path_options.delivery = path_options->delivery;
+                }
+              else
+                {
+                  delivery_outcome = LOG_PATH_DELIVERY_PENDING;
+                  local_path_options.delivery = &delivery_outcome;
+                }
+            }
 
           matched = TRUE;
           log_msg_add_ack(msg, &local_path_options);
@@ -202,7 +212,7 @@ log_multiplexer_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_op
    * flags(destination-failover) is the one case where we *are* dispatching
    * to destinations (self->delivery_propagation is FALSE, as set by
    * cfg_tree_compile_reference()/cfg_tree_compile_junction()) but still
-   * need to propagate: path_options->destination_failover, set by the
+   * need to propagate: path_options->delivery, set by the
    * multiplexer of the failover alternatives (see above) and inherited
    * unchanged through any further nesting (see
    * log_path_options_push_junction()), tells us this message is on such a
@@ -210,7 +220,7 @@ log_multiplexer_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_op
    * around us.
    */
 
-  if (self->delivery_propagation || path_options->destination_failover)
+  if (self->delivery_propagation || log_path_options_may_reject(path_options))
     {
       if (!delivered)
         log_path_options_mark_unmatched(path_options);

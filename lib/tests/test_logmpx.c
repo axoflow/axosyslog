@@ -30,9 +30,10 @@
  * behaves the way a real destination (log_threaded_dest_driver_queue(),
  * afsocket_dd_reject_if_unreachable()) behaves once it considers itself
  * unreachable while handling a message that arrived via a
- * flags(destination-failover) branch -- reject via *matched and drop,
- * instead of accepting the message. It only does this when
- * path_options->destination_failover is set, exactly mirroring how a real
+ * flags(destination-failover) branch -- reject via
+ * log_path_options_mark_rejected() and drop, instead of accepting the
+ * message. It only does this when log_path_options_may_reject() allows it,
+ * exactly mirroring how a real
  * driver never rejects like this for ordinary (non-failover) use of the
  * same destination. This test exercises LogMultiplexer's branch-selection
  * loop directly, standing in for that driver-level decision.
@@ -45,7 +46,7 @@
  * case). Both of those disable delivery propagation unconditionally, same
  * as for any ordinary destination -- what makes a destination's rejection
  * reach back through them anyway for a destination-failover branch is
- * path_options->destination_failover itself (see LogMultiplexer.queue()),
+ * path_options->delivery itself (see LogMultiplexer.queue()),
  * exercised directly further below; verifying it against an actual
  * compiled configuration is left to the light/functional tests. */
 typedef struct _FailoverMockPipe
@@ -53,7 +54,7 @@ typedef struct _FailoverMockPipe
   LogPipe super;
   GPtrArray *captured_messages;
   gboolean down;
-  gboolean last_seen_destination_failover;
+  gboolean last_seen_may_reject;
 } FailoverMockPipe;
 
 static void
@@ -61,11 +62,11 @@ _queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_options)
 {
   FailoverMockPipe *self = (FailoverMockPipe *) s;
 
-  self->last_seen_destination_failover = path_options->destination_failover;
+  self->last_seen_may_reject = log_path_options_may_reject(path_options);
 
-  if (self->down && path_options->destination_failover)
+  if (self->down && self->last_seen_may_reject)
     {
-      log_path_options_mark_unmatched(path_options);
+      log_path_options_mark_rejected(path_options);
       log_msg_drop(msg, path_options, AT_PROCESSED);
       return;
     }
@@ -167,8 +168,8 @@ Test(logmpx, destination_failover_last_branch_buffers_when_every_other_is_down)
   _queue_empty_message(&mpx->super);
 
   cr_assert(eq(uint, branches[0]->captured_messages->len, 0));
-  cr_assert(branches[0]->last_seen_destination_failover, "a branch followed by another one may reject");
-  cr_assert(not(branches[1]->last_seen_destination_failover), "the last branch has nowhere to fail over to");
+  cr_assert(branches[0]->last_seen_may_reject, "a branch followed by another one may reject");
+  cr_assert(not(branches[1]->last_seen_may_reject), "the last branch has nowhere to fail over to");
   cr_assert(eq(uint, branches[1]->captured_messages->len, 1), "so it accepts (and buffers) the message instead");
 
   _free_pipe(&mpx->super);
@@ -217,9 +218,9 @@ Test(logmpx, destination_failover_last_branch_is_a_fallback_branch_if_there_is_o
 
   _queue_empty_message(&mpx->super);
 
-  cr_assert(secondary->last_seen_destination_failover, "the fallback branch is tried after the secondary");
+  cr_assert(secondary->last_seen_may_reject, "the fallback branch is tried after the secondary");
   cr_assert(eq(uint, secondary->captured_messages->len, 0));
-  cr_assert(not(fallback->last_seen_destination_failover));
+  cr_assert(not(fallback->last_seen_may_reject));
   cr_assert(eq(uint, fallback->captured_messages->len, 1));
 
   _free_pipe(&mpx->super);
@@ -241,8 +242,8 @@ Test(logmpx, destination_failover_is_not_set_by_an_unmarked_multiplexer)
 
   _queue_empty_message(&mpx->super);
 
-  cr_assert(not(first->last_seen_destination_failover));
-  cr_assert(not(second->last_seen_destination_failover));
+  cr_assert(not(first->last_seen_may_reject));
+  cr_assert(not(second->last_seen_may_reject));
 
   _free_pipe(&mpx->super);
   _free_pipe(&first->super);
@@ -263,7 +264,7 @@ Test(logmpx, destination_failover_last_branch_of_a_nested_failover_may_reject_if
 
   _queue_empty_message(&outer->super);
 
-  cr_assert(b->last_seen_destination_failover);
+  cr_assert(b->last_seen_may_reject);
   cr_assert(eq(uint, b->captured_messages->len, 0));
   cr_assert(eq(uint, c->captured_messages->len, 1));
 
@@ -287,8 +288,8 @@ Test(logmpx, destination_failover_last_branch_of_a_nested_failover_buffers_in_th
 
   _queue_empty_message(&outer->super);
 
-  cr_assert(b->last_seen_destination_failover);
-  cr_assert(not(c->last_seen_destination_failover));
+  cr_assert(b->last_seen_may_reject);
+  cr_assert(not(c->last_seen_may_reject));
   cr_assert(eq(uint, c->captured_messages->len, 1));
 
   _free_pipe(&outer->super);
@@ -318,7 +319,7 @@ Test(logmpx, destination_failover_rejection_propagates_through_a_delivery_propag
 
   _queue_empty_message(&mpx->super);
 
-  cr_assert(leaf->last_seen_destination_failover, "the flag must reach the driver through mpx_ref");
+  cr_assert(leaf->last_seen_may_reject, "the flag must reach the driver through mpx_ref");
   cr_assert(eq(uint, leaf->captured_messages->len, 0));
   cr_assert(eq(uint, secondary->captured_messages->len, 1),
             "the rejection must reach the failover multiplexer despite mpx_ref disabling delivery propagation");
