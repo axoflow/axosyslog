@@ -23,10 +23,14 @@
 #include "filterx/filterx-error.h"
 #include "filterx/filterx-expr.h"
 #include "filterx/filterx-config.h"
+#include "filterx/filterx-stashed-object.h"
+#include "filterx/filterx-ref.h"
 #include "logpipe.h"
 #include "scratch-buffers.h"
 #include "tls-support.h"
 #include "apphook.h"
+
+#define FILTERX_EVAL_SNAPSHOT_INITIAL_AREA_SIZE 512
 
 TLS_BLOCK_START
 {
@@ -281,11 +285,16 @@ _fill_failure_info(FilterXEvalContext *context, FilterXExpr *block, FilterXObjec
       return;
     }
 
+  /* the failure info outlives the child contexts (and their allocator
+   * positions) up to the final delivery: what it retains goes on the heap */
+  gpointer allocator_state;
+  filterx_eval_disable_allocator(&allocator_state);
   for (gint i = 0; i < context->error_count; i++)
     {
       filterx_error_copy(&context->errors[i], &failure_info->errors[i]);
       filterx_eval_retain_object(&failure_info->errors[i].object);
     }
+  filterx_eval_restore_allocator(&allocator_state);
   failure_info->error_count = context->error_count;
 }
 
@@ -360,6 +369,7 @@ exit:
 void
 filterx_eval_begin_context(FilterXEvalContext *context,
                            FilterXEvalContext *previous_context,
+                           FilterXStashedObject **config_stash,
                            FilterXScope *scope,
                            LogMessage *msg)
 {
@@ -367,7 +377,6 @@ filterx_eval_begin_context(FilterXEvalContext *context,
 
   memset(context, 0, sizeof(*context));
   context->msg = msg;
-  context->template_eval_options = DEFAULT_TEMPLATE_EVAL_OPTIONS;
   context->scope = scope;
 
   if (previous_context)
@@ -396,6 +405,7 @@ filterx_eval_begin_context(FilterXEvalContext *context,
 
   context->eval_control_modifier = FXC_UNSET;
   context->allocations_shared = FALSE;
+  context->config_stash = config_stash;
   filterx_eval_set_context(context);
 }
 
@@ -442,7 +452,6 @@ void
 filterx_eval_begin_restricted_context(FilterXEvalContext *context, FilterXEnvironment *env)
 {
   memset(context, 0, sizeof(*context));
-  context->template_eval_options = DEFAULT_TEMPLATE_EVAL_OPTIONS;
   context->weak_refs = env->weak_refs;
   context->eval_control_modifier = FXC_UNSET;
   context->previous_context = filterx_eval_get_context();
@@ -458,11 +467,17 @@ filterx_eval_end_restricted_context(FilterXEvalContext *context)
   filterx_eval_set_context(context->previous_context);
 }
 
+FilterXStashedObject **
+filterx_eval_get_config_stash(GlobalConfig *cfg)
+{
+  return &filterx_config_get(cfg)->global_stash;
+}
+
 void
 filterx_eval_begin_compile(FilterXEvalContext *context, GlobalConfig *cfg)
 {
   FilterXConfig *config = filterx_config_get(cfg);
-  filterx_eval_begin_restricted_context(context, &config->global_env);
+  filterx_eval_begin_restricted_context(context, &config->global_stash->env);
 }
 
 void
@@ -483,17 +498,168 @@ filterx_eval_set_control_modifier(FilterXEvalContext *context, FilterXEvalContro
   context->eval_control_modifier = modifier;
 }
 
+/*
+ * What a snapshot holds has to stay valid regardless of which thread ends
+ * up using it, and a resumed evaluation writes through it.
+ *
+ * A preserved object is shared: a hibernated one lasts as long as the
+ * process, a frozen one as long as the stash references of the snapshot,
+ * see _pin_stashes().  An immutable heap object is shared too.  Anything
+ * else is copied, with whatever allocator the snapshot context has in
+ * effect.
+ */
+static FilterXObject *
+_snapshot_value(FilterXObject *value, gpointer user_data)
+{
+  if (!value)
+    return NULL;
+
+  if (filterx_object_is_preserved(value))
+    return filterx_object_ref(value);
+
+  /* an xref around a frozen value: the xref belongs to the live evaluation,
+   * so the snapshot gets one of its own, the frozen value is shared */
+  if (filterx_object_is_ref(value) && filterx_object_is_preserved(filterx_ref_unwrap_ro(value)))
+    return _filterx_ref_new(filterx_object_ref(filterx_ref_unwrap_ro(value)));
+
+  /* an immutable heap object is shared: its reference count is atomic.  One
+   * that borrows from the message is not: the message of the snapshot is a
+   * clone */
+  if (!value->type->is_mutable && !filterx_object_is_allocator_resident(value) &&
+      !filterx_object_is_nvtable_backed(value))
+    return filterx_object_ref(value);
+
+  return filterx_object_dup(value);
+}
+
+/* Give the snapshot stash references of its own, so the frozen objects it
+ * shares stay valid across a config reload or a reload of the stashed file.
+ * The references of the context may live in its arena, hence the clones. */
+static void
+_pin_stashes(FilterXEvalContext *new_context, FilterXEvalContext *context)
+{
+  for (guint i = 0; i < context->weak_refs->len; i++)
+    {
+      FilterXObject *o = g_ptr_array_index(context->weak_refs, i);
+
+      if (!filterx_object_is_type(o, &FILTERX_TYPE_NAME(stash_reference)))
+        continue;
+
+      FilterXObject *pin = filterx_object_dup(o);
+      pin->weak_referenced = TRUE;
+      g_ptr_array_add(new_context->weak_refs, pin);
+    }
+}
+
+/* The stash references go last: a weak ref can be an xref around a frozen
+ * object, and that xref still touches the object on its way out. */
+static void
+_free_weak_refs_of_dup(GPtrArray *weak_refs)
+{
+  for (guint i = 0; i < weak_refs->len; i++)
+    {
+      FilterXObject **weak_ref = (FilterXObject **) &g_ptr_array_index(weak_refs, i);
+
+      if (!filterx_object_is_type(*weak_ref, &FILTERX_TYPE_NAME(stash_reference)))
+        g_clear_pointer(weak_ref, filterx_object_unref);
+    }
+  g_ptr_array_free(weak_refs, TRUE);
+}
+
+FilterXEvalContext *
+filterx_eval_context_dup(FilterXEvalContext *context)
+{
+  g_assert(context == filterx_eval_get_context());
+
+  /* A snapshot is a fork that runs later, so sync first, like
+   * filterx_eval_prepare_for_fork(). */
+  g_assert(context->path_options || !log_msg_is_write_protected(context->msg));
+
+  /* The dirty flag gates filterx_scope_sync(), but an assignment does not set
+   * it: filterx_eval_exec() does, when a block returns.  A fork happens
+   * between blocks, so the flag is already set there, while a snapshot is
+   * taken in the middle of a block, whose changes are not flagged yet.
+   * Forcing it costs a walk at most: the sync only writes the variables
+   * that are assigned or hold a dirty value. */
+  filterx_scope_set_dirty(context->scope);
+  filterx_scope_sync(context->scope, &context->msg, context->path_options);
+  g_assert(context->scope->msg == context->msg);
+
+  FilterXEvalContext *new_context = g_new0(FilterXEvalContext, 1);
+
+  /* standalone context: not linked to where it was taken from */
+  new_context->weak_refs = g_ptr_array_new_full(32, (GDestroyNotify) filterx_object_unref);
+  new_context->previous_context = NULL;
+
+  /* an arena of its own, it goes with the context; small to start with,
+   * as every snapshot has one */
+  new_context->private_allocator = g_new0(FilterXAllocator, 1);
+  filterx_allocator_init_ext(new_context->private_allocator, FILTERX_ALLOCATOR_ID_PRIVATE,
+                             FILTERX_EVAL_SNAPSHOT_INITIAL_AREA_SIZE);
+  new_context->allocator = new_context->private_allocator;
+  new_context->env = context->env;
+  new_context->eval_control_modifier = FXC_UNSET;
+  new_context->allocations_shared = FALSE;
+
+  /* the clones made below store their weak refs in the current context,
+   * which has to be the new one */
+  filterx_eval_set_context(new_context);
+
+  /* the snapshot can outlive the configuration */
+  if (context->config_stash)
+    filterx_stash_pin(context->config_stash);
+
+  _pin_stashes(new_context, context);
+  new_context->scope = filterx_scope_dup(context->scope, _snapshot_value, NULL);
+  /* borrowed, the scope holds the reference */
+  new_context->msg = new_context->scope->msg;
+  new_context->current_frame_meta = _snapshot_value(context->current_frame_meta, NULL);
+
+  filterx_eval_set_context(context);
+
+  return new_context;
+}
+
+void
+filterx_eval_context_free_dup(FilterXEvalContext *context)
+{
+  if (!context)
+    return;
+
+  filterx_scope_free_dup(context->scope);
+
+  filterx_object_unref(context->current_frame_meta);
+  _clear_errors(context);
+  if (context->failure_info)
+    {
+      _clear_failure_info(context->failure_info);
+      g_array_free(context->failure_info, TRUE);
+    }
+  /* after the errors, which can hold a frozen object too */
+  _free_weak_refs_of_dup(context->weak_refs);
+
+  /* last: everything released above may still have touched objects living
+   * in the arena (their free_fn, the parent_container links) */
+  if (context->private_allocator)
+    {
+      filterx_allocator_clear(context->private_allocator);
+      g_free(context->private_allocator);
+    }
+  g_free(context);
+}
+
 void
 filterx_eval_freeze_object(FilterXObject **object)
 {
   FilterXEvalContext *context = filterx_eval_get_context();
 
-  if (context && context->env)
-    {
-      g_assert(!(*object)->allocator_used);
-      /* only compile contexts have an env. We can only freeze objects during compile time. */
-      filterx_env_freeze_object(context->env, object);
-    }
+  /* only compile contexts have an env, so this can only be called during
+   * compile time. Without env, the object is silently never frozen (nor
+   * tracked anywhere else), which just leaks it -- so this is a hard
+   * requirement, not a soft/optional one. */
+  g_assert(context && context->env);
+  g_assert(!filterx_object_is_allocator_resident(*object));
+  filterx_env_freeze_object(context->env, object);
 }
 
 void

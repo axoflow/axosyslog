@@ -28,6 +28,7 @@
 #include "filterx/filterx-object.h"
 #include "filterx/filterx-allocator.h"
 #include "filterx/filterx-env.h"
+#include "filterx/filterx-stashed-object.h"
 #include "template/eval.h"
 
 #define FILTERX_CONTEXT_ERROR_STACK_SIZE (32)
@@ -70,9 +71,11 @@ struct _FilterXEvalContext
   FilterXError errors[FILTERX_CONTEXT_ERROR_STACK_SIZE];
   gint error_count;
   FilterXObject *current_frame_meta;
-  LogTemplateEvalOptions template_eval_options;
   GPtrArray *weak_refs;
   FilterXAllocator *allocator;
+  /* an arena owned by this context (a snapshot, see
+   * filterx_eval_context_dup()), released along with it */
+  FilterXAllocator *private_allocator;
   FilterXAllocatorPosition allocator_position;
   FilterXEvalControl eval_control_modifier;
   FilterXEvalContext *previous_context;
@@ -81,6 +84,8 @@ struct _FilterXEvalContext
   GArray *failure_info;
   gint weak_refs_offset;
   FilterXEnvironment *env;
+  /* borrowed: the evaluation takes no reference to it */
+  FilterXStashedObject **config_stash;
 };
 
 FilterXEvalContext *filterx_eval_get_context(void);
@@ -103,15 +108,44 @@ EVTTAG *filterx_format_eval_result(FilterXEvalResult result);
 void filterx_eval_dump_errors(const gchar *message);
 
 void filterx_eval_begin_context(FilterXEvalContext *context, FilterXEvalContext *previous_context,
+                                FilterXStashedObject **config_stash,
                                 FilterXScope *scope_storage, LogMessage *msg);
 void filterx_eval_end_context(FilterXEvalContext *context);
 LogMessage *filterx_eval_make_message_writable(FilterXEvalContext *context);
 void filterx_eval_begin_restricted_context(FilterXEvalContext *context, FilterXEnvironment *env);
 void filterx_eval_end_restricted_context(FilterXEvalContext *context);
 
+FilterXStashedObject **filterx_eval_get_config_stash(GlobalConfig *cfg);
 void filterx_eval_begin_compile(FilterXEvalContext *context, GlobalConfig *cfg);
 void filterx_eval_end_compile(FilterXEvalContext *context);
 void filterx_eval_freeze_object(FilterXObject **object);
+
+/*
+ * filterx_eval_context_dup():
+ *
+ * Takes a full, self contained snapshot of @context: its scope (and the
+ * scope's entire parent chain) with all of its variables/values, and
+ * current_frame_meta.  Every value is copied into the snapshot, except a
+ * preserved one, which is shared: a hibernated one lasts as long as the
+ * process, a frozen one as long as the stash references the snapshot
+ * takes.  An immutable heap object that does not borrow from the message
+ * is shared too, the reference count of a heap object is atomic.
+ *
+ * The result is a heap allocated, standalone FilterXEvalContext with no
+ * previous_context and an arena of its own.  So it can be kept around
+ * and used to resume evaluation later, potentially on a different
+ * thread, long after @context (and the thread specific allocator/stack
+ * storage it may be using) has gone away.
+ *
+ * @context must be the context that is currently active in this thread
+ * (i.e.  filterx_eval_get_context() == context): it is set back as the
+ * active context on return.
+ *
+ * The returned context must eventually be released with
+ * filterx_eval_context_free_dup().
+ */
+FilterXEvalContext *filterx_eval_context_dup(FilterXEvalContext *context);
+void filterx_eval_context_free_dup(FilterXEvalContext *context);
 
 FilterXEvalControl filterx_eval_get_control_modifier(FilterXEvalContext *context);
 void filterx_eval_set_control_modifier(FilterXEvalContext *context, FilterXEvalControl modifier);
@@ -176,7 +210,7 @@ filterx_eval_store_weak_ref(FilterXObject *object)
     }
 }
 
-#define FILTERX_EVAL_BEGIN_CONTEXT(eval_context, previous_context, msg, scope_var_layout) \
+#define FILTERX_EVAL_BEGIN_CONTEXT(eval_context, previous_context, config_stash, msg, scope_var_layout) \
   do { \
     FilterXEvalContext *_prev_ctx = (FilterXEvalContext *)(previous_context); \
     FilterXScope *fx_scope = NULL; \
@@ -189,7 +223,7 @@ filterx_eval_store_weak_ref(FilterXObject *object)
         filterx_scope_init_instance(fx_scope, alloc_size, _prev_ctx ? _prev_ctx->scope : NULL, scope_var_layout); \
         local_scope = TRUE; \
       } \
-    filterx_eval_begin_context(&eval_context, _prev_ctx, fx_scope, msg); \
+    filterx_eval_begin_context(&eval_context, _prev_ctx, config_stash, fx_scope, msg); \
     do
 
 
@@ -223,31 +257,90 @@ filterx_eval_malloc_object(gsize object_size, gsize alloc_size)
   else
     {
       result = (FilterXObject *) filterx_allocator_malloc(context->allocator, alloc_size, object_size);
-      result->allocator_used = TRUE;
+      result->allocator_id = context->allocator->id;
     }
   result->early_allocation = filterx_eval_context_allocations_are_shared(context);
 
   return result;
 }
 
+static inline void
+filterx_eval_switch_allocator(FilterXAllocator *new_allocator, gpointer *saved_state)
+{
+  FilterXEvalContext *context = filterx_eval_get_context();
+
+  /* no context, no allocator: nothing to switch away from */
+  if (!context)
+    {
+      *saved_state = NULL;
+      return;
+    }
+  *saved_state = context->allocator;
+  context->allocator = new_allocator;
+}
+
+/* the id an object of @alloc_size allocated right now would carry:
+ * FILTERX_ALLOCATOR_ID_HEAP if there is no allocator to allocate from, or if
+ * the allocation is too large for it, see filterx_eval_malloc_object() */
+static inline guint16
+filterx_eval_current_allocator_id(gsize alloc_size)
+{
+  FilterXEvalContext *context = filterx_eval_get_context();
+
+  if (!context || !context->allocator || !filterx_allocator_alloc_size_supported(context->allocator, alloc_size))
+    return FILTERX_ALLOCATOR_ID_HEAP;
+  return context->allocator->id;
+}
+
+static inline void
+filterx_eval_disable_allocator(gpointer *saved_state)
+{
+  filterx_eval_switch_allocator(NULL, saved_state);
+}
+
+static inline void
+filterx_eval_restore_allocator(gpointer *saved_state)
+{
+  FilterXEvalContext *context = filterx_eval_get_context();
+
+  if (context)
+    context->allocator = (FilterXAllocator *) *saved_state;
+  *saved_state = NULL;
+}
+
 /* unplug this object from the current context, and guarantee it remains
  * available past the end of the scope, at least until the returned
- * reference is dropped using filterx_object_unref(). */
+ * reference is dropped using filterx_object_unref().  The copy is made
+ * with the allocator in effect, so the guarantee is as good as that: a
+ * caller switches the allocator first, off for an object that has to
+ * outlive the arenas, see filterx_eval_disable_allocator(). */
+static inline FilterXObject *
+filterx_eval_retain_dup(FilterXObject *object)
+{
+  if (!object || filterx_object_is_preserved(object))
+    return filterx_object_ref(object);
+
+  if (filterx_object_is_allocator_resident(object))
+    return filterx_object_dup(object);
+
+#if SYSLOG_NG_ENABLE_DEBUG
+
+  /* filterx_object_ref() clones a stack object: a caller handing one here
+   * skipped the reference it owes */
+  g_assert(("retaining a stack allocated object; take a reference first" &&
+            !filterx_object_is_stack_allocated(object)));
+#endif
+
+  return filterx_object_ref(object);
+}
+
 static inline void
 filterx_eval_retain_object(FilterXObject **pobject)
 {
   FilterXObject *object = *pobject;
-  if (!object || filterx_object_is_preserved(object) || !object->allocator_used)
-    return;
 
-  FilterXEvalContext *context = filterx_eval_get_context();
-  FilterXAllocator *saved_allocator = context->allocator;
-
-  /* NOTE: dup the object with a NULL allocator means we will allocate it from the heap */
-  context->allocator = NULL;
-  *pobject = filterx_object_dup(object);
+  *pobject = filterx_eval_retain_dup(object);
   filterx_object_unref(object);
-  context->allocator = saved_allocator;
 }
 
 void filterx_eval_global_init(void);

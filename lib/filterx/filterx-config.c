@@ -33,7 +33,7 @@ filterx_config_free(ModuleConfig *s)
 {
   FilterXConfig *self = (FilterXConfig *) s;
 
-  filterx_env_clear(&self->global_env);
+  filterx_stashed_object_unref(self->global_stash);
   module_config_free_method(s);
 }
 
@@ -118,7 +118,7 @@ filterx_config_new(GlobalConfig *cfg)
   self->super.post_cfg_init = filterx_config_post_cfg_init;
   self->super.deinit = filterx_config_deinit;
   self->super.free_fn = filterx_config_free;
-  filterx_env_init(&self->global_env);
+  self->global_stash = filterx_stashed_env_new();
   self->enable_jit = -1;
   return self;
 }
@@ -141,7 +141,7 @@ filterx_config_dedup_object(GlobalConfig *cfg, FilterXObject **object)
   if (!cfg)
     return;
   FilterXConfig *fxc = filterx_config_get(cfg);
-  filterx_env_dedup_object(&fxc->global_env, object);
+  filterx_env_dedup_object(&fxc->global_stash->env, object);
 }
 
 void
@@ -150,5 +150,5 @@ filterx_config_freeze_object(GlobalConfig *cfg, FilterXObject **object)
   if (!cfg)
     return;
   FilterXConfig *fxc = filterx_config_get(cfg);
-  filterx_env_freeze_object(&fxc->global_env, object);
+  filterx_env_freeze_object(&fxc->global_stash->env, object);
 }

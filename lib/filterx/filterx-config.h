@@ -26,7 +26,7 @@
 #include "filterx/filterx-object.h"
 #include "filterx/jit/jit.h"
 #include "filterx/object-string.h"
-#include "filterx/filterx-env.h"
+#include "filterx/filterx-stashed-object.h"
 
 #include <string.h>
 
@@ -36,8 +36,9 @@ typedef struct _FilterXConfig
   gboolean enable_jit;
   FilterXJITDebugInfo jit_debug_info;
   FilterXJIT *jit;
-  /* config related objects, e.g. frozen string literals, etc */
-  FilterXEnvironment global_env;
+  /* config related objects (e.g. frozen string literals) live in the
+   * environment of this stash */
+  FilterXStashedObject *global_stash;
 } FilterXConfig;
 
 FilterXConfig *filterx_config_get(GlobalConfig *cfg);

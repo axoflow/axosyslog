@@ -25,6 +25,7 @@
 #include "logmsg/logmsg.h"
 #include "compat/json.h"
 #include "atomic.h"
+#include "filterx/filterx-allocator.h"
 
 typedef struct _FilterXType FilterXType;
 typedef struct _FilterXObject FilterXObject;
@@ -192,7 +193,9 @@ struct _FilterXObject
    *
    *     is_dirty          -- marks that the object was changed (mutable objects only)
    *
-   *     allocator_used    -- object was allocated using the FilterX allocator
+   *     allocator_id      -- the FilterXAllocator the object was allocated
+   *                          from (FILTERX_ALLOCATOR_ID_*); 0 (heap) if it was
+   *                          g_malloc()ed, or lives on the stack
    *
    *     floating_ref      -- object is a FilterXRef that is floating
    *
@@ -207,8 +210,9 @@ struct _FilterXObject
    *     flags             -- to be used by descendant types
    *
    */
-  guint weak_referenced:1, is_dirty:1, allocator_used:1, floating_ref:1, early_allocation:1, early_allocation_checked:1,
-        is_nvtable_backed:1, is_hashable:1, flags:5;
+  /* "0 +": astyle takes name:MACRO for a label and breaks the line */
+  guint weak_referenced:1, is_dirty:1, allocator_id:0 + FILTERX_ALLOCATOR_ID_BITS, floating_ref:1,
+        early_allocation:1, early_allocation_checked:1, is_nvtable_backed:1, is_hashable:1, flags:5;
   volatile guint32 hash;
   FilterXType *type;
 };
@@ -309,16 +313,30 @@ filterx_object_is_preserved(FilterXObject *self)
   return self->ref_cnt >= FILTERX_OBJECT_REFCOUNT_PRESERVED;
 }
 
+static inline gboolean
+filterx_object_is_stack_allocated(FilterXObject *self)
+{
+  return self->ref_cnt == FILTERX_OBJECT_REFCOUNT_STACK;
+}
+
 /* NOTE: these two macros actually require the inclusion of filterx-eval.h
  * which works in an implementation file, but not here */
 
 #define filterx_new_object(t) ((t *) filterx_eval_malloc_object(sizeof(t), sizeof(t)))
 #define filterx_new_object_with_extra(t, extra) ((t *) filterx_eval_malloc_object(sizeof(t), sizeof(t) + extra))
 
+/* TRUE if @self lives in a FilterXAllocator arena (whichever one): its memory
+ * is released with that arena, not by its reference count */
+static inline gboolean
+filterx_object_is_allocator_resident(FilterXObject *self)
+{
+  return self->allocator_id != FILTERX_ALLOCATOR_ID_HEAP;
+}
+
 static inline void
 filterx_free_object(FilterXObject *object)
 {
-  if (object->allocator_used)
+  if (filterx_object_is_allocator_resident(object))
     {
       /* allocated using the allocator, do nothing */
       return;
@@ -358,7 +376,12 @@ filterx_object_vref(FilterXObject *self)
   filterx_object_check_early_allocation(self);
   g_assert(r + 1 < FILTERX_OBJECT_REFCOUNT_BARRIER && r > 0);
 
-  self->ref_cnt++;
+  /* a heap object can have references in more than one thread, an allocator
+   * resident one never has */
+  if (G_LIKELY(filterx_object_is_allocator_resident(self)))
+    self->ref_cnt++;
+  else
+    g_atomic_int_inc((gint *) &self->ref_cnt);
   return self;
 }
 
@@ -408,7 +431,13 @@ filterx_object_vunref(FilterXObject *self)
   filterx_object_check_early_allocation(self);
   g_assert(r > 0);
 
-  if (--self->ref_cnt == 0)
+  gboolean last_ref;
+  if (G_LIKELY(filterx_object_is_allocator_resident(self)))
+    last_ref = (--self->ref_cnt == 0);
+  else
+    last_ref = g_atomic_int_dec_and_test((gint *) &self->ref_cnt);
+
+  if (last_ref)
     {
       self->type->free_fn(self);
       filterx_free_object(self);
@@ -879,12 +908,61 @@ filterx_object_cow_fork(FilterXObject **pself)
   return filterx_object_cow_fork2(*pself, pself);
 }
 
-/* */
+/*
+ * A container's children must live where the container does, or outlive it:
+ * in the same arena, on the heap, or preserved.  Anything else dangles as
+ * soon as the child's arena is emptied while the container is still around
+ * (a context snapshot, an aggregate() group, a persisted value).  That is a
+ * contract for the code doing the store: allocate the child in the right
+ * place -- switch the allocator (filterx_eval_switch_allocator()) or copy it
+ * -- before storing it.  Nor may a child borrow its bytes from the message,
+ * see filterx_object_ref_as_child().  Checked in debug builds, at every
+ * store site.
+ */
+static inline void
+filterx_object_assert_child_storable(FilterXObject *container, FilterXObject *child)
+{
+#if SYSLOG_NG_ENABLE_DEBUG
+  if (!container)
+    return;
+
+  FilterXObject *value = filterx_ref_unwrap_ro(child);
+  g_assert(("a container must not point at a child from another allocator" &&
+            (!filterx_object_is_allocator_resident(child) || child->allocator_id == container->allocator_id)));
+  g_assert(("a container must not point at a child's value from another allocator" &&
+            (!filterx_object_is_allocator_resident(value) || value->allocator_id == container->allocator_id)));
+  g_assert(("a container must not point at a message backed child" &&
+            !filterx_object_is_nvtable_backed(child)));
+#endif
+}
+
+/* A new reference to @child, for a container to keep.  A message backed
+ * value borrows bytes that a write to the message can move or overwrite,
+ * so a container gets an owned copy of it. */
 static inline FilterXObject *
-filterx_object_cow_store(FilterXObject **pself)
+filterx_object_ref_as_child(FilterXObject *child)
+{
+  if (filterx_object_is_nvtable_backed(child))
+    return filterx_object_dup(child);
+  return filterx_object_ref(child);
+}
+
+/*
+ * Store @pself into @container: prepare it for copy-on-write and hand back
+ * the (grounded) reference the container is to keep.  @container is the
+ * object that will hold the value; NULL when the holder is not an object
+ * (e.g.  a variable slot): a message backed value is then kept as it is,
+ * the scope sync takes care of it, and nothing is checked.
+ */
+static inline FilterXObject *
+filterx_object_cow_store(FilterXObject *container, FilterXObject **pself)
 {
   filterx_object_cow_prepare(pself);
-  return filterx_ref_ground(filterx_object_ref(*pself));
+
+  FilterXObject *stored = container ? filterx_object_ref_as_child(*pself) : filterx_object_ref(*pself);
+  stored = filterx_ref_ground(stored);
+  filterx_object_assert_child_storable(container, stored);
+  return stored;
 }
 
 #endif

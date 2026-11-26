@@ -540,6 +540,96 @@ def test_sync_stops_at_fork_point_when_branch_is_abandoned(config, syslog_ng):
     assert file_false.read_log() == "acila"
 
 
+# Message-tied variables changed without an assignment (in place, or unset)
+# have to reach the message through the scope sync: chained filterx blocks
+# do not sync in between, a fork does.
+def test_message_tied_in_place_change_is_synced_through_linear_filterx_block_chain(config, syslog_ng):
+    (file_true, file_false, _) = create_config(
+        config, [
+            """
+            ${values.json2}.foo.foo1 = "changed";
+            """,
+            """
+            a = 3;
+            """,
+        ],
+        template='''"${values.json2}\n"''',
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == """{"foo":{"foo1":"changed","foo2":"foo2value"},"bar":{"bar1":"bar1value","bar2":"bar2value"}}"""
+
+
+def test_message_tied_in_place_change_is_seen_by_later_blocks_and_branches(config, syslog_ng):
+    (file_true, file_false, file_final) = create_config(
+        config, init_exprs=[
+            """
+            ${values.json2}.foo.foo1 = "changed";
+            """,
+            """
+            $chained = ${values.json2}.foo.foo1;
+            """,
+        ], true_exprs=[
+            """
+            $MSG = ${values.json2}.foo.foo1;
+            """,
+        ],
+        template="'$MSG $chained\n'",
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "changed changed"
+    assert file_final.read_log() == "changed changed"
+
+
+def test_message_tied_unset_is_synced_through_linear_filterx_block_chain(config, syslog_ng):
+    (file_true, file_false, _) = create_config(
+        config, [
+            """
+            unset(${values.str});
+            """,
+            """
+            a = 3;
+            """,
+        ],
+        template="'[${values.str}]\n'",
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "[]"
+
+
+def test_message_tied_in_place_change_in_an_abandoned_branch_is_dropped(config, syslog_ng):
+    (file_true, file_false, file_final) = create_config(
+        config, init_exprs=[
+            """
+            ${values.json2}.foo.foo1 = "common";
+            """,
+        ], true_exprs=[
+            """
+            ${values.json2}.foo.foo2 = "iftrue";
+            false;
+            """,
+        ], false_exprs=[
+            """
+            ${values.json2}.bar.bar1 = "iffalse";
+            """,
+        ],
+        template='''"${values.json2}\n"''',
+    )
+    syslog_ng.start(config)
+
+    assert file_false.get_stats()["processed"] == 1
+    assert "processed" not in file_true.get_stats()
+    assert file_final.read_log() == """{"foo":{"foo1":"common","foo2":"foo2value"},"bar":{"bar1":"iffalse","bar2":"bar2value"}}"""
+
+
 def test_message_tied_assigned_from_parsed_indirect_slice_survives_scope_transition(config, syslog_ng):
     (file_true, file_false, _) = create_config(
         config,

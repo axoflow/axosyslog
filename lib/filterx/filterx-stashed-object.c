@@ -56,10 +56,21 @@ filterx_stash_reference_free(FilterXObject *s)
   filterx_object_free_method(s);
 }
 
+/* another reference to the same stash, not a copy of it: what a context
+ * snapshot holds, see _pin_stashes() */
+static FilterXObject *
+filterx_stash_reference_clone(FilterXObject *s)
+{
+  FilterXStashReference *self = (FilterXStashReference *) s;
+
+  return filterx_stash_reference_new(filterx_stashed_object_ref(self->stashed_object));
+}
+
 /* we are deriving from null to satisfy asserts in filterx_type_init(), this
  * object is never surfaced to user code */
 FILTERX_DEFINE_TYPE(stash_reference, FILTERX_TYPE_NAME(null),
                     .free_fn = filterx_stash_reference_free,
+                    .clone = filterx_stash_reference_clone,
                    );
 
 /*
@@ -102,10 +113,24 @@ filterx_stashed_object_new(FilterXObject *object, FilterXEnvironment *env)
   return self;
 }
 
+/* A stash of an environment alone: there is no object to retrieve, what
+ * gets frozen into its environment lives as long as the stash does. */
+FilterXStashedObject *
+filterx_stashed_env_new(void)
+{
+  FilterXStashedObject *self = g_new0(FilterXStashedObject, 1);
+  g_atomic_counter_set(&self->ref_cnt, 1);
+
+  filterx_env_init(&self->env);
+  return self;
+}
+
 static GRWLock stash_rwl;
 
-FilterXObject *
-filterx_stash_retrieve(FilterXStashedObject **stash)
+/* Keeps what @stash holds right now alive for as long as the current
+ * FilterXEvalContext.  Returns it, NULL if the stash is empty. */
+FilterXStashedObject *
+filterx_stash_pin(FilterXStashedObject **stash)
 {
   g_rw_lock_reader_lock(&stash_rwl);
   FilterXStashedObject *stashed_object = *stash;
@@ -125,6 +150,17 @@ filterx_stash_retrieve(FilterXStashedObject **stash)
    * use of atomics.  */
   filterx_eval_store_weak_ref(stashed_reference);
   filterx_object_unref(stashed_reference);
+
+  return stashed_object;
+}
+
+FilterXObject *
+filterx_stash_retrieve(FilterXStashedObject **stash)
+{
+  FilterXStashedObject *stashed_object = filterx_stash_pin(stash);
+
+  if (!stashed_object)
+    return NULL;
 
   /* this filterx_object_ref() is normally a noop as the object itself is
    * frozen, but is here as a matter of correctness. */
