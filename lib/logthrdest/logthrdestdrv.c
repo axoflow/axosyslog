@@ -1555,7 +1555,7 @@ log_threaded_dest_driver_queue(LogPipe *s, LogMessage *msg,
   LogThreadedDestDriver *self = (LogThreadedDestDriver *)s;
   LogPathOptions local_path_options;
 
-  LogThreadedDestWorker *dw = _lookup_worker(self, msg, path_options->destination_failover);
+  LogThreadedDestWorker *dw = _lookup_worker(self, msg, log_path_options_may_reject(path_options));
 
   if (!dw)
     {

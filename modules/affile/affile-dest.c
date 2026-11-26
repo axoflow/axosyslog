@@ -748,7 +748,7 @@ static gboolean
 affile_dd_reject_if_unreachable(AFFileDestDriver *self, AFFileDestWriter *next, LogMessage *msg,
                                 const LogPathOptions *path_options)
 {
-  if (!path_options->destination_failover || (next && affile_dw_reopen_if_needed(next)))
+  if (!log_path_options_may_reject(path_options) || (next && affile_dw_reopen_if_needed(next)))
     return FALSE;
 
   log_dest_driver_reject_message(&self->super, msg, path_options);

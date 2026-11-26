@@ -925,11 +925,12 @@ static gboolean
 _queue_message(const gchar *pid, gboolean destination_failover)
 {
   gboolean matched = TRUE;
+  LogPathDelivery delivery = LOG_PATH_DELIVERY_PENDING;
   LogPathOptions path_options = LOG_PATH_OPTIONS_INIT_NOACK;
   LogMessage *msg = create_sample_message();
 
   log_msg_set_value(msg, LM_V_PID, pid, -1);
-  path_options.destination_failover = destination_failover;
+  path_options.delivery = destination_failover ? &delivery : NULL;
   path_options.matched = &matched;
   log_pipe_queue(&fdd->super.super.super.super, msg, &path_options);
   return matched;
@@ -1064,7 +1065,8 @@ _wait_for_reachable(gint worker_index)
       _sleep_msec(1);
       c++;
     }
-  cr_assert(not(g_atomic_int_get(unreachable)), "worker %d did not become reachable", worker_index);
+  gboolean still_unreachable = g_atomic_int_get(unreachable);
+  cr_assert(not(still_unreachable), "worker %d did not become reachable", worker_index);
 }
 
 static void
