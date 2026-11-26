@@ -56,10 +56,21 @@ filterx_stash_reference_free(FilterXObject *s)
   filterx_object_free_method(s);
 }
 
+/* another reference to the same stash, not a copy of it: what a context
+ * snapshot holds, see _pin_stashes() */
+static FilterXObject *
+filterx_stash_reference_clone(FilterXObject *s)
+{
+  FilterXStashReference *self = (FilterXStashReference *) s;
+
+  return filterx_stash_reference_new(filterx_stashed_object_ref(self->stashed_object));
+}
+
 /* we are deriving from null to satisfy asserts in filterx_type_init(), this
  * object is never surfaced to user code */
 FILTERX_DEFINE_TYPE(stash_reference, FILTERX_TYPE_NAME(null),
                     .free_fn = filterx_stash_reference_free,
+                    .clone = filterx_stash_reference_clone,
                    );
 
 /*

@@ -55,6 +55,7 @@
 #include "filterx/filterx-eval.h"
 #include "filterx/filterx-allocator.h"
 #include "filterx/filterx-env.h"
+#include "filterx/filterx-stashed-object.h"
 #include "filterx/filterx-ref.h"
 #include "filterx/filterx-scope.h"
 #include "filterx/filterx-variable.h"
@@ -778,6 +779,231 @@ Test(filterx_retain, snapshot_copies_a_message_backed_variable_value)
 
   filterx_eval_context_free_dup(dup);
   filterx_scope_variable_layout_free(layout);
+}
+
+/* A frozen object is not copied: the snapshot takes its own references to
+ * the stashes of the evaluation. */
+static void
+_stash_store_nested_dict(FilterXStashedObject **stash)
+{
+  FilterXEnvironment env;
+  FilterXEvalContext build_context;
+
+  filterx_env_init(&env);
+  filterx_eval_begin_restricted_context(&build_context, &env);
+  FilterXObject *tree = _new_nested_dict();
+  filterx_eval_end_restricted_context(&build_context);
+
+  cr_assert(filterx_stash_store(stash, tree, &env));
+  filterx_env_clear(&env);
+}
+
+Test(filterx_retain, snapshot_pins_stashed_objects_instead_of_copying_them)
+{
+  FilterXStashedObject *stash = NULL;
+  _stash_store_nested_dict(&stash);
+
+  FilterXVariableHandle tree_handle = filterx_map_varname_to_handle("stashtree", FX_VAR_DECLARED_FLOATING);
+  FilterXVariableHandle items_handle = filterx_map_varname_to_handle("stashitems", FX_VAR_DECLARED_FLOATING);
+  FilterXVariableHandle handles[] = { tree_handle, items_handle };
+  FilterXScopeVariableLayout *layout = filterx_scope_variable_layout_new_from_handles(handles, G_N_ELEMENTS(handles));
+  FilterXScope *scope = filterx_scope_new(NULL, layout);
+  set_libtest_filterx_scope(scope);
+
+  _enable_allocator();
+  FilterXObject *tree = filterx_stash_retrieve(&stash);
+  cr_assert_eq(tree->ref_cnt, FILTERX_OBJECT_REFCOUNT_FROZEN);
+  FilterXObject *tree_value = filterx_ref_unwrap_ro(tree);
+
+  FilterXVariable *v = filterx_scope_register_variable(scope, FX_VAR_DECLARED_FLOATING, tree_handle, 0);
+  filterx_scope_set_variable(scope, v, &tree, TRUE);
+  filterx_object_unref(tree);
+
+  /* and a sub-object pulled out of it, the way lookup["items"] would */
+  FILTERX_STRING_DECLARE_ON_STACK(items_key, "items", -1);
+  FilterXObject *items = filterx_object_get_subscript(tree, items_key);
+  FILTERX_STRING_CLEAR_FROM_STACK(items_key);
+  cr_assert_not_null(items);
+  FilterXObject *items_value = filterx_ref_unwrap_ro(items);
+  cr_assert_eq(items_value->ref_cnt, FILTERX_OBJECT_REFCOUNT_FROZEN);
+
+  v = filterx_scope_register_variable(scope, FX_VAR_DECLARED_FLOATING, items_handle, 1);
+  filterx_scope_set_variable(scope, v, &items, TRUE);
+  filterx_object_unref(items);
+
+  FilterXEvalContext *dup = filterx_eval_context_dup(filterx_eval_get_context());
+
+  FilterXObject *dtree = filterx_variable_borrow_value(filterx_scope_lookup_variable(dup->scope, tree_handle, 0));
+  FilterXObject *ditems = filterx_variable_borrow_value(filterx_scope_lookup_variable(dup->scope, items_handle, 1));
+  cr_assert_eq(filterx_ref_unwrap_ro(dtree), tree_value, "the stashed tree was copied into the snapshot");
+  cr_assert_eq(filterx_ref_unwrap_ro(ditems), items_value,
+               "a sub-object of the stashed tree was copied into the snapshot");
+  _assert_decoupled(ditems, "snapshot");
+
+  /* the file gets reloaded (a new version replaces the old in the stash)
+   * and the live evaluation ends (its scope, allocator and weak refs go):
+   * from here on only the snapshot keeps the old version alive */
+  _stash_store_nested_dict(&stash);
+  set_libtest_filterx_scope(filterx_scope_new(NULL, NULL));
+  _release_allocator_memory();
+  g_ptr_array_set_size(filterx_eval_get_context()->weak_refs, 0);
+
+  assert_object_json_equals(dtree, NESTED_DICT_JSON);
+  assert_object_json_equals(ditems, "[4242,\"list-element\"]");
+
+  /* releasing the snapshot releases the old version */
+  filterx_eval_context_free_dup(dup);
+  filterx_scope_variable_layout_free(layout);
+  filterx_stashed_object_unref(stash);
+}
+
+/* The evaluation takes no reference to the stash of its configuration, the
+ * snapshot takes one. */
+Test(filterx_retain, snapshot_takes_a_reference_to_the_stash_of_the_configuration)
+{
+  FilterXStashedObject *config_stash = filterx_stashed_env_new();
+  LogMessage *msg = log_msg_new_empty();
+  FilterXEvalContext *standing_context = filterx_eval_get_context();
+  FilterXEvalContext eval_context;
+  FilterXEvalContext *dup = NULL;
+
+  FILTERX_EVAL_BEGIN_CONTEXT(eval_context, NULL, &config_stash, msg, NULL)
+  {
+    cr_assert_eq(g_atomic_counter_get(&config_stash->ref_cnt), 1);
+
+    dup = filterx_eval_context_dup(&eval_context);
+    cr_assert_eq(g_atomic_counter_get(&config_stash->ref_cnt), 2);
+  }
+  FILTERX_EVAL_END_CONTEXT(eval_context);
+  filterx_eval_set_context(standing_context);
+
+  cr_assert_eq(g_atomic_counter_get(&config_stash->ref_cnt), 2);
+  filterx_eval_context_free_dup(dup);
+  cr_assert_eq(g_atomic_counter_get(&config_stash->ref_cnt), 1);
+
+  log_msg_unref(msg);
+  filterx_stashed_object_unref(config_stash);
+}
+
+typedef struct
+{
+  FilterXObject *literal;
+  FilterXVariableHandle handle;
+  FilterXScopeVariableLayout *layout;
+  FilterXEvalContext *dup;
+} ConfigLiteralSnapshot;
+
+/* A snapshot of an evaluation that assigned a literal of its configuration
+ * to a variable.  On return the evaluation is over and the configuration
+ * has dropped its stash: only the snapshot keeps the literal alive. */
+static void
+_snapshot_a_config_literal(ConfigLiteralSnapshot *self)
+{
+  FilterXStashedObject *config_stash = filterx_stashed_env_new();
+  self->literal = _new_frozen_in_env(&config_stash->env, _new_nested_dict);
+
+  self->handle = filterx_map_varname_to_handle("literalvar", FX_VAR_DECLARED_FLOATING);
+  self->layout = filterx_scope_variable_layout_new_from_handles(&self->handle, 1);
+  FilterXScope *scope = filterx_scope_new(NULL, self->layout);
+  set_libtest_filterx_scope(scope);
+
+  /* the evaluation runs under this configuration */
+  filterx_eval_get_context()->config_stash = &config_stash;
+  _enable_allocator();
+
+  /* an assignment leaves an xref of the evaluation around the frozen value */
+  FilterXVariable *v = filterx_scope_register_variable(scope, FX_VAR_DECLARED_FLOATING, self->handle, 0);
+  FilterXObject *value = filterx_object_cow_fork2(filterx_object_ref(self->literal), NULL);
+  filterx_scope_set_variable(scope, v, &value, TRUE);
+  filterx_object_unref(value);
+
+  self->dup = filterx_eval_context_dup(filterx_eval_get_context());
+
+  filterx_eval_get_context()->config_stash = NULL;
+  set_libtest_filterx_scope(filterx_scope_new(NULL, NULL));
+  _release_allocator_memory();
+  g_ptr_array_set_size(filterx_eval_get_context()->weak_refs, 0);
+  filterx_stashed_object_unref(config_stash);
+}
+
+static FilterXObject *
+_snapshot_value(ConfigLiteralSnapshot *self)
+{
+  return filterx_variable_borrow_value(filterx_scope_lookup_variable(self->dup->scope, self->handle, 0));
+}
+
+static void
+_free_snapshot(ConfigLiteralSnapshot *self)
+{
+  filterx_eval_context_free_dup(self->dup);
+  filterx_scope_variable_layout_free(self->layout);
+}
+
+Test(filterx_retain, snapshot_shares_a_config_literal_and_keeps_it_alive)
+{
+  ConfigLiteralSnapshot snapshot;
+  _snapshot_a_config_literal(&snapshot);
+
+  FilterXObject *dvalue = _snapshot_value(&snapshot);
+  cr_assert_eq(filterx_ref_unwrap_ro(dvalue), filterx_ref_unwrap_ro(snapshot.literal),
+               "the config literal was copied into the snapshot");
+  _assert_decoupled(dvalue, "snapshot");
+  assert_object_json_equals(dvalue, NESTED_DICT_JSON);
+
+  _free_snapshot(&snapshot);
+}
+
+Test(filterx_retain, a_write_through_the_snapshot_does_not_change_a_config_literal)
+{
+  ConfigLiteralSnapshot snapshot;
+  _snapshot_a_config_literal(&snapshot);
+
+  FilterXEvalContext *standing_context = filterx_eval_get_context();
+  filterx_eval_set_context(snapshot.dup);
+  _dict_set(_snapshot_value(&snapshot), "added", filterx_string_new("by-the-resumed-evaluation", -1));
+  filterx_eval_set_context(standing_context);
+
+  FilterXObject *dvalue = _snapshot_value(&snapshot);
+  cr_assert_neq(filterx_ref_unwrap_ro(dvalue), filterx_ref_unwrap_ro(snapshot.literal),
+                "the write went into the frozen literal");
+  assert_object_json_equals(snapshot.literal, NESTED_DICT_JSON);
+  assert_object_json_equals(dvalue, "{\"name\":\"nested-value\",\"items\":[4242,\"list-element\"],"
+                                    "\"added\":\"by-the-resumed-evaluation\"}");
+
+  _free_snapshot(&snapshot);
+}
+
+/* A resumed evaluation that reads into the literal leaves an xref around a
+ * frozen object in the weak refs of the snapshot.  That xref touches the
+ * object when it is released, so the environment has to be still there. */
+Test(filterx_retain, snapshot_releases_its_stash_references_last)
+{
+  ConfigLiteralSnapshot snapshot;
+  _snapshot_a_config_literal(&snapshot);
+
+  FilterXEvalContext *standing_context = filterx_eval_get_context();
+  filterx_eval_set_context(snapshot.dup);
+  FilterXObject *items = filterx_object_getattr_string(_snapshot_value(&snapshot), "items");
+  cr_assert_not_null(items);
+  assert_object_json_equals(items, "[4242,\"list-element\"]");
+  filterx_object_unref(items);
+  filterx_eval_set_context(standing_context);
+
+  _free_snapshot(&snapshot);
+}
+
+/* An error of a resumed evaluation can hold a frozen object too. */
+Test(filterx_retain, snapshot_releases_its_stash_references_after_its_errors)
+{
+  ConfigLiteralSnapshot snapshot;
+  _snapshot_a_config_literal(&snapshot);
+
+  FilterXEvalContext *standing_context = filterx_eval_get_context();
+  filterx_eval_set_context(snapshot.dup);
+  filterx_eval_push_error("an error of the resumed evaluation", snapshot.literal);
+  filterx_eval_set_context(standing_context);
+
+  _free_snapshot(&snapshot);
 }
 
 static gboolean
