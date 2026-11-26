@@ -63,6 +63,7 @@ stdout_dd_new(GlobalConfig *cfg)
   AFFileDestDriver *self = affile_dd_new_instance(filename_template, cfg);
 
   self->writer_options.stats_source = stats_register_type("stdout");
+  file_opener_options_defaults_dont_change_permissions(&self->file_opener_options);
   self->file_opener = file_opener_for_stdout_new();
   return &self->super.super;
 }
