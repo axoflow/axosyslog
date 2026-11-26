@@ -1,4 +1,6 @@
 add_unit_test(CRITERION TARGET test_stats_cluster)
+add_unit_test(CRITERION TARGET test_stats_counter_batch)
+add_unit_test(CRITERION TARGET test_stats_histogram)
 add_unit_test(CRITERION LIBTEST TARGET test_stats_query)
 add_unit_test(CRITERION TARGET test_dynamic_ctr_reg)
 add_unit_test(CRITERION TARGET test_external_ctr_reg)
