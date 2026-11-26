@@ -79,7 +79,11 @@ _resolve_unknown_blockargs_as_varargs(gpointer key, gpointer value, gpointer use
 
   if (!defaults || !cfg_args_contains(defaults, key))
     {
-      g_string_append_printf(varargs, "%s(%s) ", (gchar *)key, (gchar *)value ? : "");
+      const gchar *arg_value = value;
+      /* Keep an explicit empty string distinct from an argument with no value. */
+      if (arg_value && !arg_value[0])
+        arg_value = "\"\"";
+      g_string_append_printf(varargs, "%s(%s) ", (gchar *) key, arg_value ? : "");
     }
 }
 
