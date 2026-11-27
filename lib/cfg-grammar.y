@@ -480,10 +480,13 @@ main_location_print (FILE *yyo, YYLTYPE const * const yylocp)
 %type   <ptr> dest_plugin
 
 %type   <ptr> template_content
+%type   <ptr> template_content_start
 %type   <ptr> template_content_list
 %type   <ptr> template_name_or_content
 %type   <ptr> template_name_or_content_tail
 %type   <num> type_hint
+
+%destructor { log_template_unref($$); } template_content template_content_start
 
 %type   <ptr> filter_content
 %type   <ptr> filterx_content
@@ -1052,9 +1055,11 @@ type_hint
           };
 
 template_content
-        : <ptr>{
-            $$ = log_template_new(configuration, NULL);
-          } template_content_inner					    { $$ = $1; }
+        : template_content_start template_content_inner                      { $$ = $1; }
+        ;
+
+template_content_start
+        : { $$ = log_template_new(configuration, NULL); }
         ;
 
 template_content_list
