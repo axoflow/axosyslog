@@ -67,6 +67,7 @@
 %token KW_KEEP_ALIVE
 %token KW_TIME
 %token KW_MAX_PINGS_WITHOUT_DATA
+%token KW_IDLE_RECONNECT_TIMEOUT
 %token KW_RESPONSE_ACTION
 %token KW_DISCONNECT
 %token KW_DROP
@@ -113,6 +114,7 @@ arrow_flight_dest_option
                   "use the keep-alive() options instead");
     }
   | KW_KEEP_ALIVE '(' arrow_flight_keepalive_options ')'
+  | KW_IDLE_RECONNECT_TIMEOUT '(' nonnegative_integer ')' { arrow_flight_dd_set_idle_reconnect_timeout(last_driver, $3); }
   | KW_SCHEMA '(' arrow_flight_schema_fields ')'
   | KW_RESPONSE_ACTION '(' arrow_flight_dest_response_action_items ')'
   | threaded_dest_driver_general_option

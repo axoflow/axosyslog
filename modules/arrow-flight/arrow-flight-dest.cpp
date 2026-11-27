@@ -258,6 +258,13 @@ arrow_flight_dd_set_keepalive_max_pings(LogDriver *d, gint p)
 }
 
 void
+arrow_flight_dd_set_idle_reconnect_timeout(LogDriver *d, gint t)
+{
+  ArrowFlightDestDriver *self = (ArrowFlightDestDriver *) d;
+  self->cpp->set_idle_reconnect_timeout(t);
+}
+
+void
 arrow_flight_dd_set_response_action(LogDriver *d, ArrowFlightDestResponse response,
                                     ArrowFlightDestResponseAction action)
 {

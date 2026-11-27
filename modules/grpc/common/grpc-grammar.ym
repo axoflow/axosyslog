@@ -61,6 +61,7 @@
 %token KW_TIME
 %token KW_TIMEOUT
 %token KW_MAX_PINGS_WITHOUT_DATA
+%token KW_IDLE_RECONNECT_TIMEOUT
 %token KW_CHANNEL_ARGS
 %token KW_HEADERS
 %token KW_SCHEMA
@@ -127,6 +128,7 @@ grpc_dest_general_option
   | KW_COMPRESSION '(' yesno ')' { grpc_dd_set_compression(last_driver, $3); }
   | KW_BATCH_BYTES '(' positive_integer ')' { grpc_dd_set_batch_bytes(last_driver, $3); }
   | KW_KEEP_ALIVE '(' grpc_keepalive_options ')'
+  | KW_IDLE_RECONNECT_TIMEOUT '(' nonnegative_integer ')' { grpc_dd_set_idle_reconnect_timeout(last_driver, $3); }
   | KW_CHANNEL_ARGS '(' grpc_dest_channel_args ')'
   | KW_HEADERS '(' grpc_dest_headers ')'
   | KW_RESPONSE_ACTION '(' grpc_dest_response_action_items ')'

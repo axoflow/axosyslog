@@ -141,6 +141,16 @@ public:
     return this->keepalive_max_pings_without_data;
   }
 
+  void set_idle_reconnect_timeout(gint t)
+  {
+    this->idle_reconnect_timeout = t;
+  }
+
+  gint get_idle_reconnect_timeout() const
+  {
+    return this->idle_reconnect_timeout;
+  }
+
   void set_response_action(arrow::StatusCode status_code, ArrowFlightDestResponseAction action)
   {
     this->response_actions[status_code] = action;
@@ -205,6 +215,7 @@ private:
   gint keepalive_time = -1;
   gint keepalive_timeout = -1;
   gint keepalive_max_pings_without_data = -1;
+  gint idle_reconnect_timeout = 0;
   std::map<arrow::StatusCode, ArrowFlightDestResponseAction> response_actions;
 };
 

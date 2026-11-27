@@ -62,20 +62,16 @@ DestinationWorker::DestinationWorker(GrpcDestWorker *s)
 {
 }
 
-bool
-DestinationWorker::init()
+void
+DestinationWorker::create_stubs()
 {
-  if (!syslogng::grpc::DestWorker::init())
-    return false;
   this->stub = logproto::Pusher().NewStub(channel);
-  return true;
 }
 
 void
-DestinationWorker::deinit()
+DestinationWorker::destroy_stubs()
 {
   this->stub.reset();
-  syslogng::grpc::DestWorker::deinit();
 }
 
 bool

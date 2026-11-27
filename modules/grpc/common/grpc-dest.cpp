@@ -53,6 +53,7 @@ static const std::map<GrpcDestResponse, ::grpc::StatusCode> GRD_TO_GRPC_STATUSCO
 DestDriver::DestDriver(GrpcDestDriver *s)
   : super(s), compression(false), batch_bytes(4 * 1000 * 1000),
     keepalive_time(-1), keepalive_timeout(-1), keepalive_max_pings_without_data(-1),
+    idle_reconnect_timeout(0),
     flush_on_key_change(false), dynamic_headers_enabled(false),
     response_actions({ GDRA_UNSET })
 {
@@ -246,6 +247,13 @@ grpc_dd_set_keepalive_max_pings(LogDriver *s, gint p)
 {
   GrpcDestDriver *self = (GrpcDestDriver *) s;
   self->cpp->set_keepalive_max_pings(p);
+}
+
+void
+grpc_dd_set_idle_reconnect_timeout(LogDriver *s, gint t)
+{
+  GrpcDestDriver *self = (GrpcDestDriver *) s;
+  self->cpp->set_idle_reconnect_timeout(t);
 }
 
 void

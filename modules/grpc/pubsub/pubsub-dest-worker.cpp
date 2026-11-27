@@ -31,20 +31,16 @@
 using syslogng::grpc::pubsub::DestWorker;
 using syslogng::grpc::pubsub::DestDriver;
 
-bool
-DestWorker::init()
+void
+DestWorker::create_stubs()
 {
-  if (!syslogng::grpc::DestWorker::init())
-    return false;
   this->stub = ::google::pubsub::v1::Publisher::NewStub(this->channel);
-  return true;
 }
 
 void
-DestWorker::deinit()
+DestWorker::destroy_stubs()
 {
   this->stub.reset();
-  syslogng::grpc::DestWorker::deinit();
 }
 
 bool
