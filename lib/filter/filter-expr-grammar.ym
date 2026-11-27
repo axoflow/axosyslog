@@ -117,6 +117,8 @@ _translate_number_literals(CfgLexer *lexer, gint compare_mode, LogTemplate *expr
 %type	<node> filter_comparison
 %type	<cptr> filter_identifier
 
+%destructor { filter_expr_unref($$); } filter_expr filter_simple_expr filter_plugin filter_comparison
+
 %type   <num> filter_fac_list
 %type   <num> filter_fac
 %type	<num> filter_severity_list
