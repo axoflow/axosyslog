@@ -50,6 +50,10 @@ struct _ArrowFlightDestWorker
 DestinationWorker::DestinationWorker(ArrowFlightDestWorker *s) : super(s)
 {
   this->buffer = g_string_new(NULL);
+
+  IV_TIMER_INIT(&this->idle_timer);
+  this->idle_timer.cookie = this;
+  this->idle_timer.handler = DestinationWorker::idle_timer_expired;
 }
 
 DestinationWorker::~DestinationWorker()
@@ -136,8 +140,46 @@ DestinationWorker::connect()
       return false;
     }
   this->client = std::move(*client_result);
+  this->restart_idle_timer();
 
   return this->create_builders();
+}
+
+void
+DestinationWorker::restart_idle_timer()
+{
+  gint idle_reconnect_timeout = this->get_owner()->get_idle_reconnect_timeout();
+  if (idle_reconnect_timeout == 0)
+    return;
+
+  this->stop_idle_timer();
+
+  iv_validate_now();
+  this->idle_timer.expires = iv_now;
+  this->idle_timer.expires.tv_sec += idle_reconnect_timeout;
+  iv_timer_register(&this->idle_timer);
+}
+
+void
+DestinationWorker::stop_idle_timer()
+{
+  if (iv_timer_registered(&this->idle_timer))
+    iv_timer_unregister(&this->idle_timer);
+}
+
+/* A DoPut stream cannot be cancelled, its Close() waits for the server.
+ * So the connection is closed while its flow is still alive, not at the next flush(). */
+void
+DestinationWorker::idle_timer_expired(void *cookie)
+{
+  DestinationWorker *self = (DestinationWorker *) cookie;
+
+  msg_debug("arrow-flight: Closing idle connection",
+            evt_tag_int("idle_reconnect_timeout", self->get_owner()->get_idle_reconnect_timeout()),
+            log_pipe_location_tag(&self->super->super.owner->super.super.super));
+
+  (void) self->close_stream();
+  self->close_client();
 }
 
 void
@@ -157,6 +199,7 @@ DestinationWorker::close_client()
 void
 DestinationWorker::disconnect()
 {
+  this->stop_idle_timer();
   (void) this->close_stream();
   this->current_batch_path.clear();
   this->close_client();
@@ -535,6 +578,14 @@ DestinationWorker::flush(LogThreadedFlushMode mode)
       arrays.push_back(*finish_result);
     }
 
+  /* The idle timer closed the connection.
+   * The builders are finished by now, so connect() cannot lose any of the batch. */
+  if (!this->client && !this->connect())
+    {
+      result = LTR_NOT_CONNECTED;
+      goto exit;
+    }
+
   batch = arrow::RecordBatch::Make(owner->get_arrow_schema(), this->get_batch_size(), arrays);
 
   if (!this->writer || this->current_stream_path != path)
@@ -610,6 +661,7 @@ exit:
   if (batch)
     owner->metrics.insert_request_stats(status);
 
+  this->restart_idle_timer();
   this->prepare_batch();
   return result;
 }

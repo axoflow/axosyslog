@@ -65,6 +65,9 @@ private:
   LogThreadedResult map_status_to_result(const arrow::Status &status);
   void close_client();
   bool create_builders();
+  void restart_idle_timer();
+  void stop_idle_timer();
+  static void idle_timer_expired(void *cookie);
   gssize append_map_string_string(arrow::MapBuilder *mbuilder, const char *str, gssize len);
   gssize append_value(arrow::ArrayBuilder *builder, const std::shared_ptr<arrow::DataType> &type,
                       const char *str, gssize len);
@@ -80,6 +83,7 @@ private:
   std::string current_stream_path;
   std::string current_batch_path;
   size_t current_batch_bytes = 0;
+  struct iv_timer idle_timer;
 };
 
 }
