@@ -23,20 +23,27 @@
 
 #include "logproto-http-server.h"
 #include "buffer.h"
+#include "http-ack-state.h"
 #include "http-parser.h"
 #include "http-message-internal.h"
 #include "syslog-ng.h"
 #include "messages.h"
+#include "mainloop.h"
+#include "timeutils/misc.h"
 #include "logmsg/logmsg.h"
 
 #include <errno.h>
+#include <iv.h>
+
+#define DEFAULT_ACK_TIMEOUT 900
 
 typedef enum _State
 {
   STATE_RECEIVE_HTTP_REQUEST,
   STATE_SEND_HTTP_RESPONSE,
   STATE_HTTP_ERROR,
-  STATE_PROCESS_LOG_MESSAGES
+  STATE_PROCESS_LOG_MESSAGES,
+  STATE_AWAITING_ACK
 } State;
 
 typedef struct _ExtractLogMessagesCallback
@@ -63,9 +70,70 @@ struct _LogProtoHTTPServer
   GQueue *pending_log_messages;
   LogTransportAuxData request_aux;
 
+  struct
+  {
+    HTTPAckState *state;
+    /* messages handed to the reader on this connection */
+    guint64 delivered;
+    struct iv_timer timer;
+    gint timed_out;
+  } ack;
+
   ExtractLogMessagesCallback extract_log_messages;
   CreateResponseCallback create_response;
 };
+
+static gint
+_get_ack_timeout(LogProtoHTTPServer *self)
+{
+  if (self->super.options->idle_timeout > 0)
+    return self->super.options->idle_timeout;
+  return DEFAULT_ACK_TIMEOUT;
+}
+
+/* the fetch() that follows the wakeup answers the request */
+static void
+_ack_timer_expired(gpointer cookie)
+{
+  LogProtoHTTPServer *self = (LogProtoHTTPServer *) cookie;
+
+  g_atomic_int_set(&self->ack.timed_out, 1);
+  log_proto_server_wakeup_cb_call(&self->super.wakeup_callback);
+}
+
+static void
+_update_ack_timer(LogProtoHTTPServer *self, gboolean want_armed)
+{
+  /* an iv_timer belongs to the thread that registered it, while fetch() may
+   * run on an I/O worker */
+  main_loop_assert_main_thread();
+
+  if (want_armed == !!iv_timer_registered(&self->ack.timer))
+    return;
+
+  if (!want_armed)
+    {
+      iv_timer_unregister(&self->ack.timer);
+      return;
+    }
+
+  iv_validate_now();
+  self->ack.timer.expires = iv_now;
+  timespec_add_msec(&self->ack.timer.expires, (gint64) _get_ack_timeout(self) * 1000);
+  iv_timer_register(&self->ack.timer);
+}
+
+static gboolean
+log_proto_http_server_is_request_acked(LogProtoHTTPServer *self)
+{
+  return http_ack_state_get_durable(self->ack.state) >= self->ack.delivered;
+}
+
+static gboolean
+log_proto_http_server_is_request_given_up(LogProtoHTTPServer *self)
+{
+  return http_ack_state_is_aborted(self->ack.state) || g_atomic_int_get(&self->ack.timed_out);
+}
 
 static LogProtoPrepareAction
 log_proto_http_server_poll_prepare(LogProtoServer *s, GIOCondition *cond, gint *timeout)
@@ -76,6 +144,16 @@ log_proto_http_server_poll_prepare(LogProtoServer *s, GIOCondition *cond, gint *
 
   if (self->state == STATE_PROCESS_LOG_MESSAGES)
     return LPPA_FORCE_SCHEDULE_FETCH;
+
+  if (self->state == STATE_AWAITING_ACK)
+    {
+      gboolean response_due = log_proto_http_server_is_request_acked(self)
+                              || log_proto_http_server_is_request_given_up(self);
+
+      _update_ack_timer(self, !response_due);
+      return response_due ? LPPA_FORCE_SCHEDULE_FETCH : LPPA_SUSPEND;
+    }
+  _update_ack_timer(self, FALSE);
 
   GIOCondition proto_io_direction;
   gboolean reschedule_now;
@@ -370,17 +448,30 @@ log_proto_http_server_extract_log_messages_and_create_response(LogProtoHTTPServe
 }
 
 static LogMessage *
-log_proto_http_server_pop_next_log_message(LogProtoHTTPServer *self)
+log_proto_http_server_pop_next_log_message(LogProtoHTTPServer *self, Bookmark *bookmark)
 {
   LogMessage *log_message = g_queue_pop_head(self->pending_log_messages);
-  if (!log_message)
+  if (log_message)
     {
-      g_queue_free(self->pending_log_messages);
-      self->pending_log_messages = NULL;
-      self->state = STATE_SEND_HTTP_RESPONSE;
+      http_ack_state_fill_bookmark(self->ack.state, bookmark, ++self->ack.delivered);
+      return log_message;
     }
 
-  return log_message;
+  g_queue_free(self->pending_log_messages);
+  self->pending_log_messages = NULL;
+
+  http_ack_state_set_wanted(self->ack.state, self->ack.delivered);
+  self->state = STATE_AWAITING_ACK;
+  return NULL;
+}
+
+static void
+log_proto_http_server_give_up_request(LogProtoHTTPServer *self)
+{
+  msg_notice("Answering an HTTP request with 503, its messages will not be acknowledged",
+             evt_tag_int(EVT_TAG_FD, self->super.transport_stack.fd),
+             evt_tag_str("reason", http_ack_state_is_aborted(self->ack.state) ? "aborted" : "timeout"));
+  log_proto_http_server_set_error_response(self, HTTP_SERVICE_UNAVAILABLE);
 }
 
 #define MAX_REQUESTS_PER_FETCH 100
@@ -411,12 +502,27 @@ log_proto_http_server_process(LogProtoServer *s, LogMessage **log_message, LogTr
           break;
 
         case STATE_PROCESS_LOG_MESSAGES:
-          *log_message = log_proto_http_server_pop_next_log_message(self);
+          /* no Bookmark means the flow-control window is full: the messages
+           * stay pending and poll_prepare() asks for an immediate fetch once
+           * one is allowed again */
+          if (!bookmark)
+            return LPS_SUCCESS;
+
+          *log_message = log_proto_http_server_pop_next_log_message(self, bookmark);
           if (*log_message)
             {
               log_transport_aux_data_copy(aux, &self->request_aux);
               return LPS_SUCCESS;
             }
+          break;
+
+        case STATE_AWAITING_ACK:
+          if (log_proto_http_server_is_request_acked(self))
+            self->state = STATE_SEND_HTTP_RESPONSE;
+          else if (log_proto_http_server_is_request_given_up(self))
+            log_proto_http_server_give_up_request(self);
+          else
+            return LPS_SUCCESS;
           break;
 
         case STATE_SEND_HTTP_RESPONSE:
@@ -446,6 +552,10 @@ log_proto_http_server_free(LogProtoServer *s)
 
   if (self->pending_log_messages)
     g_queue_free_full(self->pending_log_messages, (GDestroyNotify) log_msg_unref);
+  if (iv_timer_registered(&self->ack.timer))
+    iv_timer_unregister(&self->ack.timer);
+  http_ack_state_detach(self->ack.state);
+  http_ack_state_unref(self->ack.state);
   log_transport_aux_data_destroy(&self->request_aux);
 
   log_proto_server_free_method(s);
@@ -482,6 +592,10 @@ log_proto_http_server_new(LogTransport *transport, const LogProtoServerOptions *
   self->super.free_fn = log_proto_http_server_free;
 
   self->http_parser = http_request_parser_new();
+  self->ack.state = http_ack_state_new(&self->super.wakeup_callback);
+  IV_TIMER_INIT(&self->ack.timer);
+  self->ack.timer.cookie = self;
+  self->ack.timer.handler = _ack_timer_expired;
 
   return &self->super;
 }

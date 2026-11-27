@@ -10,11 +10,13 @@ httpinclude_HEADERS = \
   lib/http/http-message.h \
   lib/http/http-message-internal.h \
   lib/http/http-parser.h \
+  lib/http/http-ack-state.h \
   lib/http/logproto-http-server.h
 
 http_sources = \
   lib/http/http-message.c \
   lib/http/http-parser.c \
+  lib/http/http-ack-state.c \
   lib/http/logproto-http-server.c \
   $(http_source_sources)
 
