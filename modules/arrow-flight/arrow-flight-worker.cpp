@@ -141,20 +141,25 @@ DestinationWorker::connect()
 }
 
 void
+DestinationWorker::close_client()
+{
+  if (!this->client)
+    return;
+
+  auto status = this->client->Close();
+  if (!status.ok())
+    msg_warning("arrow-flight: Error closing client connection",
+                evt_tag_str("error", status.ToString().c_str()),
+                log_pipe_location_tag(&this->super->super.owner->super.super.super));
+  this->client.reset();
+}
+
+void
 DestinationWorker::disconnect()
 {
   (void) this->close_stream();
   this->current_batch_path.clear();
-
-  if (this->client)
-    {
-      auto status = this->client->Close();
-      if (!status.ok())
-        msg_warning("arrow-flight: Error closing client connection",
-                    evt_tag_str("error", status.ToString().c_str()),
-                    log_pipe_location_tag(&this->super->super.owner->super.super.super));
-      this->client.reset();
-    }
+  this->close_client();
   this->builders.clear();
 }
 

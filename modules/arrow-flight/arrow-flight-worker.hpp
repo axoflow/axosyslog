@@ -63,6 +63,7 @@ private:
   arrow::Status open_stream(const gchar *path);
   arrow::Status close_stream();
   LogThreadedResult map_status_to_result(const arrow::Status &status);
+  void close_client();
   bool create_builders();
   gssize append_map_string_string(arrow::MapBuilder *mbuilder, const char *str, gssize len);
   gssize append_value(arrow::ArrayBuilder *builder, const std::shared_ptr<arrow::DataType> &type,
